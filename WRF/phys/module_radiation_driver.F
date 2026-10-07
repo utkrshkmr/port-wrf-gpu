@@ -325,7 +325,8 @@ CONTAINS
         work_p3_raddrv_coszen_loc, work_p3_raddrv_hrang_loc, &
         work_p3_raddrv_obscur_loc, work_p3_raddrv_cldfra1_flag, &
         work_p3_raddrv_mask_loc
-   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_RADIATION_DRIVER, R_CALC_COSZEN, R_CAL_CLDFRA1
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, &
+        R_RADIATION_DRIVER, R_CALC_COSZEN, R_CAL_CLDFRA1, R_OZN_TIME_INT
    USE module_gpu_callcheck
 
    !  This driver calls subroutines for the radiation parameterizations.
@@ -10015,8 +10016,26 @@ SUBROUTINE ozn_time_int(julday,julian,ozmixm,ozmixt,levsiz,num_months,  &
    real      :: fact1, fact2, deltat
    logical   :: finddate
    logical   :: ozncyc
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
    CHARACTER(LEN=256) :: msgstr
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_OZN_TIME_INT)) THEN
+        CALL gpu_cc_save_r(1, ozmixt, SIZE(ozmixt,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_OZN_TIME_INT)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ozmixm, ozmixt)
+        ELSE
+!$acc update self(ozmixm, ozmixt)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
    ozncyc = .true.
    ! JULIAN starts from 0.0 at 0Z on 1 Jan.
    intJULIAN = JULIAN + 1.0       ! offset by one day
@@ -10073,6 +10092,10 @@ SUBROUTINE ozn_time_int(julday,julian,ozmixm,ozmixt,levsiz,num_months,  &
 !
 ! Time interpolation.
 !
+! K-OZT
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_OZN_TIME_INT)) default(none) &
+!$acc& present(ozmixm, ozmixt) &
+!$acc& firstprivate(jts, jte, its, ite, levsiz, fact1, fact2, nm, np)
       do j=jts,jte
       do k=1,levsiz
       do i=its,ite
@@ -10081,6 +10104,21 @@ SUBROUTINE ozn_time_int(julday,julian,ozmixm,ozmixt,levsiz,num_months,  &
       end do
       end do
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(ozmixt)
+        ELSE
+!$acc update device(ozmixt)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_OZN_TIME_INT)) THEN
+        CALL gpu_cc_done_r(1, ozmixt, SIZE(ozmixt,KIND=8), 'ozmixt', &
+          LBOUND(ozmixt), UBOUND(ozmixt))
+        IF (gpu_cc_next(R_OZN_TIME_INT)) GOTO 99901
+      END IF
+#endif
 END SUBROUTINE ozn_time_int
 
 SUBROUTINE ozn_p_int(p ,pin, levsiz, ozmixt, o3vmr, &

@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p3_raddrv
-- Last commit: cal_cldfra1 (this commit). calc_coszen c05f4f71be2c081c9a56a65a9a6e10f431b9bf31. solar_eclipse 78dcf646decaa5bb5a0f4284df635a7aceab7eba.
+- Last commit: ozn_time_int (this commit). cal_cldfra1 b4b41a1ea96135a37f91e75506fe9179cf04254d.
 
 ## Items
 
@@ -14,9 +14,9 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-RAD-CLDT | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template C, k loop seq downward. CPU loop kept under #else. |
 | K-RAD-ECL | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A. One thread calls solar_eclipse. routine seq is the solar_eclipse commit. |
 | K-RAD-COSZ | coded | c05f4f71be2c081c9a56a65a9a6e10f431b9bf31 | Template A, collapse(2). Island pasted. Host scalars da, eot, xt24 stay outside the kernel. |
-| K-RAD-CF0 | coded | this commit | K-RAD-CF0 zero nest is in radiation_driver 19267e0f8bc371a90489442fb1bd336a23c03921. K-RAD-CF1 is cal_cldfra1, template A collapse(3), this commit. |
+| K-RAD-CF0 | coded | b4b41a1ea96135a37f91e75506fe9179cf04254d | K-RAD-CF0 zero nest is in radiation_driver 19267e0f8bc371a90489442fb1bd336a23c03921. K-RAD-CF1 is cal_cldfra1, template A collapse(3). |
 | K-RAD-Z | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Two template A nests: 2D fluxes/GLAT/GLON, then 3D heating and CEMISS. |
-| K-OZT | todo | |  |
+| K-OZT | coded | this commit | Template A collapse(3). Month search and factors stay on the host. Island pasted. |
 | K-OZP | todo | |  |
 | K-RAD-LWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A. PRESENT(OLR) hoisted to the host. |
 | K-RAD-SWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A: SW heating, SWDOWN, direct/diffuse split, diffuse_frac. |
@@ -40,3 +40,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - solar_eclipse: !$acc routine seq. Under WRF_GPU the body is the sw_eclipse == 0 zero and return. The file-read path stays in the CPU view. kernel_lint W2 cleared. arith_guard PASS.
 - calc_coszen: K-RAD-COSZ template A. Island and call check pasted. kernel_lint 21 kernels, 0 errors. arith_guard GPU-view clean.
 - cal_cldfra1: K-RAD-CF1 template A collapse(3) on the WSM6 path (F_QI, F_QC, F_QS present and true). Absent flags and FER_MP_HIRES stop before the island. CPU loop kept under #else. Island pasted. kernel_lint 22 kernels, 0 errors. arith_guard GPU-view clean.
+- ozn_time_int: K-OZT template A collapse(3). Island pasted. kernel_lint 23 kernels, 0 errors. arith_guard GPU-view clean.
