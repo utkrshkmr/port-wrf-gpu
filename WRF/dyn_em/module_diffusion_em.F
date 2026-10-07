@@ -2885,6 +2885,9 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_HORIZONTAL_DIFFUSION_2
+   USE module_gpu_callcheck
+
    IMPLICIT NONE
 
    TYPE(grid_config_rec_type), INTENT(IN   ) :: config_flags
@@ -2968,11 +2971,45 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
 ! LOCAL VARS
 
    INTEGER :: im, ic, is
+#ifdef WRF_GPU
+   LOGICAL :: gpu_isl
+#endif
 
 !  REAL , DIMENSION(its-1:ite+1, kts:kte, jts-1:jte+1)       ::     xkhh
 
 ! End declarations.
 !-----------------------------------------------------------------------
+
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_HORIZONTAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_save_r(1, rt_tendf, SIZE(rt_tendf,KIND=8))
+        CALL gpu_cc_save_r(2, ru_tendf, SIZE(ru_tendf,KIND=8))
+        CALL gpu_cc_save_r(3, rv_tendf, SIZE(rv_tendf,KIND=8))
+        CALL gpu_cc_save_r(4, rw_tendf, SIZE(rw_tendf,KIND=8))
+        CALL gpu_cc_save_r(5, tke_tendf, SIZE(tke_tendf,KIND=8))
+        CALL gpu_cc_save_r(6, moist_tendf, SIZE(moist_tendf,KIND=8))
+        CALL gpu_cc_save_r(7, chem_tendf, SIZE(chem_tendf,KIND=8))
+        CALL gpu_cc_save_r(8, scalar_tendf, SIZE(scalar_tendf,KIND=8))
+        CALL gpu_cc_save_r(9, tracer_tendf, SIZE(tracer_tendf,KIND=8))
+        CALL gpu_cc_save_r(10, nba_mij, SIZE(nba_mij,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_HORIZONTAL_DIFFUSION_2)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, defor13, defor23, &
+!$acc&   nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, msftx, msfty, xkmh, &
+!$acc&   xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
+        ELSE
+!$acc update self(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, defor13, defor23, &
+!$acc&   nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, msftx, msfty, xkmh, &
+!$acc&   xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
 !-----------------------------------------------------------------------
 ! Call diffusion subroutines.
@@ -3110,6 +3147,42 @@ SUBROUTINE horizontal_diffusion_2 ( rt_tendf, ru_tendf, rv_tendf, rw_tendf,    &
       ENDDO scalar_loop
 
     ENDIF
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, nba_mij)
+        ELSE
+!$acc update device(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, nba_mij)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_HORIZONTAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_done_r(1, rt_tendf, SIZE(rt_tendf,KIND=8), 'rt_tendf', &
+          LBOUND(rt_tendf), UBOUND(rt_tendf))
+        CALL gpu_cc_done_r(2, ru_tendf, SIZE(ru_tendf,KIND=8), 'ru_tendf', &
+          LBOUND(ru_tendf), UBOUND(ru_tendf))
+        CALL gpu_cc_done_r(3, rv_tendf, SIZE(rv_tendf,KIND=8), 'rv_tendf', &
+          LBOUND(rv_tendf), UBOUND(rv_tendf))
+        CALL gpu_cc_done_r(4, rw_tendf, SIZE(rw_tendf,KIND=8), 'rw_tendf', &
+          LBOUND(rw_tendf), UBOUND(rw_tendf))
+        CALL gpu_cc_done_r(5, tke_tendf, SIZE(tke_tendf,KIND=8), 'tke_tendf', &
+          LBOUND(tke_tendf), UBOUND(tke_tendf))
+        CALL gpu_cc_done_r(6, moist_tendf, SIZE(moist_tendf,KIND=8), 'moist_tendf', &
+          LBOUND(moist_tendf), UBOUND(moist_tendf))
+        CALL gpu_cc_done_r(7, chem_tendf, SIZE(chem_tendf,KIND=8), 'chem_tendf', &
+          LBOUND(chem_tendf), UBOUND(chem_tendf))
+        CALL gpu_cc_done_r(8, scalar_tendf, SIZE(scalar_tendf,KIND=8), 'scalar_tendf', &
+          LBOUND(scalar_tendf), UBOUND(scalar_tendf))
+        CALL gpu_cc_done_r(9, tracer_tendf, SIZE(tracer_tendf,KIND=8), 'tracer_tendf', &
+          LBOUND(tracer_tendf), UBOUND(tracer_tendf))
+        CALL gpu_cc_done_r(10, nba_mij, SIZE(nba_mij,KIND=8), 'nba_mij', &
+          LBOUND(nba_mij), UBOUND(nba_mij))
+        IF (gpu_cc_next(R_HORIZONTAL_DIFFUSION_2)) GOTO 99901
+      END IF
+#endif
 
     END SUBROUTINE horizontal_diffusion_2
 
