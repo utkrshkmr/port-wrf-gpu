@@ -1,6 +1,6 @@
 # Host-vs-device tests of the reproducible math module (plan.md P0.5).
 #
-#   make                      nvfortran, OpenMP offload to A100 (cc80) and H100 (cc90)
+#   make                      nvfortran, OpenACC on A100 (cc80) and H100 (cc90); host loops use OpenMP threads
 #   make COMPILER=gnu         gfortran, host only: a compile check; run the
 #                             programs with ALLOW_HOST=1
 #   ./run_tests.sh            run all tests in order and write a results file
@@ -14,10 +14,10 @@ TP       ?= haswell
 ifeq ($(COMPILER),nvhpc)
 FC     = nvfortran
 FFLAGS = -O2 -Kieee -Mnofma -Mnoflushz -Mnodaz -Mvect=noassoc -tp=$(TP) \
-         -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp
+         -mp -acc=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=accel
 else
 FC     = gfortran
-FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenmp
+FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenmp -fopenacc
 endif
 
 PROGS = t_fma t_ieee t_ipow t_rm_exh t_rm_pow t_rm_d

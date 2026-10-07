@@ -1,5 +1,13 @@
 # Phase 2 — dynamics kernels
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Plan: [plan.md §7](../../plan.md) (7.0 coding standard, 7.1–7.7 kernel tables, G2). Coding rules:
 [CODING_STANDARD.md](CODING_STANDARD.md). Exact CPU lines of every kernel: [KERNEL_REFS.md](KERNEL_REFS.md) (base
 commit). Every route with its routines and call sites: [ROUTES.md](ROUTES.md). The tables below (generated from

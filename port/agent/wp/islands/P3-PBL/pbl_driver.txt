@@ -204,1206 +204,1206 @@
       gpu_isl = gpu_island(R_PBL_DRIVER)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rublten, rvblten, rthblten, tsk, xland, znt, ht, ust, pblh, hfx, qfx, &
-!$omp&   grdflx, hpbl_hold, u_phy, v_phy, th_phy, rho, p_phy, pi_phy, p8w, t_phy, dz8w, z, exch_h, &
-!$omp&   exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, f, lowlyr, u10, v10, uoce, voce, t2, psim, &
-!$omp&   psih, fm, fhh, gz1oz0, wspd, br, chklowq, kpbl, mixht, ct, lh, snow, xice, power, i_start, &
-!$omp&   i_end, j_start, j_end, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, pr_pbl, &
-!$omp&   el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem, vd)
+!$acc update device(rublten, rvblten, rthblten, tsk, xland, znt, ht, ust, pblh, hfx, qfx, grdflx, &
+!$acc&   hpbl_hold, u_phy, v_phy, th_phy, rho, p_phy, pi_phy, p8w, t_phy, dz8w, z, exch_h, exch_m, &
+!$acc&   akhs, akms, thz0, qz0, uz0, vz0, qsfc, f, lowlyr, u10, v10, uoce, voce, t2, psim, psih, &
+!$acc&   fm, fhh, gz1oz0, wspd, br, chklowq, kpbl, mixht, ct, lh, snow, xice, power, i_start, &
+!$acc&   i_end, j_start, j_end, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, pr_pbl, &
+!$acc&   el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem, vd)
           IF (PRESENT(w)) THEN
-!$omp target update to(w)
+!$acc update device(w)
           END IF
           IF (PRESENT(dx2d)) THEN
-!$omp target update to(dx2d)
+!$acc update device(dx2d)
           END IF
           IF (PRESENT(area2d)) THEN
-!$omp target update to(area2d)
+!$acc update device(area2d)
           END IF
           IF (PRESENT(znu)) THEN
-!$omp target update to(znu)
+!$acc update device(znu)
           END IF
           IF (PRESENT(znw)) THEN
-!$omp target update to(znw)
+!$acc update device(znw)
           END IF
           IF (PRESENT(mut)) THEN
-!$omp target update to(mut)
+!$acc update device(mut)
           END IF
           IF (PRESENT(ctopo)) THEN
-!$omp target update to(ctopo)
+!$acc update device(ctopo)
           END IF
           IF (PRESENT(ctopo2)) THEN
-!$omp target update to(ctopo2)
+!$acc update device(ctopo2)
           END IF
           IF (PRESENT(te_temf)) THEN
-!$omp target update to(te_temf)
+!$acc update device(te_temf)
           END IF
           IF (PRESENT(km_temf)) THEN
-!$omp target update to(km_temf)
+!$acc update device(km_temf)
           END IF
           IF (PRESENT(kh_temf)) THEN
-!$omp target update to(kh_temf)
+!$acc update device(kh_temf)
           END IF
           IF (PRESENT(shf_temf)) THEN
-!$omp target update to(shf_temf)
+!$acc update device(shf_temf)
           END IF
           IF (PRESENT(qf_temf)) THEN
-!$omp target update to(qf_temf)
+!$acc update device(qf_temf)
           END IF
           IF (PRESENT(uw_temf)) THEN
-!$omp target update to(uw_temf)
+!$acc update device(uw_temf)
           END IF
           IF (PRESENT(vw_temf)) THEN
-!$omp target update to(vw_temf)
+!$acc update device(vw_temf)
           END IF
           IF (PRESENT(hd_temf)) THEN
-!$omp target update to(hd_temf)
+!$acc update device(hd_temf)
           END IF
           IF (PRESENT(lcl_temf)) THEN
-!$omp target update to(lcl_temf)
+!$acc update device(lcl_temf)
           END IF
           IF (PRESENT(hct_temf)) THEN
-!$omp target update to(hct_temf)
+!$acc update device(hct_temf)
           END IF
           IF (PRESENT(wupd_temf)) THEN
-!$omp target update to(wupd_temf)
+!$acc update device(wupd_temf)
           END IF
           IF (PRESENT(mf_temf)) THEN
-!$omp target update to(mf_temf)
+!$acc update device(mf_temf)
           END IF
           IF (PRESENT(thup_temf)) THEN
-!$omp target update to(thup_temf)
+!$acc update device(thup_temf)
           END IF
           IF (PRESENT(qtup_temf)) THEN
-!$omp target update to(qtup_temf)
+!$acc update device(qtup_temf)
           END IF
           IF (PRESENT(qlup_temf)) THEN
-!$omp target update to(qlup_temf)
+!$acc update device(qlup_temf)
           END IF
           IF (PRESENT(exch_temf)) THEN
-!$omp target update to(exch_temf)
+!$acc update device(exch_temf)
           END IF
           IF (PRESENT(cf3d_temf)) THEN
-!$omp target update to(cf3d_temf)
+!$acc update device(cf3d_temf)
           END IF
           IF (PRESENT(cfm_temf)) THEN
-!$omp target update to(cfm_temf)
+!$acc update device(cfm_temf)
           END IF
           IF (PRESENT(flhc)) THEN
-!$omp target update to(flhc)
+!$acc update device(flhc)
           END IF
           IF (PRESENT(flqc)) THEN
-!$omp target update to(flqc)
+!$acc update device(flqc)
           END IF
           IF (PRESENT(qke)) THEN
-!$omp target update to(qke)
+!$acc update device(qke)
           END IF
           IF (PRESENT(sh3d)) THEN
-!$omp target update to(sh3d)
+!$acc update device(sh3d)
           END IF
           IF (PRESENT(sm3d)) THEN
-!$omp target update to(sm3d)
+!$acc update device(sm3d)
           END IF
           IF (PRESENT(qke_adv)) THEN
-!$omp target update to(qke_adv)
+!$acc update device(qke_adv)
           END IF
           IF (PRESENT(tsq)) THEN
-!$omp target update to(tsq)
+!$acc update device(tsq)
           END IF
           IF (PRESENT(qsq)) THEN
-!$omp target update to(qsq)
+!$acc update device(qsq)
           END IF
           IF (PRESENT(cov)) THEN
-!$omp target update to(cov)
+!$acc update device(cov)
           END IF
           IF (PRESENT(rmol)) THEN
-!$omp target update to(rmol)
+!$acc update device(rmol)
           END IF
           IF (PRESENT(ch)) THEN
-!$omp target update to(ch)
+!$acc update device(ch)
           END IF
           IF (PRESENT(qcg)) THEN
-!$omp target update to(qcg)
+!$acc update device(qcg)
           END IF
           IF (PRESENT(dqke)) THEN
-!$omp target update to(dqke)
+!$acc update device(dqke)
           END IF
           IF (PRESENT(qwt)) THEN
-!$omp target update to(qwt)
+!$acc update device(qwt)
           END IF
           IF (PRESENT(qshear)) THEN
-!$omp target update to(qshear)
+!$acc update device(qshear)
           END IF
           IF (PRESENT(qbuoy)) THEN
-!$omp target update to(qbuoy)
+!$acc update device(qbuoy)
           END IF
           IF (PRESENT(qdiss)) THEN
-!$omp target update to(qdiss)
+!$acc update device(qdiss)
           END IF
           IF (PRESENT(qc_bl)) THEN
-!$omp target update to(qc_bl)
+!$acc update device(qc_bl)
           END IF
           IF (PRESENT(qi_bl)) THEN
-!$omp target update to(qi_bl)
+!$acc update device(qi_bl)
           END IF
           IF (PRESENT(cldfra_bl)) THEN
-!$omp target update to(cldfra_bl)
+!$acc update device(cldfra_bl)
           END IF
           IF (PRESENT(edmf_a)) THEN
-!$omp target update to(edmf_a)
+!$acc update device(edmf_a)
           END IF
           IF (PRESENT(edmf_w)) THEN
-!$omp target update to(edmf_w)
+!$acc update device(edmf_w)
           END IF
           IF (PRESENT(edmf_thl)) THEN
-!$omp target update to(edmf_thl)
+!$acc update device(edmf_thl)
           END IF
           IF (PRESENT(edmf_qt)) THEN
-!$omp target update to(edmf_qt)
+!$acc update device(edmf_qt)
           END IF
           IF (PRESENT(edmf_ent)) THEN
-!$omp target update to(edmf_ent)
+!$acc update device(edmf_ent)
           END IF
           IF (PRESENT(edmf_qc)) THEN
-!$omp target update to(edmf_qc)
+!$acc update device(edmf_qc)
           END IF
           IF (PRESENT(sub_thl3d)) THEN
-!$omp target update to(sub_thl3d)
+!$acc update device(sub_thl3d)
           END IF
           IF (PRESENT(sub_sqv3d)) THEN
-!$omp target update to(sub_sqv3d)
+!$acc update device(sub_sqv3d)
           END IF
           IF (PRESENT(det_thl3d)) THEN
-!$omp target update to(det_thl3d)
+!$acc update device(det_thl3d)
           END IF
           IF (PRESENT(det_sqv3d)) THEN
-!$omp target update to(det_sqv3d)
+!$acc update device(det_sqv3d)
           END IF
           IF (PRESENT(vdfg)) THEN
-!$omp target update to(vdfg)
+!$acc update device(vdfg)
           END IF
           IF (PRESENT(maxwidth)) THEN
-!$omp target update to(maxwidth)
+!$acc update device(maxwidth)
           END IF
           IF (PRESENT(maxmf)) THEN
-!$omp target update to(maxmf)
+!$acc update device(maxmf)
           END IF
           IF (PRESENT(ztop_plume)) THEN
-!$omp target update to(ztop_plume)
+!$acc update device(ztop_plume)
           END IF
           IF (PRESENT(ktop_plume)) THEN
-!$omp target update to(ktop_plume)
+!$acc update device(ktop_plume)
           END IF
           IF (PRESENT(pattern_spp_pbl)) THEN
-!$omp target update to(pattern_spp_pbl)
+!$acc update device(pattern_spp_pbl)
           END IF
           IF (PRESENT(pek)) THEN
-!$omp target update to(pek)
+!$acc update device(pek)
           END IF
           IF (PRESENT(pep)) THEN
-!$omp target update to(pep)
+!$acc update device(pep)
           END IF
           IF (PRESENT(pek_adv)) THEN
-!$omp target update to(pek_adv)
+!$acc update device(pek_adv)
           END IF
           IF (PRESENT(pep_adv)) THEN
-!$omp target update to(pep_adv)
+!$acc update device(pep_adv)
           END IF
           IF (PRESENT(hol)) THEN
-!$omp target update to(hol)
+!$acc update device(hol)
           END IF
           IF (PRESENT(mol)) THEN
-!$omp target update to(mol)
+!$acc update device(mol)
           END IF
           IF (PRESENT(regime)) THEN
-!$omp target update to(regime)
+!$acc update device(regime)
           END IF
           IF (PRESENT(dtaux3d)) THEN
-!$omp target update to(dtaux3d)
+!$acc update device(dtaux3d)
           END IF
           IF (PRESENT(dtauy3d)) THEN
-!$omp target update to(dtauy3d)
+!$acc update device(dtauy3d)
           END IF
           IF (PRESENT(dusfcg)) THEN
-!$omp target update to(dusfcg)
+!$acc update device(dusfcg)
           END IF
           IF (PRESENT(dvsfcg)) THEN
-!$omp target update to(dvsfcg)
+!$acc update device(dvsfcg)
           END IF
           IF (PRESENT(var2d)) THEN
-!$omp target update to(var2d)
+!$acc update device(var2d)
           END IF
           IF (PRESENT(oc12d)) THEN
-!$omp target update to(oc12d)
+!$acc update device(oc12d)
           END IF
           IF (PRESENT(oa1)) THEN
-!$omp target update to(oa1)
+!$acc update device(oa1)
           END IF
           IF (PRESENT(oa2)) THEN
-!$omp target update to(oa2)
+!$acc update device(oa2)
           END IF
           IF (PRESENT(oa3)) THEN
-!$omp target update to(oa3)
+!$acc update device(oa3)
           END IF
           IF (PRESENT(oa4)) THEN
-!$omp target update to(oa4)
+!$acc update device(oa4)
           END IF
           IF (PRESENT(ol1)) THEN
-!$omp target update to(ol1)
+!$acc update device(ol1)
           END IF
           IF (PRESENT(ol2)) THEN
-!$omp target update to(ol2)
+!$acc update device(ol2)
           END IF
           IF (PRESENT(ol3)) THEN
-!$omp target update to(ol3)
+!$acc update device(ol3)
           END IF
           IF (PRESENT(ol4)) THEN
-!$omp target update to(ol4)
+!$acc update device(ol4)
           END IF
           IF (PRESENT(sina)) THEN
-!$omp target update to(sina)
+!$acc update device(sina)
           END IF
           IF (PRESENT(cosa)) THEN
-!$omp target update to(cosa)
+!$acc update device(cosa)
           END IF
           IF (PRESENT(dtaux3d_ls)) THEN
-!$omp target update to(dtaux3d_ls)
+!$acc update device(dtaux3d_ls)
           END IF
           IF (PRESENT(dtauy3d_ls)) THEN
-!$omp target update to(dtauy3d_ls)
+!$acc update device(dtauy3d_ls)
           END IF
           IF (PRESENT(dtaux3d_bl)) THEN
-!$omp target update to(dtaux3d_bl)
+!$acc update device(dtaux3d_bl)
           END IF
           IF (PRESENT(dtauy3d_bl)) THEN
-!$omp target update to(dtauy3d_bl)
+!$acc update device(dtauy3d_bl)
           END IF
           IF (PRESENT(dtaux3d_ss)) THEN
-!$omp target update to(dtaux3d_ss)
+!$acc update device(dtaux3d_ss)
           END IF
           IF (PRESENT(dtauy3d_ss)) THEN
-!$omp target update to(dtauy3d_ss)
+!$acc update device(dtauy3d_ss)
           END IF
           IF (PRESENT(dtaux3d_fd)) THEN
-!$omp target update to(dtaux3d_fd)
+!$acc update device(dtaux3d_fd)
           END IF
           IF (PRESENT(dtauy3d_fd)) THEN
-!$omp target update to(dtauy3d_fd)
+!$acc update device(dtauy3d_fd)
           END IF
           IF (PRESENT(dusfcg_ls)) THEN
-!$omp target update to(dusfcg_ls)
+!$acc update device(dusfcg_ls)
           END IF
           IF (PRESENT(dvsfcg_ls)) THEN
-!$omp target update to(dvsfcg_ls)
+!$acc update device(dvsfcg_ls)
           END IF
           IF (PRESENT(dusfcg_bl)) THEN
-!$omp target update to(dusfcg_bl)
+!$acc update device(dusfcg_bl)
           END IF
           IF (PRESENT(dvsfcg_bl)) THEN
-!$omp target update to(dvsfcg_bl)
+!$acc update device(dvsfcg_bl)
           END IF
           IF (PRESENT(dusfcg_ss)) THEN
-!$omp target update to(dusfcg_ss)
+!$acc update device(dusfcg_ss)
           END IF
           IF (PRESENT(dvsfcg_ss)) THEN
-!$omp target update to(dvsfcg_ss)
+!$acc update device(dvsfcg_ss)
           END IF
           IF (PRESENT(dusfcg_fd)) THEN
-!$omp target update to(dusfcg_fd)
+!$acc update device(dusfcg_fd)
           END IF
           IF (PRESENT(dvsfcg_fd)) THEN
-!$omp target update to(dvsfcg_fd)
+!$acc update device(dvsfcg_fd)
           END IF
           IF (PRESENT(var2dls)) THEN
-!$omp target update to(var2dls)
+!$acc update device(var2dls)
           END IF
           IF (PRESENT(oc12dls)) THEN
-!$omp target update to(oc12dls)
+!$acc update device(oc12dls)
           END IF
           IF (PRESENT(oa1ls)) THEN
-!$omp target update to(oa1ls)
+!$acc update device(oa1ls)
           END IF
           IF (PRESENT(oa2ls)) THEN
-!$omp target update to(oa2ls)
+!$acc update device(oa2ls)
           END IF
           IF (PRESENT(oa3ls)) THEN
-!$omp target update to(oa3ls)
+!$acc update device(oa3ls)
           END IF
           IF (PRESENT(oa4ls)) THEN
-!$omp target update to(oa4ls)
+!$acc update device(oa4ls)
           END IF
           IF (PRESENT(ol1ls)) THEN
-!$omp target update to(ol1ls)
+!$acc update device(ol1ls)
           END IF
           IF (PRESENT(ol2ls)) THEN
-!$omp target update to(ol2ls)
+!$acc update device(ol2ls)
           END IF
           IF (PRESENT(ol3ls)) THEN
-!$omp target update to(ol3ls)
+!$acc update device(ol3ls)
           END IF
           IF (PRESENT(ol4ls)) THEN
-!$omp target update to(ol4ls)
+!$acc update device(ol4ls)
           END IF
           IF (PRESENT(var2dss)) THEN
-!$omp target update to(var2dss)
+!$acc update device(var2dss)
           END IF
           IF (PRESENT(oc12dss)) THEN
-!$omp target update to(oc12dss)
+!$acc update device(oc12dss)
           END IF
           IF (PRESENT(oa1ss)) THEN
-!$omp target update to(oa1ss)
+!$acc update device(oa1ss)
           END IF
           IF (PRESENT(oa2ss)) THEN
-!$omp target update to(oa2ss)
+!$acc update device(oa2ss)
           END IF
           IF (PRESENT(oa3ss)) THEN
-!$omp target update to(oa3ss)
+!$acc update device(oa3ss)
           END IF
           IF (PRESENT(oa4ss)) THEN
-!$omp target update to(oa4ss)
+!$acc update device(oa4ss)
           END IF
           IF (PRESENT(ol1ss)) THEN
-!$omp target update to(ol1ss)
+!$acc update device(ol1ss)
           END IF
           IF (PRESENT(ol2ss)) THEN
-!$omp target update to(ol2ss)
+!$acc update device(ol2ss)
           END IF
           IF (PRESENT(ol3ss)) THEN
-!$omp target update to(ol3ss)
+!$acc update device(ol3ss)
           END IF
           IF (PRESENT(ol4ss)) THEN
-!$omp target update to(ol4ss)
+!$acc update device(ol4ss)
           END IF
           IF (PRESENT(qv_curr)) THEN
-!$omp target update to(qv_curr)
+!$acc update device(qv_curr)
           END IF
           IF (PRESENT(qc_curr)) THEN
-!$omp target update to(qc_curr)
+!$acc update device(qc_curr)
           END IF
           IF (PRESENT(qr_curr)) THEN
-!$omp target update to(qr_curr)
+!$acc update device(qr_curr)
           END IF
           IF (PRESENT(qi_curr)) THEN
-!$omp target update to(qi_curr)
+!$acc update device(qi_curr)
           END IF
           IF (PRESENT(qs_curr)) THEN
-!$omp target update to(qs_curr)
+!$acc update device(qs_curr)
           END IF
           IF (PRESENT(qg_curr)) THEN
-!$omp target update to(qg_curr)
+!$acc update device(qg_curr)
           END IF
           IF (PRESENT(rqvblten)) THEN
-!$omp target update to(rqvblten)
+!$acc update device(rqvblten)
           END IF
           IF (PRESENT(rqcblten)) THEN
-!$omp target update to(rqcblten)
+!$acc update device(rqcblten)
           END IF
           IF (PRESENT(rqiblten)) THEN
-!$omp target update to(rqiblten)
+!$acc update device(rqiblten)
           END IF
           IF (PRESENT(rqrblten)) THEN
-!$omp target update to(rqrblten)
+!$acc update device(rqrblten)
           END IF
           IF (PRESENT(rqsblten)) THEN
-!$omp target update to(rqsblten)
+!$acc update device(rqsblten)
           END IF
           IF (PRESENT(rqgblten)) THEN
-!$omp target update to(rqgblten)
+!$acc update device(rqgblten)
           END IF
           IF (PRESENT(qnwfa_curr)) THEN
-!$omp target update to(qnwfa_curr)
+!$acc update device(qnwfa_curr)
           END IF
           IF (PRESENT(qnifa_curr)) THEN
-!$omp target update to(qnifa_curr)
+!$acc update device(qnifa_curr)
           END IF
           IF (PRESENT(qnbca_curr)) THEN
-!$omp target update to(qnbca_curr)
+!$acc update device(qnbca_curr)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update to(frc_urb2d)
+!$acc update device(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update to(a_u_bep)
+!$acc update device(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update to(a_v_bep)
+!$acc update device(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update to(a_t_bep)
+!$acc update device(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update to(a_q_bep)
+!$acc update device(a_q_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update to(b_u_bep)
+!$acc update device(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update to(b_v_bep)
+!$acc update device(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update to(sf_bep)
+!$acc update device(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update to(vl_bep)
+!$acc update device(vl_bep)
           END IF
           IF (PRESENT(ahe)) THEN
-!$omp target update to(ahe)
+!$acc update device(ahe)
           END IF
           IF (PRESENT(exch_tke)) THEN
-!$omp target update to(exch_tke)
+!$acc update device(exch_tke)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update to(a_e_bep)
+!$acc update device(a_e_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update to(b_e_bep)
+!$acc update device(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update to(dlg_bep)
+!$acc update device(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update to(dl_u_bep)
+!$acc update device(dl_u_bep)
           END IF
           IF (PRESENT(massflux_edkf)) THEN
-!$omp target update to(massflux_edkf)
+!$acc update device(massflux_edkf)
           END IF
           IF (PRESENT(entr_edkf)) THEN
-!$omp target update to(entr_edkf)
+!$acc update device(entr_edkf)
           END IF
           IF (PRESENT(detr_edkf)) THEN
-!$omp target update to(detr_edkf)
+!$acc update device(detr_edkf)
           END IF
           IF (PRESENT(thl_up)) THEN
-!$omp target update to(thl_up)
+!$acc update device(thl_up)
           END IF
           IF (PRESENT(thv_up)) THEN
-!$omp target update to(thv_up)
+!$acc update device(thv_up)
           END IF
           IF (PRESENT(rt_up)) THEN
-!$omp target update to(rt_up)
+!$acc update device(rt_up)
           END IF
           IF (PRESENT(rv_up)) THEN
-!$omp target update to(rv_up)
+!$acc update device(rv_up)
           END IF
           IF (PRESENT(rc_up)) THEN
-!$omp target update to(rc_up)
+!$acc update device(rc_up)
           END IF
           IF (PRESENT(u_up)) THEN
-!$omp target update to(u_up)
+!$acc update device(u_up)
           END IF
           IF (PRESENT(v_up)) THEN
-!$omp target update to(v_up)
+!$acc update device(v_up)
           END IF
           IF (PRESENT(frac_up)) THEN
-!$omp target update to(frac_up)
+!$acc update device(frac_up)
           END IF
           IF (PRESENT(rc_mf)) THEN
-!$omp target update to(rc_mf)
+!$acc update device(rc_mf)
           END IF
           IF (PRESENT(phb)) THEN
-!$omp target update to(phb)
+!$acc update device(phb)
           END IF
           IF (PRESENT(xlat_u)) THEN
-!$omp target update to(xlat_u)
+!$acc update device(xlat_u)
           END IF
           IF (PRESENT(xlong_u)) THEN
-!$omp target update to(xlong_u)
+!$acc update device(xlong_u)
           END IF
           IF (PRESENT(xlat_v)) THEN
-!$omp target update to(xlat_v)
+!$acc update device(xlat_v)
           END IF
           IF (PRESENT(xlong_v)) THEN
-!$omp target update to(xlong_v)
+!$acc update device(xlong_v)
           END IF
           IF (PRESENT(perts_qvapor)) THEN
-!$omp target update to(perts_qvapor)
+!$acc update device(perts_qvapor)
           END IF
           IF (PRESENT(perts_qcloud)) THEN
-!$omp target update to(perts_qcloud)
+!$acc update device(perts_qcloud)
           END IF
           IF (PRESENT(perts_th)) THEN
-!$omp target update to(perts_th)
+!$acc update device(perts_th)
           END IF
           IF (PRESENT(perts_tke)) THEN
-!$omp target update to(perts_tke)
+!$acc update device(perts_tke)
           END IF
           IF (PRESENT(z_at_w)) THEN
-!$omp target update to(z_at_w)
+!$acc update device(z_at_w)
           END IF
           IF (PRESENT(cldfra_old_mp)) THEN
-!$omp target update to(cldfra_old_mp)
+!$acc update device(cldfra_old_mp)
           END IF
           IF (PRESENT(cldfra)) THEN
-!$omp target update to(cldfra)
+!$acc update device(cldfra)
           END IF
           IF (PRESENT(rthratenlw)) THEN
-!$omp target update to(rthratenlw)
+!$acc update device(rthratenlw)
           END IF
           IF (PRESENT(tauresx2d)) THEN
-!$omp target update to(tauresx2d)
+!$acc update device(tauresx2d)
           END IF
           IF (PRESENT(tauresy2d)) THEN
-!$omp target update to(tauresy2d)
+!$acc update device(tauresy2d)
           END IF
           IF (PRESENT(tpert2d)) THEN
-!$omp target update to(tpert2d)
+!$acc update device(tpert2d)
           END IF
           IF (PRESENT(qpert2d)) THEN
-!$omp target update to(qpert2d)
+!$acc update device(qpert2d)
           END IF
           IF (PRESENT(wpert2d)) THEN
-!$omp target update to(wpert2d)
+!$acc update device(wpert2d)
           END IF
           IF (PRESENT(wsedl3d)) THEN
-!$omp target update to(wsedl3d)
+!$acc update device(wsedl3d)
           END IF
           IF (PRESENT(turbtype3d)) THEN
-!$omp target update to(turbtype3d)
+!$acc update device(turbtype3d)
           END IF
           IF (PRESENT(smaw3d)) THEN
-!$omp target update to(smaw3d)
+!$acc update device(smaw3d)
           END IF
           IF (PRESENT(fnm)) THEN
-!$omp target update to(fnm)
+!$acc update device(fnm)
           END IF
           IF (PRESENT(fnp)) THEN
-!$omp target update to(fnp)
+!$acc update device(fnp)
           END IF
           IF (PRESENT(qnc_curr)) THEN
-!$omp target update to(qnc_curr)
+!$acc update device(qnc_curr)
           END IF
           IF (PRESENT(qni_curr)) THEN
-!$omp target update to(qni_curr)
+!$acc update device(qni_curr)
           END IF
           IF (PRESENT(rqniblten)) THEN
-!$omp target update to(rqniblten)
+!$acc update device(rqniblten)
           END IF
           IF (PRESENT(wstar)) THEN
-!$omp target update to(wstar)
+!$acc update device(wstar)
           END IF
           IF (PRESENT(delta)) THEN
-!$omp target update to(delta)
+!$acc update device(delta)
           END IF
           IF (PRESENT(scalar)) THEN
-!$omp target update to(scalar)
+!$acc update device(scalar)
           END IF
           IF (PRESENT(scalar_tend)) THEN
-!$omp target update to(scalar_tend)
+!$acc update device(scalar_tend)
           END IF
           IF (PRESENT(tracer)) THEN
-!$omp target update to(tracer)
+!$acc update device(tracer)
           END IF
           IF (PRESENT(tracer_tend)) THEN
-!$omp target update to(tracer_tend)
+!$acc update device(tracer_tend)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update to(qnorm)
+!$acc update device(qnorm)
           END IF
         ELSE
-!$omp target update from(rublten, rvblten, rthblten, tsk, xland, znt, ht, ust, pblh, hfx, qfx, &
-!$omp&   grdflx, hpbl_hold, u_phy, v_phy, th_phy, rho, p_phy, pi_phy, p8w, t_phy, dz8w, z, exch_h, &
-!$omp&   exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, f, lowlyr, u10, v10, uoce, voce, t2, psim, &
-!$omp&   psih, fm, fhh, gz1oz0, wspd, br, chklowq, kpbl, mixht, ct, lh, snow, xice, power, i_start, &
-!$omp&   i_end, j_start, j_end, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, pr_pbl, &
-!$omp&   el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem, vd)
+!$acc update self(rublten, rvblten, rthblten, tsk, xland, znt, ht, ust, pblh, hfx, qfx, grdflx, &
+!$acc&   hpbl_hold, u_phy, v_phy, th_phy, rho, p_phy, pi_phy, p8w, t_phy, dz8w, z, exch_h, exch_m, &
+!$acc&   akhs, akms, thz0, qz0, uz0, vz0, qsfc, f, lowlyr, u10, v10, uoce, voce, t2, psim, psih, &
+!$acc&   fm, fhh, gz1oz0, wspd, br, chklowq, kpbl, mixht, ct, lh, snow, xice, power, i_start, &
+!$acc&   i_end, j_start, j_end, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, pr_pbl, &
+!$acc&   el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem, vd)
           IF (PRESENT(w)) THEN
-!$omp target update from(w)
+!$acc update self(w)
           END IF
           IF (PRESENT(dx2d)) THEN
-!$omp target update from(dx2d)
+!$acc update self(dx2d)
           END IF
           IF (PRESENT(area2d)) THEN
-!$omp target update from(area2d)
+!$acc update self(area2d)
           END IF
           IF (PRESENT(znu)) THEN
-!$omp target update from(znu)
+!$acc update self(znu)
           END IF
           IF (PRESENT(znw)) THEN
-!$omp target update from(znw)
+!$acc update self(znw)
           END IF
           IF (PRESENT(mut)) THEN
-!$omp target update from(mut)
+!$acc update self(mut)
           END IF
           IF (PRESENT(ctopo)) THEN
-!$omp target update from(ctopo)
+!$acc update self(ctopo)
           END IF
           IF (PRESENT(ctopo2)) THEN
-!$omp target update from(ctopo2)
+!$acc update self(ctopo2)
           END IF
           IF (PRESENT(te_temf)) THEN
-!$omp target update from(te_temf)
+!$acc update self(te_temf)
           END IF
           IF (PRESENT(km_temf)) THEN
-!$omp target update from(km_temf)
+!$acc update self(km_temf)
           END IF
           IF (PRESENT(kh_temf)) THEN
-!$omp target update from(kh_temf)
+!$acc update self(kh_temf)
           END IF
           IF (PRESENT(shf_temf)) THEN
-!$omp target update from(shf_temf)
+!$acc update self(shf_temf)
           END IF
           IF (PRESENT(qf_temf)) THEN
-!$omp target update from(qf_temf)
+!$acc update self(qf_temf)
           END IF
           IF (PRESENT(uw_temf)) THEN
-!$omp target update from(uw_temf)
+!$acc update self(uw_temf)
           END IF
           IF (PRESENT(vw_temf)) THEN
-!$omp target update from(vw_temf)
+!$acc update self(vw_temf)
           END IF
           IF (PRESENT(hd_temf)) THEN
-!$omp target update from(hd_temf)
+!$acc update self(hd_temf)
           END IF
           IF (PRESENT(lcl_temf)) THEN
-!$omp target update from(lcl_temf)
+!$acc update self(lcl_temf)
           END IF
           IF (PRESENT(hct_temf)) THEN
-!$omp target update from(hct_temf)
+!$acc update self(hct_temf)
           END IF
           IF (PRESENT(wupd_temf)) THEN
-!$omp target update from(wupd_temf)
+!$acc update self(wupd_temf)
           END IF
           IF (PRESENT(mf_temf)) THEN
-!$omp target update from(mf_temf)
+!$acc update self(mf_temf)
           END IF
           IF (PRESENT(thup_temf)) THEN
-!$omp target update from(thup_temf)
+!$acc update self(thup_temf)
           END IF
           IF (PRESENT(qtup_temf)) THEN
-!$omp target update from(qtup_temf)
+!$acc update self(qtup_temf)
           END IF
           IF (PRESENT(qlup_temf)) THEN
-!$omp target update from(qlup_temf)
+!$acc update self(qlup_temf)
           END IF
           IF (PRESENT(exch_temf)) THEN
-!$omp target update from(exch_temf)
+!$acc update self(exch_temf)
           END IF
           IF (PRESENT(cf3d_temf)) THEN
-!$omp target update from(cf3d_temf)
+!$acc update self(cf3d_temf)
           END IF
           IF (PRESENT(cfm_temf)) THEN
-!$omp target update from(cfm_temf)
+!$acc update self(cfm_temf)
           END IF
           IF (PRESENT(flhc)) THEN
-!$omp target update from(flhc)
+!$acc update self(flhc)
           END IF
           IF (PRESENT(flqc)) THEN
-!$omp target update from(flqc)
+!$acc update self(flqc)
           END IF
           IF (PRESENT(qke)) THEN
-!$omp target update from(qke)
+!$acc update self(qke)
           END IF
           IF (PRESENT(sh3d)) THEN
-!$omp target update from(sh3d)
+!$acc update self(sh3d)
           END IF
           IF (PRESENT(sm3d)) THEN
-!$omp target update from(sm3d)
+!$acc update self(sm3d)
           END IF
           IF (PRESENT(qke_adv)) THEN
-!$omp target update from(qke_adv)
+!$acc update self(qke_adv)
           END IF
           IF (PRESENT(tsq)) THEN
-!$omp target update from(tsq)
+!$acc update self(tsq)
           END IF
           IF (PRESENT(qsq)) THEN
-!$omp target update from(qsq)
+!$acc update self(qsq)
           END IF
           IF (PRESENT(cov)) THEN
-!$omp target update from(cov)
+!$acc update self(cov)
           END IF
           IF (PRESENT(rmol)) THEN
-!$omp target update from(rmol)
+!$acc update self(rmol)
           END IF
           IF (PRESENT(ch)) THEN
-!$omp target update from(ch)
+!$acc update self(ch)
           END IF
           IF (PRESENT(qcg)) THEN
-!$omp target update from(qcg)
+!$acc update self(qcg)
           END IF
           IF (PRESENT(dqke)) THEN
-!$omp target update from(dqke)
+!$acc update self(dqke)
           END IF
           IF (PRESENT(qwt)) THEN
-!$omp target update from(qwt)
+!$acc update self(qwt)
           END IF
           IF (PRESENT(qshear)) THEN
-!$omp target update from(qshear)
+!$acc update self(qshear)
           END IF
           IF (PRESENT(qbuoy)) THEN
-!$omp target update from(qbuoy)
+!$acc update self(qbuoy)
           END IF
           IF (PRESENT(qdiss)) THEN
-!$omp target update from(qdiss)
+!$acc update self(qdiss)
           END IF
           IF (PRESENT(qc_bl)) THEN
-!$omp target update from(qc_bl)
+!$acc update self(qc_bl)
           END IF
           IF (PRESENT(qi_bl)) THEN
-!$omp target update from(qi_bl)
+!$acc update self(qi_bl)
           END IF
           IF (PRESENT(cldfra_bl)) THEN
-!$omp target update from(cldfra_bl)
+!$acc update self(cldfra_bl)
           END IF
           IF (PRESENT(edmf_a)) THEN
-!$omp target update from(edmf_a)
+!$acc update self(edmf_a)
           END IF
           IF (PRESENT(edmf_w)) THEN
-!$omp target update from(edmf_w)
+!$acc update self(edmf_w)
           END IF
           IF (PRESENT(edmf_thl)) THEN
-!$omp target update from(edmf_thl)
+!$acc update self(edmf_thl)
           END IF
           IF (PRESENT(edmf_qt)) THEN
-!$omp target update from(edmf_qt)
+!$acc update self(edmf_qt)
           END IF
           IF (PRESENT(edmf_ent)) THEN
-!$omp target update from(edmf_ent)
+!$acc update self(edmf_ent)
           END IF
           IF (PRESENT(edmf_qc)) THEN
-!$omp target update from(edmf_qc)
+!$acc update self(edmf_qc)
           END IF
           IF (PRESENT(sub_thl3d)) THEN
-!$omp target update from(sub_thl3d)
+!$acc update self(sub_thl3d)
           END IF
           IF (PRESENT(sub_sqv3d)) THEN
-!$omp target update from(sub_sqv3d)
+!$acc update self(sub_sqv3d)
           END IF
           IF (PRESENT(det_thl3d)) THEN
-!$omp target update from(det_thl3d)
+!$acc update self(det_thl3d)
           END IF
           IF (PRESENT(det_sqv3d)) THEN
-!$omp target update from(det_sqv3d)
+!$acc update self(det_sqv3d)
           END IF
           IF (PRESENT(vdfg)) THEN
-!$omp target update from(vdfg)
+!$acc update self(vdfg)
           END IF
           IF (PRESENT(maxwidth)) THEN
-!$omp target update from(maxwidth)
+!$acc update self(maxwidth)
           END IF
           IF (PRESENT(maxmf)) THEN
-!$omp target update from(maxmf)
+!$acc update self(maxmf)
           END IF
           IF (PRESENT(ztop_plume)) THEN
-!$omp target update from(ztop_plume)
+!$acc update self(ztop_plume)
           END IF
           IF (PRESENT(ktop_plume)) THEN
-!$omp target update from(ktop_plume)
+!$acc update self(ktop_plume)
           END IF
           IF (PRESENT(pattern_spp_pbl)) THEN
-!$omp target update from(pattern_spp_pbl)
+!$acc update self(pattern_spp_pbl)
           END IF
           IF (PRESENT(pek)) THEN
-!$omp target update from(pek)
+!$acc update self(pek)
           END IF
           IF (PRESENT(pep)) THEN
-!$omp target update from(pep)
+!$acc update self(pep)
           END IF
           IF (PRESENT(pek_adv)) THEN
-!$omp target update from(pek_adv)
+!$acc update self(pek_adv)
           END IF
           IF (PRESENT(pep_adv)) THEN
-!$omp target update from(pep_adv)
+!$acc update self(pep_adv)
           END IF
           IF (PRESENT(hol)) THEN
-!$omp target update from(hol)
+!$acc update self(hol)
           END IF
           IF (PRESENT(mol)) THEN
-!$omp target update from(mol)
+!$acc update self(mol)
           END IF
           IF (PRESENT(regime)) THEN
-!$omp target update from(regime)
+!$acc update self(regime)
           END IF
           IF (PRESENT(dtaux3d)) THEN
-!$omp target update from(dtaux3d)
+!$acc update self(dtaux3d)
           END IF
           IF (PRESENT(dtauy3d)) THEN
-!$omp target update from(dtauy3d)
+!$acc update self(dtauy3d)
           END IF
           IF (PRESENT(dusfcg)) THEN
-!$omp target update from(dusfcg)
+!$acc update self(dusfcg)
           END IF
           IF (PRESENT(dvsfcg)) THEN
-!$omp target update from(dvsfcg)
+!$acc update self(dvsfcg)
           END IF
           IF (PRESENT(var2d)) THEN
-!$omp target update from(var2d)
+!$acc update self(var2d)
           END IF
           IF (PRESENT(oc12d)) THEN
-!$omp target update from(oc12d)
+!$acc update self(oc12d)
           END IF
           IF (PRESENT(oa1)) THEN
-!$omp target update from(oa1)
+!$acc update self(oa1)
           END IF
           IF (PRESENT(oa2)) THEN
-!$omp target update from(oa2)
+!$acc update self(oa2)
           END IF
           IF (PRESENT(oa3)) THEN
-!$omp target update from(oa3)
+!$acc update self(oa3)
           END IF
           IF (PRESENT(oa4)) THEN
-!$omp target update from(oa4)
+!$acc update self(oa4)
           END IF
           IF (PRESENT(ol1)) THEN
-!$omp target update from(ol1)
+!$acc update self(ol1)
           END IF
           IF (PRESENT(ol2)) THEN
-!$omp target update from(ol2)
+!$acc update self(ol2)
           END IF
           IF (PRESENT(ol3)) THEN
-!$omp target update from(ol3)
+!$acc update self(ol3)
           END IF
           IF (PRESENT(ol4)) THEN
-!$omp target update from(ol4)
+!$acc update self(ol4)
           END IF
           IF (PRESENT(sina)) THEN
-!$omp target update from(sina)
+!$acc update self(sina)
           END IF
           IF (PRESENT(cosa)) THEN
-!$omp target update from(cosa)
+!$acc update self(cosa)
           END IF
           IF (PRESENT(dtaux3d_ls)) THEN
-!$omp target update from(dtaux3d_ls)
+!$acc update self(dtaux3d_ls)
           END IF
           IF (PRESENT(dtauy3d_ls)) THEN
-!$omp target update from(dtauy3d_ls)
+!$acc update self(dtauy3d_ls)
           END IF
           IF (PRESENT(dtaux3d_bl)) THEN
-!$omp target update from(dtaux3d_bl)
+!$acc update self(dtaux3d_bl)
           END IF
           IF (PRESENT(dtauy3d_bl)) THEN
-!$omp target update from(dtauy3d_bl)
+!$acc update self(dtauy3d_bl)
           END IF
           IF (PRESENT(dtaux3d_ss)) THEN
-!$omp target update from(dtaux3d_ss)
+!$acc update self(dtaux3d_ss)
           END IF
           IF (PRESENT(dtauy3d_ss)) THEN
-!$omp target update from(dtauy3d_ss)
+!$acc update self(dtauy3d_ss)
           END IF
           IF (PRESENT(dtaux3d_fd)) THEN
-!$omp target update from(dtaux3d_fd)
+!$acc update self(dtaux3d_fd)
           END IF
           IF (PRESENT(dtauy3d_fd)) THEN
-!$omp target update from(dtauy3d_fd)
+!$acc update self(dtauy3d_fd)
           END IF
           IF (PRESENT(dusfcg_ls)) THEN
-!$omp target update from(dusfcg_ls)
+!$acc update self(dusfcg_ls)
           END IF
           IF (PRESENT(dvsfcg_ls)) THEN
-!$omp target update from(dvsfcg_ls)
+!$acc update self(dvsfcg_ls)
           END IF
           IF (PRESENT(dusfcg_bl)) THEN
-!$omp target update from(dusfcg_bl)
+!$acc update self(dusfcg_bl)
           END IF
           IF (PRESENT(dvsfcg_bl)) THEN
-!$omp target update from(dvsfcg_bl)
+!$acc update self(dvsfcg_bl)
           END IF
           IF (PRESENT(dusfcg_ss)) THEN
-!$omp target update from(dusfcg_ss)
+!$acc update self(dusfcg_ss)
           END IF
           IF (PRESENT(dvsfcg_ss)) THEN
-!$omp target update from(dvsfcg_ss)
+!$acc update self(dvsfcg_ss)
           END IF
           IF (PRESENT(dusfcg_fd)) THEN
-!$omp target update from(dusfcg_fd)
+!$acc update self(dusfcg_fd)
           END IF
           IF (PRESENT(dvsfcg_fd)) THEN
-!$omp target update from(dvsfcg_fd)
+!$acc update self(dvsfcg_fd)
           END IF
           IF (PRESENT(var2dls)) THEN
-!$omp target update from(var2dls)
+!$acc update self(var2dls)
           END IF
           IF (PRESENT(oc12dls)) THEN
-!$omp target update from(oc12dls)
+!$acc update self(oc12dls)
           END IF
           IF (PRESENT(oa1ls)) THEN
-!$omp target update from(oa1ls)
+!$acc update self(oa1ls)
           END IF
           IF (PRESENT(oa2ls)) THEN
-!$omp target update from(oa2ls)
+!$acc update self(oa2ls)
           END IF
           IF (PRESENT(oa3ls)) THEN
-!$omp target update from(oa3ls)
+!$acc update self(oa3ls)
           END IF
           IF (PRESENT(oa4ls)) THEN
-!$omp target update from(oa4ls)
+!$acc update self(oa4ls)
           END IF
           IF (PRESENT(ol1ls)) THEN
-!$omp target update from(ol1ls)
+!$acc update self(ol1ls)
           END IF
           IF (PRESENT(ol2ls)) THEN
-!$omp target update from(ol2ls)
+!$acc update self(ol2ls)
           END IF
           IF (PRESENT(ol3ls)) THEN
-!$omp target update from(ol3ls)
+!$acc update self(ol3ls)
           END IF
           IF (PRESENT(ol4ls)) THEN
-!$omp target update from(ol4ls)
+!$acc update self(ol4ls)
           END IF
           IF (PRESENT(var2dss)) THEN
-!$omp target update from(var2dss)
+!$acc update self(var2dss)
           END IF
           IF (PRESENT(oc12dss)) THEN
-!$omp target update from(oc12dss)
+!$acc update self(oc12dss)
           END IF
           IF (PRESENT(oa1ss)) THEN
-!$omp target update from(oa1ss)
+!$acc update self(oa1ss)
           END IF
           IF (PRESENT(oa2ss)) THEN
-!$omp target update from(oa2ss)
+!$acc update self(oa2ss)
           END IF
           IF (PRESENT(oa3ss)) THEN
-!$omp target update from(oa3ss)
+!$acc update self(oa3ss)
           END IF
           IF (PRESENT(oa4ss)) THEN
-!$omp target update from(oa4ss)
+!$acc update self(oa4ss)
           END IF
           IF (PRESENT(ol1ss)) THEN
-!$omp target update from(ol1ss)
+!$acc update self(ol1ss)
           END IF
           IF (PRESENT(ol2ss)) THEN
-!$omp target update from(ol2ss)
+!$acc update self(ol2ss)
           END IF
           IF (PRESENT(ol3ss)) THEN
-!$omp target update from(ol3ss)
+!$acc update self(ol3ss)
           END IF
           IF (PRESENT(ol4ss)) THEN
-!$omp target update from(ol4ss)
+!$acc update self(ol4ss)
           END IF
           IF (PRESENT(qv_curr)) THEN
-!$omp target update from(qv_curr)
+!$acc update self(qv_curr)
           END IF
           IF (PRESENT(qc_curr)) THEN
-!$omp target update from(qc_curr)
+!$acc update self(qc_curr)
           END IF
           IF (PRESENT(qr_curr)) THEN
-!$omp target update from(qr_curr)
+!$acc update self(qr_curr)
           END IF
           IF (PRESENT(qi_curr)) THEN
-!$omp target update from(qi_curr)
+!$acc update self(qi_curr)
           END IF
           IF (PRESENT(qs_curr)) THEN
-!$omp target update from(qs_curr)
+!$acc update self(qs_curr)
           END IF
           IF (PRESENT(qg_curr)) THEN
-!$omp target update from(qg_curr)
+!$acc update self(qg_curr)
           END IF
           IF (PRESENT(rqvblten)) THEN
-!$omp target update from(rqvblten)
+!$acc update self(rqvblten)
           END IF
           IF (PRESENT(rqcblten)) THEN
-!$omp target update from(rqcblten)
+!$acc update self(rqcblten)
           END IF
           IF (PRESENT(rqiblten)) THEN
-!$omp target update from(rqiblten)
+!$acc update self(rqiblten)
           END IF
           IF (PRESENT(rqrblten)) THEN
-!$omp target update from(rqrblten)
+!$acc update self(rqrblten)
           END IF
           IF (PRESENT(rqsblten)) THEN
-!$omp target update from(rqsblten)
+!$acc update self(rqsblten)
           END IF
           IF (PRESENT(rqgblten)) THEN
-!$omp target update from(rqgblten)
+!$acc update self(rqgblten)
           END IF
           IF (PRESENT(qnwfa_curr)) THEN
-!$omp target update from(qnwfa_curr)
+!$acc update self(qnwfa_curr)
           END IF
           IF (PRESENT(qnifa_curr)) THEN
-!$omp target update from(qnifa_curr)
+!$acc update self(qnifa_curr)
           END IF
           IF (PRESENT(qnbca_curr)) THEN
-!$omp target update from(qnbca_curr)
+!$acc update self(qnbca_curr)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update from(frc_urb2d)
+!$acc update self(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update from(a_u_bep)
+!$acc update self(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update from(a_v_bep)
+!$acc update self(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update from(a_t_bep)
+!$acc update self(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update from(a_q_bep)
+!$acc update self(a_q_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update from(b_u_bep)
+!$acc update self(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update from(b_v_bep)
+!$acc update self(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update from(sf_bep)
+!$acc update self(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update from(vl_bep)
+!$acc update self(vl_bep)
           END IF
           IF (PRESENT(ahe)) THEN
-!$omp target update from(ahe)
+!$acc update self(ahe)
           END IF
           IF (PRESENT(exch_tke)) THEN
-!$omp target update from(exch_tke)
+!$acc update self(exch_tke)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update from(a_e_bep)
+!$acc update self(a_e_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update from(b_e_bep)
+!$acc update self(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update from(dlg_bep)
+!$acc update self(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update from(dl_u_bep)
+!$acc update self(dl_u_bep)
           END IF
           IF (PRESENT(massflux_edkf)) THEN
-!$omp target update from(massflux_edkf)
+!$acc update self(massflux_edkf)
           END IF
           IF (PRESENT(entr_edkf)) THEN
-!$omp target update from(entr_edkf)
+!$acc update self(entr_edkf)
           END IF
           IF (PRESENT(detr_edkf)) THEN
-!$omp target update from(detr_edkf)
+!$acc update self(detr_edkf)
           END IF
           IF (PRESENT(thl_up)) THEN
-!$omp target update from(thl_up)
+!$acc update self(thl_up)
           END IF
           IF (PRESENT(thv_up)) THEN
-!$omp target update from(thv_up)
+!$acc update self(thv_up)
           END IF
           IF (PRESENT(rt_up)) THEN
-!$omp target update from(rt_up)
+!$acc update self(rt_up)
           END IF
           IF (PRESENT(rv_up)) THEN
-!$omp target update from(rv_up)
+!$acc update self(rv_up)
           END IF
           IF (PRESENT(rc_up)) THEN
-!$omp target update from(rc_up)
+!$acc update self(rc_up)
           END IF
           IF (PRESENT(u_up)) THEN
-!$omp target update from(u_up)
+!$acc update self(u_up)
           END IF
           IF (PRESENT(v_up)) THEN
-!$omp target update from(v_up)
+!$acc update self(v_up)
           END IF
           IF (PRESENT(frac_up)) THEN
-!$omp target update from(frac_up)
+!$acc update self(frac_up)
           END IF
           IF (PRESENT(rc_mf)) THEN
-!$omp target update from(rc_mf)
+!$acc update self(rc_mf)
           END IF
           IF (PRESENT(phb)) THEN
-!$omp target update from(phb)
+!$acc update self(phb)
           END IF
           IF (PRESENT(xlat_u)) THEN
-!$omp target update from(xlat_u)
+!$acc update self(xlat_u)
           END IF
           IF (PRESENT(xlong_u)) THEN
-!$omp target update from(xlong_u)
+!$acc update self(xlong_u)
           END IF
           IF (PRESENT(xlat_v)) THEN
-!$omp target update from(xlat_v)
+!$acc update self(xlat_v)
           END IF
           IF (PRESENT(xlong_v)) THEN
-!$omp target update from(xlong_v)
+!$acc update self(xlong_v)
           END IF
           IF (PRESENT(perts_qvapor)) THEN
-!$omp target update from(perts_qvapor)
+!$acc update self(perts_qvapor)
           END IF
           IF (PRESENT(perts_qcloud)) THEN
-!$omp target update from(perts_qcloud)
+!$acc update self(perts_qcloud)
           END IF
           IF (PRESENT(perts_th)) THEN
-!$omp target update from(perts_th)
+!$acc update self(perts_th)
           END IF
           IF (PRESENT(perts_tke)) THEN
-!$omp target update from(perts_tke)
+!$acc update self(perts_tke)
           END IF
           IF (PRESENT(z_at_w)) THEN
-!$omp target update from(z_at_w)
+!$acc update self(z_at_w)
           END IF
           IF (PRESENT(cldfra_old_mp)) THEN
-!$omp target update from(cldfra_old_mp)
+!$acc update self(cldfra_old_mp)
           END IF
           IF (PRESENT(cldfra)) THEN
-!$omp target update from(cldfra)
+!$acc update self(cldfra)
           END IF
           IF (PRESENT(rthratenlw)) THEN
-!$omp target update from(rthratenlw)
+!$acc update self(rthratenlw)
           END IF
           IF (PRESENT(tauresx2d)) THEN
-!$omp target update from(tauresx2d)
+!$acc update self(tauresx2d)
           END IF
           IF (PRESENT(tauresy2d)) THEN
-!$omp target update from(tauresy2d)
+!$acc update self(tauresy2d)
           END IF
           IF (PRESENT(tpert2d)) THEN
-!$omp target update from(tpert2d)
+!$acc update self(tpert2d)
           END IF
           IF (PRESENT(qpert2d)) THEN
-!$omp target update from(qpert2d)
+!$acc update self(qpert2d)
           END IF
           IF (PRESENT(wpert2d)) THEN
-!$omp target update from(wpert2d)
+!$acc update self(wpert2d)
           END IF
           IF (PRESENT(wsedl3d)) THEN
-!$omp target update from(wsedl3d)
+!$acc update self(wsedl3d)
           END IF
           IF (PRESENT(turbtype3d)) THEN
-!$omp target update from(turbtype3d)
+!$acc update self(turbtype3d)
           END IF
           IF (PRESENT(smaw3d)) THEN
-!$omp target update from(smaw3d)
+!$acc update self(smaw3d)
           END IF
           IF (PRESENT(fnm)) THEN
-!$omp target update from(fnm)
+!$acc update self(fnm)
           END IF
           IF (PRESENT(fnp)) THEN
-!$omp target update from(fnp)
+!$acc update self(fnp)
           END IF
           IF (PRESENT(qnc_curr)) THEN
-!$omp target update from(qnc_curr)
+!$acc update self(qnc_curr)
           END IF
           IF (PRESENT(qni_curr)) THEN
-!$omp target update from(qni_curr)
+!$acc update self(qni_curr)
           END IF
           IF (PRESENT(rqniblten)) THEN
-!$omp target update from(rqniblten)
+!$acc update self(rqniblten)
           END IF
           IF (PRESENT(wstar)) THEN
-!$omp target update from(wstar)
+!$acc update self(wstar)
           END IF
           IF (PRESENT(delta)) THEN
-!$omp target update from(delta)
+!$acc update self(delta)
           END IF
           IF (PRESENT(scalar)) THEN
-!$omp target update from(scalar)
+!$acc update self(scalar)
           END IF
           IF (PRESENT(scalar_tend)) THEN
-!$omp target update from(scalar_tend)
+!$acc update self(scalar_tend)
           END IF
           IF (PRESENT(tracer)) THEN
-!$omp target update from(tracer)
+!$acc update self(tracer)
           END IF
           IF (PRESENT(tracer_tend)) THEN
-!$omp target update from(tracer_tend)
+!$acc update self(tracer_tend)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update from(qnorm)
+!$acc update self(qnorm)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -1415,842 +1415,842 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rublten, rvblten, rthblten, tsk, znt, ust, pblh, hfx, qfx, grdflx, &
-!$omp&   hpbl_hold, th_phy, exch_h, exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, u10, v10, uoce, &
-!$omp&   voce, t2, wspd, kpbl, mixht, ct, power, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, &
-!$omp&   tpe_adv, pr_pbl, el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem)
+!$acc update self(rublten, rvblten, rthblten, tsk, znt, ust, pblh, hfx, qfx, grdflx, hpbl_hold, &
+!$acc&   th_phy, exch_h, exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, u10, v10, uoce, voce, t2, &
+!$acc&   wspd, kpbl, mixht, ct, power, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, &
+!$acc&   pr_pbl, el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem)
           IF (PRESENT(te_temf)) THEN
-!$omp target update from(te_temf)
+!$acc update self(te_temf)
           END IF
           IF (PRESENT(km_temf)) THEN
-!$omp target update from(km_temf)
+!$acc update self(km_temf)
           END IF
           IF (PRESENT(kh_temf)) THEN
-!$omp target update from(kh_temf)
+!$acc update self(kh_temf)
           END IF
           IF (PRESENT(shf_temf)) THEN
-!$omp target update from(shf_temf)
+!$acc update self(shf_temf)
           END IF
           IF (PRESENT(qf_temf)) THEN
-!$omp target update from(qf_temf)
+!$acc update self(qf_temf)
           END IF
           IF (PRESENT(uw_temf)) THEN
-!$omp target update from(uw_temf)
+!$acc update self(uw_temf)
           END IF
           IF (PRESENT(vw_temf)) THEN
-!$omp target update from(vw_temf)
+!$acc update self(vw_temf)
           END IF
           IF (PRESENT(hd_temf)) THEN
-!$omp target update from(hd_temf)
+!$acc update self(hd_temf)
           END IF
           IF (PRESENT(lcl_temf)) THEN
-!$omp target update from(lcl_temf)
+!$acc update self(lcl_temf)
           END IF
           IF (PRESENT(hct_temf)) THEN
-!$omp target update from(hct_temf)
+!$acc update self(hct_temf)
           END IF
           IF (PRESENT(wupd_temf)) THEN
-!$omp target update from(wupd_temf)
+!$acc update self(wupd_temf)
           END IF
           IF (PRESENT(mf_temf)) THEN
-!$omp target update from(mf_temf)
+!$acc update self(mf_temf)
           END IF
           IF (PRESENT(thup_temf)) THEN
-!$omp target update from(thup_temf)
+!$acc update self(thup_temf)
           END IF
           IF (PRESENT(qtup_temf)) THEN
-!$omp target update from(qtup_temf)
+!$acc update self(qtup_temf)
           END IF
           IF (PRESENT(qlup_temf)) THEN
-!$omp target update from(qlup_temf)
+!$acc update self(qlup_temf)
           END IF
           IF (PRESENT(exch_temf)) THEN
-!$omp target update from(exch_temf)
+!$acc update self(exch_temf)
           END IF
           IF (PRESENT(cf3d_temf)) THEN
-!$omp target update from(cf3d_temf)
+!$acc update self(cf3d_temf)
           END IF
           IF (PRESENT(cfm_temf)) THEN
-!$omp target update from(cfm_temf)
+!$acc update self(cfm_temf)
           END IF
           IF (PRESENT(flhc)) THEN
-!$omp target update from(flhc)
+!$acc update self(flhc)
           END IF
           IF (PRESENT(flqc)) THEN
-!$omp target update from(flqc)
+!$acc update self(flqc)
           END IF
           IF (PRESENT(qke)) THEN
-!$omp target update from(qke)
+!$acc update self(qke)
           END IF
           IF (PRESENT(sh3d)) THEN
-!$omp target update from(sh3d)
+!$acc update self(sh3d)
           END IF
           IF (PRESENT(sm3d)) THEN
-!$omp target update from(sm3d)
+!$acc update self(sm3d)
           END IF
           IF (PRESENT(qke_adv)) THEN
-!$omp target update from(qke_adv)
+!$acc update self(qke_adv)
           END IF
           IF (PRESENT(tsq)) THEN
-!$omp target update from(tsq)
+!$acc update self(tsq)
           END IF
           IF (PRESENT(qsq)) THEN
-!$omp target update from(qsq)
+!$acc update self(qsq)
           END IF
           IF (PRESENT(cov)) THEN
-!$omp target update from(cov)
+!$acc update self(cov)
           END IF
           IF (PRESENT(rmol)) THEN
-!$omp target update from(rmol)
+!$acc update self(rmol)
           END IF
           IF (PRESENT(dqke)) THEN
-!$omp target update from(dqke)
+!$acc update self(dqke)
           END IF
           IF (PRESENT(qwt)) THEN
-!$omp target update from(qwt)
+!$acc update self(qwt)
           END IF
           IF (PRESENT(qshear)) THEN
-!$omp target update from(qshear)
+!$acc update self(qshear)
           END IF
           IF (PRESENT(qbuoy)) THEN
-!$omp target update from(qbuoy)
+!$acc update self(qbuoy)
           END IF
           IF (PRESENT(qdiss)) THEN
-!$omp target update from(qdiss)
+!$acc update self(qdiss)
           END IF
           IF (PRESENT(qc_bl)) THEN
-!$omp target update from(qc_bl)
+!$acc update self(qc_bl)
           END IF
           IF (PRESENT(qi_bl)) THEN
-!$omp target update from(qi_bl)
+!$acc update self(qi_bl)
           END IF
           IF (PRESENT(cldfra_bl)) THEN
-!$omp target update from(cldfra_bl)
+!$acc update self(cldfra_bl)
           END IF
           IF (PRESENT(edmf_a)) THEN
-!$omp target update from(edmf_a)
+!$acc update self(edmf_a)
           END IF
           IF (PRESENT(edmf_w)) THEN
-!$omp target update from(edmf_w)
+!$acc update self(edmf_w)
           END IF
           IF (PRESENT(edmf_thl)) THEN
-!$omp target update from(edmf_thl)
+!$acc update self(edmf_thl)
           END IF
           IF (PRESENT(edmf_qt)) THEN
-!$omp target update from(edmf_qt)
+!$acc update self(edmf_qt)
           END IF
           IF (PRESENT(edmf_ent)) THEN
-!$omp target update from(edmf_ent)
+!$acc update self(edmf_ent)
           END IF
           IF (PRESENT(edmf_qc)) THEN
-!$omp target update from(edmf_qc)
+!$acc update self(edmf_qc)
           END IF
           IF (PRESENT(sub_thl3d)) THEN
-!$omp target update from(sub_thl3d)
+!$acc update self(sub_thl3d)
           END IF
           IF (PRESENT(sub_sqv3d)) THEN
-!$omp target update from(sub_sqv3d)
+!$acc update self(sub_sqv3d)
           END IF
           IF (PRESENT(det_thl3d)) THEN
-!$omp target update from(det_thl3d)
+!$acc update self(det_thl3d)
           END IF
           IF (PRESENT(det_sqv3d)) THEN
-!$omp target update from(det_sqv3d)
+!$acc update self(det_sqv3d)
           END IF
           IF (PRESENT(vdfg)) THEN
-!$omp target update from(vdfg)
+!$acc update self(vdfg)
           END IF
           IF (PRESENT(maxwidth)) THEN
-!$omp target update from(maxwidth)
+!$acc update self(maxwidth)
           END IF
           IF (PRESENT(maxmf)) THEN
-!$omp target update from(maxmf)
+!$acc update self(maxmf)
           END IF
           IF (PRESENT(ztop_plume)) THEN
-!$omp target update from(ztop_plume)
+!$acc update self(ztop_plume)
           END IF
           IF (PRESENT(ktop_plume)) THEN
-!$omp target update from(ktop_plume)
+!$acc update self(ktop_plume)
           END IF
           IF (PRESENT(pek)) THEN
-!$omp target update from(pek)
+!$acc update self(pek)
           END IF
           IF (PRESENT(pep)) THEN
-!$omp target update from(pep)
+!$acc update self(pep)
           END IF
           IF (PRESENT(pek_adv)) THEN
-!$omp target update from(pek_adv)
+!$acc update self(pek_adv)
           END IF
           IF (PRESENT(pep_adv)) THEN
-!$omp target update from(pep_adv)
+!$acc update self(pep_adv)
           END IF
           IF (PRESENT(hol)) THEN
-!$omp target update from(hol)
+!$acc update self(hol)
           END IF
           IF (PRESENT(mol)) THEN
-!$omp target update from(mol)
+!$acc update self(mol)
           END IF
           IF (PRESENT(regime)) THEN
-!$omp target update from(regime)
+!$acc update self(regime)
           END IF
           IF (PRESENT(dtaux3d)) THEN
-!$omp target update from(dtaux3d)
+!$acc update self(dtaux3d)
           END IF
           IF (PRESENT(dtauy3d)) THEN
-!$omp target update from(dtauy3d)
+!$acc update self(dtauy3d)
           END IF
           IF (PRESENT(dusfcg)) THEN
-!$omp target update from(dusfcg)
+!$acc update self(dusfcg)
           END IF
           IF (PRESENT(dvsfcg)) THEN
-!$omp target update from(dvsfcg)
+!$acc update self(dvsfcg)
           END IF
           IF (PRESENT(dtaux3d_ls)) THEN
-!$omp target update from(dtaux3d_ls)
+!$acc update self(dtaux3d_ls)
           END IF
           IF (PRESENT(dtauy3d_ls)) THEN
-!$omp target update from(dtauy3d_ls)
+!$acc update self(dtauy3d_ls)
           END IF
           IF (PRESENT(dtaux3d_bl)) THEN
-!$omp target update from(dtaux3d_bl)
+!$acc update self(dtaux3d_bl)
           END IF
           IF (PRESENT(dtauy3d_bl)) THEN
-!$omp target update from(dtauy3d_bl)
+!$acc update self(dtauy3d_bl)
           END IF
           IF (PRESENT(dtaux3d_ss)) THEN
-!$omp target update from(dtaux3d_ss)
+!$acc update self(dtaux3d_ss)
           END IF
           IF (PRESENT(dtauy3d_ss)) THEN
-!$omp target update from(dtauy3d_ss)
+!$acc update self(dtauy3d_ss)
           END IF
           IF (PRESENT(dtaux3d_fd)) THEN
-!$omp target update from(dtaux3d_fd)
+!$acc update self(dtaux3d_fd)
           END IF
           IF (PRESENT(dtauy3d_fd)) THEN
-!$omp target update from(dtauy3d_fd)
+!$acc update self(dtauy3d_fd)
           END IF
           IF (PRESENT(dusfcg_ls)) THEN
-!$omp target update from(dusfcg_ls)
+!$acc update self(dusfcg_ls)
           END IF
           IF (PRESENT(dvsfcg_ls)) THEN
-!$omp target update from(dvsfcg_ls)
+!$acc update self(dvsfcg_ls)
           END IF
           IF (PRESENT(dusfcg_bl)) THEN
-!$omp target update from(dusfcg_bl)
+!$acc update self(dusfcg_bl)
           END IF
           IF (PRESENT(dvsfcg_bl)) THEN
-!$omp target update from(dvsfcg_bl)
+!$acc update self(dvsfcg_bl)
           END IF
           IF (PRESENT(dusfcg_ss)) THEN
-!$omp target update from(dusfcg_ss)
+!$acc update self(dusfcg_ss)
           END IF
           IF (PRESENT(dvsfcg_ss)) THEN
-!$omp target update from(dvsfcg_ss)
+!$acc update self(dvsfcg_ss)
           END IF
           IF (PRESENT(dusfcg_fd)) THEN
-!$omp target update from(dusfcg_fd)
+!$acc update self(dusfcg_fd)
           END IF
           IF (PRESENT(dvsfcg_fd)) THEN
-!$omp target update from(dvsfcg_fd)
+!$acc update self(dvsfcg_fd)
           END IF
           IF (PRESENT(qv_curr)) THEN
-!$omp target update from(qv_curr)
+!$acc update self(qv_curr)
           END IF
           IF (PRESENT(qc_curr)) THEN
-!$omp target update from(qc_curr)
+!$acc update self(qc_curr)
           END IF
           IF (PRESENT(qr_curr)) THEN
-!$omp target update from(qr_curr)
+!$acc update self(qr_curr)
           END IF
           IF (PRESENT(qi_curr)) THEN
-!$omp target update from(qi_curr)
+!$acc update self(qi_curr)
           END IF
           IF (PRESENT(qs_curr)) THEN
-!$omp target update from(qs_curr)
+!$acc update self(qs_curr)
           END IF
           IF (PRESENT(qg_curr)) THEN
-!$omp target update from(qg_curr)
+!$acc update self(qg_curr)
           END IF
           IF (PRESENT(rqvblten)) THEN
-!$omp target update from(rqvblten)
+!$acc update self(rqvblten)
           END IF
           IF (PRESENT(rqcblten)) THEN
-!$omp target update from(rqcblten)
+!$acc update self(rqcblten)
           END IF
           IF (PRESENT(rqiblten)) THEN
-!$omp target update from(rqiblten)
+!$acc update self(rqiblten)
           END IF
           IF (PRESENT(rqrblten)) THEN
-!$omp target update from(rqrblten)
+!$acc update self(rqrblten)
           END IF
           IF (PRESENT(rqsblten)) THEN
-!$omp target update from(rqsblten)
+!$acc update self(rqsblten)
           END IF
           IF (PRESENT(rqgblten)) THEN
-!$omp target update from(rqgblten)
+!$acc update self(rqgblten)
           END IF
           IF (PRESENT(qnwfa_curr)) THEN
-!$omp target update from(qnwfa_curr)
+!$acc update self(qnwfa_curr)
           END IF
           IF (PRESENT(qnifa_curr)) THEN
-!$omp target update from(qnifa_curr)
+!$acc update self(qnifa_curr)
           END IF
           IF (PRESENT(qnbca_curr)) THEN
-!$omp target update from(qnbca_curr)
+!$acc update self(qnbca_curr)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update from(frc_urb2d)
+!$acc update self(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update from(a_u_bep)
+!$acc update self(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update from(a_v_bep)
+!$acc update self(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update from(a_t_bep)
+!$acc update self(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update from(a_q_bep)
+!$acc update self(a_q_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update from(b_u_bep)
+!$acc update self(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update from(b_v_bep)
+!$acc update self(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update from(sf_bep)
+!$acc update self(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update from(vl_bep)
+!$acc update self(vl_bep)
           END IF
           IF (PRESENT(exch_tke)) THEN
-!$omp target update from(exch_tke)
+!$acc update self(exch_tke)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update from(a_e_bep)
+!$acc update self(a_e_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update from(b_e_bep)
+!$acc update self(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update from(dlg_bep)
+!$acc update self(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update from(dl_u_bep)
+!$acc update self(dl_u_bep)
           END IF
           IF (PRESENT(massflux_edkf)) THEN
-!$omp target update from(massflux_edkf)
+!$acc update self(massflux_edkf)
           END IF
           IF (PRESENT(entr_edkf)) THEN
-!$omp target update from(entr_edkf)
+!$acc update self(entr_edkf)
           END IF
           IF (PRESENT(detr_edkf)) THEN
-!$omp target update from(detr_edkf)
+!$acc update self(detr_edkf)
           END IF
           IF (PRESENT(thl_up)) THEN
-!$omp target update from(thl_up)
+!$acc update self(thl_up)
           END IF
           IF (PRESENT(thv_up)) THEN
-!$omp target update from(thv_up)
+!$acc update self(thv_up)
           END IF
           IF (PRESENT(rt_up)) THEN
-!$omp target update from(rt_up)
+!$acc update self(rt_up)
           END IF
           IF (PRESENT(rv_up)) THEN
-!$omp target update from(rv_up)
+!$acc update self(rv_up)
           END IF
           IF (PRESENT(rc_up)) THEN
-!$omp target update from(rc_up)
+!$acc update self(rc_up)
           END IF
           IF (PRESENT(u_up)) THEN
-!$omp target update from(u_up)
+!$acc update self(u_up)
           END IF
           IF (PRESENT(v_up)) THEN
-!$omp target update from(v_up)
+!$acc update self(v_up)
           END IF
           IF (PRESENT(frac_up)) THEN
-!$omp target update from(frac_up)
+!$acc update self(frac_up)
           END IF
           IF (PRESENT(rc_mf)) THEN
-!$omp target update from(rc_mf)
+!$acc update self(rc_mf)
           END IF
           IF (PRESENT(tauresx2d)) THEN
-!$omp target update from(tauresx2d)
+!$acc update self(tauresx2d)
           END IF
           IF (PRESENT(tauresy2d)) THEN
-!$omp target update from(tauresy2d)
+!$acc update self(tauresy2d)
           END IF
           IF (PRESENT(tpert2d)) THEN
-!$omp target update from(tpert2d)
+!$acc update self(tpert2d)
           END IF
           IF (PRESENT(qpert2d)) THEN
-!$omp target update from(qpert2d)
+!$acc update self(qpert2d)
           END IF
           IF (PRESENT(wpert2d)) THEN
-!$omp target update from(wpert2d)
+!$acc update self(wpert2d)
           END IF
           IF (PRESENT(turbtype3d)) THEN
-!$omp target update from(turbtype3d)
+!$acc update self(turbtype3d)
           END IF
           IF (PRESENT(smaw3d)) THEN
-!$omp target update from(smaw3d)
+!$acc update self(smaw3d)
           END IF
           IF (PRESENT(qnc_curr)) THEN
-!$omp target update from(qnc_curr)
+!$acc update self(qnc_curr)
           END IF
           IF (PRESENT(qni_curr)) THEN
-!$omp target update from(qni_curr)
+!$acc update self(qni_curr)
           END IF
           IF (PRESENT(rqniblten)) THEN
-!$omp target update from(rqniblten)
+!$acc update self(rqniblten)
           END IF
           IF (PRESENT(wstar)) THEN
-!$omp target update from(wstar)
+!$acc update self(wstar)
           END IF
           IF (PRESENT(delta)) THEN
-!$omp target update from(delta)
+!$acc update self(delta)
           END IF
           IF (PRESENT(scalar)) THEN
-!$omp target update from(scalar)
+!$acc update self(scalar)
           END IF
           IF (PRESENT(scalar_tend)) THEN
-!$omp target update from(scalar_tend)
+!$acc update self(scalar_tend)
           END IF
           IF (PRESENT(tracer)) THEN
-!$omp target update from(tracer)
+!$acc update self(tracer)
           END IF
           IF (PRESENT(tracer_tend)) THEN
-!$omp target update from(tracer_tend)
+!$acc update self(tracer_tend)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update from(qnorm)
+!$acc update self(qnorm)
           END IF
         ELSE
-!$omp target update to(rublten, rvblten, rthblten, tsk, znt, ust, pblh, hfx, qfx, grdflx, &
-!$omp&   hpbl_hold, th_phy, exch_h, exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, u10, v10, uoce, &
-!$omp&   voce, t2, wspd, kpbl, mixht, ct, power, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, &
-!$omp&   tpe_adv, pr_pbl, el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem)
+!$acc update device(rublten, rvblten, rthblten, tsk, znt, ust, pblh, hfx, qfx, grdflx, hpbl_hold, &
+!$acc&   th_phy, exch_h, exch_m, akhs, akms, thz0, qz0, uz0, vz0, qsfc, u10, v10, uoce, voce, t2, &
+!$acc&   wspd, kpbl, mixht, ct, power, tke_pbl, diss_pbl, tpe_pbl, tke_adv, diss_adv, tpe_adv, &
+!$acc&   pr_pbl, el_pbl, wu_tur, wv_tur, wt_tur, wq_tur, rthraten, chem)
           IF (PRESENT(te_temf)) THEN
-!$omp target update to(te_temf)
+!$acc update device(te_temf)
           END IF
           IF (PRESENT(km_temf)) THEN
-!$omp target update to(km_temf)
+!$acc update device(km_temf)
           END IF
           IF (PRESENT(kh_temf)) THEN
-!$omp target update to(kh_temf)
+!$acc update device(kh_temf)
           END IF
           IF (PRESENT(shf_temf)) THEN
-!$omp target update to(shf_temf)
+!$acc update device(shf_temf)
           END IF
           IF (PRESENT(qf_temf)) THEN
-!$omp target update to(qf_temf)
+!$acc update device(qf_temf)
           END IF
           IF (PRESENT(uw_temf)) THEN
-!$omp target update to(uw_temf)
+!$acc update device(uw_temf)
           END IF
           IF (PRESENT(vw_temf)) THEN
-!$omp target update to(vw_temf)
+!$acc update device(vw_temf)
           END IF
           IF (PRESENT(hd_temf)) THEN
-!$omp target update to(hd_temf)
+!$acc update device(hd_temf)
           END IF
           IF (PRESENT(lcl_temf)) THEN
-!$omp target update to(lcl_temf)
+!$acc update device(lcl_temf)
           END IF
           IF (PRESENT(hct_temf)) THEN
-!$omp target update to(hct_temf)
+!$acc update device(hct_temf)
           END IF
           IF (PRESENT(wupd_temf)) THEN
-!$omp target update to(wupd_temf)
+!$acc update device(wupd_temf)
           END IF
           IF (PRESENT(mf_temf)) THEN
-!$omp target update to(mf_temf)
+!$acc update device(mf_temf)
           END IF
           IF (PRESENT(thup_temf)) THEN
-!$omp target update to(thup_temf)
+!$acc update device(thup_temf)
           END IF
           IF (PRESENT(qtup_temf)) THEN
-!$omp target update to(qtup_temf)
+!$acc update device(qtup_temf)
           END IF
           IF (PRESENT(qlup_temf)) THEN
-!$omp target update to(qlup_temf)
+!$acc update device(qlup_temf)
           END IF
           IF (PRESENT(exch_temf)) THEN
-!$omp target update to(exch_temf)
+!$acc update device(exch_temf)
           END IF
           IF (PRESENT(cf3d_temf)) THEN
-!$omp target update to(cf3d_temf)
+!$acc update device(cf3d_temf)
           END IF
           IF (PRESENT(cfm_temf)) THEN
-!$omp target update to(cfm_temf)
+!$acc update device(cfm_temf)
           END IF
           IF (PRESENT(flhc)) THEN
-!$omp target update to(flhc)
+!$acc update device(flhc)
           END IF
           IF (PRESENT(flqc)) THEN
-!$omp target update to(flqc)
+!$acc update device(flqc)
           END IF
           IF (PRESENT(qke)) THEN
-!$omp target update to(qke)
+!$acc update device(qke)
           END IF
           IF (PRESENT(sh3d)) THEN
-!$omp target update to(sh3d)
+!$acc update device(sh3d)
           END IF
           IF (PRESENT(sm3d)) THEN
-!$omp target update to(sm3d)
+!$acc update device(sm3d)
           END IF
           IF (PRESENT(qke_adv)) THEN
-!$omp target update to(qke_adv)
+!$acc update device(qke_adv)
           END IF
           IF (PRESENT(tsq)) THEN
-!$omp target update to(tsq)
+!$acc update device(tsq)
           END IF
           IF (PRESENT(qsq)) THEN
-!$omp target update to(qsq)
+!$acc update device(qsq)
           END IF
           IF (PRESENT(cov)) THEN
-!$omp target update to(cov)
+!$acc update device(cov)
           END IF
           IF (PRESENT(rmol)) THEN
-!$omp target update to(rmol)
+!$acc update device(rmol)
           END IF
           IF (PRESENT(dqke)) THEN
-!$omp target update to(dqke)
+!$acc update device(dqke)
           END IF
           IF (PRESENT(qwt)) THEN
-!$omp target update to(qwt)
+!$acc update device(qwt)
           END IF
           IF (PRESENT(qshear)) THEN
-!$omp target update to(qshear)
+!$acc update device(qshear)
           END IF
           IF (PRESENT(qbuoy)) THEN
-!$omp target update to(qbuoy)
+!$acc update device(qbuoy)
           END IF
           IF (PRESENT(qdiss)) THEN
-!$omp target update to(qdiss)
+!$acc update device(qdiss)
           END IF
           IF (PRESENT(qc_bl)) THEN
-!$omp target update to(qc_bl)
+!$acc update device(qc_bl)
           END IF
           IF (PRESENT(qi_bl)) THEN
-!$omp target update to(qi_bl)
+!$acc update device(qi_bl)
           END IF
           IF (PRESENT(cldfra_bl)) THEN
-!$omp target update to(cldfra_bl)
+!$acc update device(cldfra_bl)
           END IF
           IF (PRESENT(edmf_a)) THEN
-!$omp target update to(edmf_a)
+!$acc update device(edmf_a)
           END IF
           IF (PRESENT(edmf_w)) THEN
-!$omp target update to(edmf_w)
+!$acc update device(edmf_w)
           END IF
           IF (PRESENT(edmf_thl)) THEN
-!$omp target update to(edmf_thl)
+!$acc update device(edmf_thl)
           END IF
           IF (PRESENT(edmf_qt)) THEN
-!$omp target update to(edmf_qt)
+!$acc update device(edmf_qt)
           END IF
           IF (PRESENT(edmf_ent)) THEN
-!$omp target update to(edmf_ent)
+!$acc update device(edmf_ent)
           END IF
           IF (PRESENT(edmf_qc)) THEN
-!$omp target update to(edmf_qc)
+!$acc update device(edmf_qc)
           END IF
           IF (PRESENT(sub_thl3d)) THEN
-!$omp target update to(sub_thl3d)
+!$acc update device(sub_thl3d)
           END IF
           IF (PRESENT(sub_sqv3d)) THEN
-!$omp target update to(sub_sqv3d)
+!$acc update device(sub_sqv3d)
           END IF
           IF (PRESENT(det_thl3d)) THEN
-!$omp target update to(det_thl3d)
+!$acc update device(det_thl3d)
           END IF
           IF (PRESENT(det_sqv3d)) THEN
-!$omp target update to(det_sqv3d)
+!$acc update device(det_sqv3d)
           END IF
           IF (PRESENT(vdfg)) THEN
-!$omp target update to(vdfg)
+!$acc update device(vdfg)
           END IF
           IF (PRESENT(maxwidth)) THEN
-!$omp target update to(maxwidth)
+!$acc update device(maxwidth)
           END IF
           IF (PRESENT(maxmf)) THEN
-!$omp target update to(maxmf)
+!$acc update device(maxmf)
           END IF
           IF (PRESENT(ztop_plume)) THEN
-!$omp target update to(ztop_plume)
+!$acc update device(ztop_plume)
           END IF
           IF (PRESENT(ktop_plume)) THEN
-!$omp target update to(ktop_plume)
+!$acc update device(ktop_plume)
           END IF
           IF (PRESENT(pek)) THEN
-!$omp target update to(pek)
+!$acc update device(pek)
           END IF
           IF (PRESENT(pep)) THEN
-!$omp target update to(pep)
+!$acc update device(pep)
           END IF
           IF (PRESENT(pek_adv)) THEN
-!$omp target update to(pek_adv)
+!$acc update device(pek_adv)
           END IF
           IF (PRESENT(pep_adv)) THEN
-!$omp target update to(pep_adv)
+!$acc update device(pep_adv)
           END IF
           IF (PRESENT(hol)) THEN
-!$omp target update to(hol)
+!$acc update device(hol)
           END IF
           IF (PRESENT(mol)) THEN
-!$omp target update to(mol)
+!$acc update device(mol)
           END IF
           IF (PRESENT(regime)) THEN
-!$omp target update to(regime)
+!$acc update device(regime)
           END IF
           IF (PRESENT(dtaux3d)) THEN
-!$omp target update to(dtaux3d)
+!$acc update device(dtaux3d)
           END IF
           IF (PRESENT(dtauy3d)) THEN
-!$omp target update to(dtauy3d)
+!$acc update device(dtauy3d)
           END IF
           IF (PRESENT(dusfcg)) THEN
-!$omp target update to(dusfcg)
+!$acc update device(dusfcg)
           END IF
           IF (PRESENT(dvsfcg)) THEN
-!$omp target update to(dvsfcg)
+!$acc update device(dvsfcg)
           END IF
           IF (PRESENT(dtaux3d_ls)) THEN
-!$omp target update to(dtaux3d_ls)
+!$acc update device(dtaux3d_ls)
           END IF
           IF (PRESENT(dtauy3d_ls)) THEN
-!$omp target update to(dtauy3d_ls)
+!$acc update device(dtauy3d_ls)
           END IF
           IF (PRESENT(dtaux3d_bl)) THEN
-!$omp target update to(dtaux3d_bl)
+!$acc update device(dtaux3d_bl)
           END IF
           IF (PRESENT(dtauy3d_bl)) THEN
-!$omp target update to(dtauy3d_bl)
+!$acc update device(dtauy3d_bl)
           END IF
           IF (PRESENT(dtaux3d_ss)) THEN
-!$omp target update to(dtaux3d_ss)
+!$acc update device(dtaux3d_ss)
           END IF
           IF (PRESENT(dtauy3d_ss)) THEN
-!$omp target update to(dtauy3d_ss)
+!$acc update device(dtauy3d_ss)
           END IF
           IF (PRESENT(dtaux3d_fd)) THEN
-!$omp target update to(dtaux3d_fd)
+!$acc update device(dtaux3d_fd)
           END IF
           IF (PRESENT(dtauy3d_fd)) THEN
-!$omp target update to(dtauy3d_fd)
+!$acc update device(dtauy3d_fd)
           END IF
           IF (PRESENT(dusfcg_ls)) THEN
-!$omp target update to(dusfcg_ls)
+!$acc update device(dusfcg_ls)
           END IF
           IF (PRESENT(dvsfcg_ls)) THEN
-!$omp target update to(dvsfcg_ls)
+!$acc update device(dvsfcg_ls)
           END IF
           IF (PRESENT(dusfcg_bl)) THEN
-!$omp target update to(dusfcg_bl)
+!$acc update device(dusfcg_bl)
           END IF
           IF (PRESENT(dvsfcg_bl)) THEN
-!$omp target update to(dvsfcg_bl)
+!$acc update device(dvsfcg_bl)
           END IF
           IF (PRESENT(dusfcg_ss)) THEN
-!$omp target update to(dusfcg_ss)
+!$acc update device(dusfcg_ss)
           END IF
           IF (PRESENT(dvsfcg_ss)) THEN
-!$omp target update to(dvsfcg_ss)
+!$acc update device(dvsfcg_ss)
           END IF
           IF (PRESENT(dusfcg_fd)) THEN
-!$omp target update to(dusfcg_fd)
+!$acc update device(dusfcg_fd)
           END IF
           IF (PRESENT(dvsfcg_fd)) THEN
-!$omp target update to(dvsfcg_fd)
+!$acc update device(dvsfcg_fd)
           END IF
           IF (PRESENT(qv_curr)) THEN
-!$omp target update to(qv_curr)
+!$acc update device(qv_curr)
           END IF
           IF (PRESENT(qc_curr)) THEN
-!$omp target update to(qc_curr)
+!$acc update device(qc_curr)
           END IF
           IF (PRESENT(qr_curr)) THEN
-!$omp target update to(qr_curr)
+!$acc update device(qr_curr)
           END IF
           IF (PRESENT(qi_curr)) THEN
-!$omp target update to(qi_curr)
+!$acc update device(qi_curr)
           END IF
           IF (PRESENT(qs_curr)) THEN
-!$omp target update to(qs_curr)
+!$acc update device(qs_curr)
           END IF
           IF (PRESENT(qg_curr)) THEN
-!$omp target update to(qg_curr)
+!$acc update device(qg_curr)
           END IF
           IF (PRESENT(rqvblten)) THEN
-!$omp target update to(rqvblten)
+!$acc update device(rqvblten)
           END IF
           IF (PRESENT(rqcblten)) THEN
-!$omp target update to(rqcblten)
+!$acc update device(rqcblten)
           END IF
           IF (PRESENT(rqiblten)) THEN
-!$omp target update to(rqiblten)
+!$acc update device(rqiblten)
           END IF
           IF (PRESENT(rqrblten)) THEN
-!$omp target update to(rqrblten)
+!$acc update device(rqrblten)
           END IF
           IF (PRESENT(rqsblten)) THEN
-!$omp target update to(rqsblten)
+!$acc update device(rqsblten)
           END IF
           IF (PRESENT(rqgblten)) THEN
-!$omp target update to(rqgblten)
+!$acc update device(rqgblten)
           END IF
           IF (PRESENT(qnwfa_curr)) THEN
-!$omp target update to(qnwfa_curr)
+!$acc update device(qnwfa_curr)
           END IF
           IF (PRESENT(qnifa_curr)) THEN
-!$omp target update to(qnifa_curr)
+!$acc update device(qnifa_curr)
           END IF
           IF (PRESENT(qnbca_curr)) THEN
-!$omp target update to(qnbca_curr)
+!$acc update device(qnbca_curr)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update to(frc_urb2d)
+!$acc update device(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update to(a_u_bep)
+!$acc update device(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update to(a_v_bep)
+!$acc update device(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update to(a_t_bep)
+!$acc update device(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update to(a_q_bep)
+!$acc update device(a_q_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update to(b_u_bep)
+!$acc update device(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update to(b_v_bep)
+!$acc update device(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update to(sf_bep)
+!$acc update device(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update to(vl_bep)
+!$acc update device(vl_bep)
           END IF
           IF (PRESENT(exch_tke)) THEN
-!$omp target update to(exch_tke)
+!$acc update device(exch_tke)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update to(a_e_bep)
+!$acc update device(a_e_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update to(b_e_bep)
+!$acc update device(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update to(dlg_bep)
+!$acc update device(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update to(dl_u_bep)
+!$acc update device(dl_u_bep)
           END IF
           IF (PRESENT(massflux_edkf)) THEN
-!$omp target update to(massflux_edkf)
+!$acc update device(massflux_edkf)
           END IF
           IF (PRESENT(entr_edkf)) THEN
-!$omp target update to(entr_edkf)
+!$acc update device(entr_edkf)
           END IF
           IF (PRESENT(detr_edkf)) THEN
-!$omp target update to(detr_edkf)
+!$acc update device(detr_edkf)
           END IF
           IF (PRESENT(thl_up)) THEN
-!$omp target update to(thl_up)
+!$acc update device(thl_up)
           END IF
           IF (PRESENT(thv_up)) THEN
-!$omp target update to(thv_up)
+!$acc update device(thv_up)
           END IF
           IF (PRESENT(rt_up)) THEN
-!$omp target update to(rt_up)
+!$acc update device(rt_up)
           END IF
           IF (PRESENT(rv_up)) THEN
-!$omp target update to(rv_up)
+!$acc update device(rv_up)
           END IF
           IF (PRESENT(rc_up)) THEN
-!$omp target update to(rc_up)
+!$acc update device(rc_up)
           END IF
           IF (PRESENT(u_up)) THEN
-!$omp target update to(u_up)
+!$acc update device(u_up)
           END IF
           IF (PRESENT(v_up)) THEN
-!$omp target update to(v_up)
+!$acc update device(v_up)
           END IF
           IF (PRESENT(frac_up)) THEN
-!$omp target update to(frac_up)
+!$acc update device(frac_up)
           END IF
           IF (PRESENT(rc_mf)) THEN
-!$omp target update to(rc_mf)
+!$acc update device(rc_mf)
           END IF
           IF (PRESENT(tauresx2d)) THEN
-!$omp target update to(tauresx2d)
+!$acc update device(tauresx2d)
           END IF
           IF (PRESENT(tauresy2d)) THEN
-!$omp target update to(tauresy2d)
+!$acc update device(tauresy2d)
           END IF
           IF (PRESENT(tpert2d)) THEN
-!$omp target update to(tpert2d)
+!$acc update device(tpert2d)
           END IF
           IF (PRESENT(qpert2d)) THEN
-!$omp target update to(qpert2d)
+!$acc update device(qpert2d)
           END IF
           IF (PRESENT(wpert2d)) THEN
-!$omp target update to(wpert2d)
+!$acc update device(wpert2d)
           END IF
           IF (PRESENT(turbtype3d)) THEN
-!$omp target update to(turbtype3d)
+!$acc update device(turbtype3d)
           END IF
           IF (PRESENT(smaw3d)) THEN
-!$omp target update to(smaw3d)
+!$acc update device(smaw3d)
           END IF
           IF (PRESENT(qnc_curr)) THEN
-!$omp target update to(qnc_curr)
+!$acc update device(qnc_curr)
           END IF
           IF (PRESENT(qni_curr)) THEN
-!$omp target update to(qni_curr)
+!$acc update device(qni_curr)
           END IF
           IF (PRESENT(rqniblten)) THEN
-!$omp target update to(rqniblten)
+!$acc update device(rqniblten)
           END IF
           IF (PRESENT(wstar)) THEN
-!$omp target update to(wstar)
+!$acc update device(wstar)
           END IF
           IF (PRESENT(delta)) THEN
-!$omp target update to(delta)
+!$acc update device(delta)
           END IF
           IF (PRESENT(scalar)) THEN
-!$omp target update to(scalar)
+!$acc update device(scalar)
           END IF
           IF (PRESENT(scalar_tend)) THEN
-!$omp target update to(scalar_tend)
+!$acc update device(scalar_tend)
           END IF
           IF (PRESENT(tracer)) THEN
-!$omp target update to(tracer)
+!$acc update device(tracer)
           END IF
           IF (PRESENT(tracer_tend)) THEN
-!$omp target update to(tracer_tend)
+!$acc update device(tracer_tend)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update to(qnorm)
+!$acc update device(qnorm)
           END IF
         END IF
       END IF

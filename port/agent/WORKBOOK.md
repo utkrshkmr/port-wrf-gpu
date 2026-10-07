@@ -223,3 +223,16 @@ How to update, after every task (and at the end of every work session, even if t
 - Commit hashes in the log entries above and in port/RESULTS.md refer to the former repository.
 - New: areas (AREAS.md, `check_area_scope.py`), the stage gate (4.6.0 first, ADR-002), and `agent/code` and
   `agent/wp/<id>` pre-created at the handoff commit.
+
+### 2026-10-07 HANDOFF OpenACC + CUDA Fortran; Phases 1-5 in the code-only run (owner changes)
+- Owner decision (ADR-001 rev 2): every kernel is OpenACC (`nvfortran -acc=gpu -cuda`), CUDA Fortran later only for
+  measured hotspots; NVIDIA only. CODING_STANDARD.md §4 has the kernel form; kernel_lint.py checks it (E1-E10).
+- Converted: frame infrastructure (gpu_map, bittrace, repro_math `!$acc routine seq`), configure stanzas, tools
+  (kernel_lint, kernel_off, gen_island, gen_harness, arith_guard, check_build_flags), the reference tests (gnu
+  `-fopenacc` PASS), the `gnu-gpu` build (`-fopenacc`), run scripts (`ACC_DEVICE_TYPE=nvidia`).
+- `port/tools/omp2acc.py` converts kernels written in OpenMP before the switch (`--check` lists them).
+- Shared refactor P1-B4 (repro_math tables into their routines) is done; CPU-view base moved to `37b1f7f9d1e6`
+  (REFACTORS.md); KERNEL_REFS.md regenerated.
+- 8 new work packages (44 in all): P4-A2F, P4-LS, P4-FUEL, P4-MODEL, P4-ATM, P5-TRACE, P5-CPL, P5-FORCE; interfaces
+  I-11 (S6 vs forcing switch) and I-12 (fire flags and `fp` on the device).
+- Machine: the test machine has two A100 40 GB: dev-case gates only (ENV_H100.md §5a).

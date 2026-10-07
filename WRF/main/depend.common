@@ -1427,6 +1427,9 @@ module_sf_lake.o: \
 
 
 module_fr_fire_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_model_constants.o \
 	../frame/module_comm_dm.o \
 	../frame/module_domain.o \
@@ -1450,11 +1453,17 @@ module_fr_fire_driver_wrf.o: \
 
 
 module_fr_fire_atm.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_model_constants.o \
 	module_fr_fire_util.o 
 
 
 module_fr_fire_model.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_comm_dm.o \
 	../frame/module_configure.o \
 	../frame/module_domain.o \
@@ -1464,6 +1473,9 @@ module_fr_fire_model.o: \
 
 
 module_fr_fire_core.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_comm_dm.o \
 	../frame/module_configure.o \
 	../frame/module_domain.o \
@@ -1472,6 +1484,9 @@ module_fr_fire_core.o: \
 
 
 module_fr_fire_phys.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_model_constants.o \
 	module_fr_fire_util.o 
 
@@ -1866,6 +1881,9 @@ mediation_feedback_domain.o: \
 
 
 mediation_force_domain.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_domain.o \
 	../frame/module_gpu_updates.o \
 	../frame/module_configure.o 
@@ -2586,6 +2604,9 @@ module_fdda_psufddagd.o: \
 
 
 module_fr_fire_util.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_wrf_error.o 
 
 
@@ -2669,6 +2690,9 @@ adapt_timestep_em.o: \
 
 
 couple_or_uncouple_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_bc.o \
 	../frame/module_comm_dm.o \
 	../frame/module_configure.o \

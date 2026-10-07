@@ -30,3 +30,8 @@
 #include "gpu_work_p3_raddrv.inc"
 #include "gpu_work_p3_rrtmg.inc"
 #include "gpu_work_p3_sw.inc"
+#include "gpu_work_p4_a2f.inc"
+#include "gpu_work_p4_ls.inc"
+#include "gpu_work_p4_model.inc"
+#include "gpu_work_p4_atm.inc"
+#include "gpu_work_p5_cpl.inc"

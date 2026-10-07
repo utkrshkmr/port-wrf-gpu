@@ -39,7 +39,7 @@ Paste each block where its comments say (CODING_STANDARD.md §3). Regenerate wit
 
 ## Tasks
 
-- the P1.4 tables of mp_wsm6 (the SAVE scalars of mp_wsm6.F90:46-64): !$omp declare target, wsm6_gpu_upload and wsm6_gpu_tabcheck (INTERFACES.md I-4)
+- the P1.4 tables of mp_wsm6 (the SAVE scalars of mp_wsm6.F90:46-64): !$acc declare create, wsm6_gpu_upload and wsm6_gpu_tabcheck (INTERFACES.md I-4)
 - shared refactor (separate commit): microphysics_driver's large 3D automatic arrays become pointers into work arrays (plan.md P1.7 table)
 
 ## Notes

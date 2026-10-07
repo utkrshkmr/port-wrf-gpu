@@ -32,11 +32,11 @@
       gpu_isl = gpu_island(R_MOIST_PHYSICS_PREP_EM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(t_new, t_old, rho, al, alb, p, p8w, pb, ph, phb, th_phy, pii, pf, z, z_at_w, &
-!$omp&   dz8w, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, fzm, fzp)
+!$acc update device(t_new, t_old, rho, al, alb, p, p8w, pb, ph, phb, th_phy, pii, pf, z, z_at_w, &
+!$acc&   dz8w, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, fzm, fzp)
         ELSE
-!$omp target update from(t_new, t_old, rho, al, alb, p, p8w, pb, ph, phb, th_phy, pii, pf, z, &
-!$omp&   z_at_w, dz8w, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, fzm, fzp)
+!$acc update self(t_new, t_old, rho, al, alb, p, p8w, pb, ph, phb, th_phy, pii, pf, z, z_at_w, &
+!$acc&   dz8w, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, fzm, fzp)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -47,11 +47,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(t_new, t_old, rho, p8w, th_phy, pii, pf, z, z_at_w, dz8w, h_diabatic, &
-!$omp&   qv_diabatic, qc_diabatic)
+!$acc update self(t_new, t_old, rho, p8w, th_phy, pii, pf, z, z_at_w, dz8w, h_diabatic, &
+!$acc&   qv_diabatic, qc_diabatic)
         ELSE
-!$omp target update to(t_new, t_old, rho, p8w, th_phy, pii, pf, z, z_at_w, dz8w, h_diabatic, &
-!$omp&   qv_diabatic, qc_diabatic)
+!$acc update device(t_new, t_old, rho, p8w, th_phy, pii, pf, z, z_at_w, dz8w, h_diabatic, &
+!$acc&   qv_diabatic, qc_diabatic)
         END IF
       END IF
       IF (gpu_cc_active(R_MOIST_PHYSICS_PREP_EM)) THEN

@@ -20,11 +20,11 @@
       gpu_isl = gpu_island(R_CALC_WW_CP)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u, v, mup, mub, c1h, c2h, ww, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, &
-!$omp&   msfvy, dnw)
+!$acc update device(u, v, mup, mub, c1h, c2h, ww, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, &
+!$acc&   msfvy, dnw)
         ELSE
-!$omp target update from(u, v, mup, mub, c1h, c2h, ww, msftx, msfty, msfux, msfuy, msfvx, &
-!$omp&   msfvx_inv, msfvy, dnw)
+!$acc update self(u, v, mup, mub, c1h, c2h, ww, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, &
+!$acc&   msfvy, dnw)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ww)
+!$acc update self(ww)
         ELSE
-!$omp target update to(ww)
+!$acc update device(ww)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_WW_CP)) THEN

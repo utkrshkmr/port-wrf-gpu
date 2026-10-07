@@ -2346,7 +2346,8 @@ NETCDFPAR_BUILD	=      CONFIGURE_NETCDFPAR_BUILD
 # Flags are the same in all three GPU-port stanzas apart from the device
 # options, so the CPU reference and the GPU build run the same arithmetic:
 # no FMA, IEEE semantics, no flush-to-zero, no reassociation, portable host
-# target (-tp=haswell).  OMP is deliberately not commented out: with dmpar,
+# target (-tp=haswell).  OMP carries the device options (OpenACC and CUDA
+# Fortran, ADR-001; not OpenMP) and is deliberately not commented out: with dmpar,
 # configure only uncomments OMP for smpar/dm+sm (arch/Config.pl), and $(OMP)
 # must reach every compile (FCBASEOPTS_NO_G) and the link (LDFLAGS).
 DESCRIPTION     =       NVHPC ($SFC/$SCC) GPU port CPU-REF
@@ -2397,13 +2398,14 @@ NETCDFPAR_BUILD	=      CONFIGURE_NETCDFPAR_BUILD
 # Flags are the same in all three GPU-port stanzas apart from the device
 # options, so the CPU reference and the GPU build run the same arithmetic:
 # no FMA, IEEE semantics, no flush-to-zero, no reassociation, portable host
-# target (-tp=haswell).  OMP is deliberately not commented out: with dmpar,
+# target (-tp=haswell).  OMP carries the device options (OpenACC and CUDA
+# Fortran, ADR-001; not OpenMP) and is deliberately not commented out: with dmpar,
 # configure only uncomments OMP for smpar/dm+sm (arch/Config.pl), and $(OMP)
 # must reach every compile (FCBASEOPTS_NO_G) and the link (LDFLAGS).
 DESCRIPTION     =       NVHPC ($SFC/$SCC) GPU port GPU-REPRO
 DMPARALLEL      =       # 1
 OMPCPP          =
-OMP             =       -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp
+OMP             =       -acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz -Minfo=accel
 OMPCC           =
 SFC             =       nvfortran
 SCC             =       nvc
@@ -2448,13 +2450,14 @@ NETCDFPAR_BUILD	=      CONFIGURE_NETCDFPAR_BUILD
 # Flags are the same in all three GPU-port stanzas apart from the device
 # options, so the CPU reference and the GPU build run the same arithmetic:
 # no FMA, IEEE semantics, no flush-to-zero, no reassociation, portable host
-# target (-tp=haswell).  OMP is deliberately not commented out: with dmpar,
+# target (-tp=haswell).  OMP carries the device options (OpenACC and CUDA
+# Fortran, ADR-001; not OpenMP) and is deliberately not commented out: with dmpar,
 # configure only uncomments OMP for smpar/dm+sm (arch/Config.pl), and $(OMP)
 # must reach every compile (FCBASEOPTS_NO_G) and the link (LDFLAGS).
 DESCRIPTION     =       NVHPC ($SFC/$SCC) GPU port GPU-DEBUG
 DMPARALLEL      =       # 1
 OMPCPP          =
-OMP             =       -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp -gpu=lineinfo
+OMP             =       -acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz -Minfo=accel -gpu=lineinfo
 OMPCC           =
 SFC             =       nvfortran
 SCC             =       nvc

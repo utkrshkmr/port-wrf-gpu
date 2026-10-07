@@ -24,8 +24,8 @@ CONTAINS
       bug = gpu_on(R_CALC_ALT)
 #endif
       ncall = ncall + 1
-!$omp target teams distribute parallel do collapse(3) if(target: gpu_on(R_CALC_ALT)) default(none) &
-!$omp& shared(alt, al, alb) firstprivate(its, ite, kts, kte, jts, jte, bug)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALC_ALT)) default(none) present(alt, al, alb) &
+!$acc& firstprivate(its, ite, kts, kte, jts, jte, bug)
       DO j = jts, jte
          DO k = kts, kte
             DO i = its, ite

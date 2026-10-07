@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_OZN_TIME_INT)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(ozmixm, ozmixt)
+!$acc update device(ozmixm, ozmixt)
         ELSE
-!$omp target update from(ozmixm, ozmixt)
+!$acc update self(ozmixm, ozmixt)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ozmixt)
+!$acc update self(ozmixt)
         ELSE
-!$omp target update to(ozmixt)
+!$acc update device(ozmixt)
         END IF
       END IF
       IF (gpu_cc_active(R_OZN_TIME_INT)) THEN

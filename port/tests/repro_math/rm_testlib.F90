@@ -1,10 +1,11 @@
 ! Shared helpers for the host-vs-device tests in port/tests/repro_math
 ! (plan.md P0.5: T-FMA, T-SIGNZERO, T-MINMAX, T-SUBNORM, T-RM-EXH, T-RM-POW,
-! T-RM-D).  Every test computes the same thing on the host and in an OpenMP
-! target region and compares bit patterns.
+! T-RM-D).  Every test computes the same thing on the host and in an OpenACC
+! compute region and compares bit patterns.  Host loops use OpenMP threads.
 
 MODULE rm_testlib
    USE omp_lib
+   USE openacc
    USE module_repro_math
    IMPLICIT NONE
 
@@ -19,14 +20,14 @@ MODULE rm_testlib
 
 CONTAINS
 
-   ! .TRUE. if target regions run on a GPU
+   ! .TRUE. if OpenACC compute regions run on a GPU
    LOGICAL FUNCTION target_is_device()
-      LOGICAL :: initial
-      initial = .TRUE.
-!$omp target map(from: initial)
-      initial = omp_is_initial_device()
-!$omp end target
-      target_is_device = .NOT. initial
+      LOGICAL :: ondev
+      ondev = .FALSE.
+!$acc serial copyout(ondev)
+      ondev = acc_on_device(acc_device_not_host)
+!$acc end serial
+      target_is_device = ondev
    END FUNCTION target_is_device
 
    ! Stop unless target regions run on a device (or ALLOW_HOST=1).
@@ -34,16 +35,16 @@ CONTAINS
       CHARACTER(LEN=8) :: v
       INTEGER :: st
       IF (target_is_device()) THEN
-         PRINT '(a,i0)', 'device: OpenMP default device ', omp_get_default_device()
+         PRINT '(a,i0)', 'device: OpenACC device ', acc_get_device_num(acc_get_device_type())
          RETURN
       END IF
       CALL get_environment_variable('ALLOW_HOST', v, status=st)
       IF (st /= 0 .OR. TRIM(v) /= '1') THEN
-         PRINT '(a)', 'ERROR: target regions run on the host, so this host-vs-device test is not valid.'
+         PRINT '(a)', 'ERROR: compute regions run on the host, so this host-vs-device test is not valid.'
          PRINT '(a)', '       Set ALLOW_HOST=1 to run it anyway (compile check only).'
          STOP 3
       END IF
-      PRINT '(a)', 'WARNING: target regions run on the host (ALLOW_HOST=1); results only check the program.'
+      PRINT '(a)', 'WARNING: compute regions run on the host (ALLOW_HOST=1); results only check the program.'
    END SUBROUTINE require_device
 
    ! splitmix64 pseudo-random generator (host only)
@@ -59,7 +60,7 @@ CONTAINS
 
    ! REAL(4) with the given bit pattern (low 32 bits of b)
    PURE FUNCTION f4(b) RESULT(x)
-!$omp declare target
+!$acc routine seq
       INTEGER(i8), INTENT(IN) :: b
       REAL(r4) :: x
       INTEGER(i4) :: ib
@@ -74,14 +75,14 @@ CONTAINS
    END FUNCTION f4
 
    PURE FUNCTION bits4(x) RESULT(ib)
-!$omp declare target
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       INTEGER(i4) :: ib
       ib = TRANSFER(x, ib)
    END FUNCTION bits4
 
    PURE FUNCTION bits8(x) RESULT(ib)
-!$omp declare target
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8) :: ib
       ib = TRANSFER(x, ib)
@@ -89,7 +90,7 @@ CONTAINS
 
    ! rp_* function f applied to REAL(4) arguments, result bits
    PURE FUNCTION eval4(f, a, b) RESULT(ib)
-!$omp declare target
+!$acc routine seq
       INTEGER, INTENT(IN) :: f
       REAL(r4), INTENT(IN) :: a, b
       INTEGER(i4) :: ib
@@ -131,7 +132,7 @@ CONTAINS
 
    ! rp_* function f applied to REAL(8) arguments, result bits
    PURE FUNCTION eval8(f, a, b) RESULT(ib)
-!$omp declare target
+!$acc routine seq
       INTEGER, INTENT(IN) :: f
       REAL(r8), INTENT(IN) :: a, b
       INTEGER(i8) :: ib

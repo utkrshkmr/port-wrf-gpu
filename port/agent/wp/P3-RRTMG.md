@@ -31,8 +31,8 @@ Paste each block where its comments say (CODING_STANDARD.md §3). Regenerate wit
 
 ## Tasks
 
-- shared refactor (separate commit): flatten the EQUIVALENCEd rrlw_kg* tables into 1D arrays (plan.md P0.9a item 6; required: gfortran and OpenMP reject EQUIVALENCE with declare target, probe F-EQUIV)
-- the RRTMG LW tables on the device: !$omp declare target of every table the kernel reads, rrtmg_lw_gpu_upload and rrtmg_lw_gpu_tabcheck in the module that contains RRTMG_LWRAD (INTERFACES.md I-4)
+- shared refactor (separate commit): flatten the EQUIVALENCEd rrlw_kg* tables into 1D arrays (plan.md P0.9a item 6; required: EQUIVALENCE cannot be used in device code, probe F-EQUIV)
+- the RRTMG LW tables on the device: !$acc declare create of every table the kernel reads, rrtmg_lw_gpu_upload and rrtmg_lw_gpu_tabcheck in the module that contains RRTMG_LWRAD (INTERFACES.md I-4)
 - the batched column kernel of plan.md 8.5; random numbers as port/tests/kiss/t_kiss.F90 (T-KISS)
 
 ## Notes

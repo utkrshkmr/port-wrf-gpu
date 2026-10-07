@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_FLOW_DEP_BDY)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(field, u, v)
+!$acc update device(field, u, v)
         ELSE
-!$omp target update from(field, u, v)
+!$acc update self(field, u, v)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(field)
+!$acc update self(field)
         ELSE
-!$omp target update to(field)
+!$acc update device(field)
         END IF
       END IF
       IF (gpu_cc_active(R_FLOW_DEP_BDY)) THEN

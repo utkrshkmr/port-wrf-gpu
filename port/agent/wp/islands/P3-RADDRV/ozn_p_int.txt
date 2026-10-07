@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_OZN_P_INT)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(p, pin, ozmixt, o3vmr)
+!$acc update device(p, pin, ozmixt, o3vmr)
         ELSE
-!$omp target update from(p, pin, ozmixt, o3vmr)
+!$acc update self(p, pin, ozmixt, o3vmr)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(o3vmr)
+!$acc update self(o3vmr)
         ELSE
-!$omp target update to(o3vmr)
+!$acc update device(o3vmr)
         END IF
       END IF
       IF (gpu_cc_active(R_OZN_P_INT)) THEN

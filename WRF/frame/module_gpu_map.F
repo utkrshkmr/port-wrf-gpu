@@ -6,21 +6,21 @@
 ! The fields of TYPE(domain) are ALLOCATABLE components (-DUSE_ALLOCATABLES,
 ! arch/postamble).  The generated code
 ! (inc/allocs.inc, inc/deallocs.inc, inc/gpu_upd_*.inc) does not name them in
-! OpenMP clauses (map(to:grid%u_2) is a structure-member map, whose behaviour
-! differs between compilers).  It passes each field to one of the routines
+! OpenACC data clauses (copyin(grid%u_2) is a structure-member clause, whose
+! behaviour differs between compilers and needs the parent attached).  It passes each field to one of the routines
 ! below, whose assumed-size dummy is the storage of the field; the clauses act on
 ! that storage.  Every kernel and island receives fields as explicit-shape
 ! dummies, so the device copy is found by address: the same rule everywhere.
-! Probe F-COMPMAP (port/tests/omp_features/f_compmap.F90) checks this form,
+! Probe F-COMPMAP (port/tests/acc_features/f_compmap.F90) checks this form,
 ! and the structure-member form for information, on the machine.
 !
 !   CALL gpu_map_r(grid%u_2, SIZE(grid%u_2,KIND=8), GPU_MAP_ENTER)
 !
 !   gpu_map_r / _d / _i / _l : REAL / DOUBLE PRECISION / INTEGER / LOGICAL fields
-!   GPU_MAP_ENTER  target enter data map(to:)      (after ALLOCATE and the initial value)
-!   GPU_MAP_EXIT   target exit data map(delete:)   (before DEALLOCATE)
-!   GPU_UPD_TO     target update to                (host -> device)
-!   GPU_UPD_FROM   target update from              (device -> host)
+!   GPU_MAP_ENTER  !$acc enter data copyin   (after ALLOCATE and the initial value)
+!   GPU_MAP_EXIT   !$acc exit data delete    (before DEALLOCATE)
+!   GPU_UPD_TO     !$acc update device       (host -> device)
+!   GPU_UPD_FROM   !$acc update self         (device -> host)
 !
 ! The actual argument must be contiguous (an allocatable field always is); a
 ! non-contiguous one would be copied by the compiler and the temporary mapped
@@ -42,13 +42,13 @@ CONTAINS
 #ifdef WRF_GPU
       SELECT CASE (op)
       CASE (GPU_MAP_ENTER)
-!$omp target enter data map(to: a(1:n))
+!$acc enter data copyin(a(1:n))
       CASE (GPU_MAP_EXIT)
-!$omp target exit data map(delete: a(1:n))
+!$acc exit data delete(a(1:n))
       CASE (GPU_UPD_TO)
-!$omp target update to(a(1:n))
+!$acc update device(a(1:n))
       CASE (GPU_UPD_FROM)
-!$omp target update from(a(1:n))
+!$acc update self(a(1:n))
       END SELECT
 #endif
    END SUBROUTINE gpu_map_r
@@ -60,13 +60,13 @@ CONTAINS
 #ifdef WRF_GPU
       SELECT CASE (op)
       CASE (GPU_MAP_ENTER)
-!$omp target enter data map(to: a(1:n))
+!$acc enter data copyin(a(1:n))
       CASE (GPU_MAP_EXIT)
-!$omp target exit data map(delete: a(1:n))
+!$acc exit data delete(a(1:n))
       CASE (GPU_UPD_TO)
-!$omp target update to(a(1:n))
+!$acc update device(a(1:n))
       CASE (GPU_UPD_FROM)
-!$omp target update from(a(1:n))
+!$acc update self(a(1:n))
       END SELECT
 #endif
    END SUBROUTINE gpu_map_d
@@ -78,13 +78,13 @@ CONTAINS
 #ifdef WRF_GPU
       SELECT CASE (op)
       CASE (GPU_MAP_ENTER)
-!$omp target enter data map(to: a(1:n))
+!$acc enter data copyin(a(1:n))
       CASE (GPU_MAP_EXIT)
-!$omp target exit data map(delete: a(1:n))
+!$acc exit data delete(a(1:n))
       CASE (GPU_UPD_TO)
-!$omp target update to(a(1:n))
+!$acc update device(a(1:n))
       CASE (GPU_UPD_FROM)
-!$omp target update from(a(1:n))
+!$acc update self(a(1:n))
       END SELECT
 #endif
    END SUBROUTINE gpu_map_i
@@ -96,13 +96,13 @@ CONTAINS
 #ifdef WRF_GPU
       SELECT CASE (op)
       CASE (GPU_MAP_ENTER)
-!$omp target enter data map(to: a(1:n))
+!$acc enter data copyin(a(1:n))
       CASE (GPU_MAP_EXIT)
-!$omp target exit data map(delete: a(1:n))
+!$acc exit data delete(a(1:n))
       CASE (GPU_UPD_TO)
-!$omp target update to(a(1:n))
+!$acc update device(a(1:n))
       CASE (GPU_UPD_FROM)
-!$omp target update from(a(1:n))
+!$acc update self(a(1:n))
       END SELECT
 #endif
    END SUBROUTINE gpu_map_l

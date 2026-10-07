@@ -113,7 +113,7 @@ CONTAINS
    SUBROUTINE run4(m)
       INTEGER(i8), INTENT(IN) :: m
       INTEGER(i8) :: q
-!$omp target teams distribute parallel do map(to: a(1:m), b(1:m)) map(from: dres(:, 1:m))
+!$acc parallel loop gang vector copyin(a(1:m), b(1:m)) copyout(dres(:, 1:m))
       DO q = 1_i8, m
          CALL ops4(a(q), b(q), dres(:, q))
       END DO
@@ -124,7 +124,7 @@ CONTAINS
    END SUBROUTINE run4
 
    SUBROUTINE ops4(x, y, r)
-!$omp declare target
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x, y
       INTEGER(i4), INTENT(OUT) :: r(nops)
       r(1)  = bits4(SIGN(1.0_r4, x))
@@ -182,7 +182,7 @@ CONTAINS
       INTEGER(i8), INTENT(IN) :: m
       INTEGER(i8) :: q
       REAL(r8) :: x, y
-!$omp target teams distribute parallel do map(to: a8(1:m), b8(1:m)) map(from: dres8(:, 1:m))
+!$acc parallel loop gang vector copyin(a8(1:m), b8(1:m)) copyout(dres8(:, 1:m))
       DO q = 1_i8, m
          CALL ops8(a8(q), b8(q), dres8(:, q))
       END DO
@@ -200,7 +200,7 @@ CONTAINS
    END SUBROUTINE run8
 
    SUBROUTINE ops8(x, y, r)
-!$omp declare target
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       INTEGER(i8), INTENT(OUT) :: r(nops)
       r(1)  = bits8(SIGN(1.0_r8, x))

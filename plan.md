@@ -63,7 +63,7 @@ the list is in "Refinements during Phase 0 and the agent handoff" at the end of 
 | Acceptance | For the full 17 h case, GPU-REPRO equals CPU-REF **bitwise**: every d02 history frame (every 15 min), every restart, and all fire arrays (`tign_g`, `fire_area`, `fuel_frac`, `fgrnhfx`, `fgrnqfx`, `ros`, `lfn`). This implies cell-by-cell identical fire spread. |
 | Reference | CPU-REF: this repository built with `nvfortran` in reproducible mode (§4), run on CCR CPU nodes inside the same container image as the GPU runs. |
 | Relation to the original CCR run | Measured once (experiment E0, P0.13) and documented. It is not an acceptance criterion: bitwise equality with a different compiler's math library is impossible on a GPU. |
-| Framework | OpenMP 5 target offload in the existing Fortran, `nvfortran` (NVIDIA HPC SDK). No CUDA source is needed. A small C shim is used only for NVTX and `cudaMemGetInfo`. |
+| Framework | OpenMP 5 target offload in the existing Fortran, `nvfortran` (NVIDIA HPC SDK). No CUDA source is needed. A small C shim is used only for NVTX and `cudaMemGetInfo`. **Superseded 2026-10-07 by the owner (ADR-001 rev 2): OpenACC for every kernel, CUDA Fortran for measured hotspots, NVIDIA only. Read every OpenMP directive in this plan as its OpenACC form (port/agent/CODING_STANDARD.md §4).** |
 
 **In scope:** everything `wrf.exe` executes per time step for this case family, on both domains (§2.2), including
 nest forcing.

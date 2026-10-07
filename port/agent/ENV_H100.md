@@ -112,6 +112,23 @@ The dev references (H0.7) take a few hours once.
 Build times: a clean NVHPC build of WRF takes 30–90 min (`BUILD_JOBS`); an incremental `--worktree` build after
 editing one file takes a few minutes (the file, its dependents, the link).
 
+## 5a. Machines with A100 40 GB GPUs
+
+The full case needs about 58–62 GB of device memory (plan.md §3), so it does **not** fit one 40 GB GPU. The dev
+case (`eaton_small`: d01 450×450×60, d02 181×181×60) fits. Estimate, to be checked with
+`python3 port/gpu_mem_estimate.py <dev namelist>` and the P1.12 memory log: d01 state ≈ 6 GB, d02 and its fire grid
+< 1 GB, the i1 pool (sized by d01) ≈ 3 GB, work arrays ≈ 2 GB, the RRTMG batch ≈ 4.5 GB (`WRF_RRTMG_BATCH=4096`; 2048
+halves it), the column-physics local-memory reservation ≈ 6–7 GB (A100: about 221k resident threads × the CP-5 frame),
+CUDA context 1–2 GB: about 20–25 GB.
+
+On a machine with two A100 40 GB:
+- everything that uses the dev case runs: harness, T-AB, T-TRACE (W-20, W-100, W-RAD), T-FIRE-* on the dev case,
+  T-FORCE, T-SLAB, T-O3, T-NSYS. Run two windows at once, one per GPU (`GPU_ID=0` and `GPU_ID=1`);
+- the build is the same (`-gpu=cc80,cc90`);
+- **not possible:** the full-case memory checks (G-MEM at G1, G3, G5) and the full 17 h acceptance run of G5. They
+  need an 80 GB GPU (A100 80 GB or H100) or the multi-GPU path that plan.md §16 defers. Record them in BLOCKERS.md
+  as "needs an 80 GB GPU", not as failures.
+
 ## 6. First commands (H0.5–H0.8)
 
 ```sh

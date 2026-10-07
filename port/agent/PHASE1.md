@@ -1,5 +1,13 @@
 # Phase 1 — entry tasks on the H100 machine, and the GPU infrastructure
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Plan: [plan.md §6](../../plan.md) (P1.1–P1.12, G1). Line numbers below are in the **CPU-view base commit**
 (`port/agent/cpu_view_base`); view with `git show $(sed 's/#.*//' port/agent/cpu_view_base | awk 'NF{print $1;exit}'):<file> | sed -n 'a,bp'`,
 or find the current line with `python3 port/tools/locate.py <file> <v4.6.0 line>` (plan.md cites v4.6.0 lines).
@@ -311,7 +319,7 @@ of the two whole-state lists, 104 in the boundary list); `check_generated.py --o
 
 In `phys/` because it USEs the physics modules; the entry point `SUBROUTINE gpu_update_tables()` is an external
 subroutine (outside the module) so that `frame/module_integrate.F` can call it. The variables are declared
-`!$omp declare target(<names>)` in their own module, next to the declarations. Three of the four modules keep their
+`!$acc declare create(<names>)` in their own module, next to the declarations. Three of the four modules keep their
 tables PRIVATE (`mp_wsm6`, `sf_sfclayrev`, `module_ra_sw`), so the uploads and the T-TAB checks are routines of those
 modules: `<m>_gpu_upload()` and `<m>_gpu_tabcheck(n, nbad, bad)` (INTERFACES.md I-4), which `gpu_update_tables` and
 `gpu_selftest_tab` call. In the code-only run the physics work packages write them (P3-WSM6, P3-SFCLAY, P3-NOAH,
@@ -399,8 +407,8 @@ Tick both P1.5 and P1.9 in the workbook with the same commit(s).
 ## P1.6 Scratch pool on the device (`WRF/frame/module_gpu_scratch.F`)
 
 In `gpu_scratch_reserve` (`module_gpu_scratch.F:38-51`), under `#ifdef WRF_GPU`: before `DEALLOCATE(gpu_pool)` a
-`!$omp target exit data map(delete: gpu_pool)`; after the host zero fill `!$omp target enter data map(alloc:
-gpu_pool)` and a device zero-fill kernel (`!$omp target teams distribute parallel do` over the pool). The pointers
+`!$acc exit data delete(gpu_pool)`; after the host zero fill `!$acc enter data create(gpu_pool)` and a device
+zero-fill kernel (`!$acc parallel loop` over the pool). The pointers
 of `i1_assoc.inc` are associated with parts of `gpu_pool`; probe F-PRESENT (H0.3) says whether the runtime finds them
 present.
 
@@ -416,7 +424,7 @@ move the base; REFACTORS.md row). Run H0.9 (T-UNINIT) once before the first of t
 
 In Phase 1, write only the module and its self test:
 - `WRF/frame/module_gpu_work.F`: the place for named `REAL, ALLOCATABLE, TARGET` work arrays (plan.md P1.7 table),
-  allocated once for the largest domain, zero-filled, and under `WRF_GPU` mapped with `enter data map(alloc:)` + a
+  allocated once for the largest domain, zero-filled, and under `WRF_GPU` created with `!$acc enter data create` + a
   device zero fill; the list is empty now. Each routine of plan.md P1.7 later replaces its automatic array by a
   `POINTER, CONTIGUOUS` with the **same bounds** remapped onto its work array (`a(ims:ime,kms:kme,jms:jme) =>
   work_x(1:n)`), in **both** builds.

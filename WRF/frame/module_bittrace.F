@@ -413,7 +413,7 @@ CONTAINS
       IF (INDEX(stag, 'Z') > 0) k1 = MIN(kte, kde)
 #ifdef WRF_GPU
       IF (.NOT. gpu_world_host) THEN
-!$omp target update from(a)
+!$acc update self(a)
       END IF
 #endif
       CALL hash3(a, ims, ime, kms, kme, jms, jme, its, i1, kts, k1, jts, j1, ids, kds, jds, hs, hp)
@@ -435,7 +435,7 @@ CONTAINS
       IF (INDEX(stag, 'Y') > 0) j1 = MIN(jte, jde)
 #ifdef WRF_GPU
       IF (.NOT. gpu_world_host) THEN
-!$omp target update from(a)
+!$acc update self(a)
       END IF
 #endif
       CALL hash3(a, ims, ime, 1, 1, jms, jme, its, i1, 1, 1, jts, j1, ids, 1, jds, hs, hp)
@@ -452,7 +452,7 @@ CONTAINS
       IF (.NOT. want(name)) RETURN
 #ifdef WRF_GPU
       IF (.NOT. gpu_world_host) THEN
-!$omp target update from(a)
+!$acc update self(a)
       END IF
 #endif
       CALL hash3(a, ifms, ifme, 1, 1, jfms, jfme, ifts, MIN(ifte, ifde), 1, 1, jfts, MIN(jfte, jfde), &

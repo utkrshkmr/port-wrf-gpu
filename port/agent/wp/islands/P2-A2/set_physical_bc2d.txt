@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_SET_PHYSICAL_BC2D)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(dat)
+!$acc update device(dat)
         ELSE
-!$omp target update from(dat)
+!$acc update self(dat)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(dat)
+!$acc update self(dat)
         ELSE
-!$omp target update to(dat)
+!$acc update device(dat)
         END IF
       END IF
       IF (gpu_cc_active(R_SET_PHYSICAL_BC2D)) THEN

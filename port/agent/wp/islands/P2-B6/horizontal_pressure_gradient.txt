@@ -21,11 +21,11 @@
       gpu_isl = gpu_island(R_HORIZONTAL_PRESSURE_GRADIENT)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(ru_tend, rv_tend, ph, alt, p, pb, al, php, cqu, cqv, muu, muv, mu, c1h, c2h, &
-!$omp&   fnm, fnp, rdnw, msfux, msfuy, msfvx, msfvy, msftx, msfty)
+!$acc update device(ru_tend, rv_tend, ph, alt, p, pb, al, php, cqu, cqv, muu, muv, mu, c1h, c2h, &
+!$acc&   fnm, fnp, rdnw, msfux, msfuy, msfvx, msfvy, msftx, msfty)
         ELSE
-!$omp target update from(ru_tend, rv_tend, ph, alt, p, pb, al, php, cqu, cqv, muu, muv, mu, c1h, &
-!$omp&   c2h, fnm, fnp, rdnw, msfux, msfuy, msfvx, msfvy, msftx, msfty)
+!$acc update self(ru_tend, rv_tend, ph, alt, p, pb, al, php, cqu, cqv, muu, muv, mu, c1h, c2h, fnm, &
+!$acc&   fnp, rdnw, msfux, msfuy, msfvx, msfvy, msftx, msfty)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -36,9 +36,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ru_tend, rv_tend)
+!$acc update self(ru_tend, rv_tend)
         ELSE
-!$omp target update to(ru_tend, rv_tend)
+!$acc update device(ru_tend, rv_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_HORIZONTAL_PRESSURE_GRADIENT)) THEN

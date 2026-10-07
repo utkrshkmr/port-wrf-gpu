@@ -21,9 +21,9 @@
       gpu_isl = gpu_island(R_RK_UPDATE_SCALAR_PD)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(scalar, sc_tend, c1, c2, mu_old, mu_new, mu_base)
+!$acc update device(scalar, sc_tend, c1, c2, mu_old, mu_new, mu_base)
         ELSE
-!$omp target update from(scalar, sc_tend, c1, c2, mu_old, mu_new, mu_base)
+!$acc update self(scalar, sc_tend, c1, c2, mu_old, mu_new, mu_base)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -34,9 +34,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(scalar, sc_tend)
+!$acc update self(scalar, sc_tend)
         ELSE
-!$omp target update to(scalar, sc_tend)
+!$acc update device(scalar, sc_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_RK_UPDATE_SCALAR_PD)) THEN

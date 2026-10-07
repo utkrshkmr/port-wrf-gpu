@@ -32,7 +32,7 @@ PROGRAM t_rm_d
            0.9999999999999999_r8, 1.0000000000000002_r8, 710.4758600739439_r8, 1.0e-20_r8, 3.0_r8,     &
            TRANSFER(9218868437227405312_i8, 1.0_r8), TRANSFER(-4503599627370496_i8, 1.0_r8) /)
    ALLOCATE (a(chunk), b(chunk), hres(chunk), dres(chunk))
-!$omp target enter data map(alloc: a, b, dres)
+!$acc enter data create(a, b, dres)
    total_bad = 0_i8
    DO f = 1, 15
       seed = 777_i8 + f
@@ -65,12 +65,12 @@ PROGRAM t_rm_d
                END DO
             END DO
          END IF
-!$omp target update to(a, b)
-!$omp target teams distribute parallel do firstprivate(f)
+!$acc update device(a, b)
+!$acc parallel loop gang vector firstprivate(f)
          DO k = 1_i8, chunk
             dres(k) = eval8(f, a(k), b(k))
          END DO
-!$omp target update from(dres)
+!$acc update self(dres)
 !$omp parallel do
          DO k = 1_i8, chunk
             hres(k) = eval8(f, a(k), b(k))
@@ -82,6 +82,6 @@ PROGRAM t_rm_d
       CALL report('T-RM-D '//TRIM(fname(f)), nbad, nchunks*chunk)
       total_bad = total_bad + nbad
    END DO
-!$omp target exit data map(delete: a, b, dres)
+!$acc exit data delete(a, b, dres)
    IF (total_bad /= 0_i8) STOP 1
 END PROGRAM t_rm_d

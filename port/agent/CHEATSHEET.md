@@ -62,12 +62,12 @@ python3 port/tools/workbook.py set <kernel> done --commit <sha> --tests "..."   
 | A pointwise | independent (i,k,j) loops: directive in front of the unchanged nest | `example_calc_alt.F` |
 | B rolling buffer | flux of face j reused at j+1: Y1 fills a 3D flux array, Y2 takes differences | `t_tmpl_b.F90` |
 | C column | k recurrence: `collapse(2)` over (j,i), k sequential, per-`j` slabs become private column arrays, range guards | `t_tmpl_c.F90` |
-| D calls | kernel calls a procedure: `teams distribute parallel do`, callee `declare target` | CODING_STANDARD §5.4 |
+| D calls | kernel calls a procedure: callee `!$acc routine seq` (no island) | CODING_STANDARD §5.4 |
 | G strips | boundary strips: one kernel per strip, x strips before y strips | `t_tmpl_g.F90` |
 | CP column physics | wrapper gathers a column, calls the core with its=ite=1; `gpu_col.h` sizes | `t_tmpl_cp.F90` |
 
-Default directive: `!$omp target teams distribute parallel do collapse(N) if(target: gpu_on(R_X)) default(none) &`
-`!$omp& shared(<arrays>) firstprivate(<scalars read>) private(<scalars written>)`. Never an apostrophe in a
+Default directive (OpenACC, ADR-001 rev 2): `!$acc parallel loop gang vector collapse(N) if(gpu_on(R_X)) default(none) &`
+`!$acc& present(<arrays>) firstprivate(<scalars read>) private(<scalars written>)`; every inner DO loop `!$acc loop seq`. Never an apostrophe in a
 directive line.
 
 ## Top pitfalls (PITFALLS.md has all 46)

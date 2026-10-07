@@ -41,7 +41,7 @@ Paste each block where its comments say (CODING_STANDARD.md §3). Regenerate wit
 
 ## Tasks
 
-- the P1.4 tables of module_sf_noahlsm (49 variables, PHASE1.md P1.4): !$omp declare target, noahlsm_gpu_upload and noahlsm_gpu_tabcheck (I-4)
+- the P1.4 tables of module_sf_noahlsm (49 variables, PHASE1.md P1.4): !$acc declare create, noahlsm_gpu_upload and noahlsm_gpu_tabcheck (I-4)
 - shared refactors (separate commits, PHASE3.md): iloc/jloc as arguments; LUTYPE/SLTYPE as integer codes
 
 ## Done (code-only; CODE_ONLY.md §5)

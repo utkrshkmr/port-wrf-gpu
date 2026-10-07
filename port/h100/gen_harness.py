@@ -16,7 +16,7 @@ writes every output (non-INTENT(IN) array and scalar) to harness_out.bin:
     positive 0.5..4 by default, symmetric -4..4 for names that look like winds,
     fluxes or tendencies; --range name=lo:hi changes it; INTEGER arrays 0..3;
     INTENT(OUT) arrays start from a sentinel (-9999.5, -99, .FALSE.).
-  - GPU builds: every array is mapped (target enter data map(alloc)) before the
+  - GPU builds: every array is created on the device (!$acc enter data create) before the
     call; the routine's island moves the data, as in wrf.exe.
 
   gen_harness.py <WRF file> <routine> --mode gpu|cpu [--grid NX,NY,NZ] [--domain D]
@@ -321,16 +321,16 @@ def main():
     out.extend(fills)
     for n in notes:
         w(f"   PRINT '(a)', 'harness default: {n}'")
-    def omp_list(head, names):
+    def acc_list(head, names):
         chunks = [", ".join(names[i:i + 6]) for i in range(0, len(names), 6)]
-        return f"!$omp {head}(" + ", &\n!$omp& ".join(chunks) + ")"
+        return f"!$acc {head}(" + ", &\n!$acc& ".join(chunks) + ")"
 
     if a.mode == "gpu" and maps:
-        w(omp_list("target enter data map(alloc:", maps).replace("(alloc:(", "(alloc: "))
+        w(acc_list("enter data create", maps))
     args = [pre(d) for d in dummies]
     w(f"   CALL {r}( &\n        " + ", &\n        ".join(args) + " )")
     if a.mode == "gpu" and maps:
-        w(omp_list("target exit data map(delete:", maps).replace("(delete:(", "(delete: "))
+        w(acc_list("exit data delete", maps))
     w("   OPEN (NEWUNIT=hu, FILE='harness_out.bin', ACCESS='STREAM', FORM='UNFORMATTED', STATUS='REPLACE')")
     for d, k, rank, isarr in outs:
         if isarr:

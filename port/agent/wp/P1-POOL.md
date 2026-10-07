@@ -14,7 +14,7 @@ Inside an owned routine you may change any line; you may also insert new routine
 ## Tasks
 
 - map gpu_pool in gpu_scratch_reserve under #ifdef WRF_GPU (exit data before DEALLOCATE; enter data map(alloc:) + a device zero-fill kernel after the host zero fill)
-- gpu_selftest_pool(): omp_target_is_present of gpu_pool and of 10 evenly spaced elements; print `gpu_selftest: T-POOL PASS ...` / `FAIL ...` (I-5)
+- gpu_selftest_pool(): acc_is_present of gpu_pool and of 10 evenly spaced elements; print `gpu_selftest: T-POOL PASS ...` / `FAIL ...` (I-5)
 
 ## Done (code-only; CODE_ONLY.md §5)
 

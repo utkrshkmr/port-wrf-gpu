@@ -12,7 +12,7 @@ PROGRAM t_callcheck
    CALL RANDOM_NUMBER(alb)
    alt = -1.
    ! the state is mapped once, as allocs.inc does in wrf.exe (P1.2)
-!$omp target enter data map(to: alt, al, alb)
+!$acc enter data copyin(alt, al, alb)
    ncall = 0
    DO c = 1, 3
       CALL calc_alt(alt, al, alb, ncall, ims, ime, kms, kme, jms, jme, 1, 18, 1, 10, 1, 12)

@@ -14,9 +14,9 @@ directive (e.g. K-ADVU-Y1; CODING_STANDARD.md asks for one), or
 The edit, for each kernel:
   - before the directive: if the data are on the device (.NOT. gpu_world_host,
     i.e. the routine's island moved them there), copy every array of the
-    kernel's shared(...) clause to the host;
-  - the kernel's if(target: ...) becomes if(target: .FALSE.): it runs on the
-    host, over host data, with the same code;
+    kernel's present(...) clause to the host;
+  - the kernel's if(gpu_on(...)) becomes if(.FALSE.): it runs on the host,
+    over host data, with the same code (OpenACC host fallback);
   - after the loop nest: copy the same arrays back to the device.
 So the rest of the routine keeps running on the device and the results are
 those of the host execution of this one kernel.  Then rebuild (gpu-repro or
@@ -31,20 +31,20 @@ import os
 import re
 import sys
 
-KERNEL = re.compile(r"^\s*!\$omp\s+target\s+(teams|parallel|loop|simd)\b", re.I)
-CONT = re.compile(r"^\s*!\$omp&", re.I)
+KERNEL = re.compile(r"^\s*!\$acc\s+(parallel|kernels|serial)\b", re.I)
+CONT = re.compile(r"^\s*!\$acc&", re.I)
 SUB = re.compile(r"^\s*(?:(?:recursive|pure|elemental)\s+)*subroutine\s+(\w+)", re.I)
 ENDSUB = re.compile(r"^\s*end\s*subroutine\b", re.I)
 DO = re.compile(r"^\s*(?:\w+\s*:\s*)?do\b(?!\s*=)", re.I)
 ENDDO = re.compile(r"^\s*end\s*do\b", re.I)
 KID = re.compile(r"\bK-[A-Z0-9]+(?:-[A-Z0-9]+)*\b")
-IFT = re.compile(r"if\s*\(\s*target\s*:", re.I)
+IFT = re.compile(r"\bif\s*\(", re.I)
 MARK = "KOFF-TEMP"
 
 
 def is_comment(l):
     s = l.lstrip()
-    return s.startswith("!") and not s.lower().startswith("!$omp")
+    return s.startswith("!") and not s.lower().startswith("!$acc")
 
 
 def kernels(lines):
@@ -81,9 +81,9 @@ def kernels(lines):
 def loop_end(lines, d1, text):
     """last line of the construct that starts after directive line d1"""
     j = d1 + 1
-    if not re.search(r"\b(parallel\s+do|distribute|loop|simd|\bdo\b)", text, re.I):
-        # block construct: up to !$omp end target
-        while j < len(lines) and not re.match(r"^\s*!\$omp\s+end\s+target\b", lines[j], re.I):
+    if not re.search(r"\bloop\b", text, re.I):
+        # block construct (!$acc parallel / kernels / serial without loop): up to its end directive
+        while j < len(lines) and not re.match(r"^\s*!\$acc\s+end\s+(parallel|kernels|serial)\b", lines[j], re.I):
             j += 1
         return j
     depth = 0
@@ -98,7 +98,7 @@ def loop_end(lines, d1, text):
                     k = j + 1
                     while k < len(lines) and not lines[k].strip():
                         k += 1
-                    if k < len(lines) and re.match(r"^\s*!\$omp\s+end\s+target", lines[k], re.I):
+                    if k < len(lines) and re.match(r"^\s*!\$acc\s+end\s+(parallel|kernels|serial)", lines[k], re.I):
                         return k
                     return j
         j += 1
@@ -106,8 +106,9 @@ def loop_end(lines, d1, text):
 
 
 def shared_arrays(text):
+    """the arrays of the kernel's present(...) clauses"""
     names = []
-    for m in re.finditer(r"\bshared\s*\(([^)]*)\)", text, re.I):
+    for m in re.finditer(r"\bpresent\s*\(([^)]*)\)", text, re.I):
         names += [x.strip() for x in m.group(1).split(",") if x.strip()]
     return names
 
@@ -116,7 +117,7 @@ def block(direction, arrays, indent):
     return [f"! {MARK}-BEGIN kernel_off.py: copy for the host run of the next/previous kernel",
             "#ifdef WRF_GPU",
             f"{indent}IF (.NOT. gpu_world_host) THEN",
-            f"!$omp target update {direction}({', '.join(arrays)})",
+            f"!$acc update {'self' if direction == 'from' else 'device'}({', '.join(arrays)})",
             f"{indent}END IF",
             "#endif",
             f"! {MARK}-END"]
@@ -144,12 +145,12 @@ def switch_off(path, wanted):
         text = " ".join(x.strip() for x in lines[d0:d1 + 1])
         arrays = shared_arrays(text)
         if not arrays:
-            print(f"warning: {routine}:{n} has no shared(...) clause: nothing to copy")
+            print(f"warning: {routine}:{n} has no present(...) clause: nothing to copy")
         k = next((x for x in range(d0, d1 + 1) if IFT.search(lines[x])), None)
         if k is None:
-            raise SystemExit(f"kernel_off: {routine}:{n} (line {d0 + 1}) has no if(target: ...) clause")
+            raise SystemExit(f"kernel_off: {routine}:{n} (line {d0 + 1}) has no if(...) clause")
         orig = lines[k]
-        new = re.sub(r"(if\s*\(\s*target\s*:)\s*(?:[^()]|\([^()]*\))*\)", r"\1 .FALSE.)", orig, count=1,
+        new = re.sub(r"(\bif\s*\()\s*(?:[^()]|\([^()]*\))*\)", r"\1.FALSE.)", orig, count=1,
                      flags=re.I)
         after = block("to", arrays, "      ") if arrays else []
         lines[end + 1:end + 1] = after

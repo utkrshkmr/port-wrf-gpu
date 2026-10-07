@@ -1,0 +1,2 @@
+# arith_guard exceptions of P4-MODEL (one per line: <file>|<normalized statement>|<reason>);
+# the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).

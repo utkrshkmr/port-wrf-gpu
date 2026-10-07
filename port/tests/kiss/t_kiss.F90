@@ -25,7 +25,7 @@ CONTAINS
 ! ---- verbatim copy of WRF v4.6.0 kissvec (module_ra_rrtmg_lw.F:2699-2731) ----
 ! BEGIN VERBATIM WRF/phys/module_ra_rrtmg_lw.F
       subroutine kissvec(seed1,seed2,seed3,seed4,ran_arr)
-!$omp declare target
+!$acc routine seq
       real(kind=rb), dimension(:), intent(inout)  :: ran_arr
       integer(kind=im), dimension(:), intent(inout) :: seed1,seed2,seed3,seed4
       integer(kind=im) :: i,sz,kiss
@@ -50,7 +50,7 @@ END MODULE kiss_mod
 
 PROGRAM t_kiss
    USE kiss_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: nwarm = 150, ndraw = 64
    INTEGER :: ncol, i, n, nargs, nbad
@@ -68,12 +68,12 @@ PROGRAM t_kiss
       READ (arg, *) ncol
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-KISS: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-KISS: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
@@ -99,7 +99,7 @@ PROGRAM t_kiss
       s4(i) = (pmid(i,4) - int(pmid(i,4)))  * 1000000000_im
    END DO
    ! device: seeds computed in the kernel from the same pmid
-!$omp target teams distribute parallel do map(to: pmid) map(from: d1, d2, d3, d4)
+!$acc parallel loop gang vector copyin(pmid) copyout(d1, d2, d3, d4)
    DO i = 1, ncol
       d1(i) = (pmid(i,1) - int(pmid(i,1)))  * 1000000000_im
       d2(i) = (pmid(i,2) - int(pmid(i,2)))  * 1000000000_im
@@ -119,12 +119,14 @@ PROGRAM t_kiss
    END DO
 
    ! device: one thread per column, 1-element sections
-!$omp target teams distribute parallel do map(tofrom: d1, d2, d3, d4) map(from: rd) private(n, t1, t2, t3, t4, rr)
+!$acc parallel loop gang vector copy(d1, d2, d3, d4) copyout(rd) private(n, t1, t2, t3, t4, rr)
    DO i = 1, ncol
       t1(1) = d1(i); t2(1) = d2(i); t3(1) = d3(i); t4(1) = d4(i)
+      !$acc loop seq
       DO n = 1, nwarm
          CALL kissvec(t1, t2, t3, t4, rr)
       END DO
+      !$acc loop seq
       DO n = 1, ndraw
          CALL kissvec(t1, t2, t3, t4, rr)
          rd(i,n) = rr(1)

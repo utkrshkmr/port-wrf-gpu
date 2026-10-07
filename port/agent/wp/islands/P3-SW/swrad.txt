@@ -21,64 +21,63 @@
       gpu_isl = gpu_island(R_SWRAD)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rthraten, gsw, xlat, xlong, albedo, rho_phy, t3d, p3d, pi3d, dz8w, coszen, &
-!$omp&   obscur)
+!$acc update device(rthraten, gsw, xlat, xlong, albedo, rho_phy, t3d, p3d, pi3d, dz8w, coszen, &
+!$acc&   obscur)
           IF (PRESENT(qv3d)) THEN
-!$omp target update to(qv3d)
+!$acc update device(qv3d)
           END IF
           IF (PRESENT(qc3d)) THEN
-!$omp target update to(qc3d)
+!$acc update device(qc3d)
           END IF
           IF (PRESENT(qr3d)) THEN
-!$omp target update to(qr3d)
+!$acc update device(qr3d)
           END IF
           IF (PRESENT(qi3d)) THEN
-!$omp target update to(qi3d)
+!$acc update device(qi3d)
           END IF
           IF (PRESENT(qs3d)) THEN
-!$omp target update to(qs3d)
+!$acc update device(qs3d)
           END IF
           IF (PRESENT(qg3d)) THEN
-!$omp target update to(qg3d)
+!$acc update device(qg3d)
           END IF
           IF (PRESENT(pm2_5_dry)) THEN
-!$omp target update to(pm2_5_dry)
+!$acc update device(pm2_5_dry)
           END IF
           IF (PRESENT(pm2_5_water)) THEN
-!$omp target update to(pm2_5_water)
+!$acc update device(pm2_5_water)
           END IF
           IF (PRESENT(pm2_5_dry_ec)) THEN
-!$omp target update to(pm2_5_dry_ec)
+!$acc update device(pm2_5_dry_ec)
           END IF
         ELSE
-!$omp target update from(rthraten, gsw, xlat, xlong, albedo, rho_phy, t3d, p3d, pi3d, dz8w, coszen, &
-!$omp&   obscur)
+!$acc update self(rthraten, gsw, xlat, xlong, albedo, rho_phy, t3d, p3d, pi3d, dz8w, coszen, obscur)
           IF (PRESENT(qv3d)) THEN
-!$omp target update from(qv3d)
+!$acc update self(qv3d)
           END IF
           IF (PRESENT(qc3d)) THEN
-!$omp target update from(qc3d)
+!$acc update self(qc3d)
           END IF
           IF (PRESENT(qr3d)) THEN
-!$omp target update from(qr3d)
+!$acc update self(qr3d)
           END IF
           IF (PRESENT(qi3d)) THEN
-!$omp target update from(qi3d)
+!$acc update self(qi3d)
           END IF
           IF (PRESENT(qs3d)) THEN
-!$omp target update from(qs3d)
+!$acc update self(qs3d)
           END IF
           IF (PRESENT(qg3d)) THEN
-!$omp target update from(qg3d)
+!$acc update self(qg3d)
           END IF
           IF (PRESENT(pm2_5_dry)) THEN
-!$omp target update from(pm2_5_dry)
+!$acc update self(pm2_5_dry)
           END IF
           IF (PRESENT(pm2_5_water)) THEN
-!$omp target update from(pm2_5_water)
+!$acc update self(pm2_5_water)
           END IF
           IF (PRESENT(pm2_5_dry_ec)) THEN
-!$omp target update from(pm2_5_dry_ec)
+!$acc update self(pm2_5_dry_ec)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -90,9 +89,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rthraten, gsw)
+!$acc update self(rthraten, gsw)
         ELSE
-!$omp target update to(rthraten, gsw)
+!$acc update device(rthraten, gsw)
         END IF
       END IF
       IF (gpu_cc_active(R_SWRAD)) THEN

@@ -13,8 +13,9 @@ Inside an owned routine you may change any line; you may also insert new routine
 
 ## Tasks
 
+- T-FIRE-GHOST (PHASE4.md): gpu_selftest_fire_ghost(grid): the device copies of lfn and tign_g are 0.0 in the ghost rows and columns of the fire mesh after init; print `gpu_selftest: T-FIRE-GHOST PASS d0N` or `... FAIL d0N <count>`; called by gpu_selftests for every domain with ifire > 0
 - gpu_selftests(grid): only when WRF_GPU_SELFTEST=1 (read once): CALL gpu_selftest_map(grid), gpu_selftest_tab(), gpu_selftest_work() (I-5)
-- gpu_selftest_map(grid): omp_target_is_present of every in-use field of grid; print `gpu_selftest: T-MAP PASS d0N <n> fields present` or `... FAIL d0N <k> of <n> fields not present: <first names>` (PHASE1.md P1.2)
+- gpu_selftest_map(grid): acc_is_present of every in-use field of grid; print `gpu_selftest: T-MAP PASS d0N <n> fields present` or `... FAIL d0N <k> of <n> fields not present: <first names>` (PHASE1.md P1.2)
 
 ## Notes
 

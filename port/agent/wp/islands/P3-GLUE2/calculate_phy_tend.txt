@@ -52,17 +52,17 @@
       gpu_isl = gpu_island(R_CALCULATE_PHY_TEND)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(c1, c2, mut, muu, muv, pi3d, rthraten, rublten, rvblten, rthblten, rqvblten, &
-!$omp&   rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, &
-!$omp&   rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, &
-!$omp&   rqgshten, rundgdten, rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, &
-!$omp&   tracer, tracer_tend)
+!$acc update device(c1, c2, mut, muu, muv, pi3d, rthraten, rublten, rvblten, rthblten, rqvblten, &
+!$acc&   rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, &
+!$acc&   rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, &
+!$acc&   rqgshten, rundgdten, rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, &
+!$acc&   tracer, tracer_tend)
         ELSE
-!$omp target update from(c1, c2, mut, muu, muv, pi3d, rthraten, rublten, rvblten, rthblten, &
-!$omp&   rqvblten, rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, &
-!$omp&   rqicuten, rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, &
-!$omp&   rqsshten, rqgshten, rundgdten, rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, &
-!$omp&   scalar_tend, tracer, tracer_tend)
+!$acc update self(c1, c2, mut, muu, muv, pi3d, rthraten, rublten, rvblten, rthblten, rqvblten, &
+!$acc&   rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, &
+!$acc&   rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, &
+!$acc&   rqgshten, rundgdten, rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, &
+!$acc&   tracer, tracer_tend)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -73,15 +73,15 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rthraten, rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, &
-!$omp&   rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, &
-!$omp&   rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rundgdten, &
-!$omp&   rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, tracer, tracer_tend)
+!$acc update self(rthraten, rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, rucuten, &
+!$acc&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
+!$acc&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rundgdten, &
+!$acc&   rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, tracer, tracer_tend)
         ELSE
-!$omp target update to(rthraten, rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, rucuten, &
-!$omp&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
-!$omp&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rundgdten, &
-!$omp&   rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, tracer, tracer_tend)
+!$acc update device(rthraten, rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, rucuten, &
+!$acc&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
+!$acc&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rundgdten, &
+!$acc&   rvndgdten, rthndgdten, rqvndgdten, rmundgdten, scalar, scalar_tend, tracer, tracer_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_CALCULATE_PHY_TEND)) THEN

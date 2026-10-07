@@ -22,11 +22,11 @@
       gpu_isl = gpu_island(R_COUPLE_MOMENTUM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(muu, ru, u, msfu, muv, rv, v, msfv, msfv_inv, mut, rw, w, msft, c1h, c2h, &
-!$omp&   c1f, c2f)
+!$acc update device(muu, ru, u, msfu, muv, rv, v, msfv, msfv_inv, mut, rw, w, msft, c1h, c2h, c1f, &
+!$acc&   c2f)
         ELSE
-!$omp target update from(muu, ru, u, msfu, muv, rv, v, msfv, msfv_inv, mut, rw, w, msft, c1h, c2h, &
-!$omp&   c1f, c2f)
+!$acc update self(muu, ru, u, msfu, muv, rv, v, msfv, msfv_inv, mut, rw, w, msft, c1h, c2h, c1f, &
+!$acc&   c2f)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -37,9 +37,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ru, rv, rw)
+!$acc update self(ru, rv, rw)
         ELSE
-!$omp target update to(ru, rv, rw)
+!$acc update device(ru, rv, rw)
         END IF
       END IF
       IF (gpu_cc_active(R_COUPLE_MOMENTUM)) THEN

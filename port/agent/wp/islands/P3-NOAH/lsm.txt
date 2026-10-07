@@ -162,756 +162,756 @@
       gpu_isl = gpu_island(R_LSM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(dz8w, qv3d, p8w3d, t3d, tsk, hfx, qfx, lh, grdflx, qgh, gsw, swdown, swddir, &
-!$omp&   swddif, glw, smstav, smstot, sfcrunoff, udrunoff, ivgtyp, isltyp, vegfra, albedo, albbck, &
-!$omp&   znt, z0, tmn, xland, xice, emiss, embck, snowc, qsfc, rainbl, dzs, smois, tslb, snow, &
-!$omp&   canwat, chs, chs2, cqs2, cpm, sr, chklowq, lai, qz0, sh2o, snowh, snoalb, shdmin, shdmax, &
-!$omp&   snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, fvb_2d, fbur_2d, &
-!$omp&   fgsn_2d, ust_urb2d, frc_urb2d, utype_urb2d, sfcheadrt, infxsrt, soldrain)
+!$acc update device(dz8w, qv3d, p8w3d, t3d, tsk, hfx, qfx, lh, grdflx, qgh, gsw, swdown, swddir, &
+!$acc&   swddif, glw, smstav, smstot, sfcrunoff, udrunoff, ivgtyp, isltyp, vegfra, albedo, albbck, &
+!$acc&   znt, z0, tmn, xland, xice, emiss, embck, snowc, qsfc, rainbl, dzs, smois, tslb, snow, &
+!$acc&   canwat, chs, chs2, cqs2, cpm, sr, chklowq, lai, qz0, sh2o, snowh, snoalb, shdmin, shdmax, &
+!$acc&   snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, fvb_2d, fbur_2d, &
+!$acc&   fgsn_2d, ust_urb2d, frc_urb2d, utype_urb2d, sfcheadrt, infxsrt, soldrain)
           IF (PRESENT(u_phy)) THEN
-!$omp target update to(u_phy)
+!$acc update device(u_phy)
           END IF
           IF (PRESENT(v_phy)) THEN
-!$omp target update to(v_phy)
+!$acc update device(v_phy)
           END IF
           IF (PRESENT(cmr_sfcdif)) THEN
-!$omp target update to(cmr_sfcdif)
+!$acc update device(cmr_sfcdif)
           END IF
           IF (PRESENT(chr_sfcdif)) THEN
-!$omp target update to(chr_sfcdif)
+!$acc update device(chr_sfcdif)
           END IF
           IF (PRESENT(cmc_sfcdif)) THEN
-!$omp target update to(cmc_sfcdif)
+!$acc update device(cmc_sfcdif)
           END IF
           IF (PRESENT(chc_sfcdif)) THEN
-!$omp target update to(chc_sfcdif)
+!$acc update device(chc_sfcdif)
           END IF
           IF (PRESENT(cmgr_sfcdif)) THEN
-!$omp target update to(cmgr_sfcdif)
+!$acc update device(cmgr_sfcdif)
           END IF
           IF (PRESENT(chgr_sfcdif)) THEN
-!$omp target update to(chgr_sfcdif)
+!$acc update device(chgr_sfcdif)
           END IF
           IF (PRESENT(tr_urb2d)) THEN
-!$omp target update to(tr_urb2d)
+!$acc update device(tr_urb2d)
           END IF
           IF (PRESENT(tb_urb2d)) THEN
-!$omp target update to(tb_urb2d)
+!$acc update device(tb_urb2d)
           END IF
           IF (PRESENT(tg_urb2d)) THEN
-!$omp target update to(tg_urb2d)
+!$acc update device(tg_urb2d)
           END IF
           IF (PRESENT(tc_urb2d)) THEN
-!$omp target update to(tc_urb2d)
+!$acc update device(tc_urb2d)
           END IF
           IF (PRESENT(qc_urb2d)) THEN
-!$omp target update to(qc_urb2d)
+!$acc update device(qc_urb2d)
           END IF
           IF (PRESENT(uc_urb2d)) THEN
-!$omp target update to(uc_urb2d)
+!$acc update device(uc_urb2d)
           END IF
           IF (PRESENT(xxxr_urb2d)) THEN
-!$omp target update to(xxxr_urb2d)
+!$acc update device(xxxr_urb2d)
           END IF
           IF (PRESENT(xxxb_urb2d)) THEN
-!$omp target update to(xxxb_urb2d)
+!$acc update device(xxxb_urb2d)
           END IF
           IF (PRESENT(xxxg_urb2d)) THEN
-!$omp target update to(xxxg_urb2d)
+!$acc update device(xxxg_urb2d)
           END IF
           IF (PRESENT(xxxc_urb2d)) THEN
-!$omp target update to(xxxc_urb2d)
+!$acc update device(xxxc_urb2d)
           END IF
           IF (PRESENT(trl_urb3d)) THEN
-!$omp target update to(trl_urb3d)
+!$acc update device(trl_urb3d)
           END IF
           IF (PRESENT(tbl_urb3d)) THEN
-!$omp target update to(tbl_urb3d)
+!$acc update device(tbl_urb3d)
           END IF
           IF (PRESENT(tgl_urb3d)) THEN
-!$omp target update to(tgl_urb3d)
+!$acc update device(tgl_urb3d)
           END IF
           IF (PRESENT(sh_urb2d)) THEN
-!$omp target update to(sh_urb2d)
+!$acc update device(sh_urb2d)
           END IF
           IF (PRESENT(lh_urb2d)) THEN
-!$omp target update to(lh_urb2d)
+!$acc update device(lh_urb2d)
           END IF
           IF (PRESENT(g_urb2d)) THEN
-!$omp target update to(g_urb2d)
+!$acc update device(g_urb2d)
           END IF
           IF (PRESENT(rn_urb2d)) THEN
-!$omp target update to(rn_urb2d)
+!$acc update device(rn_urb2d)
           END IF
           IF (PRESENT(ts_urb2d)) THEN
-!$omp target update to(ts_urb2d)
+!$acc update device(ts_urb2d)
           END IF
           IF (PRESENT(psim_urb2d)) THEN
-!$omp target update to(psim_urb2d)
+!$acc update device(psim_urb2d)
           END IF
           IF (PRESENT(psih_urb2d)) THEN
-!$omp target update to(psih_urb2d)
+!$acc update device(psih_urb2d)
           END IF
           IF (PRESENT(u10_urb2d)) THEN
-!$omp target update to(u10_urb2d)
+!$acc update device(u10_urb2d)
           END IF
           IF (PRESENT(v10_urb2d)) THEN
-!$omp target update to(v10_urb2d)
+!$acc update device(v10_urb2d)
           END IF
           IF (PRESENT(gz1oz0_urb2d)) THEN
-!$omp target update to(gz1oz0_urb2d)
+!$acc update device(gz1oz0_urb2d)
           END IF
           IF (PRESENT(akms_urb2d)) THEN
-!$omp target update to(akms_urb2d)
+!$acc update device(akms_urb2d)
           END IF
           IF (PRESENT(th2_urb2d)) THEN
-!$omp target update to(th2_urb2d)
+!$acc update device(th2_urb2d)
           END IF
           IF (PRESENT(q2_urb2d)) THEN
-!$omp target update to(q2_urb2d)
+!$acc update device(q2_urb2d)
           END IF
           IF (PRESENT(cosz_urb2d)) THEN
-!$omp target update to(cosz_urb2d)
+!$acc update device(cosz_urb2d)
           END IF
           IF (PRESENT(omg_urb2d)) THEN
-!$omp target update to(omg_urb2d)
+!$acc update device(omg_urb2d)
           END IF
           IF (PRESENT(xlat_urb2d)) THEN
-!$omp target update to(xlat_urb2d)
+!$acc update device(xlat_urb2d)
           END IF
           IF (PRESENT(dzr)) THEN
-!$omp target update to(dzr)
+!$acc update device(dzr)
           END IF
           IF (PRESENT(dzb)) THEN
-!$omp target update to(dzb)
+!$acc update device(dzb)
           END IF
           IF (PRESENT(dzg)) THEN
-!$omp target update to(dzg)
+!$acc update device(dzg)
           END IF
           IF (PRESENT(cmcr_urb2d)) THEN
-!$omp target update to(cmcr_urb2d)
+!$acc update device(cmcr_urb2d)
           END IF
           IF (PRESENT(tgr_urb2d)) THEN
-!$omp target update to(tgr_urb2d)
+!$acc update device(tgr_urb2d)
           END IF
           IF (PRESENT(tgrl_urb3d)) THEN
-!$omp target update to(tgrl_urb3d)
+!$acc update device(tgrl_urb3d)
           END IF
           IF (PRESENT(smr_urb3d)) THEN
-!$omp target update to(smr_urb3d)
+!$acc update device(smr_urb3d)
           END IF
           IF (PRESENT(drelr_urb2d)) THEN
-!$omp target update to(drelr_urb2d)
+!$acc update device(drelr_urb2d)
           END IF
           IF (PRESENT(drelb_urb2d)) THEN
-!$omp target update to(drelb_urb2d)
+!$acc update device(drelb_urb2d)
           END IF
           IF (PRESENT(drelg_urb2d)) THEN
-!$omp target update to(drelg_urb2d)
+!$acc update device(drelg_urb2d)
           END IF
           IF (PRESENT(flxhumr_urb2d)) THEN
-!$omp target update to(flxhumr_urb2d)
+!$acc update device(flxhumr_urb2d)
           END IF
           IF (PRESENT(flxhumb_urb2d)) THEN
-!$omp target update to(flxhumb_urb2d)
+!$acc update device(flxhumb_urb2d)
           END IF
           IF (PRESENT(flxhumg_urb2d)) THEN
-!$omp target update to(flxhumg_urb2d)
+!$acc update device(flxhumg_urb2d)
           END IF
           IF (PRESENT(tsk_rural_bep)) THEN
-!$omp target update to(tsk_rural_bep)
+!$acc update device(tsk_rural_bep)
           END IF
           IF (PRESENT(trb_urb4d)) THEN
-!$omp target update to(trb_urb4d)
+!$acc update device(trb_urb4d)
           END IF
           IF (PRESENT(tw1_urb4d)) THEN
-!$omp target update to(tw1_urb4d)
+!$acc update device(tw1_urb4d)
           END IF
           IF (PRESENT(tw2_urb4d)) THEN
-!$omp target update to(tw2_urb4d)
+!$acc update device(tw2_urb4d)
           END IF
           IF (PRESENT(tgb_urb4d)) THEN
-!$omp target update to(tgb_urb4d)
+!$acc update device(tgb_urb4d)
           END IF
           IF (PRESENT(tlev_urb3d)) THEN
-!$omp target update to(tlev_urb3d)
+!$acc update device(tlev_urb3d)
           END IF
           IF (PRESENT(qlev_urb3d)) THEN
-!$omp target update to(qlev_urb3d)
+!$acc update device(qlev_urb3d)
           END IF
           IF (PRESENT(tw1lev_urb3d)) THEN
-!$omp target update to(tw1lev_urb3d)
+!$acc update device(tw1lev_urb3d)
           END IF
           IF (PRESENT(tw2lev_urb3d)) THEN
-!$omp target update to(tw2lev_urb3d)
+!$acc update device(tw2lev_urb3d)
           END IF
           IF (PRESENT(tglev_urb3d)) THEN
-!$omp target update to(tglev_urb3d)
+!$acc update device(tglev_urb3d)
           END IF
           IF (PRESENT(tflev_urb3d)) THEN
-!$omp target update to(tflev_urb3d)
+!$acc update device(tflev_urb3d)
           END IF
           IF (PRESENT(sf_ac_urb3d)) THEN
-!$omp target update to(sf_ac_urb3d)
+!$acc update device(sf_ac_urb3d)
           END IF
           IF (PRESENT(lf_ac_urb3d)) THEN
-!$omp target update to(lf_ac_urb3d)
+!$acc update device(lf_ac_urb3d)
           END IF
           IF (PRESENT(cm_ac_urb3d)) THEN
-!$omp target update to(cm_ac_urb3d)
+!$acc update device(cm_ac_urb3d)
           END IF
           IF (PRESENT(sfvent_urb3d)) THEN
-!$omp target update to(sfvent_urb3d)
+!$acc update device(sfvent_urb3d)
           END IF
           IF (PRESENT(lfvent_urb3d)) THEN
-!$omp target update to(lfvent_urb3d)
+!$acc update device(lfvent_urb3d)
           END IF
           IF (PRESENT(sfwin1_urb3d)) THEN
-!$omp target update to(sfwin1_urb3d)
+!$acc update device(sfwin1_urb3d)
           END IF
           IF (PRESENT(sfwin2_urb3d)) THEN
-!$omp target update to(sfwin2_urb3d)
+!$acc update device(sfwin2_urb3d)
           END IF
           IF (PRESENT(sfw1_urb3d)) THEN
-!$omp target update to(sfw1_urb3d)
+!$acc update device(sfw1_urb3d)
           END IF
           IF (PRESENT(sfw2_urb3d)) THEN
-!$omp target update to(sfw2_urb3d)
+!$acc update device(sfw2_urb3d)
           END IF
           IF (PRESENT(sfr_urb3d)) THEN
-!$omp target update to(sfr_urb3d)
+!$acc update device(sfr_urb3d)
           END IF
           IF (PRESENT(sfg_urb3d)) THEN
-!$omp target update to(sfg_urb3d)
+!$acc update device(sfg_urb3d)
           END IF
           IF (PRESENT(ep_pv_urb3d)) THEN
-!$omp target update to(ep_pv_urb3d)
+!$acc update device(ep_pv_urb3d)
           END IF
           IF (PRESENT(t_pv_urb3d)) THEN
-!$omp target update to(t_pv_urb3d)
+!$acc update device(t_pv_urb3d)
           END IF
           IF (PRESENT(trv_urb4d)) THEN
-!$omp target update to(trv_urb4d)
+!$acc update device(trv_urb4d)
           END IF
           IF (PRESENT(qr_urb4d)) THEN
-!$omp target update to(qr_urb4d)
+!$acc update device(qr_urb4d)
           END IF
           IF (PRESENT(qgr_urb3d)) THEN
-!$omp target update to(qgr_urb3d)
+!$acc update device(qgr_urb3d)
           END IF
           IF (PRESENT(tgr_urb3d)) THEN
-!$omp target update to(tgr_urb3d)
+!$acc update device(tgr_urb3d)
           END IF
           IF (PRESENT(drain_urb4d)) THEN
-!$omp target update to(drain_urb4d)
+!$acc update device(drain_urb4d)
           END IF
           IF (PRESENT(draingr_urb3d)) THEN
-!$omp target update to(draingr_urb3d)
+!$acc update device(draingr_urb3d)
           END IF
           IF (PRESENT(sfrv_urb3d)) THEN
-!$omp target update to(sfrv_urb3d)
+!$acc update device(sfrv_urb3d)
           END IF
           IF (PRESENT(lfrv_urb3d)) THEN
-!$omp target update to(lfrv_urb3d)
+!$acc update device(lfrv_urb3d)
           END IF
           IF (PRESENT(dgr_urb3d)) THEN
-!$omp target update to(dgr_urb3d)
+!$acc update device(dgr_urb3d)
           END IF
           IF (PRESENT(dg_urb3d)) THEN
-!$omp target update to(dg_urb3d)
+!$acc update device(dg_urb3d)
           END IF
           IF (PRESENT(lfr_urb3d)) THEN
-!$omp target update to(lfr_urb3d)
+!$acc update device(lfr_urb3d)
           END IF
           IF (PRESENT(lfg_urb3d)) THEN
-!$omp target update to(lfg_urb3d)
+!$acc update device(lfg_urb3d)
           END IF
           IF (PRESENT(lp_urb2d)) THEN
-!$omp target update to(lp_urb2d)
+!$acc update device(lp_urb2d)
           END IF
           IF (PRESENT(hi_urb2d)) THEN
-!$omp target update to(hi_urb2d)
+!$acc update device(hi_urb2d)
           END IF
           IF (PRESENT(lb_urb2d)) THEN
-!$omp target update to(lb_urb2d)
+!$acc update device(lb_urb2d)
           END IF
           IF (PRESENT(hgt_urb2d)) THEN
-!$omp target update to(hgt_urb2d)
+!$acc update device(hgt_urb2d)
           END IF
           IF (PRESENT(mh_urb2d)) THEN
-!$omp target update to(mh_urb2d)
+!$acc update device(mh_urb2d)
           END IF
           IF (PRESENT(stdh_urb2d)) THEN
-!$omp target update to(stdh_urb2d)
+!$acc update device(stdh_urb2d)
           END IF
           IF (PRESENT(lf_urb2d)) THEN
-!$omp target update to(lf_urb2d)
+!$acc update device(lf_urb2d)
           END IF
           IF (PRESENT(lf_urb2d_s)) THEN
-!$omp target update to(lf_urb2d_s)
+!$acc update device(lf_urb2d_s)
           END IF
           IF (PRESENT(z0_urb2d)) THEN
-!$omp target update to(z0_urb2d)
+!$acc update device(z0_urb2d)
           END IF
           IF (PRESENT(th_phy)) THEN
-!$omp target update to(th_phy)
+!$acc update device(th_phy)
           END IF
           IF (PRESENT(rho)) THEN
-!$omp target update to(rho)
+!$acc update device(rho)
           END IF
           IF (PRESENT(p_phy)) THEN
-!$omp target update to(p_phy)
+!$acc update device(p_phy)
           END IF
           IF (PRESENT(ust)) THEN
-!$omp target update to(ust)
+!$acc update device(ust)
           END IF
           IF (PRESENT(xlong)) THEN
-!$omp target update to(xlong)
+!$acc update device(xlong)
           END IF
           IF (PRESENT(xlat)) THEN
-!$omp target update to(xlat)
+!$acc update device(xlat)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update to(a_u_bep)
+!$acc update device(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update to(a_v_bep)
+!$acc update device(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update to(a_t_bep)
+!$acc update device(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update to(a_q_bep)
+!$acc update device(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update to(a_e_bep)
+!$acc update device(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update to(b_u_bep)
+!$acc update device(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update to(b_v_bep)
+!$acc update device(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update to(b_e_bep)
+!$acc update device(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update to(dlg_bep)
+!$acc update device(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update to(dl_u_bep)
+!$acc update device(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update to(sf_bep)
+!$acc update device(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update to(vl_bep)
+!$acc update device(vl_bep)
           END IF
           IF (PRESENT(sda_hfx)) THEN
-!$omp target update to(sda_hfx)
+!$acc update device(sda_hfx)
           END IF
           IF (PRESENT(sda_qfx)) THEN
-!$omp target update to(sda_qfx)
+!$acc update device(sda_qfx)
           END IF
           IF (PRESENT(hfx_both)) THEN
-!$omp target update to(hfx_both)
+!$acc update device(hfx_both)
           END IF
           IF (PRESENT(qfx_both)) THEN
-!$omp target update to(qfx_both)
+!$acc update device(qfx_both)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update to(qnorm)
+!$acc update device(qnorm)
           END IF
           IF (PRESENT(rc2)) THEN
-!$omp target update to(rc2)
+!$acc update device(rc2)
           END IF
           IF (PRESENT(xlai2)) THEN
-!$omp target update to(xlai2)
+!$acc update device(xlai2)
           END IF
           IF (PRESENT(irr_chan)) THEN
-!$omp target update to(irr_chan)
+!$acc update device(irr_chan)
           END IF
         ELSE
-!$omp target update from(dz8w, qv3d, p8w3d, t3d, tsk, hfx, qfx, lh, grdflx, qgh, gsw, swdown, &
-!$omp&   swddir, swddif, glw, smstav, smstot, sfcrunoff, udrunoff, ivgtyp, isltyp, vegfra, albedo, &
-!$omp&   albbck, znt, z0, tmn, xland, xice, emiss, embck, snowc, qsfc, rainbl, dzs, smois, tslb, &
-!$omp&   snow, canwat, chs, chs2, cqs2, cpm, sr, chklowq, lai, qz0, sh2o, snowh, snoalb, shdmin, &
-!$omp&   shdmax, snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, fvb_2d, &
-!$omp&   fbur_2d, fgsn_2d, ust_urb2d, frc_urb2d, utype_urb2d, sfcheadrt, infxsrt, soldrain)
+!$acc update self(dz8w, qv3d, p8w3d, t3d, tsk, hfx, qfx, lh, grdflx, qgh, gsw, swdown, swddir, &
+!$acc&   swddif, glw, smstav, smstot, sfcrunoff, udrunoff, ivgtyp, isltyp, vegfra, albedo, albbck, &
+!$acc&   znt, z0, tmn, xland, xice, emiss, embck, snowc, qsfc, rainbl, dzs, smois, tslb, snow, &
+!$acc&   canwat, chs, chs2, cqs2, cpm, sr, chklowq, lai, qz0, sh2o, snowh, snoalb, shdmin, shdmax, &
+!$acc&   snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, fvb_2d, fbur_2d, &
+!$acc&   fgsn_2d, ust_urb2d, frc_urb2d, utype_urb2d, sfcheadrt, infxsrt, soldrain)
           IF (PRESENT(u_phy)) THEN
-!$omp target update from(u_phy)
+!$acc update self(u_phy)
           END IF
           IF (PRESENT(v_phy)) THEN
-!$omp target update from(v_phy)
+!$acc update self(v_phy)
           END IF
           IF (PRESENT(cmr_sfcdif)) THEN
-!$omp target update from(cmr_sfcdif)
+!$acc update self(cmr_sfcdif)
           END IF
           IF (PRESENT(chr_sfcdif)) THEN
-!$omp target update from(chr_sfcdif)
+!$acc update self(chr_sfcdif)
           END IF
           IF (PRESENT(cmc_sfcdif)) THEN
-!$omp target update from(cmc_sfcdif)
+!$acc update self(cmc_sfcdif)
           END IF
           IF (PRESENT(chc_sfcdif)) THEN
-!$omp target update from(chc_sfcdif)
+!$acc update self(chc_sfcdif)
           END IF
           IF (PRESENT(cmgr_sfcdif)) THEN
-!$omp target update from(cmgr_sfcdif)
+!$acc update self(cmgr_sfcdif)
           END IF
           IF (PRESENT(chgr_sfcdif)) THEN
-!$omp target update from(chgr_sfcdif)
+!$acc update self(chgr_sfcdif)
           END IF
           IF (PRESENT(tr_urb2d)) THEN
-!$omp target update from(tr_urb2d)
+!$acc update self(tr_urb2d)
           END IF
           IF (PRESENT(tb_urb2d)) THEN
-!$omp target update from(tb_urb2d)
+!$acc update self(tb_urb2d)
           END IF
           IF (PRESENT(tg_urb2d)) THEN
-!$omp target update from(tg_urb2d)
+!$acc update self(tg_urb2d)
           END IF
           IF (PRESENT(tc_urb2d)) THEN
-!$omp target update from(tc_urb2d)
+!$acc update self(tc_urb2d)
           END IF
           IF (PRESENT(qc_urb2d)) THEN
-!$omp target update from(qc_urb2d)
+!$acc update self(qc_urb2d)
           END IF
           IF (PRESENT(uc_urb2d)) THEN
-!$omp target update from(uc_urb2d)
+!$acc update self(uc_urb2d)
           END IF
           IF (PRESENT(xxxr_urb2d)) THEN
-!$omp target update from(xxxr_urb2d)
+!$acc update self(xxxr_urb2d)
           END IF
           IF (PRESENT(xxxb_urb2d)) THEN
-!$omp target update from(xxxb_urb2d)
+!$acc update self(xxxb_urb2d)
           END IF
           IF (PRESENT(xxxg_urb2d)) THEN
-!$omp target update from(xxxg_urb2d)
+!$acc update self(xxxg_urb2d)
           END IF
           IF (PRESENT(xxxc_urb2d)) THEN
-!$omp target update from(xxxc_urb2d)
+!$acc update self(xxxc_urb2d)
           END IF
           IF (PRESENT(trl_urb3d)) THEN
-!$omp target update from(trl_urb3d)
+!$acc update self(trl_urb3d)
           END IF
           IF (PRESENT(tbl_urb3d)) THEN
-!$omp target update from(tbl_urb3d)
+!$acc update self(tbl_urb3d)
           END IF
           IF (PRESENT(tgl_urb3d)) THEN
-!$omp target update from(tgl_urb3d)
+!$acc update self(tgl_urb3d)
           END IF
           IF (PRESENT(sh_urb2d)) THEN
-!$omp target update from(sh_urb2d)
+!$acc update self(sh_urb2d)
           END IF
           IF (PRESENT(lh_urb2d)) THEN
-!$omp target update from(lh_urb2d)
+!$acc update self(lh_urb2d)
           END IF
           IF (PRESENT(g_urb2d)) THEN
-!$omp target update from(g_urb2d)
+!$acc update self(g_urb2d)
           END IF
           IF (PRESENT(rn_urb2d)) THEN
-!$omp target update from(rn_urb2d)
+!$acc update self(rn_urb2d)
           END IF
           IF (PRESENT(ts_urb2d)) THEN
-!$omp target update from(ts_urb2d)
+!$acc update self(ts_urb2d)
           END IF
           IF (PRESENT(psim_urb2d)) THEN
-!$omp target update from(psim_urb2d)
+!$acc update self(psim_urb2d)
           END IF
           IF (PRESENT(psih_urb2d)) THEN
-!$omp target update from(psih_urb2d)
+!$acc update self(psih_urb2d)
           END IF
           IF (PRESENT(u10_urb2d)) THEN
-!$omp target update from(u10_urb2d)
+!$acc update self(u10_urb2d)
           END IF
           IF (PRESENT(v10_urb2d)) THEN
-!$omp target update from(v10_urb2d)
+!$acc update self(v10_urb2d)
           END IF
           IF (PRESENT(gz1oz0_urb2d)) THEN
-!$omp target update from(gz1oz0_urb2d)
+!$acc update self(gz1oz0_urb2d)
           END IF
           IF (PRESENT(akms_urb2d)) THEN
-!$omp target update from(akms_urb2d)
+!$acc update self(akms_urb2d)
           END IF
           IF (PRESENT(th2_urb2d)) THEN
-!$omp target update from(th2_urb2d)
+!$acc update self(th2_urb2d)
           END IF
           IF (PRESENT(q2_urb2d)) THEN
-!$omp target update from(q2_urb2d)
+!$acc update self(q2_urb2d)
           END IF
           IF (PRESENT(cosz_urb2d)) THEN
-!$omp target update from(cosz_urb2d)
+!$acc update self(cosz_urb2d)
           END IF
           IF (PRESENT(omg_urb2d)) THEN
-!$omp target update from(omg_urb2d)
+!$acc update self(omg_urb2d)
           END IF
           IF (PRESENT(xlat_urb2d)) THEN
-!$omp target update from(xlat_urb2d)
+!$acc update self(xlat_urb2d)
           END IF
           IF (PRESENT(dzr)) THEN
-!$omp target update from(dzr)
+!$acc update self(dzr)
           END IF
           IF (PRESENT(dzb)) THEN
-!$omp target update from(dzb)
+!$acc update self(dzb)
           END IF
           IF (PRESENT(dzg)) THEN
-!$omp target update from(dzg)
+!$acc update self(dzg)
           END IF
           IF (PRESENT(cmcr_urb2d)) THEN
-!$omp target update from(cmcr_urb2d)
+!$acc update self(cmcr_urb2d)
           END IF
           IF (PRESENT(tgr_urb2d)) THEN
-!$omp target update from(tgr_urb2d)
+!$acc update self(tgr_urb2d)
           END IF
           IF (PRESENT(tgrl_urb3d)) THEN
-!$omp target update from(tgrl_urb3d)
+!$acc update self(tgrl_urb3d)
           END IF
           IF (PRESENT(smr_urb3d)) THEN
-!$omp target update from(smr_urb3d)
+!$acc update self(smr_urb3d)
           END IF
           IF (PRESENT(drelr_urb2d)) THEN
-!$omp target update from(drelr_urb2d)
+!$acc update self(drelr_urb2d)
           END IF
           IF (PRESENT(drelb_urb2d)) THEN
-!$omp target update from(drelb_urb2d)
+!$acc update self(drelb_urb2d)
           END IF
           IF (PRESENT(drelg_urb2d)) THEN
-!$omp target update from(drelg_urb2d)
+!$acc update self(drelg_urb2d)
           END IF
           IF (PRESENT(flxhumr_urb2d)) THEN
-!$omp target update from(flxhumr_urb2d)
+!$acc update self(flxhumr_urb2d)
           END IF
           IF (PRESENT(flxhumb_urb2d)) THEN
-!$omp target update from(flxhumb_urb2d)
+!$acc update self(flxhumb_urb2d)
           END IF
           IF (PRESENT(flxhumg_urb2d)) THEN
-!$omp target update from(flxhumg_urb2d)
+!$acc update self(flxhumg_urb2d)
           END IF
           IF (PRESENT(tsk_rural_bep)) THEN
-!$omp target update from(tsk_rural_bep)
+!$acc update self(tsk_rural_bep)
           END IF
           IF (PRESENT(trb_urb4d)) THEN
-!$omp target update from(trb_urb4d)
+!$acc update self(trb_urb4d)
           END IF
           IF (PRESENT(tw1_urb4d)) THEN
-!$omp target update from(tw1_urb4d)
+!$acc update self(tw1_urb4d)
           END IF
           IF (PRESENT(tw2_urb4d)) THEN
-!$omp target update from(tw2_urb4d)
+!$acc update self(tw2_urb4d)
           END IF
           IF (PRESENT(tgb_urb4d)) THEN
-!$omp target update from(tgb_urb4d)
+!$acc update self(tgb_urb4d)
           END IF
           IF (PRESENT(tlev_urb3d)) THEN
-!$omp target update from(tlev_urb3d)
+!$acc update self(tlev_urb3d)
           END IF
           IF (PRESENT(qlev_urb3d)) THEN
-!$omp target update from(qlev_urb3d)
+!$acc update self(qlev_urb3d)
           END IF
           IF (PRESENT(tw1lev_urb3d)) THEN
-!$omp target update from(tw1lev_urb3d)
+!$acc update self(tw1lev_urb3d)
           END IF
           IF (PRESENT(tw2lev_urb3d)) THEN
-!$omp target update from(tw2lev_urb3d)
+!$acc update self(tw2lev_urb3d)
           END IF
           IF (PRESENT(tglev_urb3d)) THEN
-!$omp target update from(tglev_urb3d)
+!$acc update self(tglev_urb3d)
           END IF
           IF (PRESENT(tflev_urb3d)) THEN
-!$omp target update from(tflev_urb3d)
+!$acc update self(tflev_urb3d)
           END IF
           IF (PRESENT(sf_ac_urb3d)) THEN
-!$omp target update from(sf_ac_urb3d)
+!$acc update self(sf_ac_urb3d)
           END IF
           IF (PRESENT(lf_ac_urb3d)) THEN
-!$omp target update from(lf_ac_urb3d)
+!$acc update self(lf_ac_urb3d)
           END IF
           IF (PRESENT(cm_ac_urb3d)) THEN
-!$omp target update from(cm_ac_urb3d)
+!$acc update self(cm_ac_urb3d)
           END IF
           IF (PRESENT(sfvent_urb3d)) THEN
-!$omp target update from(sfvent_urb3d)
+!$acc update self(sfvent_urb3d)
           END IF
           IF (PRESENT(lfvent_urb3d)) THEN
-!$omp target update from(lfvent_urb3d)
+!$acc update self(lfvent_urb3d)
           END IF
           IF (PRESENT(sfwin1_urb3d)) THEN
-!$omp target update from(sfwin1_urb3d)
+!$acc update self(sfwin1_urb3d)
           END IF
           IF (PRESENT(sfwin2_urb3d)) THEN
-!$omp target update from(sfwin2_urb3d)
+!$acc update self(sfwin2_urb3d)
           END IF
           IF (PRESENT(sfw1_urb3d)) THEN
-!$omp target update from(sfw1_urb3d)
+!$acc update self(sfw1_urb3d)
           END IF
           IF (PRESENT(sfw2_urb3d)) THEN
-!$omp target update from(sfw2_urb3d)
+!$acc update self(sfw2_urb3d)
           END IF
           IF (PRESENT(sfr_urb3d)) THEN
-!$omp target update from(sfr_urb3d)
+!$acc update self(sfr_urb3d)
           END IF
           IF (PRESENT(sfg_urb3d)) THEN
-!$omp target update from(sfg_urb3d)
+!$acc update self(sfg_urb3d)
           END IF
           IF (PRESENT(ep_pv_urb3d)) THEN
-!$omp target update from(ep_pv_urb3d)
+!$acc update self(ep_pv_urb3d)
           END IF
           IF (PRESENT(t_pv_urb3d)) THEN
-!$omp target update from(t_pv_urb3d)
+!$acc update self(t_pv_urb3d)
           END IF
           IF (PRESENT(trv_urb4d)) THEN
-!$omp target update from(trv_urb4d)
+!$acc update self(trv_urb4d)
           END IF
           IF (PRESENT(qr_urb4d)) THEN
-!$omp target update from(qr_urb4d)
+!$acc update self(qr_urb4d)
           END IF
           IF (PRESENT(qgr_urb3d)) THEN
-!$omp target update from(qgr_urb3d)
+!$acc update self(qgr_urb3d)
           END IF
           IF (PRESENT(tgr_urb3d)) THEN
-!$omp target update from(tgr_urb3d)
+!$acc update self(tgr_urb3d)
           END IF
           IF (PRESENT(drain_urb4d)) THEN
-!$omp target update from(drain_urb4d)
+!$acc update self(drain_urb4d)
           END IF
           IF (PRESENT(draingr_urb3d)) THEN
-!$omp target update from(draingr_urb3d)
+!$acc update self(draingr_urb3d)
           END IF
           IF (PRESENT(sfrv_urb3d)) THEN
-!$omp target update from(sfrv_urb3d)
+!$acc update self(sfrv_urb3d)
           END IF
           IF (PRESENT(lfrv_urb3d)) THEN
-!$omp target update from(lfrv_urb3d)
+!$acc update self(lfrv_urb3d)
           END IF
           IF (PRESENT(dgr_urb3d)) THEN
-!$omp target update from(dgr_urb3d)
+!$acc update self(dgr_urb3d)
           END IF
           IF (PRESENT(dg_urb3d)) THEN
-!$omp target update from(dg_urb3d)
+!$acc update self(dg_urb3d)
           END IF
           IF (PRESENT(lfr_urb3d)) THEN
-!$omp target update from(lfr_urb3d)
+!$acc update self(lfr_urb3d)
           END IF
           IF (PRESENT(lfg_urb3d)) THEN
-!$omp target update from(lfg_urb3d)
+!$acc update self(lfg_urb3d)
           END IF
           IF (PRESENT(lp_urb2d)) THEN
-!$omp target update from(lp_urb2d)
+!$acc update self(lp_urb2d)
           END IF
           IF (PRESENT(hi_urb2d)) THEN
-!$omp target update from(hi_urb2d)
+!$acc update self(hi_urb2d)
           END IF
           IF (PRESENT(lb_urb2d)) THEN
-!$omp target update from(lb_urb2d)
+!$acc update self(lb_urb2d)
           END IF
           IF (PRESENT(hgt_urb2d)) THEN
-!$omp target update from(hgt_urb2d)
+!$acc update self(hgt_urb2d)
           END IF
           IF (PRESENT(mh_urb2d)) THEN
-!$omp target update from(mh_urb2d)
+!$acc update self(mh_urb2d)
           END IF
           IF (PRESENT(stdh_urb2d)) THEN
-!$omp target update from(stdh_urb2d)
+!$acc update self(stdh_urb2d)
           END IF
           IF (PRESENT(lf_urb2d)) THEN
-!$omp target update from(lf_urb2d)
+!$acc update self(lf_urb2d)
           END IF
           IF (PRESENT(lf_urb2d_s)) THEN
-!$omp target update from(lf_urb2d_s)
+!$acc update self(lf_urb2d_s)
           END IF
           IF (PRESENT(z0_urb2d)) THEN
-!$omp target update from(z0_urb2d)
+!$acc update self(z0_urb2d)
           END IF
           IF (PRESENT(th_phy)) THEN
-!$omp target update from(th_phy)
+!$acc update self(th_phy)
           END IF
           IF (PRESENT(rho)) THEN
-!$omp target update from(rho)
+!$acc update self(rho)
           END IF
           IF (PRESENT(p_phy)) THEN
-!$omp target update from(p_phy)
+!$acc update self(p_phy)
           END IF
           IF (PRESENT(ust)) THEN
-!$omp target update from(ust)
+!$acc update self(ust)
           END IF
           IF (PRESENT(xlong)) THEN
-!$omp target update from(xlong)
+!$acc update self(xlong)
           END IF
           IF (PRESENT(xlat)) THEN
-!$omp target update from(xlat)
+!$acc update self(xlat)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update from(a_u_bep)
+!$acc update self(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update from(a_v_bep)
+!$acc update self(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update from(a_t_bep)
+!$acc update self(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update from(a_q_bep)
+!$acc update self(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update from(a_e_bep)
+!$acc update self(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update from(b_u_bep)
+!$acc update self(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update from(b_v_bep)
+!$acc update self(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update from(b_e_bep)
+!$acc update self(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update from(dlg_bep)
+!$acc update self(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update from(dl_u_bep)
+!$acc update self(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update from(sf_bep)
+!$acc update self(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update from(vl_bep)
+!$acc update self(vl_bep)
           END IF
           IF (PRESENT(sda_hfx)) THEN
-!$omp target update from(sda_hfx)
+!$acc update self(sda_hfx)
           END IF
           IF (PRESENT(sda_qfx)) THEN
-!$omp target update from(sda_qfx)
+!$acc update self(sda_qfx)
           END IF
           IF (PRESENT(hfx_both)) THEN
-!$omp target update from(hfx_both)
+!$acc update self(hfx_both)
           END IF
           IF (PRESENT(qfx_both)) THEN
-!$omp target update from(qfx_both)
+!$acc update self(qfx_both)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update from(qnorm)
+!$acc update self(qnorm)
           END IF
           IF (PRESENT(rc2)) THEN
-!$omp target update from(rc2)
+!$acc update self(rc2)
           END IF
           IF (PRESENT(xlai2)) THEN
-!$omp target update from(xlai2)
+!$acc update self(xlai2)
           END IF
           IF (PRESENT(irr_chan)) THEN
-!$omp target update from(irr_chan)
+!$acc update self(irr_chan)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -923,614 +923,614 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(tsk, hfx, qfx, lh, grdflx, smstav, smstot, sfcrunoff, udrunoff, albedo, &
-!$omp&   albbck, znt, z0, emiss, snowc, qsfc, smois, tslb, snow, canwat, chs, chs2, cqs2, chklowq, &
-!$omp&   lai, sh2o, snowh, snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, &
-!$omp&   fvb_2d, fbur_2d, fgsn_2d, ust_urb2d, sfcheadrt, infxsrt, soldrain)
+!$acc update self(tsk, hfx, qfx, lh, grdflx, smstav, smstot, sfcrunoff, udrunoff, albedo, albbck, &
+!$acc&   znt, z0, emiss, snowc, qsfc, smois, tslb, snow, canwat, chs, chs2, cqs2, chklowq, lai, &
+!$acc&   sh2o, snowh, snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, &
+!$acc&   fvb_2d, fbur_2d, fgsn_2d, ust_urb2d, sfcheadrt, infxsrt, soldrain)
           IF (PRESENT(cmr_sfcdif)) THEN
-!$omp target update from(cmr_sfcdif)
+!$acc update self(cmr_sfcdif)
           END IF
           IF (PRESENT(chr_sfcdif)) THEN
-!$omp target update from(chr_sfcdif)
+!$acc update self(chr_sfcdif)
           END IF
           IF (PRESENT(cmc_sfcdif)) THEN
-!$omp target update from(cmc_sfcdif)
+!$acc update self(cmc_sfcdif)
           END IF
           IF (PRESENT(chc_sfcdif)) THEN
-!$omp target update from(chc_sfcdif)
+!$acc update self(chc_sfcdif)
           END IF
           IF (PRESENT(cmgr_sfcdif)) THEN
-!$omp target update from(cmgr_sfcdif)
+!$acc update self(cmgr_sfcdif)
           END IF
           IF (PRESENT(chgr_sfcdif)) THEN
-!$omp target update from(chgr_sfcdif)
+!$acc update self(chgr_sfcdif)
           END IF
           IF (PRESENT(tr_urb2d)) THEN
-!$omp target update from(tr_urb2d)
+!$acc update self(tr_urb2d)
           END IF
           IF (PRESENT(tb_urb2d)) THEN
-!$omp target update from(tb_urb2d)
+!$acc update self(tb_urb2d)
           END IF
           IF (PRESENT(tg_urb2d)) THEN
-!$omp target update from(tg_urb2d)
+!$acc update self(tg_urb2d)
           END IF
           IF (PRESENT(tc_urb2d)) THEN
-!$omp target update from(tc_urb2d)
+!$acc update self(tc_urb2d)
           END IF
           IF (PRESENT(qc_urb2d)) THEN
-!$omp target update from(qc_urb2d)
+!$acc update self(qc_urb2d)
           END IF
           IF (PRESENT(uc_urb2d)) THEN
-!$omp target update from(uc_urb2d)
+!$acc update self(uc_urb2d)
           END IF
           IF (PRESENT(xxxr_urb2d)) THEN
-!$omp target update from(xxxr_urb2d)
+!$acc update self(xxxr_urb2d)
           END IF
           IF (PRESENT(xxxb_urb2d)) THEN
-!$omp target update from(xxxb_urb2d)
+!$acc update self(xxxb_urb2d)
           END IF
           IF (PRESENT(xxxg_urb2d)) THEN
-!$omp target update from(xxxg_urb2d)
+!$acc update self(xxxg_urb2d)
           END IF
           IF (PRESENT(xxxc_urb2d)) THEN
-!$omp target update from(xxxc_urb2d)
+!$acc update self(xxxc_urb2d)
           END IF
           IF (PRESENT(trl_urb3d)) THEN
-!$omp target update from(trl_urb3d)
+!$acc update self(trl_urb3d)
           END IF
           IF (PRESENT(tbl_urb3d)) THEN
-!$omp target update from(tbl_urb3d)
+!$acc update self(tbl_urb3d)
           END IF
           IF (PRESENT(tgl_urb3d)) THEN
-!$omp target update from(tgl_urb3d)
+!$acc update self(tgl_urb3d)
           END IF
           IF (PRESENT(sh_urb2d)) THEN
-!$omp target update from(sh_urb2d)
+!$acc update self(sh_urb2d)
           END IF
           IF (PRESENT(lh_urb2d)) THEN
-!$omp target update from(lh_urb2d)
+!$acc update self(lh_urb2d)
           END IF
           IF (PRESENT(g_urb2d)) THEN
-!$omp target update from(g_urb2d)
+!$acc update self(g_urb2d)
           END IF
           IF (PRESENT(rn_urb2d)) THEN
-!$omp target update from(rn_urb2d)
+!$acc update self(rn_urb2d)
           END IF
           IF (PRESENT(ts_urb2d)) THEN
-!$omp target update from(ts_urb2d)
+!$acc update self(ts_urb2d)
           END IF
           IF (PRESENT(psim_urb2d)) THEN
-!$omp target update from(psim_urb2d)
+!$acc update self(psim_urb2d)
           END IF
           IF (PRESENT(psih_urb2d)) THEN
-!$omp target update from(psih_urb2d)
+!$acc update self(psih_urb2d)
           END IF
           IF (PRESENT(u10_urb2d)) THEN
-!$omp target update from(u10_urb2d)
+!$acc update self(u10_urb2d)
           END IF
           IF (PRESENT(v10_urb2d)) THEN
-!$omp target update from(v10_urb2d)
+!$acc update self(v10_urb2d)
           END IF
           IF (PRESENT(gz1oz0_urb2d)) THEN
-!$omp target update from(gz1oz0_urb2d)
+!$acc update self(gz1oz0_urb2d)
           END IF
           IF (PRESENT(akms_urb2d)) THEN
-!$omp target update from(akms_urb2d)
+!$acc update self(akms_urb2d)
           END IF
           IF (PRESENT(th2_urb2d)) THEN
-!$omp target update from(th2_urb2d)
+!$acc update self(th2_urb2d)
           END IF
           IF (PRESENT(q2_urb2d)) THEN
-!$omp target update from(q2_urb2d)
+!$acc update self(q2_urb2d)
           END IF
           IF (PRESENT(cmcr_urb2d)) THEN
-!$omp target update from(cmcr_urb2d)
+!$acc update self(cmcr_urb2d)
           END IF
           IF (PRESENT(tgr_urb2d)) THEN
-!$omp target update from(tgr_urb2d)
+!$acc update self(tgr_urb2d)
           END IF
           IF (PRESENT(tgrl_urb3d)) THEN
-!$omp target update from(tgrl_urb3d)
+!$acc update self(tgrl_urb3d)
           END IF
           IF (PRESENT(smr_urb3d)) THEN
-!$omp target update from(smr_urb3d)
+!$acc update self(smr_urb3d)
           END IF
           IF (PRESENT(drelr_urb2d)) THEN
-!$omp target update from(drelr_urb2d)
+!$acc update self(drelr_urb2d)
           END IF
           IF (PRESENT(drelb_urb2d)) THEN
-!$omp target update from(drelb_urb2d)
+!$acc update self(drelb_urb2d)
           END IF
           IF (PRESENT(drelg_urb2d)) THEN
-!$omp target update from(drelg_urb2d)
+!$acc update self(drelg_urb2d)
           END IF
           IF (PRESENT(flxhumr_urb2d)) THEN
-!$omp target update from(flxhumr_urb2d)
+!$acc update self(flxhumr_urb2d)
           END IF
           IF (PRESENT(flxhumb_urb2d)) THEN
-!$omp target update from(flxhumb_urb2d)
+!$acc update self(flxhumb_urb2d)
           END IF
           IF (PRESENT(flxhumg_urb2d)) THEN
-!$omp target update from(flxhumg_urb2d)
+!$acc update self(flxhumg_urb2d)
           END IF
           IF (PRESENT(tsk_rural_bep)) THEN
-!$omp target update from(tsk_rural_bep)
+!$acc update self(tsk_rural_bep)
           END IF
           IF (PRESENT(trb_urb4d)) THEN
-!$omp target update from(trb_urb4d)
+!$acc update self(trb_urb4d)
           END IF
           IF (PRESENT(tw1_urb4d)) THEN
-!$omp target update from(tw1_urb4d)
+!$acc update self(tw1_urb4d)
           END IF
           IF (PRESENT(tw2_urb4d)) THEN
-!$omp target update from(tw2_urb4d)
+!$acc update self(tw2_urb4d)
           END IF
           IF (PRESENT(tgb_urb4d)) THEN
-!$omp target update from(tgb_urb4d)
+!$acc update self(tgb_urb4d)
           END IF
           IF (PRESENT(tlev_urb3d)) THEN
-!$omp target update from(tlev_urb3d)
+!$acc update self(tlev_urb3d)
           END IF
           IF (PRESENT(qlev_urb3d)) THEN
-!$omp target update from(qlev_urb3d)
+!$acc update self(qlev_urb3d)
           END IF
           IF (PRESENT(tw1lev_urb3d)) THEN
-!$omp target update from(tw1lev_urb3d)
+!$acc update self(tw1lev_urb3d)
           END IF
           IF (PRESENT(tw2lev_urb3d)) THEN
-!$omp target update from(tw2lev_urb3d)
+!$acc update self(tw2lev_urb3d)
           END IF
           IF (PRESENT(tglev_urb3d)) THEN
-!$omp target update from(tglev_urb3d)
+!$acc update self(tglev_urb3d)
           END IF
           IF (PRESENT(tflev_urb3d)) THEN
-!$omp target update from(tflev_urb3d)
+!$acc update self(tflev_urb3d)
           END IF
           IF (PRESENT(sf_ac_urb3d)) THEN
-!$omp target update from(sf_ac_urb3d)
+!$acc update self(sf_ac_urb3d)
           END IF
           IF (PRESENT(lf_ac_urb3d)) THEN
-!$omp target update from(lf_ac_urb3d)
+!$acc update self(lf_ac_urb3d)
           END IF
           IF (PRESENT(cm_ac_urb3d)) THEN
-!$omp target update from(cm_ac_urb3d)
+!$acc update self(cm_ac_urb3d)
           END IF
           IF (PRESENT(sfvent_urb3d)) THEN
-!$omp target update from(sfvent_urb3d)
+!$acc update self(sfvent_urb3d)
           END IF
           IF (PRESENT(lfvent_urb3d)) THEN
-!$omp target update from(lfvent_urb3d)
+!$acc update self(lfvent_urb3d)
           END IF
           IF (PRESENT(sfwin1_urb3d)) THEN
-!$omp target update from(sfwin1_urb3d)
+!$acc update self(sfwin1_urb3d)
           END IF
           IF (PRESENT(sfwin2_urb3d)) THEN
-!$omp target update from(sfwin2_urb3d)
+!$acc update self(sfwin2_urb3d)
           END IF
           IF (PRESENT(sfw1_urb3d)) THEN
-!$omp target update from(sfw1_urb3d)
+!$acc update self(sfw1_urb3d)
           END IF
           IF (PRESENT(sfw2_urb3d)) THEN
-!$omp target update from(sfw2_urb3d)
+!$acc update self(sfw2_urb3d)
           END IF
           IF (PRESENT(sfr_urb3d)) THEN
-!$omp target update from(sfr_urb3d)
+!$acc update self(sfr_urb3d)
           END IF
           IF (PRESENT(sfg_urb3d)) THEN
-!$omp target update from(sfg_urb3d)
+!$acc update self(sfg_urb3d)
           END IF
           IF (PRESENT(ep_pv_urb3d)) THEN
-!$omp target update from(ep_pv_urb3d)
+!$acc update self(ep_pv_urb3d)
           END IF
           IF (PRESENT(t_pv_urb3d)) THEN
-!$omp target update from(t_pv_urb3d)
+!$acc update self(t_pv_urb3d)
           END IF
           IF (PRESENT(trv_urb4d)) THEN
-!$omp target update from(trv_urb4d)
+!$acc update self(trv_urb4d)
           END IF
           IF (PRESENT(qr_urb4d)) THEN
-!$omp target update from(qr_urb4d)
+!$acc update self(qr_urb4d)
           END IF
           IF (PRESENT(qgr_urb3d)) THEN
-!$omp target update from(qgr_urb3d)
+!$acc update self(qgr_urb3d)
           END IF
           IF (PRESENT(tgr_urb3d)) THEN
-!$omp target update from(tgr_urb3d)
+!$acc update self(tgr_urb3d)
           END IF
           IF (PRESENT(drain_urb4d)) THEN
-!$omp target update from(drain_urb4d)
+!$acc update self(drain_urb4d)
           END IF
           IF (PRESENT(draingr_urb3d)) THEN
-!$omp target update from(draingr_urb3d)
+!$acc update self(draingr_urb3d)
           END IF
           IF (PRESENT(sfrv_urb3d)) THEN
-!$omp target update from(sfrv_urb3d)
+!$acc update self(sfrv_urb3d)
           END IF
           IF (PRESENT(lfrv_urb3d)) THEN
-!$omp target update from(lfrv_urb3d)
+!$acc update self(lfrv_urb3d)
           END IF
           IF (PRESENT(dgr_urb3d)) THEN
-!$omp target update from(dgr_urb3d)
+!$acc update self(dgr_urb3d)
           END IF
           IF (PRESENT(dg_urb3d)) THEN
-!$omp target update from(dg_urb3d)
+!$acc update self(dg_urb3d)
           END IF
           IF (PRESENT(lfr_urb3d)) THEN
-!$omp target update from(lfr_urb3d)
+!$acc update self(lfr_urb3d)
           END IF
           IF (PRESENT(lfg_urb3d)) THEN
-!$omp target update from(lfg_urb3d)
+!$acc update self(lfg_urb3d)
           END IF
           IF (PRESENT(ust)) THEN
-!$omp target update from(ust)
+!$acc update self(ust)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update from(a_u_bep)
+!$acc update self(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update from(a_v_bep)
+!$acc update self(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update from(a_t_bep)
+!$acc update self(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update from(a_q_bep)
+!$acc update self(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update from(a_e_bep)
+!$acc update self(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update from(b_u_bep)
+!$acc update self(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update from(b_v_bep)
+!$acc update self(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update from(b_e_bep)
+!$acc update self(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update from(dlg_bep)
+!$acc update self(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update from(dl_u_bep)
+!$acc update self(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update from(sf_bep)
+!$acc update self(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update from(vl_bep)
+!$acc update self(vl_bep)
           END IF
           IF (PRESENT(sda_hfx)) THEN
-!$omp target update from(sda_hfx)
+!$acc update self(sda_hfx)
           END IF
           IF (PRESENT(sda_qfx)) THEN
-!$omp target update from(sda_qfx)
+!$acc update self(sda_qfx)
           END IF
           IF (PRESENT(hfx_both)) THEN
-!$omp target update from(hfx_both)
+!$acc update self(hfx_both)
           END IF
           IF (PRESENT(qfx_both)) THEN
-!$omp target update from(qfx_both)
+!$acc update self(qfx_both)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update from(qnorm)
+!$acc update self(qnorm)
           END IF
           IF (PRESENT(rc2)) THEN
-!$omp target update from(rc2)
+!$acc update self(rc2)
           END IF
           IF (PRESENT(xlai2)) THEN
-!$omp target update from(xlai2)
+!$acc update self(xlai2)
           END IF
         ELSE
-!$omp target update to(tsk, hfx, qfx, lh, grdflx, smstav, smstot, sfcrunoff, udrunoff, albedo, &
-!$omp&   albbck, znt, z0, emiss, snowc, qsfc, smois, tslb, snow, canwat, chs, chs2, cqs2, chklowq, &
-!$omp&   lai, sh2o, snowh, snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, &
-!$omp&   fvb_2d, fbur_2d, fgsn_2d, ust_urb2d, sfcheadrt, infxsrt, soldrain)
+!$acc update device(tsk, hfx, qfx, lh, grdflx, smstav, smstot, sfcrunoff, udrunoff, albedo, albbck, &
+!$acc&   znt, z0, emiss, snowc, qsfc, smois, tslb, snow, canwat, chs, chs2, cqs2, chklowq, lai, &
+!$acc&   sh2o, snowh, snotime, acsnom, acsnow, snopcx, potevp, smcrel, rib, noahres, flx4_2d, &
+!$acc&   fvb_2d, fbur_2d, fgsn_2d, ust_urb2d, sfcheadrt, infxsrt, soldrain)
           IF (PRESENT(cmr_sfcdif)) THEN
-!$omp target update to(cmr_sfcdif)
+!$acc update device(cmr_sfcdif)
           END IF
           IF (PRESENT(chr_sfcdif)) THEN
-!$omp target update to(chr_sfcdif)
+!$acc update device(chr_sfcdif)
           END IF
           IF (PRESENT(cmc_sfcdif)) THEN
-!$omp target update to(cmc_sfcdif)
+!$acc update device(cmc_sfcdif)
           END IF
           IF (PRESENT(chc_sfcdif)) THEN
-!$omp target update to(chc_sfcdif)
+!$acc update device(chc_sfcdif)
           END IF
           IF (PRESENT(cmgr_sfcdif)) THEN
-!$omp target update to(cmgr_sfcdif)
+!$acc update device(cmgr_sfcdif)
           END IF
           IF (PRESENT(chgr_sfcdif)) THEN
-!$omp target update to(chgr_sfcdif)
+!$acc update device(chgr_sfcdif)
           END IF
           IF (PRESENT(tr_urb2d)) THEN
-!$omp target update to(tr_urb2d)
+!$acc update device(tr_urb2d)
           END IF
           IF (PRESENT(tb_urb2d)) THEN
-!$omp target update to(tb_urb2d)
+!$acc update device(tb_urb2d)
           END IF
           IF (PRESENT(tg_urb2d)) THEN
-!$omp target update to(tg_urb2d)
+!$acc update device(tg_urb2d)
           END IF
           IF (PRESENT(tc_urb2d)) THEN
-!$omp target update to(tc_urb2d)
+!$acc update device(tc_urb2d)
           END IF
           IF (PRESENT(qc_urb2d)) THEN
-!$omp target update to(qc_urb2d)
+!$acc update device(qc_urb2d)
           END IF
           IF (PRESENT(uc_urb2d)) THEN
-!$omp target update to(uc_urb2d)
+!$acc update device(uc_urb2d)
           END IF
           IF (PRESENT(xxxr_urb2d)) THEN
-!$omp target update to(xxxr_urb2d)
+!$acc update device(xxxr_urb2d)
           END IF
           IF (PRESENT(xxxb_urb2d)) THEN
-!$omp target update to(xxxb_urb2d)
+!$acc update device(xxxb_urb2d)
           END IF
           IF (PRESENT(xxxg_urb2d)) THEN
-!$omp target update to(xxxg_urb2d)
+!$acc update device(xxxg_urb2d)
           END IF
           IF (PRESENT(xxxc_urb2d)) THEN
-!$omp target update to(xxxc_urb2d)
+!$acc update device(xxxc_urb2d)
           END IF
           IF (PRESENT(trl_urb3d)) THEN
-!$omp target update to(trl_urb3d)
+!$acc update device(trl_urb3d)
           END IF
           IF (PRESENT(tbl_urb3d)) THEN
-!$omp target update to(tbl_urb3d)
+!$acc update device(tbl_urb3d)
           END IF
           IF (PRESENT(tgl_urb3d)) THEN
-!$omp target update to(tgl_urb3d)
+!$acc update device(tgl_urb3d)
           END IF
           IF (PRESENT(sh_urb2d)) THEN
-!$omp target update to(sh_urb2d)
+!$acc update device(sh_urb2d)
           END IF
           IF (PRESENT(lh_urb2d)) THEN
-!$omp target update to(lh_urb2d)
+!$acc update device(lh_urb2d)
           END IF
           IF (PRESENT(g_urb2d)) THEN
-!$omp target update to(g_urb2d)
+!$acc update device(g_urb2d)
           END IF
           IF (PRESENT(rn_urb2d)) THEN
-!$omp target update to(rn_urb2d)
+!$acc update device(rn_urb2d)
           END IF
           IF (PRESENT(ts_urb2d)) THEN
-!$omp target update to(ts_urb2d)
+!$acc update device(ts_urb2d)
           END IF
           IF (PRESENT(psim_urb2d)) THEN
-!$omp target update to(psim_urb2d)
+!$acc update device(psim_urb2d)
           END IF
           IF (PRESENT(psih_urb2d)) THEN
-!$omp target update to(psih_urb2d)
+!$acc update device(psih_urb2d)
           END IF
           IF (PRESENT(u10_urb2d)) THEN
-!$omp target update to(u10_urb2d)
+!$acc update device(u10_urb2d)
           END IF
           IF (PRESENT(v10_urb2d)) THEN
-!$omp target update to(v10_urb2d)
+!$acc update device(v10_urb2d)
           END IF
           IF (PRESENT(gz1oz0_urb2d)) THEN
-!$omp target update to(gz1oz0_urb2d)
+!$acc update device(gz1oz0_urb2d)
           END IF
           IF (PRESENT(akms_urb2d)) THEN
-!$omp target update to(akms_urb2d)
+!$acc update device(akms_urb2d)
           END IF
           IF (PRESENT(th2_urb2d)) THEN
-!$omp target update to(th2_urb2d)
+!$acc update device(th2_urb2d)
           END IF
           IF (PRESENT(q2_urb2d)) THEN
-!$omp target update to(q2_urb2d)
+!$acc update device(q2_urb2d)
           END IF
           IF (PRESENT(cmcr_urb2d)) THEN
-!$omp target update to(cmcr_urb2d)
+!$acc update device(cmcr_urb2d)
           END IF
           IF (PRESENT(tgr_urb2d)) THEN
-!$omp target update to(tgr_urb2d)
+!$acc update device(tgr_urb2d)
           END IF
           IF (PRESENT(tgrl_urb3d)) THEN
-!$omp target update to(tgrl_urb3d)
+!$acc update device(tgrl_urb3d)
           END IF
           IF (PRESENT(smr_urb3d)) THEN
-!$omp target update to(smr_urb3d)
+!$acc update device(smr_urb3d)
           END IF
           IF (PRESENT(drelr_urb2d)) THEN
-!$omp target update to(drelr_urb2d)
+!$acc update device(drelr_urb2d)
           END IF
           IF (PRESENT(drelb_urb2d)) THEN
-!$omp target update to(drelb_urb2d)
+!$acc update device(drelb_urb2d)
           END IF
           IF (PRESENT(drelg_urb2d)) THEN
-!$omp target update to(drelg_urb2d)
+!$acc update device(drelg_urb2d)
           END IF
           IF (PRESENT(flxhumr_urb2d)) THEN
-!$omp target update to(flxhumr_urb2d)
+!$acc update device(flxhumr_urb2d)
           END IF
           IF (PRESENT(flxhumb_urb2d)) THEN
-!$omp target update to(flxhumb_urb2d)
+!$acc update device(flxhumb_urb2d)
           END IF
           IF (PRESENT(flxhumg_urb2d)) THEN
-!$omp target update to(flxhumg_urb2d)
+!$acc update device(flxhumg_urb2d)
           END IF
           IF (PRESENT(tsk_rural_bep)) THEN
-!$omp target update to(tsk_rural_bep)
+!$acc update device(tsk_rural_bep)
           END IF
           IF (PRESENT(trb_urb4d)) THEN
-!$omp target update to(trb_urb4d)
+!$acc update device(trb_urb4d)
           END IF
           IF (PRESENT(tw1_urb4d)) THEN
-!$omp target update to(tw1_urb4d)
+!$acc update device(tw1_urb4d)
           END IF
           IF (PRESENT(tw2_urb4d)) THEN
-!$omp target update to(tw2_urb4d)
+!$acc update device(tw2_urb4d)
           END IF
           IF (PRESENT(tgb_urb4d)) THEN
-!$omp target update to(tgb_urb4d)
+!$acc update device(tgb_urb4d)
           END IF
           IF (PRESENT(tlev_urb3d)) THEN
-!$omp target update to(tlev_urb3d)
+!$acc update device(tlev_urb3d)
           END IF
           IF (PRESENT(qlev_urb3d)) THEN
-!$omp target update to(qlev_urb3d)
+!$acc update device(qlev_urb3d)
           END IF
           IF (PRESENT(tw1lev_urb3d)) THEN
-!$omp target update to(tw1lev_urb3d)
+!$acc update device(tw1lev_urb3d)
           END IF
           IF (PRESENT(tw2lev_urb3d)) THEN
-!$omp target update to(tw2lev_urb3d)
+!$acc update device(tw2lev_urb3d)
           END IF
           IF (PRESENT(tglev_urb3d)) THEN
-!$omp target update to(tglev_urb3d)
+!$acc update device(tglev_urb3d)
           END IF
           IF (PRESENT(tflev_urb3d)) THEN
-!$omp target update to(tflev_urb3d)
+!$acc update device(tflev_urb3d)
           END IF
           IF (PRESENT(sf_ac_urb3d)) THEN
-!$omp target update to(sf_ac_urb3d)
+!$acc update device(sf_ac_urb3d)
           END IF
           IF (PRESENT(lf_ac_urb3d)) THEN
-!$omp target update to(lf_ac_urb3d)
+!$acc update device(lf_ac_urb3d)
           END IF
           IF (PRESENT(cm_ac_urb3d)) THEN
-!$omp target update to(cm_ac_urb3d)
+!$acc update device(cm_ac_urb3d)
           END IF
           IF (PRESENT(sfvent_urb3d)) THEN
-!$omp target update to(sfvent_urb3d)
+!$acc update device(sfvent_urb3d)
           END IF
           IF (PRESENT(lfvent_urb3d)) THEN
-!$omp target update to(lfvent_urb3d)
+!$acc update device(lfvent_urb3d)
           END IF
           IF (PRESENT(sfwin1_urb3d)) THEN
-!$omp target update to(sfwin1_urb3d)
+!$acc update device(sfwin1_urb3d)
           END IF
           IF (PRESENT(sfwin2_urb3d)) THEN
-!$omp target update to(sfwin2_urb3d)
+!$acc update device(sfwin2_urb3d)
           END IF
           IF (PRESENT(sfw1_urb3d)) THEN
-!$omp target update to(sfw1_urb3d)
+!$acc update device(sfw1_urb3d)
           END IF
           IF (PRESENT(sfw2_urb3d)) THEN
-!$omp target update to(sfw2_urb3d)
+!$acc update device(sfw2_urb3d)
           END IF
           IF (PRESENT(sfr_urb3d)) THEN
-!$omp target update to(sfr_urb3d)
+!$acc update device(sfr_urb3d)
           END IF
           IF (PRESENT(sfg_urb3d)) THEN
-!$omp target update to(sfg_urb3d)
+!$acc update device(sfg_urb3d)
           END IF
           IF (PRESENT(ep_pv_urb3d)) THEN
-!$omp target update to(ep_pv_urb3d)
+!$acc update device(ep_pv_urb3d)
           END IF
           IF (PRESENT(t_pv_urb3d)) THEN
-!$omp target update to(t_pv_urb3d)
+!$acc update device(t_pv_urb3d)
           END IF
           IF (PRESENT(trv_urb4d)) THEN
-!$omp target update to(trv_urb4d)
+!$acc update device(trv_urb4d)
           END IF
           IF (PRESENT(qr_urb4d)) THEN
-!$omp target update to(qr_urb4d)
+!$acc update device(qr_urb4d)
           END IF
           IF (PRESENT(qgr_urb3d)) THEN
-!$omp target update to(qgr_urb3d)
+!$acc update device(qgr_urb3d)
           END IF
           IF (PRESENT(tgr_urb3d)) THEN
-!$omp target update to(tgr_urb3d)
+!$acc update device(tgr_urb3d)
           END IF
           IF (PRESENT(drain_urb4d)) THEN
-!$omp target update to(drain_urb4d)
+!$acc update device(drain_urb4d)
           END IF
           IF (PRESENT(draingr_urb3d)) THEN
-!$omp target update to(draingr_urb3d)
+!$acc update device(draingr_urb3d)
           END IF
           IF (PRESENT(sfrv_urb3d)) THEN
-!$omp target update to(sfrv_urb3d)
+!$acc update device(sfrv_urb3d)
           END IF
           IF (PRESENT(lfrv_urb3d)) THEN
-!$omp target update to(lfrv_urb3d)
+!$acc update device(lfrv_urb3d)
           END IF
           IF (PRESENT(dgr_urb3d)) THEN
-!$omp target update to(dgr_urb3d)
+!$acc update device(dgr_urb3d)
           END IF
           IF (PRESENT(dg_urb3d)) THEN
-!$omp target update to(dg_urb3d)
+!$acc update device(dg_urb3d)
           END IF
           IF (PRESENT(lfr_urb3d)) THEN
-!$omp target update to(lfr_urb3d)
+!$acc update device(lfr_urb3d)
           END IF
           IF (PRESENT(lfg_urb3d)) THEN
-!$omp target update to(lfg_urb3d)
+!$acc update device(lfg_urb3d)
           END IF
           IF (PRESENT(ust)) THEN
-!$omp target update to(ust)
+!$acc update device(ust)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update to(a_u_bep)
+!$acc update device(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update to(a_v_bep)
+!$acc update device(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update to(a_t_bep)
+!$acc update device(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update to(a_q_bep)
+!$acc update device(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update to(a_e_bep)
+!$acc update device(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update to(b_u_bep)
+!$acc update device(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update to(b_v_bep)
+!$acc update device(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update to(b_e_bep)
+!$acc update device(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update to(dlg_bep)
+!$acc update device(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update to(dl_u_bep)
+!$acc update device(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update to(sf_bep)
+!$acc update device(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update to(vl_bep)
+!$acc update device(vl_bep)
           END IF
           IF (PRESENT(sda_hfx)) THEN
-!$omp target update to(sda_hfx)
+!$acc update device(sda_hfx)
           END IF
           IF (PRESENT(sda_qfx)) THEN
-!$omp target update to(sda_qfx)
+!$acc update device(sda_qfx)
           END IF
           IF (PRESENT(hfx_both)) THEN
-!$omp target update to(hfx_both)
+!$acc update device(hfx_both)
           END IF
           IF (PRESENT(qfx_both)) THEN
-!$omp target update to(qfx_both)
+!$acc update device(qfx_both)
           END IF
           IF (PRESENT(qnorm)) THEN
-!$omp target update to(qnorm)
+!$acc update device(qnorm)
           END IF
           IF (PRESENT(rc2)) THEN
-!$omp target update to(rc2)
+!$acc update device(rc2)
           END IF
           IF (PRESENT(xlai2)) THEN
-!$omp target update to(xlai2)
+!$acc update device(xlai2)
           END IF
         END IF
       END IF

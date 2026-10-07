@@ -32,7 +32,7 @@ Paste each block where its comments say (CODING_STANDARD.md §3). Regenerate wit
 
 ## Tasks
 
-- the P1.4 tables psim_stab, psim_unstab, psih_stab, psih_unstab: !$omp declare target, sfclayrev_gpu_upload and sfclayrev_gpu_tabcheck (I-4)
+- the P1.4 tables psim_stab, psim_unstab, psih_stab, psih_unstab: !$acc declare create, sfclayrev_gpu_upload and sfclayrev_gpu_tabcheck (I-4)
 
 ## Done (code-only; CODE_ONLY.md §5)
 

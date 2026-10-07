@@ -40,7 +40,7 @@ MODULE tcp_const
    ! like the SAVE constants of mp_wsm6 (physics_mmm/mp_wsm6.F90:46-64)
    IMPLICIT NONE
    REAL, SAVE :: pvtr, xl, rv, denr, qmax
-!$omp declare target(pvtr, xl, rv, denr, qmax)
+!$acc declare create(pvtr, xl, rv, denr, qmax)
 CONTAINS
    SUBROUTINE tcp_init(den0)
       REAL, INTENT(IN) :: den0
@@ -169,14 +169,14 @@ CONTAINS
 !======================================================================
 #ifdef TMPL_NO_STMTFN
    REAL FUNCTION cpmcal_f(a)
-!$omp declare target
+!$acc routine seq
       REAL, INTENT(IN) :: a
       cpmcal_f = 1004.5*(1. - a) + 1846.4*a
    END FUNCTION cpmcal_f
 #endif
 
    subroutine tcp_run_gpu(t, q, qr, p, delz, rain, rainncv, dtcld, its, ite, kts, kte, errflg)
-!$omp declare target
+!$acc routine seq
       implicit none
       integer, intent(in) :: its, ite, kts, kte
       real, intent(in) :: dtcld
@@ -256,12 +256,12 @@ CONTAINS
       INTEGER :: errflg, i, j, k, kk, nz
       nz = kte - kts + 1
       nerr = 0
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) &
-!$omp& shared(th, qv, qr, pii, p, dz8w, rainnc, rainncv) &
-!$omp& firstprivate(its, ite, jts, jte, kts, kte, nz, dt) &
-!$omp& private(k, kk, t, q, qrs, pp, dz, rn, rncv, errflg) reduction(+: nerr)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) &
+!$acc& present(th, qv, qr, pii, p, dz8w, rainnc, rainncv) firstprivate(its, ite, jts, jte, kts, kte, nz, dt) &
+!$acc& private(k, kk, t, q, qrs, pp, dz, rn, rncv, errflg) reduction(+: nerr)
       DO j = jts, jte
       DO i = its, ite
+         !$acc loop seq
          DO k = kts, kte
             kk = k - kts + 1
             t(1, kk) = th(i, k, j)*pii(i, k, j)
@@ -276,6 +276,7 @@ CONTAINS
          CALL tcp_run_gpu(t(1:1, 1:nz), q(1:1, 1:nz), qrs(1:1, 1:nz), pp(1:1, 1:nz), dz(1:1, 1:nz), &
                           rn(1:1), rncv(1:1), dt, 1, 1, 1, nz, errflg)
          IF (errflg /= 0) nerr = nerr + 1   ! host: IF (nerr > 0) CALL wrf_error_fatal('tcp_run: ...')
+         !$acc loop seq
          DO k = kts, kte
             kk = k - kts + 1
             th(i, k, j) = t(1, kk)/pii(i, k, j)
@@ -292,7 +293,7 @@ END MODULE tcp_mod
 
 PROGRAM t_tmpl_cp
    USE tcp_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: ims = -4, ime = 29, jms = -4, jme = 25, kms = 1, kme = 41
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme) :: th0, qv0, qr0, pii, p, dz8w
@@ -314,17 +315,17 @@ PROGRAM t_tmpl_cp
       READ (arg, *) nrep
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-TMPL-CP: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-TMPL-CP: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
    CALL tcp_init(1.28)
-!$omp target update to(pvtr, xl, rv, denr, qmax)
+!$acc update device(pvtr, xl, rv, denr, qmax)
    CALL RANDOM_SEED()
    nbad = 0
    ncall_err = 0
@@ -347,10 +348,10 @@ PROGRAM t_tmpl_cp
                        tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), tiles(5,it), tiles(6,it))
          CALL tcp_wrap_gpu(thb, qvb, qrb, pii, p, dz8w, rnb, rnvb, dt, neb, .FALSE., ims, ime, jms, jme, kms, kme, &
                            tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), tiles(5,it), tiles(6,it))
-!$omp target data map(to: pii, p, dz8w) map(tofrom: thc, qvc, qrc, rnc, rnvc)
+!$acc data copyin(pii, p, dz8w) copy(thc, qvc, qrc, rnc, rnvc)
          CALL tcp_wrap_gpu(thc, qvc, qrc, pii, p, dz8w, rnc, rnvc, dt, nec, .TRUE., ims, ime, jms, jme, kms, kme, &
                            tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), tiles(5,it), tiles(6,it))
-!$omp end target data
+!$acc end data
          nbad = nbad + ndiff3(tha, thb) + ndiff3(tha, thc) + ndiff3(qva, qvb) + ndiff3(qva, qvc) &
                      + ndiff3(qra, qrb) + ndiff3(qra, qrc) + ndiff2(rna, rnb) + ndiff2(rna, rnc) &
                      + ndiff2(rnva, rnvb) + ndiff2(rnva, rnvc)

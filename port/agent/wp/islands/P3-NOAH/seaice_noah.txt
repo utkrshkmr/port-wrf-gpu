@@ -47,31 +47,30 @@
       gpu_isl = gpu_island(R_SEAICE_NOAH)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(t3d, qv3d, p8w3d, dz8w, sr, glw, swdown, rainbl, snoalb2d, qgh, xice, albsi, &
-!$omp&   icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, chs, chs2, cqs2, &
-!$omp&   rib, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, sfcrunoff, noahres)
+!$acc update device(t3d, qv3d, p8w3d, dz8w, sr, glw, swdown, rainbl, snoalb2d, qgh, xice, albsi, &
+!$acc&   icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, chs, chs2, cqs2, &
+!$acc&   rib, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, sfcrunoff, noahres)
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(rho)) THEN
-!$omp target update to(rho)
+!$acc update device(rho)
           END IF
         ELSE
-!$omp target update from(t3d, qv3d, p8w3d, dz8w, sr, glw, swdown, rainbl, snoalb2d, qgh, xice, &
-!$omp&   albsi, icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, chs, chs2, &
-!$omp&   cqs2, rib, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, sfcrunoff, &
-!$omp&   noahres)
+!$acc update self(t3d, qv3d, p8w3d, dz8w, sr, glw, swdown, rainbl, snoalb2d, qgh, xice, albsi, &
+!$acc&   icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, chs, chs2, cqs2, &
+!$acc&   rib, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, sfcrunoff, noahres)
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(rho)) THEN
-!$omp target update from(rho)
+!$acc update self(rho)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -83,24 +82,24 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(albsi, icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, &
-!$omp&   snowh2d, chs, chs2, cqs2, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, &
-!$omp&   sfcrunoff, noahres)
+!$acc update self(albsi, icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, &
+!$acc&   chs, chs2, cqs2, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, &
+!$acc&   sfcrunoff, noahres)
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
         ELSE
-!$omp target update to(albsi, icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, &
-!$omp&   snowh2d, chs, chs2, cqs2, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, &
-!$omp&   sfcrunoff, noahres)
+!$acc update device(albsi, icedepth, snowsi, tslb, emiss, albedo, z02d, tsk, snow, snowc, snowh2d, &
+!$acc&   chs, chs2, cqs2, znt, lh, hfx, qfx, potevp, grdflx, qsfc, acsnow, acsnom, snopcx, &
+!$acc&   sfcrunoff, noahres)
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
         END IF
       END IF

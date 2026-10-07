@@ -120,13 +120,13 @@ CONTAINS
       REAL, INTENT(IN) :: rdx, rdy, dt, eps
       INTEGER :: i, j, k
 
-!$omp target data map(tofrom: fqx, fqy, fqz) map(to: fqxl, fqyl, fqzl, field_old, mub, mu_old, c1, c2, &
-!$omp&   msftx, msfty, rdzw) map(from: ph_low, flux_out, scl, lim) if(dev)
+!$acc data copy(fqx, fqy, fqz) copyin(fqxl, fqyl, fqzl, field_old, mub, mu_old, c1, c2, msftx, msfty, rdzw) &
+!$acc& copyout(ph_low, flux_out, scl, lim) if(dev)
 
       ! K-PD-L1: ph_low (unchanged expression)
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(ph_low, c1, c2, mub, mu_old, field_old, msftx, msfty, fqxl, fqyl, fqzl, rdzw) &
-!$omp& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, dt, rdx, rdy)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) &
+!$acc& present(ph_low, c1, c2, mub, mu_old, field_old, msftx, msfty, fqxl, fqyl, fqzl, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, dt, rdx, rdy)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -140,9 +140,9 @@ CONTAINS
       ENDDO
 
       ! K-PD-L2: flux_out (unchanged expression)
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(flux_out, msftx, msfty, fqx, fqy, fqz, rdzw) &
-!$omp& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, dt, rdx, rdy)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) &
+!$acc& present(flux_out, msftx, msfty, fqx, fqy, fqz, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, dt, rdx, rdy)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -158,8 +158,8 @@ CONTAINS
       ENDDO
 
       ! K-PD-L3a: which cells are limited, and their scale factor
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(lim, scl, flux_out, ph_low) firstprivate(i_start, i_end, j_start, j_end, kts, ktf, eps)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(lim, scl, flux_out, ph_low) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, eps)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -174,8 +174,8 @@ CONTAINS
       ENDDO
 
       ! K-PD-L3b (x): faces i_start .. i_end+1, scaled by their donor cell
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(fqx, lim, scl) firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(fqx, lim, scl) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end+1
@@ -193,8 +193,8 @@ CONTAINS
       ENDDO
 
       ! K-PD-L3b (y): faces j_start .. j_end+1
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(fqy, lim, scl) firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(fqy, lim, scl) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
       DO j = j_start, j_end+1
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -212,8 +212,8 @@ CONTAINS
       ENDDO
 
       ! K-PD-L3b (z): faces kts .. ktf+1, sign reversed
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(fqz, lim, scl) firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(fqz, lim, scl) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf)
       DO j = j_start, j_end
       DO k = kts, ktf+1
       DO i = i_start, i_end
@@ -229,7 +229,7 @@ CONTAINS
       ENDDO
       ENDDO
       ENDDO
-!$omp end target data
+!$acc end data
    END SUBROUTINE pdlim_split
 
 END MODULE pdlim_mod
@@ -238,7 +238,7 @@ END MODULE pdlim_mod
 PROGRAM t_pdlim
    USE pdlim_mod
    USE, INTRINSIC :: ieee_arithmetic
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: ims = -2, ime = 21, kms = 1, kme = 12, jms = -2, jme = 19
    REAL, DIMENSION(ims:ime, kms:kme, jms:jme) :: fqx, fqy, fqz, fqxl, fqyl, fqzl, field_old, ph_low, flux_out
@@ -254,16 +254,16 @@ PROGRAM t_pdlim
 
    ! where do target regions run?  (must be the GPU unless ALLOW_HOST=1)
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host) THEN
       IF (TRIM(allow) /= '1') THEN
-         PRINT '(a)', 'FAIL  T-PDLIM: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+         PRINT '(a)', 'FAIL  T-PDLIM: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
          STOP 2
       END IF
-      PRINT '(a)', 'note: target regions run on the host (ALLOW_HOST=1)'
+      PRINT '(a)', 'note: compute regions run on the host (ALLOW_HOST=1)'
    ELSE
       PRINT '(a)', 'note: target regions run on the GPU'
    END IF

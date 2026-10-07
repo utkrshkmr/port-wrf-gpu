@@ -22,20 +22,20 @@
       gpu_isl = gpu_island(R_CAL_CLDFRA1)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
+!$acc update device(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
           IF (PRESENT(f_ice_phy)) THEN
-!$omp target update to(f_ice_phy)
+!$acc update device(f_ice_phy)
           END IF
           IF (PRESENT(f_rain_phy)) THEN
-!$omp target update to(f_rain_phy)
+!$acc update device(f_rain_phy)
           END IF
         ELSE
-!$omp target update from(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
+!$acc update self(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
           IF (PRESENT(f_ice_phy)) THEN
-!$omp target update from(f_ice_phy)
+!$acc update self(f_ice_phy)
           END IF
           IF (PRESENT(f_rain_phy)) THEN
-!$omp target update from(f_rain_phy)
+!$acc update self(f_rain_phy)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -47,9 +47,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(cldfra, cldfra1_flag)
+!$acc update self(cldfra, cldfra1_flag)
         ELSE
-!$omp target update to(cldfra, cldfra1_flag)
+!$acc update device(cldfra, cldfra1_flag)
         END IF
       END IF
       IF (gpu_cc_active(R_CAL_CLDFRA1)) THEN

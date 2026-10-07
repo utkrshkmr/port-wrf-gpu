@@ -23,11 +23,11 @@
       gpu_isl = gpu_island(R_CALC_P_RHO_PHI)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(moist, al, alb, mu, muts, c1, c2, c3h, c4h, c3f, c4f, ph, phb, p, pb, t, &
-!$omp&   znu, znw, dnw, rdnw, rdn)
+!$acc update device(moist, al, alb, mu, muts, c1, c2, c3h, c4h, c3f, c4f, ph, phb, p, pb, t, znu, &
+!$acc&   znw, dnw, rdnw, rdn)
         ELSE
-!$omp target update from(moist, al, alb, mu, muts, c1, c2, c3h, c4h, c3f, c4f, ph, phb, p, pb, t, &
-!$omp&   znu, znw, dnw, rdnw, rdn)
+!$acc update self(moist, al, alb, mu, muts, c1, c2, c3h, c4h, c3f, c4f, ph, phb, p, pb, t, znu, &
+!$acc&   znw, dnw, rdnw, rdn)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -38,9 +38,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(al, ph, phb, p)
+!$acc update self(al, ph, phb, p)
         ELSE
-!$omp target update to(al, ph, phb, p)
+!$acc update device(al, ph, phb, p)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_P_RHO_PHI)) THEN

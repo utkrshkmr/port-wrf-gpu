@@ -34,13 +34,13 @@
       gpu_isl = gpu_island(R_PHY_PREP)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(mut, muu, muv, c1h, c2h, c1f, c2f, u, v, p, pb, alt, ph, phb, t, moist, rho, &
-!$omp&   th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, z_at_w, dz8w, p_hyd, &
-!$omp&   p_hyd_w, dnw, fzm, fzp, znw)
+!$acc update device(mut, muu, muv, c1h, c2h, c1f, c2f, u, v, p, pb, alt, ph, phb, t, moist, rho, &
+!$acc&   th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, z_at_w, dz8w, p_hyd, &
+!$acc&   p_hyd_w, dnw, fzm, fzp, znw)
         ELSE
-!$omp target update from(mut, muu, muv, c1h, c2h, c1f, c2f, u, v, p, pb, alt, ph, phb, t, moist, &
-!$omp&   rho, th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, z_at_w, dz8w, &
-!$omp&   p_hyd, p_hyd_w, dnw, fzm, fzp, znw)
+!$acc update self(mut, muu, muv, c1h, c2h, c1f, c2f, u, v, p, pb, alt, ph, phb, t, moist, rho, &
+!$acc&   th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, z_at_w, dz8w, p_hyd, &
+!$acc&   p_hyd_w, dnw, fzm, fzp, znw)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -51,11 +51,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rho, th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, &
-!$omp&   z_at_w, dz8w, p_hyd, p_hyd_w)
+!$acc update self(rho, th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, &
+!$acc&   z_at_w, dz8w, p_hyd, p_hyd_w)
         ELSE
-!$omp target update to(rho, th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, &
-!$omp&   z_at_w, dz8w, p_hyd, p_hyd_w)
+!$acc update device(rho, th_phy, th_phy_m_t0, p_phy, pi_phy, u_phy, v_phy, p8w, t_phy, t8w, z, &
+!$acc&   z_at_w, dz8w, p_hyd, p_hyd_w)
         END IF
       END IF
       IF (gpu_cc_active(R_PHY_PREP)) THEN

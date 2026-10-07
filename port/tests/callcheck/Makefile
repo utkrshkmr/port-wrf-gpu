@@ -7,11 +7,11 @@ TP       ?= haswell
 W = ../../../WRF/frame
 ifeq ($(COMPILER),nvhpc)
 FC     = nvfortran
-FFLAGS = -O2 -Kieee -Mnofma -tp=$(TP) -mp=gpu -gpu=cc80,cc90,nofma -Mpreprocess -DWRF_GPU
+FFLAGS = -O2 -Kieee -Mnofma -tp=$(TP) -acc=gpu -gpu=cc80,cc90,nofma -Mpreprocess -DWRF_GPU
 FREE   = -Mfree
 else
 FC     = gfortran
-FFLAGS = -O2 -ffp-contract=off -ffree-line-length-none -fopenmp -cpp -DWRF_GPU
+FFLAGS = -O2 -ffp-contract=off -ffree-line-length-none -fopenacc -cpp -DWRF_GPU
 FREE   = -ffree-form
 endif
 OBJS = wrf_error_stub.o module_gpu_route.o module_gpu_callcheck.o

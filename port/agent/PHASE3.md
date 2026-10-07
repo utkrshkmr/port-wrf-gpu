@@ -1,5 +1,13 @@
 # Phase 3 — physics kernels
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Plan: [plan.md §8](../../plan.md) (8.0 column-physics transformation CP-1..CP-5, 8.1–8.5 tables, G3). Rules:
 [CODING_STANDARD.md](CODING_STANDARD.md) (template CP, §5.7). Exact lines: [KERNEL_REFS.md](KERNEL_REFS.md), routes
 and call sites: [ROUTES.md](ROUTES.md). Same way of working as Phase 2 (PHASE2.md §0): host world, one routine per
@@ -44,18 +52,18 @@ each take several sessions; the split is in WORKFLOW.md §11.
 
 For `wsm6` (the model for all the others; plan.md §8.2 and the wrapper `phys/module_mp_wsm6.F:17-236`):
 
-1. Under `#ifdef WRF_GPU` in the wrapper: one kernel `!$omp target teams distribute parallel do collapse(2)` over
+1. Under `#ifdef WRF_GPU` in the wrapper: one kernel `!$acc parallel loop gang vector collapse(2)` over
    (j,i) replacing the wrapper's j-slab loop. Per thread: gather the column with **the wrapper's own expressions**
    (e.g. `t(k) = th(i,k,j)*pi(i,k,j)`) into private fixed-size arrays; call the core routine with
    `its=ite=1, kts=1, kte=nz`; scatter back with the wrapper's expressions (`th = t/pi`). Accumulators the core
    updates in place (`rain`, `rainncv`, ...) are passed as 1-element private arrays and written back.
-2. The core routine (`mp_wsm6_run`, `physics_mmm/mp_wsm6.F90:214-1469`) and every callee get `!$omp declare target`;
+2. The core routine (`mp_wsm6_run`, `physics_mmm/mp_wsm6.F90:214-1469`) and every callee get `!$acc routine seq`;
    their automatic arrays sized by the tile become fixed size (`gpu_col.h`); whole-array statements
    (`dz(:)=...`, `precip(:)=0.`) become explicit `(1:nz)` sections — grep each routine for `(:)`, `(:,:)`, `SIZE(`,
    `LBOUND(`, `UBOUND(` and list every hit in the commit message.
 3. `errmsg`/`errflg` character handling → integer codes; `OPTIONAL`/`PRESENT` tests → host logicals passed in.
 4. The CPU wrapper stays unchanged for CPU-REF (`#ifndef WRF_GPU` around it, or the GPU block ends with `RETURN`).
-5. Module SAVE scalars and tables the core reads → `declare target` + P1.4 upload.
+5. Module SAVE scalars and tables the core reads → `!$acc declare create` + P1.4 upload (`!$acc update device`).
 6. Test: the call check on S-3M (`WRF_GPU_CALLCHECK=wsm6:3`, P3.0 step 5) while you work, then `t_ab.sh wsm6 W-20`,
    `t_trace.sh W-20`. The column harnesses of plan.md (T-WSM6-COL etc.) are optional debugging aids: if you write
    one, put it under `port/tests/columns/` with a `run_<name>.sh` that prints PASS/FAIL (g3.sh runs every `run_*.sh`

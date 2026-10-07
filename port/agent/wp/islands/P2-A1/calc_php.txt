@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_CALC_PHP)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(php, ph, phb)
+!$acc update device(php, ph, phb)
         ELSE
-!$omp target update from(php, ph, phb)
+!$acc update self(php, ph, phb)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(php)
+!$acc update self(php)
         ELSE
-!$omp target update to(php)
+!$acc update device(php)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_PHP)) THEN

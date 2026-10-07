@@ -38,7 +38,7 @@ PROGRAM t_fma
       c(k) = TRANSFER(rec(3, k), 1.0_r4)
    END DO
 
-!$omp target teams distribute parallel do map(to: a, b, c) map(from: dd)
+!$acc parallel loop gang vector copyin(a, b, c) copyout(dd)
    DO k = 1_i8, n
       dd(k) = a(k)*b(k) + c(k)
    END DO
@@ -64,7 +64,7 @@ PROGRAM t_fma
    a8 = REAL(a, r8) + 2.0_r8**(-40)
    b8 = REAL(b, r8) - 2.0_r8**(-41)
    c8 = REAL(c, r8)
-!$omp target teams distribute parallel do map(to: a8, b8, c8) map(from: dd8)
+!$acc parallel loop gang vector copyin(a8, b8, c8) copyout(dd8)
    DO k = 1_i8, n
       dd8(k) = a8(k)*b8(k) + c8(k)
    END DO

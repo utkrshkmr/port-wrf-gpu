@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_CONV_T_TENDF_TO_MOIST)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(t_1, moist_old, t_tendf, moist_tend)
+!$acc update device(t_1, moist_old, t_tendf, moist_tend)
         ELSE
-!$omp target update from(t_1, moist_old, t_tendf, moist_tend)
+!$acc update self(t_1, moist_old, t_tendf, moist_tend)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(t_tendf)
+!$acc update self(t_tendf)
         ELSE
-!$omp target update to(t_tendf)
+!$acc update device(t_tendf)
         END IF
       END IF
       IF (gpu_cc_active(R_CONV_T_TENDF_TO_MOIST)) THEN

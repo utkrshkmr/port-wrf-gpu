@@ -22,9 +22,9 @@
       gpu_isl = gpu_island(R_SFCDIAGS)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(hfx, qfx, tsk, qsfc, chs2, cqs2, t2, th2, q2, psfc, chs, t3d, qv3d)
+!$acc update device(hfx, qfx, tsk, qsfc, chs2, cqs2, t2, th2, q2, psfc, chs, t3d, qv3d)
         ELSE
-!$omp target update from(hfx, qfx, tsk, qsfc, chs2, cqs2, t2, th2, q2, psfc, chs, t3d, qv3d)
+!$acc update self(hfx, qfx, tsk, qsfc, chs2, cqs2, t2, th2, q2, psfc, chs, t3d, qv3d)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(t2, th2, q2)
+!$acc update self(t2, th2, q2)
         ELSE
-!$omp target update to(t2, th2, q2)
+!$acc update device(t2, th2, q2)
         END IF
       END IF
       IF (gpu_cc_active(R_SFCDIAGS)) THEN

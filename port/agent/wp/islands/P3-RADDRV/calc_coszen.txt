@@ -21,9 +21,9 @@
       gpu_isl = gpu_island(R_CALC_COSZEN)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(xlon, xlat, coszen, hrang)
+!$acc update device(xlon, xlat, coszen, hrang)
         ELSE
-!$omp target update from(xlon, xlat, coszen, hrang)
+!$acc update self(xlon, xlat, coszen, hrang)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -34,9 +34,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(coszen, hrang)
+!$acc update self(coszen, hrang)
         ELSE
-!$omp target update to(coszen, hrang)
+!$acc update device(coszen, hrang)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_COSZEN)) THEN

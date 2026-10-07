@@ -23,11 +23,9 @@
       gpu_isl = gpu_island(R_SMAG2D_KM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, &
-!$omp&   zy)
+!$acc update device(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, zy)
         ELSE
-!$omp target update from(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, &
-!$omp&   zy)
+!$acc update self(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, zy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -38,9 +36,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(xkmh, xkmv, xkhh, xkhv)
+!$acc update self(xkmh, xkmv, xkhh, xkhv)
         ELSE
-!$omp target update to(xkmh, xkmv, xkhh, xkhv)
+!$acc update device(xkmh, xkmv, xkhh, xkhv)
         END IF
       END IF
       IF (gpu_cc_active(R_SMAG2D_KM)) THEN

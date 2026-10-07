@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_CALCULATE_FULL)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rfield, rfieldb, rfieldp)
+!$acc update device(rfield, rfieldb, rfieldp)
         ELSE
-!$omp target update from(rfield, rfieldb, rfieldp)
+!$acc update self(rfield, rfieldb, rfieldp)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rfield)
+!$acc update self(rfield)
         ELSE
-!$omp target update to(rfield)
+!$acc update device(rfield)
         END IF
       END IF
       IF (gpu_cc_active(R_CALCULATE_FULL)) THEN

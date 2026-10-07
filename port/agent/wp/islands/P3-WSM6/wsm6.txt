@@ -40,40 +40,40 @@
       gpu_isl = gpu_island(R_WSM6)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(th, q, qc, qr, qi, qs, qg, den, pii, p, delz, rain, rainncv, sr, re_cloud, &
-!$omp&   re_ice, re_snow, evapprod, rainprod)
+!$acc update device(th, q, qc, qr, qi, qs, qg, den, pii, p, delz, rain, rainncv, sr, re_cloud, &
+!$acc&   re_ice, re_snow, evapprod, rainprod)
           IF (PRESENT(snow)) THEN
-!$omp target update to(snow)
+!$acc update device(snow)
           END IF
           IF (PRESENT(snowncv)) THEN
-!$omp target update to(snowncv)
+!$acc update device(snowncv)
           END IF
           IF (PRESENT(graupel)) THEN
-!$omp target update to(graupel)
+!$acc update device(graupel)
           END IF
           IF (PRESENT(graupelncv)) THEN
-!$omp target update to(graupelncv)
+!$acc update device(graupelncv)
           END IF
           IF (PRESENT(refl_10cm)) THEN
-!$omp target update to(refl_10cm)
+!$acc update device(refl_10cm)
           END IF
         ELSE
-!$omp target update from(th, q, qc, qr, qi, qs, qg, den, pii, p, delz, rain, rainncv, sr, re_cloud, &
-!$omp&   re_ice, re_snow, evapprod, rainprod)
+!$acc update self(th, q, qc, qr, qi, qs, qg, den, pii, p, delz, rain, rainncv, sr, re_cloud, &
+!$acc&   re_ice, re_snow, evapprod, rainprod)
           IF (PRESENT(snow)) THEN
-!$omp target update from(snow)
+!$acc update self(snow)
           END IF
           IF (PRESENT(snowncv)) THEN
-!$omp target update from(snowncv)
+!$acc update self(snowncv)
           END IF
           IF (PRESENT(graupel)) THEN
-!$omp target update from(graupel)
+!$acc update self(graupel)
           END IF
           IF (PRESENT(graupelncv)) THEN
-!$omp target update from(graupelncv)
+!$acc update self(graupelncv)
           END IF
           IF (PRESENT(refl_10cm)) THEN
-!$omp target update from(refl_10cm)
+!$acc update self(refl_10cm)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -85,40 +85,40 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(th, q, qc, qr, qi, qs, qg, rain, rainncv, sr, re_cloud, re_ice, re_snow, &
-!$omp&   evapprod, rainprod)
+!$acc update self(th, q, qc, qr, qi, qs, qg, rain, rainncv, sr, re_cloud, re_ice, re_snow, &
+!$acc&   evapprod, rainprod)
           IF (PRESENT(snow)) THEN
-!$omp target update from(snow)
+!$acc update self(snow)
           END IF
           IF (PRESENT(snowncv)) THEN
-!$omp target update from(snowncv)
+!$acc update self(snowncv)
           END IF
           IF (PRESENT(graupel)) THEN
-!$omp target update from(graupel)
+!$acc update self(graupel)
           END IF
           IF (PRESENT(graupelncv)) THEN
-!$omp target update from(graupelncv)
+!$acc update self(graupelncv)
           END IF
           IF (PRESENT(refl_10cm)) THEN
-!$omp target update from(refl_10cm)
+!$acc update self(refl_10cm)
           END IF
         ELSE
-!$omp target update to(th, q, qc, qr, qi, qs, qg, rain, rainncv, sr, re_cloud, re_ice, re_snow, &
-!$omp&   evapprod, rainprod)
+!$acc update device(th, q, qc, qr, qi, qs, qg, rain, rainncv, sr, re_cloud, re_ice, re_snow, &
+!$acc&   evapprod, rainprod)
           IF (PRESENT(snow)) THEN
-!$omp target update to(snow)
+!$acc update device(snow)
           END IF
           IF (PRESENT(snowncv)) THEN
-!$omp target update to(snowncv)
+!$acc update device(snowncv)
           END IF
           IF (PRESENT(graupel)) THEN
-!$omp target update to(graupel)
+!$acc update device(graupel)
           END IF
           IF (PRESENT(graupelncv)) THEN
-!$omp target update to(graupelncv)
+!$acc update device(graupelncv)
           END IF
           IF (PRESENT(refl_10cm)) THEN
-!$omp target update to(refl_10cm)
+!$acc update device(refl_10cm)
           END IF
         END IF
       END IF

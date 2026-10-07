@@ -22,11 +22,10 @@
       gpu_isl = gpu_island(R_CALC_COEF_W)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, cqw, rdn, &
-!$omp&   rdnw, c2a)
+!$acc update device(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, cqw, rdn, rdnw, &
+!$acc&   c2a)
         ELSE
-!$omp target update from(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, cqw, rdn, &
-!$omp&   rdnw, c2a)
+!$acc update self(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -37,9 +36,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(a, alpha, gamma)
+!$acc update self(a, alpha, gamma)
         ELSE
-!$omp target update to(a, alpha, gamma)
+!$acc update device(a, alpha, gamma)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_COEF_W)) THEN

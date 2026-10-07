@@ -943,6 +943,246 @@
    ],
    "specs": [],
    "routines": []
+  },
+  "P4-A2F": {
+   "phase": 4,
+   "title": "Atmosphere to fire: wind interpolation, boundary continuation, 2D interpolation",
+   "branch": "agent/wp/p4_a2f",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P4-A2F.md",
+    "port/agent/arith_exceptions.d/P4-A2F.txt",
+    "WRF/inc/gpu_work_p4_a2f.inc"
+   ],
+   "specs": [],
+   "routines": [
+    {
+     "file": "WRF/phys/module_fr_fire_driver.F",
+     "name": "interpolate_atm2fire",
+     "route": "interpolate_atm2fire"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_util.F",
+     "name": "continue_at_boundary",
+     "route": "continue_at_boundary"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_util.F",
+     "name": "interpolate_2d",
+     "route": "interpolate_2d"
+    }
+   ]
+  },
+  "P4-LS": {
+   "phase": 4,
+   "title": "Level set: propagation, tendency, rate of spread, reinitialization, tign, flame length",
+   "branch": "agent/wp/p4_ls",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P4-LS.md",
+    "port/agent/arith_exceptions.d/P4-LS.txt",
+    "WRF/inc/gpu_work_p4_ls.inc"
+   ],
+   "specs": [],
+   "routines": [
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "prop_ls_rk3",
+     "route": "prop_ls_rk3"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "tend_ls",
+     "route": "tend_ls"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_phys.F",
+     "name": "fire_ros",
+     "route": "fire_ros"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "tign_update",
+     "route": "tign_update"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "calc_flame_length",
+     "route": "calc_flame_length"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "reinit_ls_rk3",
+     "route": "reinit_ls_rk3"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "advance_ls_reinit",
+     "route": "advance_ls_reinit"
+    }
+   ]
+  },
+  "P4-FUEL": {
+   "phase": 4,
+   "title": "Ignition, fuel consumption, heat fluxes, sums over fire cells",
+   "branch": "agent/wp/p4_fuel",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P4-FUEL.md",
+    "port/agent/arith_exceptions.d/P4-FUEL.txt"
+   ],
+   "specs": [],
+   "routines": [
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "ignite_fire",
+     "route": "ignite_fire"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "nearest",
+     "route": "ignite_fire"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_core.F",
+     "name": "fuel_left",
+     "route": "fuel_left"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_phys.F",
+     "name": "heat_fluxes",
+     "route": "heat_fluxes"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_util.F",
+     "name": "sum_2d_cells",
+     "route": "sum_2d_cells"
+    }
+   ]
+  },
+  "P4-MODEL": {
+   "phase": 4,
+   "title": "fire_model, the fire drivers, flags and constants on the device",
+   "branch": "agent/wp/p4_model",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P4-MODEL.md",
+    "port/agent/arith_exceptions.d/P4-MODEL.txt",
+    "WRF/inc/gpu_work_p4_model.inc"
+   ],
+   "specs": [
+    "WRF/phys/module_fr_fire_util.F",
+    "WRF/phys/module_fr_fire_phys.F"
+   ],
+   "routines": [
+    {
+     "file": "WRF/phys/module_fr_fire_model.F",
+     "name": "fire_model",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_driver.F",
+     "name": "fire_driver_em",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_driver.F",
+     "name": "fire_driver_phys",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_driver.F",
+     "name": "set_flags",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_driver_wrf.F",
+     "name": "fire_driver_em_init",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_driver_wrf.F",
+     "name": "fire_driver_em_step",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_util.F",
+     "name": "print_2d_stats",
+     "route": "fire_model"
+    },
+    {
+     "file": "WRF/phys/module_fr_fire_util.F",
+     "name": "print_3d_stats",
+     "route": "fire_model"
+    }
+   ]
+  },
+  "P4-ATM": {
+   "phase": 4,
+   "title": "Fire heat and moisture fluxes into the atmosphere (fire_tendency)",
+   "branch": "agent/wp/p4_atm",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P4-ATM.md",
+    "port/agent/arith_exceptions.d/P4-ATM.txt",
+    "WRF/inc/gpu_work_p4_atm.inc"
+   ],
+   "specs": [],
+   "routines": [
+    {
+     "file": "WRF/phys/module_fr_fire_atm.F",
+     "name": "fire_tendency",
+     "route": "fire_tendency"
+    }
+   ]
+  },
+  "P5-TRACE": {
+   "phase": 5,
+   "title": "Bit-hash tracer on the device (P5.0)",
+   "branch": "agent/wp/p5_trace",
+   "files": [
+    "WRF/frame/module_bittrace.F"
+   ],
+   "aux": [
+    "port/agent/wp/status/P5-TRACE.md",
+    "port/agent/arith_exceptions.d/P5-TRACE.txt"
+   ],
+   "specs": [],
+   "routines": []
+  },
+  "P5-CPL": {
+   "phase": 5,
+   "title": "couple_or_uncouple_em on the device (P5.1)",
+   "branch": "agent/wp/p5_cpl",
+   "files": [],
+   "aux": [
+    "port/agent/wp/status/P5-CPL.md",
+    "port/agent/arith_exceptions.d/P5-CPL.txt",
+    "WRF/inc/gpu_work_p5_cpl.inc"
+   ],
+   "specs": [],
+   "routines": [
+    {
+     "file": "WRF/dyn_em/couple_or_uncouple_em.F",
+     "name": "couple_or_uncouple_em",
+     "route": "couple_or_uncouple_em"
+    }
+   ]
+  },
+  "P5-FORCE": {
+   "phase": 5,
+   "title": "Nest forcing on the device: med_force_domain and the forcing update lists (P5.2)",
+   "branch": "agent/wp/p5_force",
+   "files": [
+    "WRF/share/mediation_force_domain.F",
+    "WRF/tools/gen_gpu.c"
+   ],
+   "aux": [
+    "port/agent/wp/status/P5-FORCE.md",
+    "port/agent/arith_exceptions.d/P5-FORCE.txt"
+   ],
+   "specs": [],
+   "routines": []
   }
  }
 }

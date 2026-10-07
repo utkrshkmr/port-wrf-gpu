@@ -20,9 +20,9 @@
       gpu_isl = gpu_island(R_SPEC_BDYUPDATE)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(field, field_tend)
+!$acc update device(field, field_tend)
         ELSE
-!$omp target update from(field, field_tend)
+!$acc update self(field, field_tend)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -33,9 +33,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(field)
+!$acc update self(field)
         ELSE
-!$omp target update to(field)
+!$acc update device(field)
         END IF
       END IF
       IF (gpu_cc_active(R_SPEC_BDYUPDATE)) THEN

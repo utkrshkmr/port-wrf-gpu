@@ -25,11 +25,11 @@
       gpu_isl = gpu_island(R_TKE_KM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, msfty, &
-!$omp&   hpbl, dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
+!$acc update device(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, msfty, &
+!$acc&   hpbl, dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
         ELSE
-!$omp target update from(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, &
-!$omp&   msfty, hpbl, dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
+!$acc update self(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, msfty, hpbl, &
+!$acc&   dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -40,9 +40,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
+!$acc update self(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
         ELSE
-!$omp target update to(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
+!$acc update device(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
         END IF
       END IF
       IF (gpu_cc_active(R_TKE_KM)) THEN

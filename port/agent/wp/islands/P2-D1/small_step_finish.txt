@@ -34,13 +34,13 @@
       gpu_isl = gpu_island(R_SMALL_STEP_FINISH)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u_2, u_1, v_2, v_1, w_2, w_1, t_2, t_1, ph_2, ph_1, ww, ww1, mu_2, mu_1, &
-!$omp&   mut, muts, muu, muus, muv, muvs, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
-!$omp&   w_save, t_save, ph_save, mu_save, msfux, msfuy, msfvx, msfvy, msftx, msfty, h_diabatic)
+!$acc update device(u_2, u_1, v_2, v_1, w_2, w_1, t_2, t_1, ph_2, ph_1, ww, ww1, mu_2, mu_1, mut, &
+!$acc&   muts, muu, muus, muv, muvs, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
+!$acc&   w_save, t_save, ph_save, mu_save, msfux, msfuy, msfvx, msfvy, msftx, msfty, h_diabatic)
         ELSE
-!$omp target update from(u_2, u_1, v_2, v_1, w_2, w_1, t_2, t_1, ph_2, ph_1, ww, ww1, mu_2, mu_1, &
-!$omp&   mut, muts, muu, muus, muv, muvs, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
-!$omp&   w_save, t_save, ph_save, mu_save, msfux, msfuy, msfvx, msfvy, msftx, msfty, h_diabatic)
+!$acc update self(u_2, u_1, v_2, v_1, w_2, w_1, t_2, t_1, ph_2, ph_1, ww, ww1, mu_2, mu_1, mut, &
+!$acc&   muts, muu, muus, muv, muvs, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
+!$acc&   w_save, t_save, ph_save, mu_save, msfux, msfuy, msfvx, msfvy, msftx, msfty, h_diabatic)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -51,11 +51,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(u_2, v_2, w_2, t_2, ph_2, ww, mu_2, mu_1, mut, muts, muu, muus, muv, muvs, &
-!$omp&   mu_save)
+!$acc update self(u_2, v_2, w_2, t_2, ph_2, ww, mu_2, mu_1, mut, muts, muu, muus, muv, muvs, &
+!$acc&   mu_save)
         ELSE
-!$omp target update to(u_2, v_2, w_2, t_2, ph_2, ww, mu_2, mu_1, mut, muts, muu, muus, muv, muvs, &
-!$omp&   mu_save)
+!$acc update device(u_2, v_2, w_2, t_2, ph_2, ww, mu_2, mu_1, mut, muts, muu, muus, muv, muvs, &
+!$acc&   mu_save)
         END IF
       END IF
       IF (gpu_cc_active(R_SMALL_STEP_FINISH)) THEN

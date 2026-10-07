@@ -32,18 +32,18 @@ PROGRAM t_rm_exh
    lo_end = INT(nch, i8)*chunk - 1_i8
    CALL require_device()
    ALLOCATE (hres(chunk), dres(chunk))
-!$omp target enter data map(alloc: dres)
+!$acc enter data create(dres)
    total_bad = 0_i8
    DO f = f0, f1
       t0 = omp_get_wtime()
       nbad = 0_i8
       first_bad = -1_i8
       DO lo = 0_i8, lo_end, chunk
-!$omp target teams distribute parallel do firstprivate(lo, f)
+!$acc parallel loop gang vector firstprivate(lo, f)
          DO k = 1_i8, chunk
             dres(k) = eval4(f, f4(lo + k - 1_i8), 0.0_r4)
          END DO
-!$omp target update from(dres)
+!$acc update self(dres)
 !$omp parallel do
          DO k = 1_i8, chunk
             hres(k) = eval4(f, f4(lo + k - 1_i8), 0.0_r4)
@@ -60,6 +60,6 @@ PROGRAM t_rm_exh
       PRINT '(a,f8.1,a)', '      ', omp_get_wtime() - t0, ' s'
       total_bad = total_bad + nbad
    END DO
-!$omp target exit data map(delete: dres)
+!$acc exit data delete(dres)
    IF (total_bad /= 0_i8) STOP 1
 END PROGRAM t_rm_exh

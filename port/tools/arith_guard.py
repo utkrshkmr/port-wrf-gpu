@@ -6,7 +6,7 @@ Checks every changed Fortran file under WRF/ against a base commit:
  1. CPU view (all WRF_GPU* macros undefined), which is what CPU-REF compiles.
     It must equal the base statement for statement (comments, blank lines and
     OpenMP/OpenACC directive lines are ignored).  Allowed additions only:
-      - USE of the port modules (module_gpu_*, module_bittrace, omp_lib,
+      - USE of the port modules (module_gpu_*, module_bittrace, openacc, cudafor, omp_lib,
         iso_c_binding)
       - CALL gpu_...(...), CALL bt_...(...), CALL wrf_nvtx_...(...)
       - #include of "gpu_*.inc" / "island_*.inc" files
@@ -61,7 +61,7 @@ EXC_FILE = os.path.join(REPO, "port", "agent", "arith_exceptions.txt")
 EXC_DIR = os.path.join(REPO, "port", "agent", "arith_exceptions.d")
 
 ALLOWED_CPU = [
-    re.compile(r"^use(,intrinsic::|::)?(module_gpu_\w+|module_bittrace|omp_lib|iso_c_binding)\b"),
+    re.compile(r"^use(,intrinsic::|::)?(module_gpu_\w+|module_bittrace|openacc|cudafor|omp_lib|iso_c_binding)\b"),
     re.compile(r"^call(gpu_|bt_|wrf_nvtx_)\w*(\(.*\))?$"),
     re.compile(r"^#\s*include\s*[\"<](gpu_|island_)[\w.]+[\">]$"),
 ]
@@ -384,7 +384,7 @@ def self_test():
     head_ok = """      SUBROUTINE s(a, b, n)
       USE module_gpu_route, ONLY : gpu_on, R_ZERO_TEND
       REAL :: a(n), b(n)
-!$omp target teams loop if(target: gpu_on(R_ZERO_TEND)) default(none) shared(a,b) firstprivate(n)
+!$acc parallel loop gang vector if(gpu_on(R_ZERO_TEND)) default(none) present(a,b) firstprivate(n)
       DO i = 1, n
          a(i) = b(i)*2.0 + a(i)/(b(i) + 1.0)   ! unchanged
       END DO

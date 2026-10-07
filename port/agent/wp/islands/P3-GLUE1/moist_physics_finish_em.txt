@@ -27,16 +27,16 @@
       gpu_isl = gpu_island(R_MOIST_PHYSICS_FINISH_EM)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(t_new, t_old, mut, th_phy, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, &
-!$omp&   th_phy_m_t0)
+!$acc update device(t_new, t_old, mut, th_phy, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, &
+!$acc&   th_phy_m_t0)
           IF (PRESENT(dfi_tten_rad)) THEN
-!$omp target update to(dfi_tten_rad)
+!$acc update device(dfi_tten_rad)
           END IF
         ELSE
-!$omp target update from(t_new, t_old, mut, th_phy, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, &
-!$omp&   th_phy_m_t0)
+!$acc update self(t_new, t_old, mut, th_phy, h_diabatic, qv, qv_diabatic, qc, qc_diabatic, &
+!$acc&   th_phy_m_t0)
           IF (PRESENT(dfi_tten_rad)) THEN
-!$omp target update from(dfi_tten_rad)
+!$acc update self(dfi_tten_rad)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -48,10 +48,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(t_new, t_old, mut, th_phy, h_diabatic, qv_diabatic, qc_diabatic, &
-!$omp&   th_phy_m_t0)
+!$acc update self(t_new, t_old, mut, th_phy, h_diabatic, qv_diabatic, qc_diabatic, th_phy_m_t0)
         ELSE
-!$omp target update to(t_new, t_old, mut, th_phy, h_diabatic, qv_diabatic, qc_diabatic, th_phy_m_t0)
+!$acc update device(t_new, t_old, mut, th_phy, h_diabatic, qv_diabatic, qc_diabatic, th_phy_m_t0)
         END IF
       END IF
       IF (gpu_cc_active(R_MOIST_PHYSICS_FINISH_EM)) THEN

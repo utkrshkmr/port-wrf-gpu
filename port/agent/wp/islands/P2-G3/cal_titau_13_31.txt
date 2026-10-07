@@ -21,9 +21,9 @@
       gpu_isl = gpu_island(R_CAL_TITAU)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(titau, defor, mtau, xkx, fnm, fnp, rho)
+!$acc update device(titau, defor, mtau, xkx, fnm, fnp, rho)
         ELSE
-!$omp target update from(titau, defor, mtau, xkx, fnm, fnp, rho)
+!$acc update self(titau, defor, mtau, xkx, fnm, fnp, rho)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -34,9 +34,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(titau, mtau)
+!$acc update self(titau, mtau)
         ELSE
-!$omp target update to(titau, mtau)
+!$acc update device(titau, mtau)
         END IF
       END IF
       IF (gpu_cc_active(R_CAL_TITAU)) THEN

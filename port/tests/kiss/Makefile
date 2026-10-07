@@ -6,10 +6,10 @@ TP       ?= haswell
 ifeq ($(COMPILER),nvhpc)
 FC     = nvfortran
 FFLAGS = -O2 -Kieee -Mnofma -Mnoflushz -Mnodaz -Mvect=noassoc -tp=$(TP) \
-         -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp
+         -acc=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=accel
 else
 FC     = gfortran
-FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenmp -fwrapv
+FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenacc -fwrapv
 endif
 all: t_kiss
 t_kiss: t_kiss.F90

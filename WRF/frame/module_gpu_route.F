@@ -2,7 +2,7 @@
 !
 ! module_gpu_route: per-routine GPU routing switch (plan.md P0.8).
 !
-! Every ported target construct carries  if(target: gpu_on(R_<ROUTINE>))
+! Every ported compute construct carries  if(gpu_on(R_<ROUTINE>))  (OpenACC; ADR-001)
 ! and every ported call site is wrapped in host<->device "island" updates
 ! that are active only when the routine is switched off (plan.md P0.8).
 ! Switching a routine off runs it on the host over host data, which gives

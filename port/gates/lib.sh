@@ -44,15 +44,15 @@ flags_ok() {
 }
 # window <build> <window> [args]: run (or reuse) a window, print the run dir; empty on failure.
 # The run must have been made as the locked window table says: GPU runs with
-# OMP_TARGET_OFFLOAD=MANDATORY, and at least the trace level of port/h100/windows.txt.
+# ACC_DEVICE_TYPE=nvidia, and at least the trace level of port/h100/windows.txt.
 window() {
   local rd; rd=$("$H100/window.sh" "$@" | tail -1)
   [ -n "$rd" ] && [ -f "$rd/window.info" ] || { echo "$rd"; return; }
   local mode; mode=$(build_mode "$1")
   local want; want=$(awk -v w="$2" '$1 == w {print $7; exit}' "$H100/windows.txt")
   local got; got=$(sed -n 's/^WRF_BITTRACE=//p' "$rd/window.info" | head -1)
-  if [[ $mode == gpu-* ]] && ! grep -qx 'OMP_TARGET_OFFLOAD=MANDATORY' "$rd/window.info"; then
-    echo "run $rd: GPU run without OMP_TARGET_OFFLOAD=MANDATORY (window.info)" >&2; echo ""; return
+  if [[ $mode == gpu-* ]] && ! grep -qx 'ACC_DEVICE_TYPE=nvidia' "$rd/window.info"; then
+    echo "run $rd: GPU run without ACC_DEVICE_TYPE=nvidia (window.info)" >&2; echo ""; return
   fi
   if [ -n "$want" ] && { [ -z "$got" ] || [ "$got" -lt "$want" ]; }; then
     echo "run $rd: trace level ${got:-none} below $want of windows.txt" >&2; echo ""; return

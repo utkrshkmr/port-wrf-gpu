@@ -34,114 +34,114 @@
       gpu_isl = gpu_island(R_YSU)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u3d, v3d, t3d, qv3d, qc3d, qi3d, p3d, p3di, pi3d, rublten, rvblten, &
-!$omp&   rthblten, rqvblten, rqcblten, rqiblten, dz8w, psfc, znt, ust, hpbl, psim, psih, xland, &
-!$omp&   hfx, qfx, wspd, br, kpbl2d, exch_h, exch_m, wstar, delta, u10, v10, uoce, voce, rthraten)
+!$acc update device(u3d, v3d, t3d, qv3d, qc3d, qi3d, p3d, p3di, pi3d, rublten, rvblten, rthblten, &
+!$acc&   rqvblten, rqcblten, rqiblten, dz8w, psfc, znt, ust, hpbl, psim, psih, xland, hfx, qfx, &
+!$acc&   wspd, br, kpbl2d, exch_h, exch_m, wstar, delta, u10, v10, uoce, voce, rthraten)
           IF (PRESENT(ctopo)) THEN
-!$omp target update to(ctopo)
+!$acc update device(ctopo)
           END IF
           IF (PRESENT(ctopo2)) THEN
-!$omp target update to(ctopo2)
+!$acc update device(ctopo2)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update to(frc_urb2d)
+!$acc update device(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update to(a_u_bep)
+!$acc update device(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update to(a_v_bep)
+!$acc update device(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update to(a_t_bep)
+!$acc update device(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update to(a_q_bep)
+!$acc update device(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update to(a_e_bep)
+!$acc update device(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update to(b_u_bep)
+!$acc update device(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update to(b_v_bep)
+!$acc update device(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update to(b_t_bep)
+!$acc update device(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update to(b_q_bep)
+!$acc update device(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update to(b_e_bep)
+!$acc update device(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update to(dlg_bep)
+!$acc update device(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update to(dl_u_bep)
+!$acc update device(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update to(sf_bep)
+!$acc update device(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update to(vl_bep)
+!$acc update device(vl_bep)
           END IF
         ELSE
-!$omp target update from(u3d, v3d, t3d, qv3d, qc3d, qi3d, p3d, p3di, pi3d, rublten, rvblten, &
-!$omp&   rthblten, rqvblten, rqcblten, rqiblten, dz8w, psfc, znt, ust, hpbl, psim, psih, xland, &
-!$omp&   hfx, qfx, wspd, br, kpbl2d, exch_h, exch_m, wstar, delta, u10, v10, uoce, voce, rthraten)
+!$acc update self(u3d, v3d, t3d, qv3d, qc3d, qi3d, p3d, p3di, pi3d, rublten, rvblten, rthblten, &
+!$acc&   rqvblten, rqcblten, rqiblten, dz8w, psfc, znt, ust, hpbl, psim, psih, xland, hfx, qfx, &
+!$acc&   wspd, br, kpbl2d, exch_h, exch_m, wstar, delta, u10, v10, uoce, voce, rthraten)
           IF (PRESENT(ctopo)) THEN
-!$omp target update from(ctopo)
+!$acc update self(ctopo)
           END IF
           IF (PRESENT(ctopo2)) THEN
-!$omp target update from(ctopo2)
+!$acc update self(ctopo2)
           END IF
           IF (PRESENT(frc_urb2d)) THEN
-!$omp target update from(frc_urb2d)
+!$acc update self(frc_urb2d)
           END IF
           IF (PRESENT(a_u_bep)) THEN
-!$omp target update from(a_u_bep)
+!$acc update self(a_u_bep)
           END IF
           IF (PRESENT(a_v_bep)) THEN
-!$omp target update from(a_v_bep)
+!$acc update self(a_v_bep)
           END IF
           IF (PRESENT(a_t_bep)) THEN
-!$omp target update from(a_t_bep)
+!$acc update self(a_t_bep)
           END IF
           IF (PRESENT(a_q_bep)) THEN
-!$omp target update from(a_q_bep)
+!$acc update self(a_q_bep)
           END IF
           IF (PRESENT(a_e_bep)) THEN
-!$omp target update from(a_e_bep)
+!$acc update self(a_e_bep)
           END IF
           IF (PRESENT(b_u_bep)) THEN
-!$omp target update from(b_u_bep)
+!$acc update self(b_u_bep)
           END IF
           IF (PRESENT(b_v_bep)) THEN
-!$omp target update from(b_v_bep)
+!$acc update self(b_v_bep)
           END IF
           IF (PRESENT(b_t_bep)) THEN
-!$omp target update from(b_t_bep)
+!$acc update self(b_t_bep)
           END IF
           IF (PRESENT(b_q_bep)) THEN
-!$omp target update from(b_q_bep)
+!$acc update self(b_q_bep)
           END IF
           IF (PRESENT(b_e_bep)) THEN
-!$omp target update from(b_e_bep)
+!$acc update self(b_e_bep)
           END IF
           IF (PRESENT(dlg_bep)) THEN
-!$omp target update from(dlg_bep)
+!$acc update self(dlg_bep)
           END IF
           IF (PRESENT(dl_u_bep)) THEN
-!$omp target update from(dl_u_bep)
+!$acc update self(dl_u_bep)
           END IF
           IF (PRESENT(sf_bep)) THEN
-!$omp target update from(sf_bep)
+!$acc update self(sf_bep)
           END IF
           IF (PRESENT(vl_bep)) THEN
-!$omp target update from(vl_bep)
+!$acc update self(vl_bep)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -153,11 +153,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, hpbl, kpbl2d, &
-!$omp&   exch_h, exch_m, wstar, delta, u10, v10)
+!$acc update self(rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, hpbl, kpbl2d, exch_h, &
+!$acc&   exch_m, wstar, delta, u10, v10)
         ELSE
-!$omp target update to(rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, hpbl, kpbl2d, &
-!$omp&   exch_h, exch_m, wstar, delta, u10, v10)
+!$acc update device(rublten, rvblten, rthblten, rqvblten, rqcblten, rqiblten, hpbl, kpbl2d, exch_h, &
+!$acc&   exch_m, wstar, delta, u10, v10)
         END IF
       END IF
       IF (gpu_cc_active(R_YSU)) THEN

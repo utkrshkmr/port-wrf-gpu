@@ -10,10 +10,10 @@ TP       ?= haswell
 ifeq ($(COMPILER),nvhpc)
 FC     = nvfortran
 FFLAGS = -O2 -Kieee -Mnofma -Mnoflushz -Mnodaz -Mvect=noassoc -tp=$(TP) \
-         -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp
+         -acc=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=accel
 else
 FC     = gfortran
-FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenmp
+FFLAGS = -O2 -ffp-contract=off -fno-fast-math -ffree-line-length-none -fopenacc
 endif
 # TMPL_B_FLAGS=-DTMPL_NO_STMTFN: statement functions as module functions (see t_tmpl_b.F90, t_tmpl_cp.F90)
 TMPL_B_FLAGS ?=

@@ -43,7 +43,7 @@ PROGRAM t_ipow
       a8(k) = REAL(a(k), r8)*(1.0_r8 + 2.0_r8**(-30))
    END DO
 
-!$omp target teams distribute parallel do map(to: a, a8) map(from: d4, d8)
+!$acc parallel loop gang vector copyin(a, a8) copyout(d4, d8)
    DO k = 1_i8, n
       CALL pw(a(k), a8(k), d4(:, k), d8(:, k))
    END DO
@@ -71,7 +71,7 @@ PROGRAM t_ipow
 CONTAINS
 
    SUBROUTINE pw(x, x8, r4o, r8o)
-!$omp declare target
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r8), INTENT(IN) :: x8
       INTEGER(i4), INTENT(OUT) :: r4o(nlit + nvar)

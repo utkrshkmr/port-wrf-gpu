@@ -199,31 +199,36 @@ SUBROUTINE ozn_p_int_gpu(p ,pin, levsiz, ozmixt, o3vmr, pmid_w, kupper_w, ierr, 
    pver = kte - kts + 1
    ierr = 0
 
-!$omp target teams distribute parallel do if(target: dev) default(none) &
-!$omp& shared(p, pin, ozmixt, o3vmr, pmid_w, kupper_w) &
-!$omp& firstprivate(its, ite, jts, jte, kts, kte, levsiz, ncol, pver) &
-!$omp& private(i, k, kk, kkstart, kout, kount, done, dpu, dpl) reduction(max: ierr)
+!$acc parallel loop gang vector if(dev) default(none) present(p, pin, ozmixt, o3vmr, pmid_w, kupper_w) &
+!$acc& firstprivate(its, ite, jts, jte, kts, kte, levsiz, ncol, pver) &
+!$acc& private(i, k, kk, kkstart, kout, kount, done, dpu, dpl) reduction(max: ierr)
    do j=jts,jte
+   !$acc loop seq
    do i=its, ite
       kupper_w(i,j) = 1
    end do
+      !$acc loop seq
       do k = kts,kte
          kk = kte - k + kts
+      !$acc loop seq
       do i = its,ite
          pmid_w(i,kk,j) = p(i,k,j)
       enddo
       enddo
 
+   !$acc loop seq
    do k=1,pver
 
       kout = pver - k + 1
       kkstart = levsiz
+      !$acc loop seq
       do i=its,ite
          kkstart = min0(kkstart,kupper_w(i,j))
       end do
       kount = 0
       done = .false.
       do kk=kkstart,levsiz-1
+         !$acc loop seq
          do i=its,ite
             if (pin(kk).lt.pmid_w(i,k,j) .and. pmid_w(i,k,j).le.pin(kk+1)) then
                kupper_w(i,j) = kk
@@ -231,6 +236,7 @@ SUBROUTINE ozn_p_int_gpu(p ,pin, levsiz, ozmixt, o3vmr, pmid_w, kupper_w, ierr, 
             end if
          end do
          if (kount.eq.ncol) then
+            !$acc loop seq
             do i=its,ite
                dpu = pmid_w(i,k,j) - pin(kupper_w(i,j))
                dpl = pin(kupper_w(i,j)+1) - pmid_w(i,k,j)
@@ -242,6 +248,7 @@ SUBROUTINE ozn_p_int_gpu(p ,pin, levsiz, ozmixt, o3vmr, pmid_w, kupper_w, ierr, 
          end if
       end do
       if (.not. done) then
+      !$acc loop seq
       do i=its,ite
          if (pmid_w(i,k,j) .lt. pin(1)) then
             o3vmr(i,kout,j) = ozmixt(i,1,j)*pmid_w(i,k,j)/pin(1)
@@ -270,7 +277,7 @@ END MODULE ozn_mod
 
 PROGRAM t_ozn
    USE ozn_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: levsiz = 59
    INTEGER, PARAMETER :: ids = 1, ide = 61, jds = 1, jde = 41, kds = 1, kde = 61
@@ -290,12 +297,12 @@ PROGRAM t_ozn
       READ (arg, *) nrep
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-OZN: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-OZN: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
@@ -352,10 +359,10 @@ PROGRAM t_ozn
       CALL ozn_p_int_gpu(p, pin, levsiz, ozmixt, o3b, pmid_w, kupper_w, ierr, .FALSE., &
                          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
       nbad = nbad + ierr
-!$omp target data map(to: p, pin, ozmixt) map(tofrom: o3c) map(alloc: pmid_w, kupper_w)
+!$acc data copyin(p, pin, ozmixt) copy(o3c) create(pmid_w, kupper_w)
       CALL ozn_p_int_gpu(p, pin, levsiz, ozmixt, o3c, pmid_w, kupper_w, ierr, .TRUE., &
                          ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, its, ite, jts, jte, kts, kte)
-!$omp end target data
+!$acc end data
       nbad = nbad + ierr
       nbad = nbad + COUNT(TRANSFER(o3a, 1, SIZE(o3a)) /= TRANSFER(o3b, 1, SIZE(o3b)))
       nbad = nbad + COUNT(TRANSFER(o3a, 1, SIZE(o3a)) /= TRANSFER(o3c, 1, SIZE(o3c)))

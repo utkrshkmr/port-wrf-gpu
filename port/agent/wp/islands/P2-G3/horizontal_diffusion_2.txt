@@ -29,15 +29,15 @@
       gpu_isl = gpu_island(R_HORIZONTAL_DIFFUSION_2)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
-!$omp&   scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, defor13, defor23, &
-!$omp&   nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, msftx, msfty, xkmh, &
-!$omp&   xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
+!$acc update device(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, defor13, defor23, &
+!$acc&   nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, msftx, msfty, xkmh, &
+!$acc&   xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
         ELSE
-!$omp target update from(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, &
-!$omp&   chem_tendf, scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, &
-!$omp&   defor13, defor23, nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, &
-!$omp&   msftx, msfty, xkmh, xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
+!$acc update self(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, theta, tke, defor11, defor22, defor12, defor13, defor23, &
+!$acc&   nba_mij, div, moist, chem, scalar, tracer, msfux, msfuy, msfvx, msfvy, msftx, msfty, xkmh, &
+!$acc&   xkmv, xkhh, rdz, rdzw, fnm, fnp, zx, zy, dn, dnw, rho)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -48,11 +48,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, &
-!$omp&   chem_tendf, scalar_tendf, tracer_tendf, nba_mij)
+!$acc update self(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, nba_mij)
         ELSE
-!$omp target update to(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
-!$omp&   scalar_tendf, tracer_tendf, nba_mij)
+!$acc update device(rt_tendf, ru_tendf, rv_tendf, rw_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, nba_mij)
         END IF
       END IF
       IF (gpu_cc_active(R_HORIZONTAL_DIFFUSION_2)) THEN

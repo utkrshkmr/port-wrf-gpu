@@ -23,22 +23,22 @@
       gpu_isl = gpu_island(R_RK_UPDATE_SCALAR)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(scalar_1, scalar_2, sc_tend, advect_tend, h_tendency, z_tendency, msftx, &
-!$omp&   msfty, c1, c2, mu_old, mu_new, mu_base)
+!$acc update device(scalar_1, scalar_2, sc_tend, advect_tend, h_tendency, z_tendency, msftx, msfty, &
+!$acc&   c1, c2, mu_old, mu_new, mu_base)
           IF (PRESENT(advh_t)) THEN
-!$omp target update to(advh_t)
+!$acc update device(advh_t)
           END IF
           IF (PRESENT(advz_t)) THEN
-!$omp target update to(advz_t)
+!$acc update device(advz_t)
           END IF
         ELSE
-!$omp target update from(scalar_1, scalar_2, sc_tend, advect_tend, h_tendency, z_tendency, msftx, &
-!$omp&   msfty, c1, c2, mu_old, mu_new, mu_base)
+!$acc update self(scalar_1, scalar_2, sc_tend, advect_tend, h_tendency, z_tendency, msftx, msfty, &
+!$acc&   c1, c2, mu_old, mu_new, mu_base)
           IF (PRESENT(advh_t)) THEN
-!$omp target update from(advh_t)
+!$acc update self(advh_t)
           END IF
           IF (PRESENT(advz_t)) THEN
-!$omp target update from(advz_t)
+!$acc update self(advz_t)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -50,20 +50,20 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(scalar_1, scalar_2)
+!$acc update self(scalar_1, scalar_2)
           IF (PRESENT(advh_t)) THEN
-!$omp target update from(advh_t)
+!$acc update self(advh_t)
           END IF
           IF (PRESENT(advz_t)) THEN
-!$omp target update from(advz_t)
+!$acc update self(advz_t)
           END IF
         ELSE
-!$omp target update to(scalar_1, scalar_2)
+!$acc update device(scalar_1, scalar_2)
           IF (PRESENT(advh_t)) THEN
-!$omp target update to(advh_t)
+!$acc update device(advh_t)
           END IF
           IF (PRESENT(advz_t)) THEN
-!$omp target update to(advz_t)
+!$acc update device(advz_t)
           END IF
         END IF
       END IF

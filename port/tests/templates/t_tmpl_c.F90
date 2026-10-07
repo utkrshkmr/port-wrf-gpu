@@ -207,8 +207,8 @@ SUBROUTINE calc_ww_cp_gpu ( u, v, mup, mub, c1h, c2h, ww,    &
     itf=MIN(ite,ide-1)
 
    ! K-PREP-5a (1)
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) &
-!$omp& shared(muu, mup, mub) firstprivate(its, ite, jts, jtf, ide)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(muu, mup, mub) &
+!$acc& firstprivate(its, ite, jts, jtf, ide)
       DO j=jts,jtf
       DO i=its,min(ite+1,ide)
         MUU(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i-1,j)+MUB(i-1,j))
@@ -216,8 +216,8 @@ SUBROUTINE calc_ww_cp_gpu ( u, v, mup, mub, c1h, c2h, ww,    &
       ENDDO
 
    ! K-PREP-5a (2)
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) &
-!$omp& shared(muv, mup, mub) firstprivate(its, itf, jts, jte, jde)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(muv, mup, mub) &
+!$acc& firstprivate(its, itf, jts, jte, jde)
       DO j=jts,min(jte+1,jde)
       DO i=its,itf
         MUV(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i,j-1)+MUB(i,j-1))
@@ -225,9 +225,9 @@ SUBROUTINE calc_ww_cp_gpu ( u, v, mup, mub, c1h, c2h, ww,    &
       ENDDO
 
    ! K-PREP-5b: one thread per column; i over the union its..ite
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) &
-!$omp& shared(ww, u, v, muu, muv, msftx, msfuy, msfvx_inv, dnw, c1h, c2h) &
-!$omp& firstprivate(its, ite, itf, jts, jtf, kts, kte, ktf, rdx, rdy) private(k, dmdts, divv_col)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) &
+!$acc& present(ww, u, v, muu, muv, msftx, msfuy, msfvx_inv, dnw, c1h, c2h) &
+!$acc& firstprivate(its, ite, itf, jts, jtf, kts, kte, ktf, rdx, rdy) private(k, dmdts, divv_col)
       DO j=jts,jtf
       DO i=its,ite
 
@@ -236,12 +236,14 @@ SUBROUTINE calc_ww_cp_gpu ( u, v, mup, mub, c1h, c2h, ww,    &
           ww(i,kte,j) = 0.
 
         IF (i <= itf) THEN
+        !$acc loop seq
         DO k=kts,ktf
           divv_col(k) = msftx(i,j)*dnw(k)*( rdx*((c1h(k)*muu(i+1,j)+c2h(k))*u(i+1,k,j)/msfuy(i+1,j)-(c1h(k)*muu(i,j)+c2h(k))*u(i,k,j)/msfuy(i,j))  &
                                         +rdy*((c1h(k)*muv(i,j+1)+c2h(k))*v(i,k,j+1)*msfvx_inv(i,j+1)-(c1h(k)*muv(i,j)+c2h(k))*v(i,k,j)*msfvx_inv(i,j))   )
           dmdts = dmdts + divv_col(k)
         ENDDO
 
+        !$acc loop seq
         DO k=2,ktf
            ww(i,k,j)=ww(i,k-1,j) - dnw(k-1)*c1h(k-1)*dmdts - divv_col(k-1)
         ENDDO
@@ -256,7 +258,7 @@ END MODULE tc_mod
 
 PROGRAM t_tmpl_c
    USE tc_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: ids = 1, ide = 31, jds = 1, jde = 26, kds = 1, kde = 21
    INTEGER, PARAMETER :: ims = -4, ime = 36, jms = -4, jme = 31, kms = 1, kme = 21
@@ -279,12 +281,12 @@ PROGRAM t_tmpl_c
       READ (arg, *) nrep
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-TMPL-C: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-TMPL-C: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
@@ -315,12 +317,12 @@ PROGRAM t_tmpl_c
          CALL calc_ww_cp_gpu(u, v, mup, mub, c1h, c2h, wb, rdx, rdy, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, &
               msfvy, dnw, muu, muv, .FALSE., ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
               tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), tiles(5,it), tiles(6,it))
-!$omp target data map(to: u, v, mup, mub, c1h, c2h, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy, dnw) &
-!$omp&            map(tofrom: wc) map(alloc: muu, muv)
+!$acc data copyin(u, v, mup, mub, c1h, c2h, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy, dnw) copy(wc) &
+!$acc& create(muu, muv)
          CALL calc_ww_cp_gpu(u, v, mup, mub, c1h, c2h, wc, rdx, rdy, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, &
               msfvy, dnw, muu, muv, .TRUE., ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
               tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), tiles(5,it), tiles(6,it))
-!$omp end target data
+!$acc end data
          nbad = nbad + COUNT(TRANSFER(wa, 1, SIZE(wa)) /= TRANSFER(wb, 1, SIZE(wb))) &
                      + COUNT(TRANSFER(wa, 1, SIZE(wa)) /= TRANSFER(wc, 1, SIZE(wc)))
       END DO

@@ -27,6 +27,8 @@ Inside an owned routine you may change any line; you may also insert new routine
 - CALL gpu_check_config(...) in module_wrf_top.F after the namelist is read and in alloc_and_configure_domain for each nest (I-6, PHASE1.md P1.8)
 - the logging calls of P1.11/P1.12 (I-7): CALL gpu_mem_log('<where>') at startup, after each domain's init, after the first step of each domain and once per simulated hour; CALL gpu_timing_step(grid%id, <simulated hour>, <last step>) at the end of every solve_em call; USE module_gpu_prof in solve_em (BENCH_START/BENCH_END call wrf_nvtx_push/pop)
 - shared refactor (separate commit): solve_em's automatic arrays h_tendency, z_tendency become pointers into work arrays declared in WRF/inc/gpu_work_p1_sync.inc (plan.md P1.7 table)
+- S6 (around med_nest_force in module_integrate.F): do the full-state round trip only when gpu_on(R_COUPLE_OR_UNCOUPLE_EM) is .FALSE.; when it is .TRUE., P5-FORCE moves the data inside med_force_domain (INTERFACES.md I-11)
+- P5.3 as a run-time switch (PHASE5.md P5.3): WRF_GPU_WORLD=device (default host). With it: after S1 and S2 set gpu_world_host = .FALSE.; skip the solve_em bracket. Without it everything stays as Phase 1 (the bracket and the host world)
 
 ## Notes
 

@@ -22,11 +22,11 @@
       gpu_isl = gpu_island(R_ADVECT_SCALAR_PD)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(field, field_old, tendency, h_tendency, z_tendency, ru, rv, rom, c1, c2, &
-!$omp&   mut, mub, mu_old, msfux, msfuy, msfvx, msfvy, msftx, msfty, fzm, fzp, rdzw)
+!$acc update device(field, field_old, tendency, h_tendency, z_tendency, ru, rv, rom, c1, c2, mut, &
+!$acc&   mub, mu_old, msfux, msfuy, msfvx, msfvy, msftx, msfty, fzm, fzp, rdzw)
         ELSE
-!$omp target update from(field, field_old, tendency, h_tendency, z_tendency, ru, rv, rom, c1, c2, &
-!$omp&   mut, mub, mu_old, msfux, msfuy, msfvx, msfvy, msftx, msfty, fzm, fzp, rdzw)
+!$acc update self(field, field_old, tendency, h_tendency, z_tendency, ru, rv, rom, c1, c2, mut, &
+!$acc&   mub, mu_old, msfux, msfuy, msfvx, msfvy, msftx, msfty, fzm, fzp, rdzw)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -37,9 +37,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(tendency, h_tendency, z_tendency)
+!$acc update self(tendency, h_tendency, z_tendency)
         ELSE
-!$omp target update to(tendency, h_tendency, z_tendency)
+!$acc update device(tendency, h_tendency, z_tendency)
         END IF
       END IF
       IF (gpu_cc_active(R_ADVECT_SCALAR_PD)) THEN

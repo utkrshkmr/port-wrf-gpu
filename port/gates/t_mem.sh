@@ -22,7 +22,7 @@ if ! run_ok "$rd"; then
     "history_interval=0, 0" "history_interval_s=100000, 100000" "restart_interval=100000"
   python3 "$PORT_TOOLS/nml.py" namelist.input set --group=domains "nproc_x=1" "nproc_y=1"
   note "full case, one d01 step with the GPU build (the host part runs on one core: this takes long in Phases 1-2)"
-  CUDA_VISIBLE_DEVICES=$GPU_ID OMP_TARGET_OFFLOAD=MANDATORY x $MPIRUN -np 1 ./wrf.exe > wrf.stdout 2>&1
+  CUDA_VISIBLE_DEVICES=$GPU_ID ACC_DEVICE_TYPE=nvidia x $MPIRUN -np 1 ./wrf.exe > wrf.stdout 2>&1
 fi
 peak=$(grep -h "gpu_mem:" "$rd"/rsl.error.0000 2>/dev/null | sed -n 's/.* peak \([0-9.]*\) GB.*/\1/p' | tail -1)
 if [ -z "$peak" ]; then result G-MEM FAIL "no 'gpu_mem: ... peak X GB' line in $rd/rsl.error.0000"

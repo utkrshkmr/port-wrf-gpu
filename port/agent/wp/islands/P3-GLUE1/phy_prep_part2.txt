@@ -52,17 +52,17 @@
       gpu_isl = gpu_island(R_PHY_PREP_PART2)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(mut, muu, muv, c1h, c2h, c1f, c2f, rthraten, rthblten, rublten, rvblten, &
-!$omp&   rqvblten, rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, &
-!$omp&   rqicuten, rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, &
-!$omp&   rqsshten, rqgshten, rthften, rqvften, rundgdten, rvndgdten, rthndgdten, rphndgdten, &
-!$omp&   rqvndgdten, rmundgdten, t_new, th_phy, qv)
+!$acc update device(mut, muu, muv, c1h, c2h, c1f, c2f, rthraten, rthblten, rublten, rvblten, &
+!$acc&   rqvblten, rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, &
+!$acc&   rqicuten, rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, &
+!$acc&   rqsshten, rqgshten, rthften, rqvften, rundgdten, rvndgdten, rthndgdten, rphndgdten, &
+!$acc&   rqvndgdten, rmundgdten, t_new, th_phy, qv)
         ELSE
-!$omp target update from(mut, muu, muv, c1h, c2h, c1f, c2f, rthraten, rthblten, rublten, rvblten, &
-!$omp&   rqvblten, rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, &
-!$omp&   rqicuten, rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, &
-!$omp&   rqsshten, rqgshten, rthften, rqvften, rundgdten, rvndgdten, rthndgdten, rphndgdten, &
-!$omp&   rqvndgdten, rmundgdten, t_new, th_phy, qv)
+!$acc update self(mut, muu, muv, c1h, c2h, c1f, c2f, rthraten, rthblten, rublten, rvblten, &
+!$acc&   rqvblten, rqcblten, rqiblten, rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, &
+!$acc&   rqicuten, rqscuten, rushten, rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, &
+!$acc&   rqsshten, rqgshten, rthften, rqvften, rundgdten, rvndgdten, rthndgdten, rphndgdten, &
+!$acc&   rqvndgdten, rmundgdten, t_new, th_phy, qv)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -73,15 +73,15 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rthraten, rthblten, rublten, rvblten, rqvblten, rqcblten, rqiblten, &
-!$omp&   rucuten, rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, &
-!$omp&   rvshten, rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rthften, &
-!$omp&   rqvften, rundgdten, rvndgdten, rthndgdten, rphndgdten, rqvndgdten, rmundgdten, th_phy)
+!$acc update self(rthraten, rthblten, rublten, rvblten, rqvblten, rqcblten, rqiblten, rucuten, &
+!$acc&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
+!$acc&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rthften, rqvften, &
+!$acc&   rundgdten, rvndgdten, rthndgdten, rphndgdten, rqvndgdten, rmundgdten, th_phy)
         ELSE
-!$omp target update to(rthraten, rthblten, rublten, rvblten, rqvblten, rqcblten, rqiblten, rucuten, &
-!$omp&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
-!$omp&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rthften, rqvften, &
-!$omp&   rundgdten, rvndgdten, rthndgdten, rphndgdten, rqvndgdten, rmundgdten, th_phy)
+!$acc update device(rthraten, rthblten, rublten, rvblten, rqvblten, rqcblten, rqiblten, rucuten, &
+!$acc&   rvcuten, rthcuten, rqvcuten, rqccuten, rqrcuten, rqicuten, rqscuten, rushten, rvshten, &
+!$acc&   rthshten, rqvshten, rqcshten, rqrshten, rqishten, rqsshten, rqgshten, rthften, rqvften, &
+!$acc&   rundgdten, rvndgdten, rthndgdten, rphndgdten, rqvndgdten, rmundgdten, th_phy)
         END IF
       END IF
       IF (gpu_cc_active(R_PHY_PREP_PART2)) THEN

@@ -54,42 +54,42 @@
       gpu_isl = gpu_island(R_SFCLAYREV)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u3d, v3d, t3d, qv3d, p3d, dz8w, psfc, chs, chs2, cqs2, cpm, znt, ust, pblh, &
-!$omp&   mavail, zol, mol, regime, psim, psih, fm, fh, xland, hfx, qfx, lh, tsk, flhc, flqc, qgh, &
-!$omp&   qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br, dx, lakemask, water_depth)
+!$acc update device(u3d, v3d, t3d, qv3d, p3d, dz8w, psfc, chs, chs2, cqs2, cpm, znt, ust, pblh, &
+!$acc&   mavail, zol, mol, regime, psim, psih, fm, fh, xland, hfx, qfx, lh, tsk, flhc, flqc, qgh, &
+!$acc&   qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br, dx, lakemask, water_depth)
           IF (PRESENT(ustm)) THEN
-!$omp target update to(ustm)
+!$acc update device(ustm)
           END IF
           IF (PRESENT(ck)) THEN
-!$omp target update to(ck)
+!$acc update device(ck)
           END IF
           IF (PRESENT(cka)) THEN
-!$omp target update to(cka)
+!$acc update device(cka)
           END IF
           IF (PRESENT(cd)) THEN
-!$omp target update to(cd)
+!$acc update device(cd)
           END IF
           IF (PRESENT(cda)) THEN
-!$omp target update to(cda)
+!$acc update device(cda)
           END IF
         ELSE
-!$omp target update from(u3d, v3d, t3d, qv3d, p3d, dz8w, psfc, chs, chs2, cqs2, cpm, znt, ust, &
-!$omp&   pblh, mavail, zol, mol, regime, psim, psih, fm, fh, xland, hfx, qfx, lh, tsk, flhc, flqc, &
-!$omp&   qgh, qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br, dx, lakemask, water_depth)
+!$acc update self(u3d, v3d, t3d, qv3d, p3d, dz8w, psfc, chs, chs2, cqs2, cpm, znt, ust, pblh, &
+!$acc&   mavail, zol, mol, regime, psim, psih, fm, fh, xland, hfx, qfx, lh, tsk, flhc, flqc, qgh, &
+!$acc&   qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br, dx, lakemask, water_depth)
           IF (PRESENT(ustm)) THEN
-!$omp target update from(ustm)
+!$acc update self(ustm)
           END IF
           IF (PRESENT(ck)) THEN
-!$omp target update from(ck)
+!$acc update self(ck)
           END IF
           IF (PRESENT(cka)) THEN
-!$omp target update from(cka)
+!$acc update self(cka)
           END IF
           IF (PRESENT(cd)) THEN
-!$omp target update from(cd)
+!$acc update self(cd)
           END IF
           IF (PRESENT(cda)) THEN
-!$omp target update from(cda)
+!$acc update self(cda)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -101,40 +101,40 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(chs, chs2, cqs2, cpm, znt, ust, zol, mol, regime, psim, psih, fm, fh, hfx, &
-!$omp&   qfx, lh, flhc, flqc, qgh, qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br)
+!$acc update self(chs, chs2, cqs2, cpm, znt, ust, zol, mol, regime, psim, psih, fm, fh, hfx, qfx, &
+!$acc&   lh, flhc, flqc, qgh, qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br)
           IF (PRESENT(ustm)) THEN
-!$omp target update from(ustm)
+!$acc update self(ustm)
           END IF
           IF (PRESENT(ck)) THEN
-!$omp target update from(ck)
+!$acc update self(ck)
           END IF
           IF (PRESENT(cka)) THEN
-!$omp target update from(cka)
+!$acc update self(cka)
           END IF
           IF (PRESENT(cd)) THEN
-!$omp target update from(cd)
+!$acc update self(cd)
           END IF
           IF (PRESENT(cda)) THEN
-!$omp target update from(cda)
+!$acc update self(cda)
           END IF
         ELSE
-!$omp target update to(chs, chs2, cqs2, cpm, znt, ust, zol, mol, regime, psim, psih, fm, fh, hfx, &
-!$omp&   qfx, lh, flhc, flqc, qgh, qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br)
+!$acc update device(chs, chs2, cqs2, cpm, znt, ust, zol, mol, regime, psim, psih, fm, fh, hfx, qfx, &
+!$acc&   lh, flhc, flqc, qgh, qsfc, rmol, u10, v10, th2, t2, q2, gz1oz0, wspd, br)
           IF (PRESENT(ustm)) THEN
-!$omp target update to(ustm)
+!$acc update device(ustm)
           END IF
           IF (PRESENT(ck)) THEN
-!$omp target update to(ck)
+!$acc update device(ck)
           END IF
           IF (PRESENT(cka)) THEN
-!$omp target update to(cka)
+!$acc update device(cka)
           END IF
           IF (PRESENT(cd)) THEN
-!$omp target update to(cd)
+!$acc update device(cd)
           END IF
           IF (PRESENT(cda)) THEN
-!$omp target update to(cda)
+!$acc update device(cda)
           END IF
         END IF
       END IF

@@ -77,7 +77,7 @@ bash port/h100/build.sh gpu-repro --worktree --fine   # fine tracing (and cpu-re
 runs are cached by (binary md5, window, variables), so asking again is free. See the table in `window.sh --help`
 (first lines of the script) and ENV_H100.md §5 for costs. Use W-20 while developing.
 
-- GPU runs use one MPI rank on `$GPU_ID` with `OMP_TARGET_OFFLOAD=MANDATORY` (a kernel that cannot run on the
+- GPU runs use one MPI rank on `$GPU_ID` with `ACC_DEVICE_TYPE=nvidia` (a kernel that cannot run on the
   device is an error, not a silent host fallback).
 - `WRF_BITTRACE=2` (the default for the short windows) writes `bittrace.d0N.txt` with a hash of every field after
   every step of plan.md §7.1; `port/h100/compare.sh A B` names the first differing record.
@@ -173,7 +173,7 @@ statement with renamed indices): first check the rule in the tool's `--help`. If
    commit. Title: `Tool fix: <file>: <what>`.
 3. The fix must not change what is compared or how:
    - windows: `windows.txt` is locked;
-   - trace levels, and `OMP_TARGET_OFFLOAD=MANDATORY` for GPU runs: the gates check `window.info` and reject a run
+   - trace levels, and `ACC_DEVICE_TYPE=nvidia` for GPU runs: the gates check `window.info` and reject a run
      without them;
    - the arithmetic flags: `port/tools/check_build_flags.py` runs in static.sh on the stanzas and in the gates on
      every build;

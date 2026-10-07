@@ -31,13 +31,13 @@
       gpu_isl = gpu_island(R_RK_ADDTEND_DRY)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
-!$omp&   ph_tendf, t_tendf, u_save, v_save, w_save, ph_save, t_save, mu_tend, mu_tendf, c1, c2, &
-!$omp&   h_diabatic, mut, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy)
+!$acc update device(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
+!$acc&   ph_tendf, t_tendf, u_save, v_save, w_save, ph_save, t_save, mu_tend, mu_tendf, c1, c2, &
+!$acc&   h_diabatic, mut, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy)
         ELSE
-!$omp target update from(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
-!$omp&   ph_tendf, t_tendf, u_save, v_save, w_save, ph_save, t_save, mu_tend, mu_tendf, c1, c2, &
-!$omp&   h_diabatic, mut, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy)
+!$acc update self(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
+!$acc&   ph_tendf, t_tendf, u_save, v_save, w_save, ph_save, t_save, mu_tend, mu_tendf, c1, c2, &
+!$acc&   h_diabatic, mut, msftx, msfty, msfux, msfuy, msfvx, msfvx_inv, msfvy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -48,11 +48,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
-!$omp&   ph_tendf, t_tendf, mu_tend, mu_tendf)
+!$acc update self(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
+!$acc&   ph_tendf, t_tendf, mu_tend, mu_tendf)
         ELSE
-!$omp target update to(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
-!$omp&   ph_tendf, t_tendf, mu_tend, mu_tendf)
+!$acc update device(ru_tend, rv_tend, rw_tend, ph_tend, t_tend, ru_tendf, rv_tendf, rw_tendf, &
+!$acc&   ph_tendf, t_tendf, mu_tend, mu_tendf)
         END IF
       END IF
       IF (gpu_cc_active(R_RK_ADDTEND_DRY)) THEN

@@ -43,274 +43,274 @@
       gpu_isl = gpu_island(R_RRTMG_LWRAD)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rthratenlw, rthratenlwc, glw, olr, lwcf, emiss, p8w, p3d, pi3d, dz8w, tsk, &
-!$omp&   t3d, t8w, rho3d, xlat, xland, xice, snow, o33d, re_cloud, re_ice, re_snow)
+!$acc update device(rthratenlw, rthratenlwc, glw, olr, lwcf, emiss, p8w, p3d, pi3d, dz8w, tsk, t3d, &
+!$acc&   t8w, rho3d, xlat, xland, xice, snow, o33d, re_cloud, re_ice, re_snow)
           IF (PRESENT(lwupt)) THEN
-!$omp target update to(lwupt)
+!$acc update device(lwupt)
           END IF
           IF (PRESENT(lwuptc)) THEN
-!$omp target update to(lwuptc)
+!$acc update device(lwuptc)
           END IF
           IF (PRESENT(lwuptcln)) THEN
-!$omp target update to(lwuptcln)
+!$acc update device(lwuptcln)
           END IF
           IF (PRESENT(lwdnt)) THEN
-!$omp target update to(lwdnt)
+!$acc update device(lwdnt)
           END IF
           IF (PRESENT(lwdntc)) THEN
-!$omp target update to(lwdntc)
+!$acc update device(lwdntc)
           END IF
           IF (PRESENT(lwdntcln)) THEN
-!$omp target update to(lwdntcln)
+!$acc update device(lwdntcln)
           END IF
           IF (PRESENT(lwupb)) THEN
-!$omp target update to(lwupb)
+!$acc update device(lwupb)
           END IF
           IF (PRESENT(lwupbc)) THEN
-!$omp target update to(lwupbc)
+!$acc update device(lwupbc)
           END IF
           IF (PRESENT(lwupbcln)) THEN
-!$omp target update to(lwupbcln)
+!$acc update device(lwupbcln)
           END IF
           IF (PRESENT(lwdnb)) THEN
-!$omp target update to(lwdnb)
+!$acc update device(lwdnb)
           END IF
           IF (PRESENT(lwdnbc)) THEN
-!$omp target update to(lwdnbc)
+!$acc update device(lwdnbc)
           END IF
           IF (PRESENT(lwdnbcln)) THEN
-!$omp target update to(lwdnbcln)
+!$acc update device(lwdnbcln)
           END IF
           IF (PRESENT(cldfra3d)) THEN
-!$omp target update to(cldfra3d)
+!$acc update device(cldfra3d)
           END IF
           IF (PRESENT(lradius)) THEN
-!$omp target update to(lradius)
+!$acc update device(lradius)
           END IF
           IF (PRESENT(iradius)) THEN
-!$omp target update to(iradius)
+!$acc update device(iradius)
           END IF
           IF (PRESENT(f_ice_phy)) THEN
-!$omp target update to(f_ice_phy)
+!$acc update device(f_ice_phy)
           END IF
           IF (PRESENT(f_rain_phy)) THEN
-!$omp target update to(f_rain_phy)
+!$acc update device(f_rain_phy)
           END IF
           IF (PRESENT(qv3d)) THEN
-!$omp target update to(qv3d)
+!$acc update device(qv3d)
           END IF
           IF (PRESENT(qc3d)) THEN
-!$omp target update to(qc3d)
+!$acc update device(qc3d)
           END IF
           IF (PRESENT(qr3d)) THEN
-!$omp target update to(qr3d)
+!$acc update device(qr3d)
           END IF
           IF (PRESENT(qi3d)) THEN
-!$omp target update to(qi3d)
+!$acc update device(qi3d)
           END IF
           IF (PRESENT(qs3d)) THEN
-!$omp target update to(qs3d)
+!$acc update device(qs3d)
           END IF
           IF (PRESENT(qg3d)) THEN
-!$omp target update to(qg3d)
+!$acc update device(qg3d)
           END IF
           IF (PRESENT(tauaerlw1)) THEN
-!$omp target update to(tauaerlw1)
+!$acc update device(tauaerlw1)
           END IF
           IF (PRESENT(tauaerlw2)) THEN
-!$omp target update to(tauaerlw2)
+!$acc update device(tauaerlw2)
           END IF
           IF (PRESENT(tauaerlw3)) THEN
-!$omp target update to(tauaerlw3)
+!$acc update device(tauaerlw3)
           END IF
           IF (PRESENT(tauaerlw4)) THEN
-!$omp target update to(tauaerlw4)
+!$acc update device(tauaerlw4)
           END IF
           IF (PRESENT(tauaerlw5)) THEN
-!$omp target update to(tauaerlw5)
+!$acc update device(tauaerlw5)
           END IF
           IF (PRESENT(tauaerlw6)) THEN
-!$omp target update to(tauaerlw6)
+!$acc update device(tauaerlw6)
           END IF
           IF (PRESENT(tauaerlw7)) THEN
-!$omp target update to(tauaerlw7)
+!$acc update device(tauaerlw7)
           END IF
           IF (PRESENT(tauaerlw8)) THEN
-!$omp target update to(tauaerlw8)
+!$acc update device(tauaerlw8)
           END IF
           IF (PRESENT(tauaerlw9)) THEN
-!$omp target update to(tauaerlw9)
+!$acc update device(tauaerlw9)
           END IF
           IF (PRESENT(tauaerlw10)) THEN
-!$omp target update to(tauaerlw10)
+!$acc update device(tauaerlw10)
           END IF
           IF (PRESENT(tauaerlw11)) THEN
-!$omp target update to(tauaerlw11)
+!$acc update device(tauaerlw11)
           END IF
           IF (PRESENT(tauaerlw12)) THEN
-!$omp target update to(tauaerlw12)
+!$acc update device(tauaerlw12)
           END IF
           IF (PRESENT(tauaerlw13)) THEN
-!$omp target update to(tauaerlw13)
+!$acc update device(tauaerlw13)
           END IF
           IF (PRESENT(tauaerlw14)) THEN
-!$omp target update to(tauaerlw14)
+!$acc update device(tauaerlw14)
           END IF
           IF (PRESENT(tauaerlw15)) THEN
-!$omp target update to(tauaerlw15)
+!$acc update device(tauaerlw15)
           END IF
           IF (PRESENT(tauaerlw16)) THEN
-!$omp target update to(tauaerlw16)
+!$acc update device(tauaerlw16)
           END IF
           IF (PRESENT(qndrop3d)) THEN
-!$omp target update to(qndrop3d)
+!$acc update device(qndrop3d)
           END IF
           IF (PRESENT(lwupflx)) THEN
-!$omp target update to(lwupflx)
+!$acc update device(lwupflx)
           END IF
           IF (PRESENT(lwupflxc)) THEN
-!$omp target update to(lwupflxc)
+!$acc update device(lwupflxc)
           END IF
           IF (PRESENT(lwdnflx)) THEN
-!$omp target update to(lwdnflx)
+!$acc update device(lwdnflx)
           END IF
           IF (PRESENT(lwdnflxc)) THEN
-!$omp target update to(lwdnflxc)
+!$acc update device(lwdnflxc)
           END IF
         ELSE
-!$omp target update from(rthratenlw, rthratenlwc, glw, olr, lwcf, emiss, p8w, p3d, pi3d, dz8w, tsk, &
-!$omp&   t3d, t8w, rho3d, xlat, xland, xice, snow, o33d, re_cloud, re_ice, re_snow)
+!$acc update self(rthratenlw, rthratenlwc, glw, olr, lwcf, emiss, p8w, p3d, pi3d, dz8w, tsk, t3d, &
+!$acc&   t8w, rho3d, xlat, xland, xice, snow, o33d, re_cloud, re_ice, re_snow)
           IF (PRESENT(lwupt)) THEN
-!$omp target update from(lwupt)
+!$acc update self(lwupt)
           END IF
           IF (PRESENT(lwuptc)) THEN
-!$omp target update from(lwuptc)
+!$acc update self(lwuptc)
           END IF
           IF (PRESENT(lwuptcln)) THEN
-!$omp target update from(lwuptcln)
+!$acc update self(lwuptcln)
           END IF
           IF (PRESENT(lwdnt)) THEN
-!$omp target update from(lwdnt)
+!$acc update self(lwdnt)
           END IF
           IF (PRESENT(lwdntc)) THEN
-!$omp target update from(lwdntc)
+!$acc update self(lwdntc)
           END IF
           IF (PRESENT(lwdntcln)) THEN
-!$omp target update from(lwdntcln)
+!$acc update self(lwdntcln)
           END IF
           IF (PRESENT(lwupb)) THEN
-!$omp target update from(lwupb)
+!$acc update self(lwupb)
           END IF
           IF (PRESENT(lwupbc)) THEN
-!$omp target update from(lwupbc)
+!$acc update self(lwupbc)
           END IF
           IF (PRESENT(lwupbcln)) THEN
-!$omp target update from(lwupbcln)
+!$acc update self(lwupbcln)
           END IF
           IF (PRESENT(lwdnb)) THEN
-!$omp target update from(lwdnb)
+!$acc update self(lwdnb)
           END IF
           IF (PRESENT(lwdnbc)) THEN
-!$omp target update from(lwdnbc)
+!$acc update self(lwdnbc)
           END IF
           IF (PRESENT(lwdnbcln)) THEN
-!$omp target update from(lwdnbcln)
+!$acc update self(lwdnbcln)
           END IF
           IF (PRESENT(cldfra3d)) THEN
-!$omp target update from(cldfra3d)
+!$acc update self(cldfra3d)
           END IF
           IF (PRESENT(lradius)) THEN
-!$omp target update from(lradius)
+!$acc update self(lradius)
           END IF
           IF (PRESENT(iradius)) THEN
-!$omp target update from(iradius)
+!$acc update self(iradius)
           END IF
           IF (PRESENT(f_ice_phy)) THEN
-!$omp target update from(f_ice_phy)
+!$acc update self(f_ice_phy)
           END IF
           IF (PRESENT(f_rain_phy)) THEN
-!$omp target update from(f_rain_phy)
+!$acc update self(f_rain_phy)
           END IF
           IF (PRESENT(qv3d)) THEN
-!$omp target update from(qv3d)
+!$acc update self(qv3d)
           END IF
           IF (PRESENT(qc3d)) THEN
-!$omp target update from(qc3d)
+!$acc update self(qc3d)
           END IF
           IF (PRESENT(qr3d)) THEN
-!$omp target update from(qr3d)
+!$acc update self(qr3d)
           END IF
           IF (PRESENT(qi3d)) THEN
-!$omp target update from(qi3d)
+!$acc update self(qi3d)
           END IF
           IF (PRESENT(qs3d)) THEN
-!$omp target update from(qs3d)
+!$acc update self(qs3d)
           END IF
           IF (PRESENT(qg3d)) THEN
-!$omp target update from(qg3d)
+!$acc update self(qg3d)
           END IF
           IF (PRESENT(tauaerlw1)) THEN
-!$omp target update from(tauaerlw1)
+!$acc update self(tauaerlw1)
           END IF
           IF (PRESENT(tauaerlw2)) THEN
-!$omp target update from(tauaerlw2)
+!$acc update self(tauaerlw2)
           END IF
           IF (PRESENT(tauaerlw3)) THEN
-!$omp target update from(tauaerlw3)
+!$acc update self(tauaerlw3)
           END IF
           IF (PRESENT(tauaerlw4)) THEN
-!$omp target update from(tauaerlw4)
+!$acc update self(tauaerlw4)
           END IF
           IF (PRESENT(tauaerlw5)) THEN
-!$omp target update from(tauaerlw5)
+!$acc update self(tauaerlw5)
           END IF
           IF (PRESENT(tauaerlw6)) THEN
-!$omp target update from(tauaerlw6)
+!$acc update self(tauaerlw6)
           END IF
           IF (PRESENT(tauaerlw7)) THEN
-!$omp target update from(tauaerlw7)
+!$acc update self(tauaerlw7)
           END IF
           IF (PRESENT(tauaerlw8)) THEN
-!$omp target update from(tauaerlw8)
+!$acc update self(tauaerlw8)
           END IF
           IF (PRESENT(tauaerlw9)) THEN
-!$omp target update from(tauaerlw9)
+!$acc update self(tauaerlw9)
           END IF
           IF (PRESENT(tauaerlw10)) THEN
-!$omp target update from(tauaerlw10)
+!$acc update self(tauaerlw10)
           END IF
           IF (PRESENT(tauaerlw11)) THEN
-!$omp target update from(tauaerlw11)
+!$acc update self(tauaerlw11)
           END IF
           IF (PRESENT(tauaerlw12)) THEN
-!$omp target update from(tauaerlw12)
+!$acc update self(tauaerlw12)
           END IF
           IF (PRESENT(tauaerlw13)) THEN
-!$omp target update from(tauaerlw13)
+!$acc update self(tauaerlw13)
           END IF
           IF (PRESENT(tauaerlw14)) THEN
-!$omp target update from(tauaerlw14)
+!$acc update self(tauaerlw14)
           END IF
           IF (PRESENT(tauaerlw15)) THEN
-!$omp target update from(tauaerlw15)
+!$acc update self(tauaerlw15)
           END IF
           IF (PRESENT(tauaerlw16)) THEN
-!$omp target update from(tauaerlw16)
+!$acc update self(tauaerlw16)
           END IF
           IF (PRESENT(qndrop3d)) THEN
-!$omp target update from(qndrop3d)
+!$acc update self(qndrop3d)
           END IF
           IF (PRESENT(lwupflx)) THEN
-!$omp target update from(lwupflx)
+!$acc update self(lwupflx)
           END IF
           IF (PRESENT(lwupflxc)) THEN
-!$omp target update from(lwupflxc)
+!$acc update self(lwupflxc)
           END IF
           IF (PRESENT(lwdnflx)) THEN
-!$omp target update from(lwdnflx)
+!$acc update self(lwdnflx)
           END IF
           IF (PRESENT(lwdnflxc)) THEN
-!$omp target update from(lwdnflxc)
+!$acc update self(lwdnflxc)
           END IF
         END IF
         gpu_world_host = .NOT. gpu_world_host
@@ -322,104 +322,104 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rthratenlw, rthratenlwc, glw, olr, lwcf, o33d)
+!$acc update self(rthratenlw, rthratenlwc, glw, olr, lwcf, o33d)
           IF (PRESENT(lwupt)) THEN
-!$omp target update from(lwupt)
+!$acc update self(lwupt)
           END IF
           IF (PRESENT(lwuptc)) THEN
-!$omp target update from(lwuptc)
+!$acc update self(lwuptc)
           END IF
           IF (PRESENT(lwuptcln)) THEN
-!$omp target update from(lwuptcln)
+!$acc update self(lwuptcln)
           END IF
           IF (PRESENT(lwdnt)) THEN
-!$omp target update from(lwdnt)
+!$acc update self(lwdnt)
           END IF
           IF (PRESENT(lwdntc)) THEN
-!$omp target update from(lwdntc)
+!$acc update self(lwdntc)
           END IF
           IF (PRESENT(lwdntcln)) THEN
-!$omp target update from(lwdntcln)
+!$acc update self(lwdntcln)
           END IF
           IF (PRESENT(lwupb)) THEN
-!$omp target update from(lwupb)
+!$acc update self(lwupb)
           END IF
           IF (PRESENT(lwupbc)) THEN
-!$omp target update from(lwupbc)
+!$acc update self(lwupbc)
           END IF
           IF (PRESENT(lwupbcln)) THEN
-!$omp target update from(lwupbcln)
+!$acc update self(lwupbcln)
           END IF
           IF (PRESENT(lwdnb)) THEN
-!$omp target update from(lwdnb)
+!$acc update self(lwdnb)
           END IF
           IF (PRESENT(lwdnbc)) THEN
-!$omp target update from(lwdnbc)
+!$acc update self(lwdnbc)
           END IF
           IF (PRESENT(lwdnbcln)) THEN
-!$omp target update from(lwdnbcln)
+!$acc update self(lwdnbcln)
           END IF
           IF (PRESENT(lwupflx)) THEN
-!$omp target update from(lwupflx)
+!$acc update self(lwupflx)
           END IF
           IF (PRESENT(lwupflxc)) THEN
-!$omp target update from(lwupflxc)
+!$acc update self(lwupflxc)
           END IF
           IF (PRESENT(lwdnflx)) THEN
-!$omp target update from(lwdnflx)
+!$acc update self(lwdnflx)
           END IF
           IF (PRESENT(lwdnflxc)) THEN
-!$omp target update from(lwdnflxc)
+!$acc update self(lwdnflxc)
           END IF
         ELSE
-!$omp target update to(rthratenlw, rthratenlwc, glw, olr, lwcf, o33d)
+!$acc update device(rthratenlw, rthratenlwc, glw, olr, lwcf, o33d)
           IF (PRESENT(lwupt)) THEN
-!$omp target update to(lwupt)
+!$acc update device(lwupt)
           END IF
           IF (PRESENT(lwuptc)) THEN
-!$omp target update to(lwuptc)
+!$acc update device(lwuptc)
           END IF
           IF (PRESENT(lwuptcln)) THEN
-!$omp target update to(lwuptcln)
+!$acc update device(lwuptcln)
           END IF
           IF (PRESENT(lwdnt)) THEN
-!$omp target update to(lwdnt)
+!$acc update device(lwdnt)
           END IF
           IF (PRESENT(lwdntc)) THEN
-!$omp target update to(lwdntc)
+!$acc update device(lwdntc)
           END IF
           IF (PRESENT(lwdntcln)) THEN
-!$omp target update to(lwdntcln)
+!$acc update device(lwdntcln)
           END IF
           IF (PRESENT(lwupb)) THEN
-!$omp target update to(lwupb)
+!$acc update device(lwupb)
           END IF
           IF (PRESENT(lwupbc)) THEN
-!$omp target update to(lwupbc)
+!$acc update device(lwupbc)
           END IF
           IF (PRESENT(lwupbcln)) THEN
-!$omp target update to(lwupbcln)
+!$acc update device(lwupbcln)
           END IF
           IF (PRESENT(lwdnb)) THEN
-!$omp target update to(lwdnb)
+!$acc update device(lwdnb)
           END IF
           IF (PRESENT(lwdnbc)) THEN
-!$omp target update to(lwdnbc)
+!$acc update device(lwdnbc)
           END IF
           IF (PRESENT(lwdnbcln)) THEN
-!$omp target update to(lwdnbcln)
+!$acc update device(lwdnbcln)
           END IF
           IF (PRESENT(lwupflx)) THEN
-!$omp target update to(lwupflx)
+!$acc update device(lwupflx)
           END IF
           IF (PRESENT(lwupflxc)) THEN
-!$omp target update to(lwupflxc)
+!$acc update device(lwupflxc)
           END IF
           IF (PRESENT(lwdnflx)) THEN
-!$omp target update to(lwdnflx)
+!$acc update device(lwdnflx)
           END IF
           IF (PRESENT(lwdnflxc)) THEN
-!$omp target update to(lwdnflxc)
+!$acc update device(lwdnflxc)
           END IF
         END IF
       END IF

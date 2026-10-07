@@ -1,4 +1,4 @@
-# Code-only mode: write Phases 1–3 in parallel, without builds or tests
+# Code-only mode: write Phases 1–5 in parallel, without builds or tests
 
 This guide is for a coding agent that **cannot compile WRF, run it, or use a GPU**. You write the code of Phases
 1–3; the project owner's reviewer builds and tests everything afterwards (§7) and sends back findings, which you fix
@@ -23,7 +23,7 @@ and BUILD_SYSTEM.md: they are about running things.
 
 ## 1. Organization: integrator and work packages
 
-- **36 work packages** (WORKPACKAGES.md): 8 in Phase 1, 18 in Phase 2, 10 in Phase 3. Each **owns** files, routines or
+- **44 work packages** (WORKPACKAGES.md): 8 in Phase 1, 18 in Phase 2, 10 in Phase 3. Each **owns** files, routines or
   module specification parts that no other work package owns. The interfaces between them are fixed in advance
   (INTERFACES.md), and every file they need exists already (§9). So **no work package waits for another**: all 36 can
   run at the same time.
@@ -100,13 +100,13 @@ Do it for every kernel; most porting mistakes are in this list.
   group keeps its own range with a guard.
 - **Recurrences.** A loop that carries a value from one iteration to the next (a vertical sweep, a running sum) stays
   sequential inside one thread, in its original direction.
-- **Data-sharing clauses.** `default(none)`. Every array is `shared`. Every scalar the kernel only reads is
-  `firstprivate`. Every scalar or fixed-size column array it writes is `private`. Loop indices of inner loops are
-  `private`. Module variables (e.g. the species indices `P_QV`) are copied to local scalars before the kernel and
-  passed `firstprivate`; gfortran rejects a module variable missing from a `default(none)` list.
+- **Data clauses (OpenACC).** `default(none)`. Every array is in `present(...)`. Every scalar the kernel only reads
+  is `firstprivate`. Every scalar or fixed-size column array it writes is `private`. Every inner DO loop has
+  `!$acc loop seq` directly above it. Module variables (e.g. the species indices `P_QV`) are copied to local scalars
+  before the kernel and passed `firstprivate`; gfortran rejects a variable missing from a `default(none)` list.
 - **Collapse.** `collapse(n)` only over loops whose bounds do not depend on each other.
-- **Calls in device code.** Every routine called from a kernel is `!$omp declare target`, and so is everything it
-  calls. Such routines contain no I/O, no `wrf_message`, no `ALLOCATE`, and no automatic arrays sized at run time
+- **Calls in device code.** Every routine called from a kernel is `!$acc routine seq`, and so is everything it
+  calls; it gets no island and no call check. Such routines contain no I/O, no `wrf_message`, no `ALLOCATE`, and no automatic arrays sized at run time
   (use fixed sizes, `WRF/inc/gpu_col.h`).
 - **Reductions.** No floating-point reduction across threads: it changes the order of a sum. Integer counts are fine.
 - **Islands.** The entry block sits at the first executable statement, after early `RETURN`s that do no work, at the
@@ -117,9 +117,9 @@ Do it for every kernel; most porting mistakes are in this list.
   **cannot** see this mistake.
 - **CPU view.** Every change outside a directive line is inside `#ifdef WRF_GPU`, or is an allowed CPU-view addition
   (`USE module_gpu_*`, `CALL gpu_*`, route tests). Shared refactors are the only exception (§8).
-- **Syntax.** Standard Fortran and OpenMP only, in the forms of the tested templates. gfortran must compile it (§7);
-  no `!$acc`, no NVHPC-only clauses, no `defaultmap(present...)` until probe F-DEFMAP has run on the H100.
-  Continuation lines of directives start with `!$omp&`. No `/*` or `*/` in Fortran files, and no apostrophes in
+- **Syntax.** Standard Fortran and OpenACC only (ADR-001 rev 2), in the forms of the tested templates and
+  CODING_STANDARD.md §4. gfortran (`-fopenacc`) must compile it (§7); no `!$omp` offload directives, no CUDA Fortran
+  yet (§11 of the standard), no NVHPC-only clauses. Continuation lines of directives start with `!$acc&`. No `/*` or `*/` in Fortran files, and no apostrophes in
   comments of `.inc` files (cpp reads them).
 
 ## 5. Done
@@ -154,15 +154,15 @@ The reviewer's environment has CPUs and no GPU. Items 1-4 are one command, `bash
 1. `static.sh`, and `check_wp_scope.py <ID>` for every work-package branch.
 2. Three gfortran builds:
    - `build.sh gnu-ref`: the CPU view of `agent/code`;
-   - `build.sh gnu-gpu`: the GPU view of `agent/code`. It must compile with gfortran 13, and its target regions run on
-     the host (no offload);
+   - `build.sh gnu-gpu`: the GPU view of `agent/code`. It must compile with gfortran 13 (`-fopenacc`; `default(none)`
+     makes it report every variable missing from a clause), and its compute regions run on the host (no offload);
    - `gnu-ref` of the handoff commit.
 3. The smoke case S-3M (em_fire ideal with the Eaton physics), compared bit for bit:
    - `gnu-ref` of the handoff vs `gnu-ref` of `agent/code`: the CPU view is unchanged, and every shared refactor is
      exact;
    - `gnu-ref` vs `gnu-gpu`, one thread: every kernel on the smoke case's code paths keeps the arithmetic;
-   - `gnu-ref` vs `gnu-gpu` with `OMP_NUM_THREADS=4`: the kernels really run in parallel, so a missing `private` or a
-     wrong data-sharing clause shows up as a difference.
+   - (gfortran runs OpenACC regions on one host thread, so data races show up only on the GPU: `kernel_lint` checks
+     the clauses statically, `default(none)` makes the compiler check them, and the H100 runs T-AB.)
 4. The reference tests (`port/tests/run_ref_tests.sh gnu`), and with `cpu_verify.sh --harness` every Phase 2 routine
    in `harness.sh` (random inputs, `gnu-ref` vs `gnu-gpu`). That reaches code paths the smoke case does not, and names
    the first differing element of a wrong kernel. Checked on the handoff tree: the tested Template C port of

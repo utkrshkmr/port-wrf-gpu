@@ -20,11 +20,11 @@
       gpu_isl = gpu_island(R_SPEC_BDY_FINAL)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(field, mu, c1, c2, msf, field_bdy_xs, field_bdy_xe, field_bdy_ys, &
-!$omp&   field_bdy_ye, field_bdy_tend_xs, field_bdy_tend_xe, field_bdy_tend_ys, field_bdy_tend_ye)
+!$acc update device(field, mu, c1, c2, msf, field_bdy_xs, field_bdy_xe, field_bdy_ys, field_bdy_ye, &
+!$acc&   field_bdy_tend_xs, field_bdy_tend_xe, field_bdy_tend_ys, field_bdy_tend_ye)
         ELSE
-!$omp target update from(field, mu, c1, c2, msf, field_bdy_xs, field_bdy_xe, field_bdy_ys, &
-!$omp&   field_bdy_ye, field_bdy_tend_xs, field_bdy_tend_xe, field_bdy_tend_ys, field_bdy_tend_ye)
+!$acc update self(field, mu, c1, c2, msf, field_bdy_xs, field_bdy_xe, field_bdy_ys, field_bdy_ye, &
+!$acc&   field_bdy_tend_xs, field_bdy_tend_xe, field_bdy_tend_ys, field_bdy_tend_ye)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(field)
+!$acc update self(field)
         ELSE
-!$omp target update to(field)
+!$acc update device(field)
         END IF
       END IF
       IF (gpu_cc_active(R_SPEC_BDY_FINAL)) THEN

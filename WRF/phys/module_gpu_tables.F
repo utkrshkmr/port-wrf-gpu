@@ -3,7 +3,7 @@
 ! module_gpu_tables: module tables of the physics on the device (plan.md P1.4;
 ! port/agent/PHASE1.md P1.4; port/agent/INTERFACES.md I-4; work package P1-TAB).
 !
-! The table variables are declared `!$omp declare target(...)` in their own
+! The table variables are declared `!$acc declare create(...)` in their own
 ! modules, which also provide the upload and the check (three of the four
 ! modules keep their tables PRIVATE).  Written by the physics work packages:
 !   mp_wsm6            (P3-WSM6)    wsm6_gpu_upload(),      wsm6_gpu_tabcheck(n, nbad, bad)

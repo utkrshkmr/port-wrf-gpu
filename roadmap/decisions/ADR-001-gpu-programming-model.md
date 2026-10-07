@@ -1,6 +1,29 @@
 # ADR-001: GPU programming model
 
-- Status: **decided** (2026-10-06)
+- Status: **decided, revision 2** (2026-10-07; revision 1 of 2026-10-06 is kept below for the record)
+
+## Revision 2 (2026-10-07, project owner): OpenACC + CUDA Fortran, NVIDIA only
+
+The owner chose performance over portability: "the main point of porting is for high performance and potential
+acceleration; if it means binding the port to a few select hardware right now, then so be it."
+
+- **All kernels are OpenACC** in the existing Fortran, compiled by NVHPC `nvfortran -acc=gpu -cuda
+  -gpu=cc80,cc90,nofma,noflushz`. The kernel form, data rules and checks are in
+  [CODING_STANDARD.md](../../port/agent/CODING_STANDARD.md) §4 and `port/tools/kernel_lint.py`.
+- **CUDA Fortran** (same compiler, `-cuda`) for kernels that profiling shows to be the bottleneck (Phase 6), called
+  through `!$acc host_data use_device`, under `#ifdef WRF_CUF_<KERNEL>`, and bit-identical to the OpenACC version
+  (CODING_STANDARD.md §11). No CUDA C, HIP, or C++ layer.
+- **Targets:** NVIDIA A100 and H100 (cc80, cc90). AMD and Intel GPUs are deferred: no work is planned for them; a
+  later port would need OpenMP or HIP versions of the kernels (backlog track G stays closed).
+- **CPU checks keep working:** gfortran 13 `-fopenacc` compiles the GPU view and runs the OpenACC regions on the host
+  (`gnu-gpu` build), so `default(none)` omissions and the GPU view's arithmetic are checked without a GPU. The
+  4-thread race check of the `gnu-gpu` build is lost (host fallback is serial); races are found by T-AB on the GPU.
+- **Bit-for-bit (ADR-003) is unchanged:** `nofma`, `noflushz`, the `rp_*` math, and the same IEEE operations in the
+  same order.
+- Migration done at the handoff commit: infrastructure, tools, tests and work-package cards converted;
+  `port/tools/omp2acc.py` converts any OpenMP-offload kernel written before the switch.
+
+## Revision 1 (superseded)
 - Scope: every GPU port in this repository (WRF 4.6.0, WRF 4.8.0, WRF-Fire, CFBM), for NVIDIA, AMD and Intel GPUs.
 
 ## Decision

@@ -150,6 +150,7 @@ CONTAINS
 
    ! unsigned high 32-bit word of x, in 0 .. 2**32-1
    PURE FUNCTION hiw(x) RESULT(h)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8) :: h
       h = ISHFT(TRANSFER(x, 0_i8), -32)
@@ -157,6 +158,7 @@ CONTAINS
 
    ! unsigned low 32-bit word of x
    PURE FUNCTION low(x) RESULT(l)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8) :: l
       l = IAND(TRANSFER(x, 0_i8), MASK32)
@@ -164,6 +166,7 @@ CONTAINS
 
    ! double from high and low words
    PURE FUNCTION mkd(h, l) RESULT(x)
+!$acc routine seq
       INTEGER(i8), INTENT(IN) :: h, l
       REAL(r8) :: x
       x = TRANSFER(IOR(ISHFT(IAND(h, MASK32), 32), IAND(l, MASK32)), 1.0_r8)
@@ -171,6 +174,7 @@ CONTAINS
 
    ! x with its high word replaced (fdlibm __HI(x) = h)
    PURE FUNCTION set_hi(x, h) RESULT(y)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8), INTENT(IN) :: h
       REAL(r8) :: y
@@ -179,12 +183,14 @@ CONTAINS
 
    ! x with its low word cleared (fdlibm __LO(x) = 0)
    PURE FUNCTION lo0(x) RESULT(y)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: y
       y = TRANSFER(IAND(TRANSFER(x, 0_i8), NOT(MASK32)), 1.0_r8)
    END FUNCTION lo0
 
    PURE FUNCTION fabs8(x) RESULT(y)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: y
       y = TRANSFER(IAND(TRANSFER(x, 0_i8), ABS_MASK), 1.0_r8)
@@ -192,23 +198,27 @@ CONTAINS
 
    ! |a| with the sign bit of b
    PURE FUNCTION copysign8(a, b) RESULT(y)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: a, b
       REAL(r8) :: y
       y = TRANSFER(IOR(IAND(TRANSFER(a, 0_i8), ABS_MASK), IAND(TRANSFER(b, 0_i8), NOT(ABS_MASK))), 1.0_r8)
    END FUNCTION copysign8
 
    PURE FUNCTION inf8() RESULT(y)
+!$acc routine seq
       REAL(r8) :: y
       y = TRANSFER(INF_BITS, 1.0_r8)
    END FUNCTION inf8
 
    PURE FUNCTION nan8() RESULT(y)
+!$acc routine seq
       REAL(r8) :: y
       y = TRANSFER(NAN_BITS, 1.0_r8)
    END FUNCTION nan8
 
    ! arithmetic shift right (floor division by 2**s), as C >> on signed int
    PURE FUNCTION asr(v, s) RESULT(r)
+!$acc routine seq
       INTEGER(i8), INTENT(IN) :: v
       INTEGER, INTENT(IN) :: s
       INTEGER(i8) :: r
@@ -221,6 +231,7 @@ CONTAINS
 
    ! REAL(8) result -> REAL(4), canonical NaN
    PURE FUNCTION to_r4(d) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: d
       REAL(r4) :: r
       IF (d /= d) THEN
@@ -232,6 +243,7 @@ CONTAINS
 
    ! canonical NaN for REAL(8) results
    PURE FUNCTION canon8(d) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: d
       REAL(r8) :: r
       IF (d /= d) THEN
@@ -246,6 +258,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_scalbn(xin, n) RESULT(x)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: xin
       INTEGER(i8), INTENT(IN) :: n
       REAL(r8) :: x
@@ -298,6 +311,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_exp(xin) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: o_threshold =  7.09782712893383973096e+02_r8
@@ -392,6 +406,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_log(xin) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: ln2_hi = 6.93147180369123816490e-01_r8
@@ -484,6 +499,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_log10(xin) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: two54     = 1.80143985094819840000e+16_r8
@@ -532,6 +548,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_pow(x, y) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       REAL(r8), PARAMETER :: bp(0:1)   = (/ 1.0_r8, 1.5_r8 /)
@@ -832,6 +849,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION k_sin(x, y, iy) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       INTEGER, INTENT(IN) :: iy
       REAL(r8) :: res
@@ -860,6 +878,7 @@ CONTAINS
    END FUNCTION k_sin
 
    PURE FUNCTION k_cos(x, y) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       REAL(r8), PARAMETER :: C1 =  4.16666666666666019037e-02_r8
@@ -893,6 +912,7 @@ CONTAINS
    END FUNCTION k_cos
 
    PURE FUNCTION k_tan(xin, yin, iy) RESULT(res)
+!$acc routine seq
       ! tan kernel coefficients (fdlibm k_tan.c)
       REAL(r8), PARAMETER :: TT(0:12) = (/                     &
          3.33333333333334091986e-01_r8, 1.33333333333201242699e-01_r8, &
@@ -973,6 +993,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE SUBROUTINE k_rem_pio2(x, y, e0, nx, nout)
+!$acc routine seq
       ! 2/pi in 24-bit chunks (fdlibm e_rem_pio2.c)
       INTEGER(i8), PARAMETER :: two_over_pi(0:65) = (/                                    &
          INT(Z'A2F983',i8), INT(Z'6E4E44',i8), INT(Z'1529FC',i8), INT(Z'2757D1',i8),     &
@@ -1178,6 +1199,7 @@ CONTAINS
    END SUBROUTINE k_rem_pio2
 
    PURE SUBROUTINE rem_pio2(x, y0, y1, n)
+!$acc routine seq
       ! High words of n*pi/2, n = 1..32 (fdlibm e_rem_pio2.c)
       INTEGER(i8), PARAMETER :: npio2_hw(1:32) = (/                                                      &
          INT(Z'3FF921FB',i8), INT(Z'400921FB',i8), INT(Z'4012D97C',i8), INT(Z'401921FB',i8),           &
@@ -1316,6 +1338,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_sin(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1341,6 +1364,7 @@ CONTAINS
    END FUNCTION rm_sin
 
    PURE FUNCTION rm_cos(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1366,6 +1390,7 @@ CONTAINS
    END FUNCTION rm_cos
 
    PURE FUNCTION rm_tan(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1386,6 +1411,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_atan(xin) RESULT(res)
+!$acc routine seq
       ! atan tables (fdlibm s_atan.c)
       REAL(r8), PARAMETER :: atanhi(0:3) = (/                  &
          4.63647609000806093515e-01_r8, 7.85398163397448278999e-01_r8, &
@@ -1463,6 +1489,7 @@ CONTAINS
    END FUNCTION rm_atan
 
    PURE FUNCTION rm_atan2(y, x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: y, x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pi_o_4 = 7.8539816339744827900e-01_r8
@@ -1575,6 +1602,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_asin(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pio2_hi = 1.57079632679489655800e+00_r8
@@ -1639,6 +1667,7 @@ CONTAINS
    END FUNCTION rm_asin
 
    PURE FUNCTION rm_acos(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pi      = 3.14159265358979311600e+00_r8
@@ -1709,6 +1738,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_expm1(xin) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: o_threshold = 7.09782712893383973096e+02_r8
@@ -1828,6 +1858,7 @@ CONTAINS
    END FUNCTION rm_expm1
 
    PURE FUNCTION rm_sinh(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, w, h
@@ -1870,6 +1901,7 @@ CONTAINS
    END FUNCTION rm_sinh
 
    PURE FUNCTION rm_cosh(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, w
@@ -1911,6 +1943,7 @@ CONTAINS
    END FUNCTION rm_cosh
 
    PURE FUNCTION rm_tanh(x) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, z
@@ -1956,6 +1989,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_fmod(x, y) RESULT(res)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       INTEGER(i8) :: ax, ay, ex, ey, mx, my, rr, d, s
@@ -2008,6 +2042,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_exp_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2018,6 +2053,7 @@ CONTAINS
    END FUNCTION rp_exp_r4
 
    ELEMENTAL FUNCTION rp_log_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2028,6 +2064,7 @@ CONTAINS
    END FUNCTION rp_log_r4
 
    ELEMENTAL FUNCTION rp_log10_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2038,6 +2075,7 @@ CONTAINS
    END FUNCTION rp_log10_r4
 
    ELEMENTAL FUNCTION rp_sin_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2048,6 +2086,7 @@ CONTAINS
    END FUNCTION rp_sin_r4
 
    ELEMENTAL FUNCTION rp_cos_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2058,6 +2097,7 @@ CONTAINS
    END FUNCTION rp_cos_r4
 
    ELEMENTAL FUNCTION rp_tan_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2068,6 +2108,7 @@ CONTAINS
    END FUNCTION rp_tan_r4
 
    ELEMENTAL FUNCTION rp_asin_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2078,6 +2119,7 @@ CONTAINS
    END FUNCTION rp_asin_r4
 
    ELEMENTAL FUNCTION rp_acos_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2088,6 +2130,7 @@ CONTAINS
    END FUNCTION rp_acos_r4
 
    ELEMENTAL FUNCTION rp_atan_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2098,6 +2141,7 @@ CONTAINS
    END FUNCTION rp_atan_r4
 
    ELEMENTAL FUNCTION rp_atan2_r4(y, x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: y, x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2108,6 +2152,7 @@ CONTAINS
    END FUNCTION rp_atan2_r4
 
    ELEMENTAL FUNCTION rp_sinh_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2118,6 +2163,7 @@ CONTAINS
    END FUNCTION rp_sinh_r4
 
    ELEMENTAL FUNCTION rp_cosh_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2128,6 +2174,7 @@ CONTAINS
    END FUNCTION rp_cosh_r4
 
    ELEMENTAL FUNCTION rp_tanh_r4(x) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2138,6 +2185,7 @@ CONTAINS
    END FUNCTION rp_tanh_r4
 
    ELEMENTAL FUNCTION rp_pow_r4(x, y) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x, y
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2155,6 +2203,7 @@ CONTAINS
    END FUNCTION rp_pow_r4
 
    ELEMENTAL FUNCTION rp_mod_r4(a, p) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: a, p
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2169,6 +2218,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_exp_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2179,6 +2229,7 @@ CONTAINS
    END FUNCTION rp_exp_r8
 
    ELEMENTAL FUNCTION rp_log_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2189,6 +2240,7 @@ CONTAINS
    END FUNCTION rp_log_r8
 
    ELEMENTAL FUNCTION rp_log10_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2199,6 +2251,7 @@ CONTAINS
    END FUNCTION rp_log10_r8
 
    ELEMENTAL FUNCTION rp_sin_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2209,6 +2262,7 @@ CONTAINS
    END FUNCTION rp_sin_r8
 
    ELEMENTAL FUNCTION rp_cos_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2219,6 +2273,7 @@ CONTAINS
    END FUNCTION rp_cos_r8
 
    ELEMENTAL FUNCTION rp_tan_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2229,6 +2284,7 @@ CONTAINS
    END FUNCTION rp_tan_r8
 
    ELEMENTAL FUNCTION rp_asin_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2239,6 +2295,7 @@ CONTAINS
    END FUNCTION rp_asin_r8
 
    ELEMENTAL FUNCTION rp_acos_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2249,6 +2306,7 @@ CONTAINS
    END FUNCTION rp_acos_r8
 
    ELEMENTAL FUNCTION rp_atan_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2259,6 +2317,7 @@ CONTAINS
    END FUNCTION rp_atan_r8
 
    ELEMENTAL FUNCTION rp_atan2_r8(y, x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: y, x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2269,6 +2328,7 @@ CONTAINS
    END FUNCTION rp_atan2_r8
 
    ELEMENTAL FUNCTION rp_sinh_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2279,6 +2339,7 @@ CONTAINS
    END FUNCTION rp_sinh_r8
 
    ELEMENTAL FUNCTION rp_cosh_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2289,6 +2350,7 @@ CONTAINS
    END FUNCTION rp_cosh_r8
 
    ELEMENTAL FUNCTION rp_tanh_r8(x) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2299,6 +2361,7 @@ CONTAINS
    END FUNCTION rp_tanh_r8
 
    ELEMENTAL FUNCTION rp_pow_r8(x, y) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2309,6 +2372,7 @@ CONTAINS
    END FUNCTION rp_pow_r8
 
    ELEMENTAL FUNCTION rp_mod_r8(a, p) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: a, p
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2323,6 +2387,7 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_pow_r4r8(x, y) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       REAL(r8), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2330,6 +2395,7 @@ CONTAINS
    END FUNCTION rp_pow_r4r8
 
    ELEMENTAL FUNCTION rp_pow_r8r4(x, y) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       REAL(r4), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2337,6 +2403,7 @@ CONTAINS
    END FUNCTION rp_pow_r8r4
 
    ELEMENTAL FUNCTION rp_pow_i4r4(x, y) RESULT(r)
+!$acc routine seq
       INTEGER(i4), INTENT(IN) :: x
       REAL(r4), INTENT(IN) :: y
       REAL(r4) :: r
@@ -2344,6 +2411,7 @@ CONTAINS
    END FUNCTION rp_pow_i4r4
 
    ELEMENTAL FUNCTION rp_pow_i4r8(x, y) RESULT(r)
+!$acc routine seq
       INTEGER(i4), INTENT(IN) :: x
       REAL(r8), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2352,6 +2420,7 @@ CONTAINS
 
    ! Integer exponents: evaluated exactly as the original expression x**n.
    ELEMENTAL FUNCTION rp_pow_r4i4(x, n) RESULT(r)
+!$acc routine seq
       REAL(r4), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r4) :: r
@@ -2359,6 +2428,7 @@ CONTAINS
    END FUNCTION rp_pow_r4i4
 
    ELEMENTAL FUNCTION rp_pow_r8i4(x, n) RESULT(r)
+!$acc routine seq
       REAL(r8), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r8) :: r
@@ -2366,18 +2436,21 @@ CONTAINS
    END FUNCTION rp_pow_r8i4
 
    ELEMENTAL FUNCTION rp_pow_i4i4(x, n) RESULT(r)
+!$acc routine seq
       INTEGER(i4), INTENT(IN) :: x, n
       INTEGER(i4) :: r
       r = x**n
    END FUNCTION rp_pow_i4i4
 
    ELEMENTAL FUNCTION rp_mod_i4(a, p) RESULT(r)
+!$acc routine seq
       INTEGER(i4), INTENT(IN) :: a, p
       INTEGER(i4) :: r
       r = MOD(a, p)
    END FUNCTION rp_mod_i4
 
    ELEMENTAL FUNCTION rp_mod_i8(a, p) RESULT(r)
+!$acc routine seq
       INTEGER(i8), INTENT(IN) :: a, p
       INTEGER(i8) :: r
       r = MOD(a, p)

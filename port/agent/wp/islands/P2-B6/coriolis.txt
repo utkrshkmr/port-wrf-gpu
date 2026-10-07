@@ -22,11 +22,11 @@
       gpu_isl = gpu_island(R_CORIOLIS)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(ru, rv, rw, ru_tend, rv_tend, rw_tend, msftx, msfty, msfux, msfuy, msfvx, &
-!$omp&   msfvy, f, e, sina, cosa, fzm, fzp)
+!$acc update device(ru, rv, rw, ru_tend, rv_tend, rw_tend, msftx, msfty, msfux, msfuy, msfvx, &
+!$acc&   msfvy, f, e, sina, cosa, fzm, fzp)
         ELSE
-!$omp target update from(ru, rv, rw, ru_tend, rv_tend, rw_tend, msftx, msfty, msfux, msfuy, msfvx, &
-!$omp&   msfvy, f, e, sina, cosa, fzm, fzp)
+!$acc update self(ru, rv, rw, ru_tend, rv_tend, rw_tend, msftx, msfty, msfux, msfuy, msfvx, msfvy, &
+!$acc&   f, e, sina, cosa, fzm, fzp)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -37,9 +37,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(ru_tend, rv_tend, rw_tend)
+!$acc update self(ru_tend, rv_tend, rw_tend)
         ELSE
-!$omp target update to(ru_tend, rv_tend, rw_tend)
+!$acc update device(ru_tend, rv_tend, rw_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_CORIOLIS)) THEN

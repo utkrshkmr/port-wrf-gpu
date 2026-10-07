@@ -12,7 +12,7 @@
 !                           WRF_GPU_SELFTEST=1 (read once) calls
 !                           gpu_selftest_map(grid), gpu_selftest_tab() (P1-TAB)
 !                           and gpu_selftest_work() (module_gpu_work, P1-WORK)
-!   gpu_selftest_map(grid)  T-MAP: omp_target_is_present of every in-use field
+!   gpu_selftest_map(grid)  T-MAP: acc_is_present of every in-use field
 !                           of grid; "gpu_selftest: T-MAP PASS d0N <n> fields
 !                           present" or "... FAIL d0N <k> of <n> fields not
 !                           present: <first names>"

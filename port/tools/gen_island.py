@@ -193,12 +193,14 @@ def base_type(tspec, attrs):
 
 
 def directive(clause, names, indent="        "):
-    out, cur = [], f"!$omp target update {clause}("
+    """OpenACC update (ADR-001): clause 'to' -> device(...), 'from' -> self(...)"""
+    acc = {"to": "device", "from": "self"}[clause]
+    out, cur = [], f"!$acc update {acc}("
     for i, v in enumerate(names):
         piece = v + (", " if i < len(names) - 1 else ")")
         if len(cur) + len(piece) > 100:
             out.append(cur + "&")
-            cur = "!$omp&   "
+            cur = "!$acc&   "
         cur += piece
     out.append(cur)
     return out

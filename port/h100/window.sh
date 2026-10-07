@@ -27,7 +27,7 @@
 # Time limit: wrf.exe is stopped (inside the container, with its MPI ranks)
 # after RUN_TIMEOUT seconds, default max(3600, 20 x the simulated seconds of
 # the window); a stopped run fails with "TIMEOUT" in window.info.
-# GPU builds run 1 rank on GPU $GPU_ID with OMP_TARGET_OFFLOAD=MANDATORY;
+# GPU builds run 1 rank on GPU $GPU_ID with ACC_DEVICE_TYPE=nvidia;
 # CPU-REF runs $CPU_RANKS ranks (--ranks), the gnu builds (gnu, gnu-ref, gnu-gpu) 1 serial process.
 # Exit status 0 if wrf.exe printed SUCCESS COMPLETE WRF.  The last line
 # printed is the run directory.
@@ -113,7 +113,7 @@ fi
 export WRF_BITTRACE=$trace
 for e in "${envs[@]:-}"; do [ -n "$e" ] && export "$e"; done
 if [ $gpu = 1 ]; then
-  export CUDA_VISIBLE_DEVICES=$GPU_ID OMP_TARGET_OFFLOAD=MANDATORY
+  export CUDA_VISIBLE_DEVICES=$GPU_ID ACC_DEVICE_TYPE=nvidia
 fi
 { echo "$settings"; echo "host $(hostname) start $(date -u +%FT%TZ)"; env | grep -E '^(WRF_|OMP_|CUDA_VISIBLE|NV_)' | sort; } > window.info
 mpiflags=${MPIRUN_FLAGS:-}

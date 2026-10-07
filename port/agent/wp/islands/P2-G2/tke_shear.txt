@@ -20,11 +20,11 @@
       gpu_isl = gpu_island(R_TKE_SHEAR)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(tendency, defor11, defor22, defor33, defor12, defor13, defor23, u, v, w, &
-!$omp&   tke, ust, mu, c1, c2, fnm, fnp, msftx, msfty, xkmh, xkmv, zx, zy, rdz, rdzw, dn, dnw)
+!$acc update device(tendency, defor11, defor22, defor33, defor12, defor13, defor23, u, v, w, tke, &
+!$acc&   ust, mu, c1, c2, fnm, fnp, msftx, msfty, xkmh, xkmv, zx, zy, rdz, rdzw, dn, dnw)
         ELSE
-!$omp target update from(tendency, defor11, defor22, defor33, defor12, defor13, defor23, u, v, w, &
-!$omp&   tke, ust, mu, c1, c2, fnm, fnp, msftx, msfty, xkmh, xkmv, zx, zy, rdz, rdzw, dn, dnw)
+!$acc update self(tendency, defor11, defor22, defor33, defor12, defor13, defor23, u, v, w, tke, &
+!$acc&   ust, mu, c1, c2, fnm, fnp, msftx, msfty, xkmh, xkmv, zx, zy, rdz, rdzw, dn, dnw)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(tendency)
+!$acc update self(tendency)
         ELSE
-!$omp target update to(tendency)
+!$acc update device(tendency)
         END IF
       END IF
       IF (gpu_cc_active(R_TKE_SHEAR)) THEN

@@ -43,15 +43,15 @@
       gpu_isl = gpu_island(R_SMALL_STEP_PREP)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mub, mu_1, mu_2, muu, &
-!$omp&   muus, muv, muvs, mut, muts, mudf, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
-!$omp&   w_save, t_save, ph_save, mu_save, ww, ww_save, c2a, pb, p, alt, msfux, msfuy, msfvx, &
-!$omp&   msfvx_inv, msfvy, msftx, msfty)
+!$acc update device(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mub, mu_1, mu_2, muu, muus, &
+!$acc&   muv, muvs, mut, muts, mudf, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
+!$acc&   w_save, t_save, ph_save, mu_save, ww, ww_save, c2a, pb, p, alt, msfux, msfuy, msfvx, &
+!$acc&   msfvx_inv, msfvy, msftx, msfty)
         ELSE
-!$omp target update from(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mub, mu_1, mu_2, muu, &
-!$omp&   muus, muv, muvs, mut, muts, mudf, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
-!$omp&   w_save, t_save, ph_save, mu_save, ww, ww_save, c2a, pb, p, alt, msfux, msfuy, msfvx, &
-!$omp&   msfvx_inv, msfvy, msftx, msfty)
+!$acc update self(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mub, mu_1, mu_2, muu, muus, &
+!$acc&   muv, muvs, mut, muts, mudf, c1h, c2h, c1f, c2f, c3h, c4h, c3f, c4f, u_save, v_save, &
+!$acc&   w_save, t_save, ph_save, mu_save, ww, ww_save, c2a, pb, p, alt, msfux, msfuy, msfvx, &
+!$acc&   msfvx_inv, msfvy, msftx, msfty)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -62,11 +62,11 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mu_1, mu_2, muus, &
-!$omp&   muvs, muts, mudf, u_save, v_save, w_save, t_save, ph_save, mu_save, ww_save, c2a)
+!$acc update self(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mu_1, mu_2, muus, muvs, muts, &
+!$acc&   mudf, u_save, v_save, w_save, t_save, ph_save, mu_save, ww_save, c2a)
         ELSE
-!$omp target update to(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mu_1, mu_2, muus, muvs, &
-!$omp&   muts, mudf, u_save, v_save, w_save, t_save, ph_save, mu_save, ww_save, c2a)
+!$acc update device(u_1, u_2, v_1, v_2, w_1, w_2, t_1, t_2, ph_1, ph_2, mu_1, mu_2, muus, muvs, &
+!$acc&   muts, mudf, u_save, v_save, w_save, t_save, ph_save, mu_save, ww_save, c2a)
         END IF
       END IF
       IF (gpu_cc_active(R_SMALL_STEP_PREP)) THEN

@@ -3,7 +3,7 @@
 Paste one of these as the agent's first message of a session. The agent's context is about 250k tokens, so the port
 runs over many sessions. The workbook carries the state between them (WORKFLOW.md §11).
 
-## Code-only parallel run of Phases 1–3 (no compiler, no GPU)
+## Code-only parallel run of Phases 1–5 (no compiler, no GPU)
 
 Use these when the agent can write code but cannot build or test it (port/agent/CODE_ONLY.md). The project owner's
 reviewer verifies the result afterwards. The other prompts of this file are for the H100 machine.
@@ -12,7 +12,7 @@ reviewer verifies the result afterwards. The other prompts of this file are for 
 
 ````text
 You are the integrator and planner of a code-only run of the GPU port of WRF v4.6.0 + WRF-Fire in
-https://github.com/utkrshkmr/port-wrf-gpu. You write no model code yourself. You build the exact plan for Phases 1-3,
+https://github.com/utkrshkmr/port-wrf-gpu. You write no model code yourself. You build the exact plan for Phases 1-5,
 launch workers that write the code (one work package each, many in parallel), merge their branches and report.
 Nobody in this run compiles or tests anything: the project owner's reviewer does that afterwards.
 
@@ -30,7 +30,7 @@ the workers' branches. Never edit a file a work package owns.
 
 PART 1 - BUILD THE PLAN (no worker starts before the plan is committed)
 1. Read AGENTS.md (the rules), port/agent/CODE_ONLY.md, port/agent/WORKPACKAGES.md, port/agent/INTERFACES.md,
-   port/agent/run/README.md, then each of the 36 cards port/agent/wp/<ID>.md. Read the cards only, not the WRF
+   port/agent/run/README.md, then each of the 44 cards port/agent/wp/<ID>.md. Read the cards only, not the WRF
    sources: a card lists what the package owns, its items, the CPU line ranges, its islands and notes.
 2. Decide N, the number of workers you can run at the same time (your own limit), and what one worker session
    can do. A session has about 250k tokens of context and checkpoints at 60 %.
@@ -38,7 +38,7 @@ PART 1 - BUILD THE PLAN (no worker starts before the plan is committed)
    300 lines of CPU code as 2-3.
 3. Write port/agent/run/PLAN.md with these sections:
    a. Run facts: handoff commit, N, date.
-   b. Packages: one row for each of the 36 work packages, with these columns:
+   b. Packages: one row for each of the 44 work packages, with these columns:
       - ID;
       - branch agent/wp/<id> (lowercase, '-' becomes '_');
       - phase;
@@ -64,14 +64,14 @@ PART 1 - BUILD THE PLAN (no worker starts before the plan is committed)
       - Ownership and interfaces never change during the run: the reviewer decides afterwards.
    g. Resume: a fresh session (yours or a worker's) continues with prompt C of port/agent/PROMPTS.md.
 4. Check the plan:
-   - every one of the 36 IDs appears exactly once in the package table and exactly once in the waves;
+   - every one of the 44 IDs appears exactly once in the package table and exactly once in the waves;
    - every item comes from its card, in the card's order;
    - if you can run Python: python3 port/tools/check_area_scope.py port-integrate --worktree prints PASS.
 5. Update port/agent/WORKBOOK.md:
    - Current state: phase "code-only run 1", the plan file, and one line per package with its branch and state.
      Keep every key that python3 port/tools/workbook.py check expects.
    - Log: one entry of at most 25 lines, "### <date> CODE-ONLY run 1 planned", pointing to PLAN.md.
-   Commit "Plan the code-only run of Phases 1-3" on agent/code. Do not push.
+   Commit "Plan the code-only run of Phases 1-5" on agent/code. Do not push.
 
 PART 2 - RUN THE PLAN
 6. Launch the workers of wave 1, one per slot. Give each prompt B of port/agent/PROMPTS.md with <ID>, <id> and the
@@ -89,7 +89,7 @@ PART 2 - RUN THE PLAN
    d. Give the free slot the next package of the plan.
    e. A worker whose session ends before its package is done continues in a fresh session with prompt C, in the
       same worktree.
-8. When all 36 are merged:
+8. When all 44 are merged:
    - run bash port/gates/static.sh if you can;
    - write a log entry "CODE-ONLY run 1 complete", listing the blocked items with their questions and the scope
      requests; commit.

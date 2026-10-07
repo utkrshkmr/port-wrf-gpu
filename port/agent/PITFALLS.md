@@ -1,5 +1,13 @@
 # Pitfalls
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Everything below has either broken bit-for-bit equality in this project or is known to do so with NVHPC and OpenMP
 offload. Read it once completely; come back when a test fails.
 
@@ -59,9 +67,9 @@ offload. Read it once completely; come back when a test fails.
     needs those added to the island by hand.
 24. **Partly written OUT arrays.** The island copies every array to the device at entry (including INTENT(OUT)) so
     that the unwritten parts come back unchanged. Do not "optimize" the entry copy of OUT arrays away.
-25. **`target update` of an unmapped array does nothing** (OpenMP semantics) — no error. If an island seems to have
+25. **`!$acc update` of an array that is not present** is a runtime error with NVHPC (with `if_present` it does nothing). If an island seems to have
     no effect, the array is not mapped (see 20).
-26. **Uninitialized device memory.** `map(alloc:)` memory is not zero. The pool and work arrays are zero-filled at
+26. **Uninitialized device memory.** `!$acc enter data create` memory is not zero. The pool and work arrays are zero-filled at
     allocation on both sides (P1.6/P1.7); a new device-only array must be initialized exactly like its host
     counterpart.
 27. **Assumed-size dummies (`a(*)`)** cannot be moved by name and have no bounds in device code; avoid them in kernels.
@@ -70,9 +78,9 @@ offload. Read it once completely; come back when a test fails.
 
 ## Directives and build
 
-29. **An apostrophe in a `!$omp` line** makes WRF's build delete the line (it strips comment lines containing `'`).
+29. **An apostrophe in a `!$acc` line** makes WRF's build delete the line (it strips comment lines containing `'`).
     The kernel then silently runs on the host. `-Minfo=mp` shows which loops were offloaded — check it.
-30. **Directive continuation**: `&` at the end, `!$omp&` at the start of the next line. A directive broken by a
+30. **Directive continuation**: `&` at the end, `!$acc&` at the start of the next line. A directive broken by a
     preprocessor line (`#ifdef` between the directive and its loop) fails to compile or attaches to the wrong loop.
 31. **`collapse(n)` with statements between the loops** is invalid (kernel_lint E4).
 32. **`if(target: ...)` must be evaluated on the host** — use `gpu_on(R_X)` only.
@@ -91,8 +99,8 @@ offload. Read it once completely; come back when a test fails.
 
 39. **Restart-vs-restart.** Windows start from the dev reference restarts; never compare a window with a
     continuous run.
-40. **`OMP_TARGET_OFFLOAD=MANDATORY`** (set by window.sh for GPU runs): a failed offload is an error. Without it the
-    runtime may silently run kernels on the host.
+40. **`ACC_DEVICE_TYPE=nvidia`** (set by window.sh for GPU runs; recorded in window.info): a `-acc=gpu` binary has no
+    host fallback, so a missing GPU is an error, never a silent host run.
 41. **NaN payloads**: the GPU produces canonical NaNs, the host propagates payloads. A NaN in a model field is a bug
     anyway; the tracer will show different hashes.
 42. **Test the right thing**: T-AB compares the GPU view on the device with the GPU view on the host; it cannot find
@@ -108,7 +116,7 @@ offload. Read it once completely; come back when a test fails.
 44. **`/*` in a Fortran comment** (`! see physics_mmm/*.F90`) opens a C comment for cpp, and the file fails with
     "unterminated comment". Never write `/*` or `*/` in a `.F`/`.F90` file. Apostrophes in comment lines are
     removed by WRF's sed step (BUILD_SYSTEM.md §3).
-45. **Never name a `grid` field in an OpenMP clause** (`map(to: grid%u_2)`, `target update to(grid%u_2)`): it is
+45. **Never name a `grid` field in a directive clause** (`present(grid%u_2)`, `update device(grid%u_2)`): it is
     a structure-member map, which gfortran rejects for types with allocatable components and compilers treat
     differently. Whole-state moves call `module_gpu_map` (P1.2/P1.3). Inside a routine the field is an
     explicit-shape dummy, and the islands and kernels name that.

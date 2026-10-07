@@ -27,13 +27,13 @@
       gpu_isl = gpu_island(R_CAL_DEFORM_AND_DIV)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij, &
-!$omp&   u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, fnm, fnp, &
-!$omp&   zx, zy)
+!$acc update device(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij, &
+!$acc&   u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, fnm, fnp, &
+!$acc&   zx, zy)
         ELSE
-!$omp target update from(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, &
-!$omp&   nba_rij, u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, &
-!$omp&   fnm, fnp, zx, zy)
+!$acc update self(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij, &
+!$acc&   u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, fnm, fnp, &
+!$acc&   zx, zy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -44,9 +44,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
+!$acc update self(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
         ELSE
-!$omp target update to(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
+!$acc update device(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
         END IF
       END IF
       IF (gpu_cc_active(R_CAL_DEFORM_AND_DIV)) THEN

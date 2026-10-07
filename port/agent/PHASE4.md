@@ -1,5 +1,13 @@
 # Phase 4 — WRF-Fire kernels
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Plan: [plan.md §9](../../plan.md) (9.0 preparation, 9.1 kernel table, G4). Exact lines: [KERNEL_REFS.md](KERNEL_REFS.md);
 routes and call sites: [ROUTES.md](ROUTES.md). Fire runs on d02 once per step (RK stage 1) on the fire mesh
 (724×724 on the dev case). Same way of working as Phase 2. Context: read with `ref.py <kernel id>` and
@@ -21,7 +29,7 @@ Not done in Phase 0 (RESULTS.md deviation 6). Each one: `t_cpu_view.sh W-T0 W-20
 
 ## Kernels
 
-- `tend_ls`: WENO5/ENO1 per point with `fire_ros` as a `declare target` function (K-TLS, K-ROS); `reduction(max:tb)`
+- `tend_ls`: WENO5/ENO1 per point with `fire_ros` as an `!$acc routine seq` function (K-TLS, K-ROS); `reduction(max:tb)`
   and `tbound` on the host.
 - `continue_at_boundary`: three kernels in order (j-strips, i-strips, corners).
 - `interpolate_2d`: one thread per coarse cell writing its 4×4 fine nodes (no overlaps for even `sr`).

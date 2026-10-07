@@ -76,10 +76,10 @@ else:
              "        CALL gpu_cc_save_r(1, a, SIZE(a,KIND=8))\n        CALL gpu_cc_save_r(2, alpha, SIZE(alpha,KIND=8))\n"
              "        CALL gpu_cc_save_r(3, gamma, SIZE(gamma,KIND=8))\n      END IF\n"
              "      gpu_isl = gpu_island(R_CALC_COEF_W)\n      IF (gpu_isl) THEN\n"
-             "        IF (gpu_world_host) THEN\n!$omp target update to(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, &\n"
-             "!$omp&   c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)\n        ELSE\n"
-             "!$omp target update from(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, &\n"
-             "!$omp&   c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)\n        END IF\n"
+             "        IF (gpu_world_host) THEN\n!$acc update device(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, &\n"
+             "!$acc&   c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)\n        ELSE\n"
+             "!$acc update self(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, &\n"
+             "!$acc&   c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)\n        END IF\n"
              "        gpu_world_host = .NOT. gpu_world_host\n      END IF\n#endif\n")
     s = s.replace("      i_start = its\n      i_end   = min(ite,ide-1)\n      j_start = jts\n      j_end   = min(jte,jde-1)\n"
                   "      k_start = kts\n", entry + "      i_start = its\n      i_end   = min(ite,ide-1)\n"
@@ -105,7 +105,7 @@ else:
     check(rc == 1 and "E9" in out, "kernel_lint: a kernel without an island fails (E9)", out)
     rc, out = run(os.path.join(TOOLS, "gen_island.py"), os.path.join(REPO, "WRF", "dyn_em", "module_small_step_em.F"),
                   "calc_coef_w")
-    check(rc == 0 and "!$omp target update from(a, alpha, gamma)" in out and "gpu_island(R_CALC_COEF_W)" in out,
+    check(rc == 0 and "!$acc update self(a, alpha, gamma)" in out and "gpu_island(R_CALC_COEF_W)" in out,
           "gen_island: calc_coef_w island (16 arrays in, 3 out)", out)
     s_cpu = s.replace("          c =   -cqw(i,k,j)*cof(i)*rdn(k)*rdnw(k  )*c2a(i,k,j  )",
                       "          c =   -cqw(i,k,j)*cof(i)*rdn(k)*(rdnw(k  )*c2a(i,k,j  ))", 1)
@@ -309,7 +309,7 @@ check(rc == 0, "check_build_flags: the GPU-port stanzas keep the arithmetic flag
 bf = tempfile.mkdtemp()
 cfg = ("FCOPTIM = -O2 -Kieee -Mnofma -Mnoflushz -Mnodaz -Mvect=noassoc -tp=haswell -Mrecursive\n"
        "FCNOOPT = -O0 -Kieee -Mnofma -Mnoflushz -Mnodaz -tp=haswell -Mrecursive\n"
-       "OMP = -mp=gpu -gpu=cc80,cc90,nofma,noflushz -Minfo=mp\n"
+       "OMP = -acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz -Minfo=accel\n"
        "ARCH_LOCAL = -DNONSTANDARD_SYSTEM_SUBR -DREPRO_MATH -DWRF_POOL -DWRF_GPU -DWRF_TRACE_FINE\n")
 open(os.path.join(bf, "BUILD_INFO"), "w").write("mode: gpu-repro-fine\n")
 open(os.path.join(bf, "configure.wrf"), "w").write(cfg)
@@ -331,11 +331,11 @@ check(rc == 0 and "calc_alt:1" in out and "K-PREP-7" in out and "R_CALC_ALT" in 
       "kernel_off --list: number, kernel ID and route", out)
 rc, out = run(os.path.join(TOOLS, "kernel_off.py"), ko, "K-PREP-7")
 txt = open(ko).read()
-dirs = [l for l in txt.split("\n") if l.startswith("!$omp target teams")]
+dirs = [l for l in txt.split("\n") if l.startswith("!$acc parallel")]
 b1 = txt.find("KOFF-TEMP-BEGIN")
-p_from, p_dir = txt.find("target update from(alt, al, alb)", b1), txt.find("if(target: .FALSE.)")
-p_to = txt.find("target update to(alt, al, alb)", txt.find("KOFF-TEMP-BEGIN", p_dir))
-check(rc == 0 and len(dirs) == 1 and "if(target: .FALSE.)" in dirs[0] and -1 < b1 < p_from < p_dir < p_to
+p_from, p_dir = txt.find("update self(alt, al, alb)", b1), txt.find("if(.FALSE.)")
+p_to = txt.find("update device(alt, al, alb)", txt.find("KOFF-TEMP-BEGIN", p_dir))
+check(rc == 0 and len(dirs) == 1 and "if(.FALSE.)" in dirs[0] and -1 < b1 < p_from < p_dir < p_to
       and txt.rfind("ENDDO", 0, p_to) > p_dir,
       "kernel_off: host run with copies before and after the kernel", txt[-2500:])
 rc, out = run(os.path.join(TOOLS, "kernel_off.py"), "--revert", ko)
@@ -389,7 +389,7 @@ check(rc == 1 and "DIFFERENT: 1 of 3 values, first at (2)" in out, "harness_diff
 rc, out = run(os.path.join(PORT, "h100", "gen_harness.py"),
               os.path.join(REPO, "WRF", "dyn_em", "module_big_step_utilities_em.F"), "calc_ww_cp", "--mode", "gpu")
 check(rc == 0 and "USE module_big_step_utilities_em, ONLY : calc_ww_cp" in out and "CALL initial_config" in out
-      and "!$omp target enter data map(alloc: h_u," in out and "CALL hdump_r4(hu, 'ww', h_ww," in out
+      and "!$acc enter data create(h_u," in out and "CALL hdump_r4(hu, 'ww', h_ww," in out
       and re.search(r"ALLOCATE\(h_u\(\s*h_ims:h_ime", out) is not None, "gen_harness: calc_ww_cp driver", out[:3000])
 
 # ---- context tools: ref.py pages the CPU code, index.py maps a file

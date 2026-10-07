@@ -37,9 +37,9 @@ SUBROUTINE calc_alt ( alt, al, alb,                  &
       gpu_isl = gpu_island(R_CALC_ALT)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(alt, al, alb)
+!$acc update device(alt, al, alb)
         ELSE
-!$omp target update from(alt, al, alb)
+!$acc update self(alt, al, alb)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -49,8 +49,8 @@ SUBROUTINE calc_alt ( alt, al, alb,                  &
       ktf=MIN(kte,kde-1)
 
 ! K-PREP-7 (plan.md 7.1): Template A, directive in front of the unchanged loop
-!$omp target teams distribute parallel do collapse(3) if(target: gpu_on(R_CALC_ALT)) default(none) &
-!$omp& shared(alt, al, alb) firstprivate(its, itf, jts, jtf, kts, ktf)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALC_ALT)) default(none) present(alt, al, alb) &
+!$acc& firstprivate(its, itf, jts, jtf, kts, ktf)
       DO j=jts,jtf
       DO k=kts,ktf
       DO i=its,itf
@@ -63,9 +63,9 @@ SUBROUTINE calc_alt ( alt, al, alb,                  &
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(alt)
+!$acc update self(alt)
         ELSE
-!$omp target update to(alt)
+!$acc update device(alt)
         END IF
       END IF
       IF (gpu_cc_active(R_CALC_ALT)) THEN

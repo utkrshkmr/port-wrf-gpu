@@ -30,7 +30,7 @@ Paste each block where its comments say (CODING_STANDARD.md §3). Regenerate wit
 
 ## Tasks
 
-- the P1.4 table CSSCA (PRIVATE): !$omp declare target, ra_sw_gpu_upload and ra_sw_gpu_tabcheck (I-4)
+- the P1.4 table CSSCA (PRIVATE): !$acc declare create, ra_sw_gpu_upload and ra_sw_gpu_tabcheck (I-4)
 - shared refactor (separate commit): the DATA-initialized tables of SWPARA (ALBTAB, ABSTAB, XMUVAL) become PARAMETER arrays with the same values
 
 ## Done (code-only; CODE_ONLY.md §5)

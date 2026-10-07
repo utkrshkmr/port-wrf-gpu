@@ -1,5 +1,13 @@
 # Phase 5 — nest forcing, sync points, the device world
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 Plan: [plan.md §10](../../plan.md) (P5.1–P5.4, G5). After Phase 4 every per-step routine has kernels and an island.
 Phase 5 moves the model into device memory for good (`gpu_world_host = .FALSE.`), removes the P1.9 bracket, ports
 nest forcing, and verifies all host↔device traffic.

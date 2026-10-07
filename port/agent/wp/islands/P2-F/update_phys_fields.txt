@@ -15,10 +15,10 @@
       gpu_isl = gpu_island(R_UPDATE_PHYS_FIELDS)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(moist)
+!$acc update device(moist)
           CALL gpu_upd_dev_all(grid)
         ELSE
-!$omp target update from(moist)
+!$acc update self(moist)
           CALL gpu_upd_host_all(grid)
         END IF
         gpu_world_host = .NOT. gpu_world_host

@@ -22,9 +22,9 @@
       gpu_isl = gpu_island(R_W_DAMP)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(rw_tend, u, v, ww, w, mut, c1f, c2f, rdnw, msfux, msfuy, msfvx, msfvy)
+!$acc update device(rw_tend, u, v, ww, w, mut, c1f, c2f, rdnw, msfux, msfuy, msfvx, msfvy)
         ELSE
-!$omp target update from(rw_tend, u, v, ww, w, mut, c1f, c2f, rdnw, msfux, msfuy, msfvx, msfvy)
+!$acc update self(rw_tend, u, v, ww, w, mut, c1f, c2f, rdnw, msfux, msfuy, msfvx, msfvy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(rw_tend)
+!$acc update self(rw_tend)
         ELSE
-!$omp target update to(rw_tend)
+!$acc update device(rw_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_W_DAMP)) THEN

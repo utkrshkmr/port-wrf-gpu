@@ -21,9 +21,9 @@
       gpu_isl = gpu_island(R_WW_SPLIT)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(wwe, wwi, u, v, ww, mut, rdnw, msfty, c1f, c2f, msfux, msfuy, msfvx, msfvy)
+!$acc update device(wwe, wwi, u, v, ww, mut, rdnw, msfty, c1f, c2f, msfux, msfuy, msfvx, msfvy)
         ELSE
-!$omp target update from(wwe, wwi, u, v, ww, mut, rdnw, msfty, c1f, c2f, msfux, msfuy, msfvx, msfvy)
+!$acc update self(wwe, wwi, u, v, ww, mut, rdnw, msfty, c1f, c2f, msfux, msfuy, msfvx, msfvy)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -34,9 +34,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(wwe, wwi)
+!$acc update self(wwe, wwi)
         ELSE
-!$omp target update to(wwe, wwi)
+!$acc update device(wwe, wwi)
         END IF
       END IF
       IF (gpu_cc_active(R_WW_SPLIT)) THEN

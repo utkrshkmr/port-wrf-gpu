@@ -53,7 +53,7 @@ check (the island file says so).
   - `gpu_work_ensure(ims,ime,jms,jme,kms,kme)`: (re)allocates every array when this domain is larger than every
     domain before;
   - `gpu_work_alloc_r(a, n, name)`: allocates, zero-fills on the host, and under `WRF_GPU` maps with
-    `enter data map(alloc:)` and zero-fills on the device;
+    `!$acc enter data create` and zero-fills on the device;
   - `gpu_work_check_r(a, name, nwork, nbad)`;
   - `gpu_selftest_work()`.
 - **P1-SYNC calls** `CALL gpu_work_ensure(ims, ime, jms, jme, kms, kme)` in `solve_em`, right after
@@ -63,11 +63,11 @@ check (the island file says so).
 
 Each physics module that owns P1.4 tables provides, under `#ifdef WRF_GPU`:
 
-- `!$omp declare target(<its table variables>)` next to their declarations;
+- `!$acc declare create(<its table variables>)` next to their declarations;
 - two PUBLIC routines in the module:
 
 ```fortran
-SUBROUTINE <m>_gpu_upload()                    ! !$omp target update to(<its table variables>)
+SUBROUTINE <m>_gpu_upload()                    ! !$acc update device(<its table variables>)
 SUBROUTINE <m>_gpu_tabcheck(n, nbad, bad)      ! for each variable: an integer bit-sum on the host and in a
    INTEGER, INTENT(OUT) :: n, nbad             !   kernel on the device; n = variables checked, nbad = differing;
    CHARACTER(LEN=*), INTENT(INOUT) :: bad      !   appends the names that differ, blank-separated
@@ -144,3 +144,25 @@ To avoid collisions between parallel work packages:
 - work arrays: `work_<id>_<name>`, with `<id>` the lowercase work-package ID with `_` (e.g. `work_p2_b1_fqy3`);
 - new module procedures you add to a file you own: `<routine>_gpu_<what>` (e.g. `advect_u_gpu_flux5`);
 - route constants: only those of I-1.
+
+## I-11 Nest forcing: S6 or P5-FORCE (P1-SYNC, P5-FORCE)
+
+One switch decides who moves the data around nest forcing: the route `R_COUPLE_OR_UNCOUPLE_EM`.
+- `gpu_on(R_COUPLE_OR_UNCOUPLE_EM)` is `.FALSE.` (`WRF_GPU_OFF=couple_or_uncouple_em`): S6 in
+  `frame/module_integrate.F` (P1-SYNC) does the full-state round trip of both domains around `med_nest_force`, as in
+  Phase 1; `med_force_domain` (P5-FORCE) moves nothing.
+- `.TRUE.` (the default): S6 does nothing; `med_force_domain` does the eight steps of plan.md P5.2 on the device
+  (P5-FORCE), with `couple_or_uncouple_em` on the device (P5-CPL).
+
+## I-12 WRF-Fire data on the device (P4-MODEL; used by P4-A2F, P4-LS, P4-FUEL, P4-ATM)
+
+- **Flags and constants.** The module flags of `module_fr_fire_util` that device code reads (`fire_upwinding`,
+  `fire_viscosity`, `fire_lsm_band_ngp`, `fire_grows_only`, `fire_advection`, `boundary_guard`, ... everything set by
+  `set_flags`) and the constants of `module_fr_fire_phys` that device code reads (`cmbcnst`, ...) are
+  `!$acc declare create(...)` in their modules' specification parts and uploaded once per domain after `set_flags`
+  (P4-MODEL). Other packages read them in device code and never declare or upload them.
+- **`fp` (TYPE(fire_params)).** `fire_driver_em` (P4-MODEL) creates the device copy of `fp` after its pointer
+  assignments and attaches every pointer component to the device copy of its target:
+  `!$acc enter data copyin(fp)`, then `!$acc enter data attach(fp%vx, fp%vy, ...)`; before it returns,
+  `!$acc exit data detach(...)` and `delete(fp)`. Kernels that read `fp` list it in `present(fp)`; `fire_ros`,
+  `heat_fluxes` and the others keep their signatures and their `fp%...` references unchanged.

@@ -9,8 +9,8 @@
 #             gnu-ref | gnu-gpu                 (gfortran serial, for checking code without NVHPC
 #                                                or a GPU, port/agent/CODE_ONLY.md section 7):
 #               gnu-ref  -DREPRO_MATH -DWRF_POOL -frecursive          the CPU view (as CPU-REF)
-#               gnu-gpu  -DREPRO_MATH -DWRF_POOL -DWRF_GPU -fopenmp   the GPU view; target regions
-#                        run on the host (no offload), so a gnu-gpu run equals the gnu-ref run
+#               gnu-gpu  -DREPRO_MATH -DWRF_POOL -DWRF_GPU -fopenacc  the GPU view; OpenACC regions
+#                        run on the host (gfortran host fallback), so a gnu-gpu run equals the gnu-ref run
 #                        bit for bit when the GPU code keeps the arithmetic
 # --commit REV  clean build of a commit (default HEAD) in $WORK/builds/<mode>/<sha12>[-T];
 #               reused if it exists.  The reference builds come from commits.
@@ -108,7 +108,7 @@ if [ ! -f configure.wrf ]; then
   if [[ $mode == gnu-ref || $mode == gnu-gpu ]]; then
     # gfortran views for code checks without NVHPC (CODE_ONLY.md section 7); same arithmetic flags in both
     defs="-DREPRO_MATH -DWRF_POOL"; fopt=-frecursive
-    [ $mode = gnu-gpu ] && { defs="$defs -DWRF_GPU"; fopt=-fopenmp; }
+    [ $mode = gnu-gpu ] && { defs="$defs -DWRF_GPU"; fopt="-fopenacc -frecursive"; }
     sed -i -E "/^ARCH_LOCAL[[:space:]]*=/ s/\$/ $defs/" configure.wrf
     sed -i -E "/^FCBASEOPTS_NO_G[[:space:]]*=/ s/\$/ $fopt/" configure.wrf
     sed -i -E "/^LDFLAGS_LOCAL[[:space:]]*=/ s/\$/ $fopt/" configure.wrf

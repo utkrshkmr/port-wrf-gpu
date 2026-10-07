@@ -1,5 +1,13 @@
 # The WRF build, for the port
 
+> **Directive dialect: OpenACC** (ADR-001 rev 2, owner decision 2026-10-07). Any OpenMP spelling left in this file
+> means its OpenACC form ([CODING_STANDARD.md](CODING_STANDARD.md) §4): `target teams distribute parallel do` →
+> `parallel loop gang vector`; `if(target: c)` → `if(c)`; `shared(arrays)` → `present(arrays)`; inner loops
+> `!$acc loop seq`; `declare target` → `!$acc routine seq` (procedures) or `!$acc declare create` (module data);
+> `target update to/from` → `!$acc update device/self`; `enter data map(to|alloc:)` → `!$acc enter data
+> copyin|create`; `exit data map(delete:)` → `!$acc exit data delete`; `omp_target_is_present` → `acc_is_present`;
+> `-Minfo=mp` → `-Minfo=accel`.
+
 What you need to know to add files, change the Registry generator, read compile errors and iterate quickly. The
 scripts do most of this (`port/h100/build.sh`); this page says what they do, so that you can tell a build problem
 from a code problem.
@@ -48,7 +56,7 @@ not allowed.
 The rule `.F.o` of `arch/postamble` runs four commands in the file's directory:
 
 1. `sed -e "s/^\!.*'.*//" ...  x.F > x.G`: deletes comment lines containing an apostrophe (so that `cpp` does not
-   see unbalanced quotes). **A `!$omp` line with an apostrophe disappears silently.**
+   see unbalanced quotes). **A `!$acc` line with an apostrophe disappears silently.**
 2. `cpp -P -traditional -I<build>/inc -D... x.G > x.bb`: `#include`, `#ifdef`. Includes come from `inc/`
    (Registry output) and the file's directory.
 3. `tools/standard.exe x.bb | cpp -traditional > x.f90`. `standard.exe` does three things:
@@ -122,7 +130,7 @@ lines. Otherwise use `grep -n -E "Error|NVFORTRAN-S|NVFORTRAN-F" compile.log | h
 
 - `NVFORTRAN-S-...` is a severe error, `-F-` fatal, `-W-` a warning, `-I-` information. Line numbers refer to the
   `.f90` file in the build directory, not to the `.F` source. Find the statement in `x.f90`, then in `x.F`.
-- `-Minfo=mp` lines, per kernel: `NNN, !$omp target teams distribute parallel do` then `Generating NVIDIA GPU code`
+- `-Minfo=accel` lines, per kernel: `NNN, Generating NVIDIA GPU code` then the loop schedule (`gang, vector(128)`, `!$acc loop seq`)
   and the loop schedule (`Loop parallelized across teams and threads`). A kernel with no "Generating NVIDIA GPU
   code" line was not offloaded. Get them for one file with `compile_one.sh <mode> <file> --minfo`.
 - `-w` in `FCBASEOPTS` hides warnings. To see them for one file, run the `fc` command of `build_cmds.py show`
@@ -136,7 +144,7 @@ lines. Otherwise use `grep -n -E "Error|NVFORTRAN-S|NVFORTRAN-F" compile.log | h
 | `undefined reference to 'x_'` at the link | object not in a Makefile list; an external routine called with a module-procedure name, or the reverse | `add_to_build.py`; check where `x` is defined (`git grep -n "SUBROUTINE x"`) |
 | `multiple definition of` | the same routine in two objects | rename or remove one |
 | my change has no effect | the build uses an older copy (look at `BUILD_INFO`: HEAD + diff md5), or a stale `.mod` | rebuild; `--clean` |
-| a directive has no effect, no `-Minfo` line | the `!$omp` line contains an apostrophe (removed by sed), or it is inside one of the four joined driver calls | remove the apostrophe; move it |
+| a directive has no effect, no `-Minfo` line | the `!$acc` line contains an apostrophe (removed by sed), or it is inside one of the four joined driver calls | remove the apostrophe; move it |
 | `Symbol x conflicts with symbol from module y` | two USEs bring the same name | `USE y, ONLY : ...` |
 | a Registry change is not visible | the Registry did not run | `build.sh <mode> --worktree --clean` |
 | `configure does not offer 'GPU port ...'` | compiler not in PATH in the container, or `NETCDF` wrong | `setup_toolchain.sh check`; `ENV_H100.md` |

@@ -15,7 +15,7 @@
 ! be whatever was on the stack.  T-SHARED-POOL / T-UNINIT check that upstream
 ! never reads scratch before writing it.
 !
-! Phase 1 adds the device mapping of the pool (target enter data) here.
+! Phase 1 adds the device mapping of the pool (!$acc enter data create) here.
 
 MODULE module_gpu_scratch
 

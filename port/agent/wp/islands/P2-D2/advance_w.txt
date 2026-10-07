@@ -22,13 +22,13 @@
       gpu_isl = gpu_island(R_ADVANCE_W)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(w, rw_tend, ww, w_save, u, v, mu1, mut, muave, muts, c1h, c2h, c1f, c2f, &
-!$omp&   c3h, c4h, c3f, c4f, t_2ave, t_2, t_1, ph, ph_1, phb, ph_tend, ht, c2a, cqw, alt, alb, a, &
-!$omp&   alpha, gamma, dnw, fnm, fnp, rdnw, rdn, msftx, msfty)
+!$acc update device(w, rw_tend, ww, w_save, u, v, mu1, mut, muave, muts, c1h, c2h, c1f, c2f, c3h, &
+!$acc&   c4h, c3f, c4f, t_2ave, t_2, t_1, ph, ph_1, phb, ph_tend, ht, c2a, cqw, alt, alb, a, alpha, &
+!$acc&   gamma, dnw, fnm, fnp, rdnw, rdn, msftx, msfty)
         ELSE
-!$omp target update from(w, rw_tend, ww, w_save, u, v, mu1, mut, muave, muts, c1h, c2h, c1f, c2f, &
-!$omp&   c3h, c4h, c3f, c4f, t_2ave, t_2, t_1, ph, ph_1, phb, ph_tend, ht, c2a, cqw, alt, alb, a, &
-!$omp&   alpha, gamma, dnw, fnm, fnp, rdnw, rdn, msftx, msfty)
+!$acc update self(w, rw_tend, ww, w_save, u, v, mu1, mut, muave, muts, c1h, c2h, c1f, c2f, c3h, &
+!$acc&   c4h, c3f, c4f, t_2ave, t_2, t_1, ph, ph_1, phb, ph_tend, ht, c2a, cqw, alt, alb, a, alpha, &
+!$acc&   gamma, dnw, fnm, fnp, rdnw, rdn, msftx, msfty)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -39,9 +39,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(w, t_2ave, ph)
+!$acc update self(w, t_2ave, ph)
         ELSE
-!$omp target update to(w, t_2ave, ph)
+!$acc update device(w, t_2ave, ph)
         END IF
       END IF
       IF (gpu_cc_active(R_ADVANCE_W)) THEN

@@ -32,7 +32,7 @@ PROGRAM t_rm_pow
    nchunks = MAX(1_i8, npairs/chunk)
    CALL require_device()
    ALLOCATE (a(chunk), b(chunk), hres(chunk), dres(chunk))
-!$omp target enter data map(alloc: a, b, dres)
+!$acc enter data create(a, b, dres)
    total_bad = 0_i8
 
    ! (1) random pairs
@@ -68,7 +68,7 @@ PROGRAM t_rm_pow
    CALL report('T-RM-POW wrf-exponents', nbad, ntot)
    total_bad = total_bad + nbad
 
-!$omp target exit data map(delete: a, b, dres)
+!$acc exit data delete(a, b, dres)
    IF (total_bad /= 0_i8) STOP 1
 
 CONTAINS
@@ -77,12 +77,12 @@ CONTAINS
       INTEGER, INTENT(IN) :: fn
       INTEGER(i8), INTENT(INOUT) :: nb
       INTEGER(i8) :: j
-!$omp target update to(a, b)
-!$omp target teams distribute parallel do firstprivate(fn)
+!$acc update device(a, b)
+!$acc parallel loop gang vector firstprivate(fn)
       DO j = 1_i8, chunk
          dres(j) = eval4(fn, a(j), b(j))
       END DO
-!$omp target update from(dres)
+!$acc update self(dres)
 !$omp parallel do
       DO j = 1_i8, chunk
          hres(j) = eval4(fn, a(j), b(j))

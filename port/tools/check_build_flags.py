@@ -15,7 +15,8 @@ Rules, for every stanza / NVHPC build:
       -Mfprelaxed, -Kieee absent, -gpu=...fastmath, -gpu=...fma (other than nofma), -gpu=...flushz
       (other than noflushz), --fast-math
   ARCH_LOCAL defines REPRO_MATH and WRF_POOL; GPU-REPRO/GPU-DEBUG also WRF_GPU; CPU-REF not WRF_GPU
-  GPU-REPRO/GPU-DEBUG: OMP contains -mp=gpu and a -gpu= list with nofma and noflushz; CPU-REF: OMP empty
+  GPU-REPRO/GPU-DEBUG: OMP contains -acc=gpu (OpenACC; ADR-001) and a -gpu= list with nofma and noflushz, and not
+      -mp=gpu (no OpenMP offload); CPU-REF: OMP empty
 Exit status 0 if all rules hold.
 """
 import os
@@ -95,8 +96,10 @@ def check(mode, v, where):
     else:
         if "-DWRF_GPU" not in al:
             errs.append(f"{where}: ARCH_LOCAL lacks -DWRF_GPU")
-        if "-mp=gpu" not in omp.split():
-            errs.append(f"{where}: OMP lacks -mp=gpu")
+        if "-acc=gpu" not in omp.split():
+            errs.append(f"{where}: OMP lacks -acc=gpu")
+        if "-mp=gpu" in omp.split():
+            errs.append(f"{where}: OMP contains -mp=gpu (the port uses OpenACC, ADR-001)")
         go = gpu_opts(omp)
         for o in ("nofma", "noflushz"):
             if o not in go:

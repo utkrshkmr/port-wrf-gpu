@@ -24,7 +24,7 @@
 ! the compiler rejects them in device code, compile with -DTMPL_NO_STMTFN (the
 ! Makefile variable TMPL_B_FLAGS; port/tests/run_ref_tests.sh does this
 ! automatically): each statement function is then a module function with the
-! identical expression and !$omp declare target, and the variable it took from
+! identical expression and !$acc routine seq, and the variable it took from
 ! its host scope (time_step) becomes an argument.  That is the conversion
 ! CODING_STANDARD.md prescribes for WRF when probe F-STMTFN fails.
 
@@ -309,9 +309,9 @@ SUBROUTINE advect_u_yflux_gpu(u, rv, msfux, tendency, fqy3, rdy, time_step, conf
       ENDIF
 
    ! K-ADVU-Y1: face fluxes of rows j_start .. j_end+1
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(fqy3, u, rv) firstprivate(i_start, i_end, j_start, j_end, j_start_f, j_end_f, jds, jde, kts, ktf, time_step) &
-!$omp& private(vel)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(fqy3, u, rv) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, j_start_f, j_end_f, jds, jde, kts, ktf, time_step) &
+!$acc& private(vel)
    DO j = j_start, j_end+1
    DO k=kts,ktf
    DO i = i_start, i_end
@@ -341,8 +341,8 @@ SUBROUTINE advect_u_yflux_gpu(u, rv, msfux, tendency, fqy3, rdy, time_step, conf
    ENDDO
 
    ! K-ADVU-Y2: flux divergence of rows j_start .. j_end (the source's j-1)
-!$omp target teams distribute parallel do collapse(3) if(target: dev) default(none) &
-!$omp& shared(tendency, fqy3, msfux) firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy) private(mrdy)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(tendency, fqy3, msfux) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy) private(mrdy)
    DO j = j_start+1, j_end+1
    DO k=kts,ktf
    DO i = i_start, i_end
@@ -357,13 +357,13 @@ END SUBROUTINE advect_u_yflux_gpu
 ! The statement functions of advect_u as module functions (fallback when probe
 ! F-STMTFN fails): identical expressions; time_step is an argument.
 PURE REAL FUNCTION flux4(q_im2, q_im1, q_i, q_ip1, ua)
-!$omp declare target
+!$acc routine seq
    REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
    flux4 = ( 7.*(q_i + q_im1) - (q_ip1 + q_im2) )/12.0
 END FUNCTION flux4
 
 PURE REAL FUNCTION flux3(q_im2, q_im1, q_i, q_ip1, ua, time_step)
-!$omp declare target
+!$acc routine seq
    REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
    INTEGER, INTENT(IN) :: time_step
    flux3 = flux4(q_im2, q_im1, q_i, q_ip1, ua) +                &
@@ -371,14 +371,14 @@ PURE REAL FUNCTION flux3(q_im2, q_im1, q_i, q_ip1, ua, time_step)
 END FUNCTION flux3
 
 PURE REAL FUNCTION flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)
-!$omp declare target
+!$acc routine seq
    REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
    flux6 = ( 37.*(q_i+q_im1) - 8.*(q_ip1+q_im2)       &
                      +(q_ip2+q_im3) )/60.0
 END FUNCTION flux6
 
 PURE REAL FUNCTION flux5(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua, time_step)
-!$omp declare target
+!$acc routine seq
    REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
    INTEGER, INTENT(IN) :: time_step
    flux5 = flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)     &
@@ -392,7 +392,7 @@ END MODULE tb_mod
 
 PROGRAM t_tmpl_b
    USE tb_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: ids = 1, ide = 31, jds = 1, jde = 41, kds = 1, kde = 16
    INTEGER, PARAMETER :: ims = -4, ime = 36, jms = -4, jme = 46, kms = 1, kme = 16
@@ -417,12 +417,12 @@ PROGRAM t_tmpl_b
       READ (arg, *) nrep
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-TMPL-B: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-TMPL-B: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
@@ -445,10 +445,10 @@ PROGRAM t_tmpl_b
          fqy3 = 0.
          CALL advect_u_yflux_gpu(u, rv, msfux, tb, fqy3, rdy, time_step, cf, .FALSE., ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), kds, kde)
-!$omp target data map(to: u, rv, msfux) map(tofrom: tc) map(alloc: fqy3)
+!$acc data copyin(u, rv, msfux) copy(tc) create(fqy3)
          CALL advect_u_yflux_gpu(u, rv, msfux, tc, fqy3, rdy, time_step, cf, .TRUE., ids, ide, jds, jde, kds, kde, &
               ims, ime, jms, jme, kms, kme, tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), kds, kde)
-!$omp end target data
+!$acc end data
          nbad = nbad + COUNT(TRANSFER(ta, 1, SIZE(ta)) /= TRANSFER(tb, 1, SIZE(tb))) &
                      + COUNT(TRANSFER(ta, 1, SIZE(ta)) /= TRANSFER(tc, 1, SIZE(tc)))
          IF (irep == 1 .AND. COUNT(ta /= t0) == 0) THEN

@@ -20,11 +20,11 @@
       gpu_isl = gpu_island(R_HORIZONTAL_DIFFUSION_2)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(tendency, var, msftx, msfty, msfux, msfuy, msfvx, msfvy, xkhh, fnm, fnp, zx, &
-!$omp&   zy, rdz, rdzw, dnw, dn, rho)
+!$acc update device(tendency, var, msftx, msfty, msfux, msfuy, msfvx, msfvy, xkhh, fnm, fnp, zx, &
+!$acc&   zy, rdz, rdzw, dnw, dn, rho)
         ELSE
-!$omp target update from(tendency, var, msftx, msfty, msfux, msfuy, msfvx, msfvy, xkhh, fnm, fnp, &
-!$omp&   zx, zy, rdz, rdzw, dnw, dn, rho)
+!$acc update self(tendency, var, msftx, msfty, msfux, msfuy, msfvx, msfvy, xkhh, fnm, fnp, zx, zy, &
+!$acc&   rdz, rdzw, dnw, dn, rho)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(tendency)
+!$acc update self(tendency)
         ELSE
-!$omp target update to(tendency)
+!$acc update device(tendency)
         END IF
       END IF
       IF (gpu_cc_active(R_HORIZONTAL_DIFFUSION_2)) THEN

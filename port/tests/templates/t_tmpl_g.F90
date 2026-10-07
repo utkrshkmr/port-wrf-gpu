@@ -719,8 +719,8 @@ CONTAINS
                        config_flags%nested            ) .and.  &
                          ( its == ids ) .and. open_bc_copy  )  THEN
 
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO j = jts-bdyzone, MIN(jte,jde+jstag)+bdyzone
 #if defined(INTEL_ALIGN64)
 !DEC$ ASSUME_ALIGNED dat:64
@@ -746,8 +746,8 @@ CONTAINS
 
           IF (variable /= 'u' .and. variable /= 'x' ) THEN
 
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO j = jts-bdyzone, MIN(jte,jde+jstag)+bdyzone
 #if defined(INTEL_ALIGN64)
 !DEC$ ASSUME_ALIGNED dat:64
@@ -764,8 +764,8 @@ CONTAINS
           ELSE
 
 !!!!!!! I am not sure about this one!  JM 20020402
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO j = MAX(jds,jts-1)-bdyzone, MIN(jte+1,jde+jstag)+bdyzone
             DO k = kts, k_end
               dat(ide+1,k,j) = dat(ide,k,j)
@@ -920,8 +920,8 @@ CONTAINS
                        config_flags%nested            ) .and.  &
                          ( jts == jds) .and. open_bc_copy )  THEN
 
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO k = kts, k_end
             DO i = i_start, i_end
               dat(i,k,jds-1) = dat(i,k,jds)
@@ -942,8 +942,8 @@ CONTAINS
 
           IF (variable /= 'v' .and. variable /= 'y' ) THEN
 
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO k = kts, k_end
             DO i = i_start, i_end
               dat(i,k,jde  ) = dat(i,k,jde-1)
@@ -954,8 +954,8 @@ CONTAINS
 
           ELSE
 
-!$omp target teams distribute parallel do collapse(2) if(target: dev) default(none) shared(dat) &
-!$omp& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
+!$acc parallel loop gang vector collapse(2) if(dev) default(none) present(dat) &
+!$acc& firstprivate(ids, ide, jds, jde, jts, jte, jstag, kts, k_end, i_start, i_end)
             DO k = kts, k_end
             DO i = i_start, i_end
               dat(i,k,jde+1) = dat(i,k,jde)
@@ -979,7 +979,7 @@ END MODULE tg_mod
 
 PROGRAM t_tmpl_g
    USE tg_mod
-   USE omp_lib
+   USE openacc
    IMPLICIT NONE
    INTEGER, PARAMETER :: ids = 1, ide = 31, jds = 1, jde = 26, kds = 1, kde = 16
    INTEGER, PARAMETER :: ims = -4, ime = 36, jms = -4, jme = 31, kms = 1, kme = 16
@@ -1000,12 +1000,12 @@ PROGRAM t_tmpl_g
       READ (arg, *) nrep
    END IF
    on_host = .TRUE.
-!$omp target map(from: on_host)
-   on_host = omp_is_initial_device()
-!$omp end target
+!$acc serial copyout(on_host)
+   on_host = .NOT. acc_on_device(acc_device_not_host)
+!$acc end serial
    CALL GET_ENVIRONMENT_VARIABLE('ALLOW_HOST', allow)
    IF (on_host .AND. TRIM(allow) /= '1') THEN
-      PRINT '(a)', 'FAIL  T-TMPL-G: target regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
+      PRINT '(a)', 'FAIL  T-TMPL-G: compute regions run on the host (no GPU?).  Set ALLOW_HOST=1 for a host-only check.'
       STOP 2
    END IF
    PRINT '(a,a)', 'note: target regions run on the ', MERGE('host', 'GPU ', on_host)
@@ -1023,10 +1023,10 @@ PROGRAM t_tmpl_g
               ids, ide, jds, jde, kds, kde, tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), kds, kde)
          CALL set_physical_bc3d_gpu(db, vars(iv:iv), .FALSE., cf, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
               ids, ide, jds, jde, kds, kde, tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), kds, kde)
-!$omp target data map(tofrom: dc)
+!$acc data copy(dc)
          CALL set_physical_bc3d_gpu(dc, vars(iv:iv), .TRUE., cf, ids, ide, jds, jde, kds, kde, ims, ime, jms, jme, kms, kme, &
               ids, ide, jds, jde, kds, kde, tiles(1,it), tiles(2,it), tiles(3,it), tiles(4,it), kds, kde)
-!$omp end target data
+!$acc end data
          nbad = nbad + COUNT(TRANSFER(da, 1, SIZE(da)) /= TRANSFER(db, 1, SIZE(db))) &
                      + COUNT(TRANSFER(da, 1, SIZE(da)) /= TRANSFER(dc, 1, SIZE(dc)))
          ncopied = ncopied + COUNT(da /= d0)

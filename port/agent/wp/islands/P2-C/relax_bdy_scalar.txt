@@ -20,11 +20,11 @@
       gpu_isl = gpu_island(R_RELAX_BDYTEND_CORE)
       IF (gpu_isl) THEN
         IF (gpu_world_host) THEN
-!$omp target update to(scalar_tend, scalar, mu, c1h, c2h, scalar_bxs, scalar_bxe, scalar_bys, &
-!$omp&   scalar_bye, scalar_btxs, scalar_btxe, scalar_btys, scalar_btye, fcx, gcx)
+!$acc update device(scalar_tend, scalar, mu, c1h, c2h, scalar_bxs, scalar_bxe, scalar_bys, &
+!$acc&   scalar_bye, scalar_btxs, scalar_btxe, scalar_btys, scalar_btye, fcx, gcx)
         ELSE
-!$omp target update from(scalar_tend, scalar, mu, c1h, c2h, scalar_bxs, scalar_bxe, scalar_bys, &
-!$omp&   scalar_bye, scalar_btxs, scalar_btxe, scalar_btys, scalar_btye, fcx, gcx)
+!$acc update self(scalar_tend, scalar, mu, c1h, c2h, scalar_bxs, scalar_bxe, scalar_bys, &
+!$acc&   scalar_bye, scalar_btxs, scalar_btxe, scalar_btys, scalar_btye, fcx, gcx)
         END IF
         gpu_world_host = .NOT. gpu_world_host
       END IF
@@ -35,9 +35,9 @@
       IF (gpu_isl) THEN
         gpu_world_host = .NOT. gpu_world_host
         IF (gpu_world_host) THEN
-!$omp target update from(scalar_tend)
+!$acc update self(scalar_tend)
         ELSE
-!$omp target update to(scalar_tend)
+!$acc update device(scalar_tend)
         END IF
       END IF
       IF (gpu_cc_active(R_RELAX_BDYTEND_CORE)) THEN
