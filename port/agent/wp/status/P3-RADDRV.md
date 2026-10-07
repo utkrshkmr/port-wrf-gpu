@@ -2,9 +2,9 @@
 
 Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, coded, n/a, blocked.
 
-- State: in-progress
+- State: coded
 - Branch: agent/wp/p3_raddrv
-- Last commit: ozn_time_int (this commit). cal_cldfra1 b4b41a1ea96135a37f91e75506fe9179cf04254d.
+- Last commit: ozn_p_int (this commit). ozn_time_int c383c60313b0a9784752636e81973ed8d01e68ce.
 
 ## Items
 
@@ -16,8 +16,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-RAD-COSZ | coded | c05f4f71be2c081c9a56a65a9a6e10f431b9bf31 | Template A, collapse(2). Island pasted. Host scalars da, eot, xt24 stay outside the kernel. |
 | K-RAD-CF0 | coded | b4b41a1ea96135a37f91e75506fe9179cf04254d | K-RAD-CF0 zero nest is in radiation_driver 19267e0f8bc371a90489442fb1bd336a23c03921. K-RAD-CF1 is cal_cldfra1, template A collapse(3). |
 | K-RAD-Z | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Two template A nests: 2D fluxes/GLAT/GLON, then 3D heating and CEMISS. |
-| K-OZT | coded | this commit | Template A collapse(3). Month search and factors stay on the host. Island pasted. |
-| K-OZP | todo | |  |
+| K-OZT | coded | c383c60313b0a9784752636e81973ed8d01e68ce | Template A collapse(3). Month search and factors stay on the host. Island pasted. |
+| K-OZP | coded | this commit | One thread per j, i sequential, as ozn_p_int_gpu. pmid and kupper are work arrays. Host ierr check replaces wrf_error_fatal in the kernel. |
 | K-RAD-LWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A. PRESENT(OLR) hoisted to the host. |
 | K-RAD-SWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A: SW heating, SWDOWN, direct/diffuse split, diffuse_frac. |
 | solar_eclipse | coded | 78dcf646decaa5bb5a0f4284df635a7aceab7eba | !$acc routine seq. Device body is the sw_eclipse == 0 zero. CPU body kept under #else. |
@@ -26,7 +26,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 ## Scope requests
 
-- P1-WORK: add `gpu_work_alloc_i` / `gpu_work_check_i` (INTEGER, same contract as the REAL pair) so `work_p3_raddrv_cldfra1_flag` and `work_p3_raddrv_mask_loc` are allocated and device-mapped inside `module_gpu_work` instead of the inline ALLOCATE / enter data in `WRF/inc/gpu_work_p3_raddrv.inc`. Until then this include allocates them, zero-fills, and under WRF_GPU does `enter data copyin`. They are not in T-WORK (`gpu_work_check_r` is REAL-only).
+- P1-WORK: add `gpu_work_alloc_i` / `gpu_work_check_i` (INTEGER, same contract as the REAL pair) so `work_p3_raddrv_cldfra1_flag`, `work_p3_raddrv_mask_loc`, and `work_p3_raddrv_kupper` are allocated and device-mapped inside `module_gpu_work` instead of the inline ALLOCATE / enter data in `WRF/inc/gpu_work_p3_raddrv.inc`. Until then this include allocates them, zero-fills, and under WRF_GPU does `enter data copyin`. They are not in T-WORK (`gpu_work_check_r` is REAL-only). `work_p3_raddrv_pmid` uses `gpu_work_alloc_r`.
 
 ## Questions and blockers
 
@@ -41,3 +41,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - calc_coszen: K-RAD-COSZ template A. Island and call check pasted. kernel_lint 21 kernels, 0 errors. arith_guard GPU-view clean.
 - cal_cldfra1: K-RAD-CF1 template A collapse(3) on the WSM6 path (F_QI, F_QC, F_QS present and true). Absent flags and FER_MP_HIRES stop before the island. CPU loop kept under #else. Island pasted. kernel_lint 22 kernels, 0 errors. arith_guard GPU-view clean.
 - ozn_time_int: K-OZT template A collapse(3). Island pasted. kernel_lint 23 kernels, 0 errors. arith_guard GPU-view clean.
+- ozn_p_int: K-OZP one thread per j row, matching port/tests/ozn/t_ozn.F90. Work arrays work_p3_raddrv_pmid and work_p3_raddrv_kupper. goto 35 is a done flag and EXIT. The fatal is an ierr checked on the host. CPU body kept under #else. kernel_lint 24 kernels, 0 errors. Two GPU-only length products are in arith_exceptions.d/P3-RADDRV.txt.

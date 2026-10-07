@@ -325,8 +325,12 @@ CONTAINS
         work_p3_raddrv_coszen_loc, work_p3_raddrv_hrang_loc, &
         work_p3_raddrv_obscur_loc, work_p3_raddrv_cldfra1_flag, &
         work_p3_raddrv_mask_loc
+#ifdef WRF_GPU
+   USE module_gpu_work, ONLY : work_p3_raddrv_pmid, work_p3_raddrv_kupper
+#endif
    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, &
-        R_RADIATION_DRIVER, R_CALC_COSZEN, R_CAL_CLDFRA1, R_OZN_TIME_INT
+        R_RADIATION_DRIVER, R_CALC_COSZEN, R_CAL_CLDFRA1, R_OZN_TIME_INT, &
+        R_OZN_P_INT
    USE module_gpu_callcheck
 
    !  This driver calls subroutines for the radiation parameterizations.
@@ -10164,7 +10168,112 @@ SUBROUTINE ozn_p_int(p ,pin, levsiz, ozmixt, o3vmr, &
 
    real    dpu                 ! upper level pressure difference
    real    dpl                 ! lower level pressure difference
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+      INTEGER :: ierr
+      LOGICAL :: done
+      REAL, POINTER, CONTIGUOUS :: pmid_w(:,:,:)
+      INTEGER, POINTER, CONTIGUOUS :: kupper_w(:,:)
+      INTEGER(KIND=8) :: work_n2_l, work_n3_l
+#endif
 
+#ifdef WRF_GPU
+      work_n2_l = INT(ime-ims+1,8)*INT(jme-jms+1,8)
+      work_n3_l = work_n2_l*INT(kme-kms+1,8)
+      pmid_w(ims:ime, kms:kme, jms:jme) => work_p3_raddrv_pmid(1:work_n3_l)
+      kupper_w(ims:ime, jms:jme) => work_p3_raddrv_kupper(1:work_n2_l)
+#endif
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_OZN_P_INT)) THEN
+        CALL gpu_cc_save_r(1, o3vmr, SIZE(o3vmr,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_OZN_P_INT)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(p, pin, ozmixt, o3vmr)
+        ELSE
+!$acc update self(p, pin, ozmixt, o3vmr)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+#ifdef WRF_GPU
+   ncol = ite - its + 1
+   pver = kte - kts + 1
+   ierr = 0
+! K-OZP. One thread per j row, i loops sequential, as ozn_p_int_gpu.
+!$acc parallel loop gang vector default(none) if(gpu_on(R_OZN_P_INT)) &
+!$acc& present(p, pin, ozmixt, o3vmr, pmid_w, kupper_w) &
+!$acc& firstprivate(its, ite, jts, jte, kts, kte, levsiz, ncol, pver) &
+!$acc& private(i, k, kk, kkstart, kout, kount, done, dpu, dpl) reduction(max: ierr)
+   do j=jts,jte
+!$acc loop seq
+   do i=its, ite
+      kupper_w(i,j) = 1
+   end do
+!$acc loop seq
+      do k = kts,kte
+         kk = kte - k + kts
+!$acc loop seq
+      do i = its,ite
+         pmid_w(i,kk,j) = p(i,k,j)
+      enddo
+      enddo
+!$acc loop seq
+   do k=1,pver
+      kout = pver - k + 1
+      kkstart = levsiz
+!$acc loop seq
+      do i=its,ite
+         kkstart = min0(kkstart,kupper_w(i,j))
+      end do
+      kount = 0
+      done = .false.
+      do kk=kkstart,levsiz-1
+!$acc loop seq
+         do i=its,ite
+            if (pin(kk).lt.pmid_w(i,k,j) .and. pmid_w(i,k,j).le.pin(kk+1)) then
+               kupper_w(i,j) = kk
+               kount = kount + 1
+            end if
+         end do
+         if (kount.eq.ncol) then
+!$acc loop seq
+            do i=its,ite
+               dpu = pmid_w(i,k,j) - pin(kupper_w(i,j))
+               dpl = pin(kupper_w(i,j)+1) - pmid_w(i,k,j)
+               o3vmr(i,kout,j) = (ozmixt(i,kupper_w(i,j),j)*dpl + &
+                             ozmixt(i,kupper_w(i,j)+1,j)*dpu)/(dpl + dpu)
+            end do
+            done = .true.
+            exit
+         end if
+      end do
+      if (.not. done) then
+!$acc loop seq
+      do i=its,ite
+         if (pmid_w(i,k,j) .lt. pin(1)) then
+            o3vmr(i,kout,j) = ozmixt(i,1,j)*pmid_w(i,k,j)/pin(1)
+         else if (pmid_w(i,k,j) .gt. pin(levsiz)) then
+            o3vmr(i,kout,j) = ozmixt(i,levsiz,j)
+         else
+            dpu = pmid_w(i,k,j) - pin(kupper_w(i,j))
+            dpl = pin(kupper_w(i,j)+1) - pmid_w(i,k,j)
+            o3vmr(i,kout,j) = (ozmixt(i,kupper_w(i,j),j)*dpl + &
+                          ozmixt(i,kupper_w(i,j)+1,j)*dpu)/(dpl + dpu)
+         end if
+      end do
+      if (kount.gt.ncol) then
+         ierr = 1
+      end if
+      end if
+   end do
+   end do
+      IF (ierr .GT. 0) THEN
+         CALL wrf_error_fatal('OZN_P_INT: Bad ozone data: non-monotonicity suspected')
+      END IF
+#else
    ncol = ite - its + 1
    pver = kte - kts + 1
 
@@ -10255,6 +10364,22 @@ SUBROUTINE ozn_p_int(p ,pin, levsiz, ozmixt, o3vmr, &
    end do
 
    return
+#endif
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(o3vmr)
+        ELSE
+!$acc update device(o3vmr)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_OZN_P_INT)) THEN
+        CALL gpu_cc_done_r(1, o3vmr, SIZE(o3vmr,KIND=8), 'o3vmr', &
+          LBOUND(o3vmr), UBOUND(o3vmr))
+        IF (gpu_cc_next(R_OZN_P_INT)) GOTO 99901
+      END IF
+#endif
 END SUBROUTINE ozn_p_int
 
 SUBROUTINE aer_time_int(julday,julian,aerodm,aerodt,levsiz,num_months,no_src,  &

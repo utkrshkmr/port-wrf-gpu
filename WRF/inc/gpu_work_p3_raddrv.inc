@@ -30,6 +30,8 @@
 ! cldfra1_flag and mask_loc are INTEGER. I-3 only provides gpu_work_alloc_r
 ! for REAL, so those two are allocated here (host zero-fill, and under WRF_GPU
 ! enter data copyin of that zero fill). They are not passed to gpu_work_check_r.
+! ozn_p_int adds GPU-only pmid (REAL, n3d) and kupper (INTEGER, n2d). kupper
+! is allocated here the same way, because there is no gpu_work_alloc_i.
 
 #if GPU_WORK_SECTION == 1
 
@@ -53,6 +55,10 @@
    REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_raddrv_obscur_loc(:)
    INTEGER, ALLOCATABLE, TARGET, PUBLIC :: work_p3_raddrv_cldfra1_flag(:)
    INTEGER, ALLOCATABLE, TARGET, PUBLIC :: work_p3_raddrv_mask_loc(:)
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_raddrv_pmid(:)
+   INTEGER, ALLOCATABLE, TARGET, PUBLIC :: work_p3_raddrv_kupper(:)
+#endif
 
 #elif GPU_WORK_SECTION == 2
 
@@ -111,6 +117,21 @@
 #endif
    END IF
 
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p3_raddrv_pmid, n3d, "work_p3_raddrv_pmid")
+   IF (.NOT. ALLOCATED(work_p3_raddrv_kupper)) THEN
+      ALLOCATE(work_p3_raddrv_kupper(n2d))
+      work_p3_raddrv_kupper(:) = 0
+!$acc enter data copyin(work_p3_raddrv_kupper)
+   ELSE IF (SIZE(work_p3_raddrv_kupper, KIND=8) < n2d) THEN
+!$acc exit data delete(work_p3_raddrv_kupper)
+      DEALLOCATE(work_p3_raddrv_kupper)
+      ALLOCATE(work_p3_raddrv_kupper(n2d))
+      work_p3_raddrv_kupper(:) = 0
+!$acc enter data copyin(work_p3_raddrv_kupper)
+   END IF
+#endif
+
 #elif GPU_WORK_SECTION == 3
 
    CALL gpu_work_check_r(work_p3_raddrv_cemiss, "work_p3_raddrv_cemiss", nwork, nbad)
@@ -131,5 +152,8 @@
    CALL gpu_work_check_r(work_p3_raddrv_coszen_loc, "work_p3_raddrv_coszen_loc", nwork, nbad)
    CALL gpu_work_check_r(work_p3_raddrv_hrang_loc, "work_p3_raddrv_hrang_loc", nwork, nbad)
    CALL gpu_work_check_r(work_p3_raddrv_obscur_loc, "work_p3_raddrv_obscur_loc", nwork, nbad)
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p3_raddrv_pmid, "work_p3_raddrv_pmid", nwork, nbad)
+#endif
 
 #endif

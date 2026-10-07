@@ -1,2 +1,4 @@
 # arith_guard exceptions of P3-RADDRV (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/phys/module_radiation_driver.F|work_n2_l=int(ime-ims+1,8)*int(jme-jms+1,8)|ozn_p_int GPU-only work-array length; same product as the radiation_driver remap
+WRF/phys/module_radiation_driver.F|work_n3_l=work_n2_l*int(kme-kms+1,8)|ozn_p_int GPU-only work-array length; same product as the radiation_driver remap
