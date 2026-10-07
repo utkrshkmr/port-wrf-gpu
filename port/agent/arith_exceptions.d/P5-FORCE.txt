@@ -1,2 +1,32 @@
 # arith_guard exceptions of P5-FORCE (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/share/mediation_force_domain.F|jcoord=jparstrt-sw|P5.2 slab row: jcoord = j_parent_start(intermediate) - shw, integer index only
+WRF/share/mediation_force_domain.F|jdim_cd=ijde-ijds+1|P5.2 slab row: jdim_cd = ijde - ijds + 1 from the intermediate grid, integer index only
+WRF/share/mediation_force_domain.F|js=max(cjps,jcoord)|P5.2 slab row: js = max(cjps, jcoord), the rows the pack loop visits
+WRF/share/mediation_force_domain.F|je=min(cjpe,jcoord+jdim_cd-1)|P5.2 slab row: je = min(cjpe, jcoord + jdim_cd - 1), integer index only
+WRF/share/mediation_force_domain.F|sz=min(max(spec_zone,relax_zone+1),spec_bdy_width)|strip width from bdy_interp: sz = min(max(spec_zone, relax_zone+1), spec_bdy_width)
+WRF/share/mediation_force_domain.F|swid=sz+1|P5.2 strip width sz+1 so the staggered edge index is inside the strip
+WRF/share/mediation_force_domain.F|work_p5_force_iw1=ids+swid-1|west strip end, integer domain index
+WRF/share/mediation_force_domain.F|work_p5_force_ie0=ide-swid+1|east strip start, integer domain index
+WRF/share/mediation_force_domain.F|work_p5_force_js1=jds+swid-1|south strip end, integer domain index
+WRF/share/mediation_force_domain.F|work_p5_force_jn0=jde-swid+1|north strip start, integer domain index
+WRF/share/mediation_force_domain.F|iw0c=max(ims,iw0)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|iw1c=min(ime,iw1)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|ie0c=max(ims,ie0)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|ie1c=min(ime,ie1)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|js0c=max(jms,js0)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|js1c=min(jme,js1)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|jn0c=max(jms,jn0)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|jn1c=min(jme,jn1)|clamp strip index to the field memory bounds
+WRF/share/mediation_force_domain.F|if(js0c<=js1c)n_south=(ime-ims+1)*(kme-kms+1)*(js1c-js0c+1)|integer element count of the south strip buffer
+WRF/share/mediation_force_domain.F|if(jn0c<=jn1c)n_north=(ime-ims+1)*(kme-kms+1)*(jn1c-jn0c+1)|integer element count of the north strip buffer
+WRF/share/mediation_force_domain.F|if(iw0c<=iw1c)n_west=(iw1c-iw0c+1)*(kme-kms+1)*(jme-jms+1)|integer element count of the west strip buffer
+WRF/share/mediation_force_domain.F|if(ie0c<=ie1c)n_east=(ie1c-ie0c+1)*(kme-kms+1)*(jme-jms+1)|integer element count of the east strip buffer
+WRF/share/mediation_force_domain.F|nbuf=n_south+n_north+n_west+n_east|integer size of the packed strip buffer
+WRF/share/mediation_force_domain.F|base_n=base_s+n_south|integer offset of the north strip in the buffer
+WRF/share/mediation_force_domain.F|base_w=base_n+n_north|integer offset of the west strip in the buffer
+WRF/share/mediation_force_domain.F|base_e=base_w+n_west|integer offset of the east strip in the buffer
+WRF/share/mediation_force_domain.F|if(js0c<=js1c)n_south=(ime-ims+1)*(js1c-js0c+1)|integer element count of the 2D south strip buffer
+WRF/share/mediation_force_domain.F|if(jn0c<=jn1c)n_north=(ime-ims+1)*(jn1c-jn0c+1)|integer element count of the 2D north strip buffer
+WRF/share/mediation_force_domain.F|if(iw0c<=iw1c)n_west=(iw1c-iw0c+1)*(jme-jms+1)|integer element count of the 2D west strip buffer
+WRF/share/mediation_force_domain.F|if(ie0c<=ie1c)n_east=(ie1c-ie0c+1)*(jme-jms+1)|integer element count of the 2D east strip buffer
