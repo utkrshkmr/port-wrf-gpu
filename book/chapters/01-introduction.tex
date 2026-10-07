@@ -15,7 +15,7 @@ WRF-Fire couples a model of wildland fire spread to the atmosphere \citep{coen20
     moved at the rate of spread given by Rothermel's model \citep{rothermel1972}.
   \item The fire's heat and moisture fluxes feed back into the atmosphere, which in turn changes the winds that
     drive the fire.
-  \item Since WRF~4.0 the level-set advection uses a fifth-order WENO scheme with re-initialization
+  \item Since WRF~4.0 the level-set advection can use a fifth-order WENO scheme with re-initialization
     \citep{munozesparza2018}.
 \end{itemize}
 
@@ -29,10 +29,10 @@ third of a second, and a fire grid four times finer still. The case of this book
 steps of the inner domain to cover 17 hours. Forecasts of this kind are useful only if they run faster than the
 fire. Ensembles, which tell how much a forecast can be trusted, multiply the cost.
 
-WRF's dynamics and most of its physics are limited by memory bandwidth, not by arithmetic. GPUs offer several times
-the memory bandwidth of a CPU socket, so they are an obvious candidate. WRF physics on GPUs has been studied since
-the port of a microphysics scheme by \citet{michalakes2008}. Moving the whole model to them is hard for three
-reasons.
+WRF's dynamics and most of its physics are limited by memory bandwidth, not by arithmetic. A GPU offers several times
+the memory bandwidth of a CPU socket, so it is an obvious candidate (\cref{ch:gpuarch}). WRF physics on GPUs has been
+studied since the port of a microphysics scheme by \citet{michalakes2008}. Moving the whole model to them is hard for
+three reasons.
 \begin{enumerate}
   \item \textbf{Size.} WRF~4.6.0 has about 1.9 million lines of Fortran (1.5 million without the chemistry):
     \begin{itemize}
@@ -51,36 +51,61 @@ reasons.
     None of this is wrong on a CPU, and all of it is costly or impossible on a GPU.
   \item \textbf{Trust.} A GPU port that changes the results cannot easily be told apart from a GPU port that is
     wrong. Fire spread is sensitive: a change in the last bit of one temperature can, after a few hours, move the fire
-    front by whole cells. Chapter~\ref{ch:repro} explains this.
+    front by whole cells. \Cref{ch:repro} explains this.
 \end{enumerate}
 
 \section{The approach of this project}
 
-The port described here makes three choices.
+The port described here makes four choices.
 \begin{description}
   \item[Bit-for-bit.] The GPU build must give results identical, bit for bit, to a reference CPU build of the same
     source. The reference build differs from a production build only in compiler flags and in a portable library of
-    elementary functions. Chapter~\ref{ch:repro} shows how this is achieved and how it is verified.
-  \item[One Fortran source.] The GPU code is OpenMP \code{target} directives in the existing Fortran, under a
-    preprocessor macro. With the macro undefined, the source is the CPU code. This choice and its alternatives
-    (CUDA, OpenACC, C++ libraries) are discussed in \cref{ch:gpu}.
+    elementary functions. \Cref{ch:repro} shows how this is achieved and how it is verified.
+  \item[One Fortran source.] The GPU code is OpenACC directives in the existing Fortran, under a preprocessor macro
+    (\code{WRF_GPU}). With the macro undefined, the source is the CPU code. CUDA Fortran is added only where a
+    profile shows that a kernel needs it. \Cref{ch:gpu} explains the choice: the project traded portability to other
+    vendors for the best performance on NVIDIA A100 and H100.
   \item[Small verified steps.] The port moves one routine at a time. Each step is checked by tests that compare the
     device result with the host result of the same routine, and the whole model with the CPU reference
     (\cref{ch:port}).
+  \item[Measure, then optimize.] A profiler is built with the port, so every kernel is measured from its first run.
+    Optimizations that keep every bit (fusion, caching, tiling, warp-level changes) are taken only when the
+    measurement says they pay (\cref{ch:prof,ch:fusion,ch:memory,ch:tiling,ch:warp}).
 \end{description}
 
 \section{How this book is organized}
 
-\begin{itemize}
-  \item \Cref{ch:case} describes the forecast case that defines which parts of WRF are used.
-  \item Parts~I and~II describe the atmospheric model: the dynamics, then the physics schemes of this case.
-  \item Part~III describes the fire models.
-  \item Part~IV is about software:
+\begin{description}
+  \item[Part I, the WRF ecosystem:]
     \begin{itemize}
-      \item WRF's architecture;
-      \item floating-point reproducibility;
-      \item GPU programming;
-      \item the port itself, its performance and multi-GPU runs.
+      \item the whole chain from raw data to a forecast (\cref{ch:system});
+      \item the forecast case that fixes which parts of WRF are used (\cref{ch:case});
+      \item how initial and boundary conditions are made (\cref{ch:icbc}).
     \end{itemize}
-  \item Part~V follows the model from WRF~4.6.0 to 4.8.0.
-\end{itemize}
+  \item[Part II, the ARW dynamical core:] the equations, time integration, advection, boundaries and nesting,
+    turbulence, and the Coriolis and curvature terms.
+  \item[Part III, physics:] how physics is coupled to the dynamics, then each scheme of the case in depth (WSM6,
+    RRTMG and Dudhia radiation, the revised MM5 surface layer, Noah, YSU), and an overview of the others.
+  \item[Part IV, fire:] fire behavior, the numerics of WRF-Fire, and CFBM.
+  \item[Part V, software:] WRF's architecture, its parallelism on CPUs, I/O and the build.
+  \item[Part VI, GPUs and the port:]
+    \begin{itemize}
+      \item the A100 and H100 hardware;
+      \item OpenACC and CUDA Fortran;
+      \item floating-point reproducibility;
+      \item the porting method, and the port subsystem by subsystem.
+    \end{itemize}
+  \item[Part VII, performance:]
+    \begin{itemize}
+      \item profiling and performance models;
+      \item four optimization families, each first as a concept and then on a kernel of this port;
+      \item column physics on GPUs;
+      \item results and multi-GPU runs.
+    \end{itemize}
+  \item[Part VIII, evolution:] the move from WRF~4.6.0 to 4.8.0, and an outlook.
+\end{description}
+The appendices hold the kernel catalogue, the case namelist, the notation, the test catalogue, a build and run
+guide, and a glossary.
+
+\paragraph{Results.} The port is in progress. Every measured number in this book comes from a file of the
+repository, named next to it. A number not yet measured is marked \tbr.

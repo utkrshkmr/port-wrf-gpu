@@ -12,6 +12,12 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage[skins]{tcolorbox}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,decorations.pathreplacing}
+\usepackage{siunitx}
+\usepackage{multirow}
 \usepackage[authoryear,round]{natbib}
 \usepackage[hidelinks]{hyperref}
 \usepackage[capitalise,noabbrev]{cleveref}
@@ -25,7 +31,6 @@
   columns=fullflexible,
   keepspaces=true,
   showstringspaces=false,
-  morekeywords={target,teams,loop,collapse,private,firstprivate,map,declare},
 }
 \lstset{style=fortran}
 
@@ -34,8 +39,20 @@
 % A routine in a file: \src{dyn_em/module_small_step_em.F}{advance_w}
 \newcommand{\src}[2]{\texttt{\detokenize{#2}} (\texttt{\detokenize{#1}})}
 
+% Algorithms are referred to as "Algorithm n.m"
+\crefname{algorithm}{Algorithm}{Algorithms}
+\Crefname{algorithm}{Algorithm}{Algorithms}
+\numberwithin{algorithm}{chapter}
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+
+% A number not yet measured
+\newcommand{\tbr}{\emph{(to be reported)}}
+
 % Notation
 \newcommand{\ulp}{\operatorname{ulp}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\dpd}[2]{\partial_{#2} #1}
 \newcommand{\fl}{\operatorname{fl}}
 
 % Boxes

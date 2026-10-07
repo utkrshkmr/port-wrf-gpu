@@ -2,7 +2,7 @@
 \input{preamble}
 
 \title{WRF and WRF-Fire on GPUs\\[0.5em]
-  \large The model, its algorithms, and a bit-for-bit port}
+  \large The model, its algorithms, and a bit-for-bit port to NVIDIA A100 and H100}
 \author{The WRF GPU port project}
 \date{Draft of \today}
 
@@ -13,40 +13,69 @@
 \input{chapters/00-preface}
 
 \mainmatter
+\part{The WRF ecosystem}
 \input{chapters/01-introduction}
-\input{chapters/02-the-case}
+\input{chapters/02-wrf-system}
+\input{chapters/03-the-case}
+\input{chapters/04-initial-boundary}
 
-\part{The atmospheric model}
-\input{chapters/03-equations}
-\input{chapters/04-time-integration}
-\input{chapters/05-advection}
-\input{chapters/06-boundaries-nesting}
-\input{chapters/07-turbulence}
+\part{The ARW dynamical core}
+\input{chapters/05-equations}
+\input{chapters/06-time-integration}
+\input{chapters/07-advection}
+\input{chapters/08-boundaries-nesting}
+\input{chapters/09-turbulence}
+\input{chapters/10-coriolis-curvature}
 
 \part{Physics}
-\input{chapters/08-microphysics}
-\input{chapters/09-radiation}
-\input{chapters/10-surface}
-\input{chapters/11-pbl}
+\input{chapters/11-physics-interface}
+\input{chapters/12-microphysics}
+\input{chapters/13-radiation}
+\input{chapters/14-surface-layer}
+\input{chapters/15-land-surface}
+\input{chapters/16-pbl}
+\input{chapters/17-cumulus}
+\input{chapters/18-other-physics}
 
 \part{Fire}
-\input{chapters/12-wrf-fire}
-\input{chapters/13-cfbm}
+\input{chapters/19-fire-behavior}
+\input{chapters/20-wrf-fire}
+\input{chapters/21-cfbm}
 
-\part{Software and GPUs}
-\input{chapters/14-architecture}
-\input{chapters/15-reproducibility}
-\input{chapters/16-gpu-openmp}
-\input{chapters/17-the-port}
-\input{chapters/18-performance}
-\input{chapters/19-multi-gpu}
+\part{Software}
+\input{chapters/22-architecture}
+\input{chapters/23-cpu-parallelism}
+\input{chapters/24-io-build}
+
+\part{GPUs and the port}
+\input{chapters/25-gpu-architecture}
+\input{chapters/26-programming-models}
+\input{chapters/27-reproducibility}
+\input{chapters/28-porting-method}
+\input{chapters/29-port-subsystems}
+
+\part{Performance on A100 and H100}
+\input{chapters/30-profiling}
+\input{chapters/31-performance-models}
+\input{chapters/32-fusion-launches}
+\input{chapters/33-memory-caching}
+\input{chapters/34-tiling}
+\input{chapters/35-warp-level}
+\input{chapters/36-column-physics-gpu}
+\input{chapters/37-results}
+\input{chapters/38-multi-gpu}
 
 \part{Evolution}
-\input{chapters/20-versions}
+\input{chapters/39-versions}
+\input{chapters/40-outlook}
 
 \appendix
 \input{chapters/A-kernels}
 \input{chapters/B-namelist}
+\input{chapters/C-notation}
+\input{chapters/D-tests}
+\input{chapters/E-build-run}
+\input{chapters/F-glossary}
 
 \backmatter
 \bibliographystyle{plainnat}

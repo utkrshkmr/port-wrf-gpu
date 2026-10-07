@@ -2,27 +2,34 @@
 \addcontentsline{toc}{chapter}{Preface}
 
 This book grows with the GPU port of the Weather Research and Forecasting model (WRF) and its fire models. It has
-two aims. The first is to explain WRF and WRF-Fire as they are implemented: the equations, the numerical methods,
-and how they are coded, routine by routine. The second is to explain how such a code can be moved to graphics
-processors without changing a single bit of its results, and what that costs.
+three aims:
+\begin{enumerate}
+  \item to explain WRF and WRF-Fire as they are implemented: the equations, the numerical methods, and how they are
+    coded, routine by routine;
+  \item to explain how such a code can be moved to graphics processors without changing a single bit of its
+    results, and what that costs;
+  \item to explain how the port is then made fast on NVIDIA A100 and H100 GPUs: what limits each kernel, and which
+    changes help without changing the results.
+\end{enumerate}
 
-The book is written alongside the port, so its chapters are at different stages:
-\begin{itemize}
-  \item Chapters marked with an \emph{Outline} box list what they will contain, their sources and the code they
-    describe. Each is a task card (B-03 \dots{} B-21) in \code{roadmap/BACKLOG.md}.
-  \item The other chapters are drafts.
-\end{itemize}
+The book is written alongside the port. The chapters on the model describe WRF~4.6.0 as it is. The chapters on the
+port describe the method and the code as far as the port has come. Measured results enter as the port produces
+them; until then they are marked \tbr.
 
 \paragraph{Conventions.}
 \begin{itemize}
   \item A routine is cited with its file in the WRF source tree, for example
-    \src{dyn_em/module_small_step_em.F}{advance_w}. Line numbers refer to WRF~4.6.0 as imported in this repository,
-    unless stated otherwise.
-  \item Kernel names such as K-AW and test names such as T-TRACE refer to the port's plan (\code{plan.md}).
-  \item Every equation names the routine that implements it, so that the reader can go from the mathematics to
-    the code and back.
+    \src{dyn_em/module_small_step_em.F}{advance_w}. Unless stated otherwise, the code is WRF~4.6.0 as imported into
+    the repository, with the changes of the reproducible CPU reference build described in \cref{ch:repro}.
+  \item Kernel names such as K-AW and test names such as T-TRACE refer to the port's plan (\code{plan.md}). The
+    kernel catalogue is in \cref{app:kernels}, the test catalogue in \cref{app:tests}.
+  \item Every equation names the routine that implements it, so that the reader can go from the mathematics to the
+    code and back. Symbols are listed in \cref{app:notation}.
+  \item Algorithms are written in pseudocode that keeps the loop order and the order of operations of the Fortran
+    source, because on a GPU that order is what keeps results identical.
 \end{itemize}
 
 \paragraph{Sources.} The model description follows the WRF Technical Note \citep{skamarock2019} and the papers
 cited in each chapter, checked against the code. Where the code and a paper differ, the book describes the code and
-says so.
+says so. The bibliography's entries are marked in \code{refs.bib} as checked against the publisher or not yet
+checked.
