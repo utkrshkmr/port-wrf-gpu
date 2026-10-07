@@ -430,7 +430,6 @@ subroutine fire_driver_phys (ifun,need_lfn_update,    &
     config_flags & 
     )
 
-USE module_dm, only:wrf_dm_maxval
 USE module_domain, only: domain
 
 implicit none
@@ -558,7 +557,6 @@ integer :: its,ite,jts,jte,kts,kte, &            ! tile
 character(len=128)::msg
 character(len=3)::kk
 integer::ignitions_done_tile(num_tiles),ignited_tile(num_ignitions,num_tiles)
-integer::ignitions_done,ignited_patch(num_ignitions),idex,jdex
 
     ! PAJ:
   logical :: fire_is_real_perim
@@ -976,25 +974,8 @@ endif
 #endif
 
 if (ifun.eq.3)then
-    ignitions_done=ignitions_done_tile(1) ! all should be the same
-    do i=1,ignitions_done
-!$OMP CRITICAL(FIRE_DRIVER_CRIT)
-        write(msg,'(2(a,i4,1x))')'fire_driver_phys: checking ignition ',i,' of ',ignitions_done
-!$OMP END CRITICAL(FIRE_DRIVER_CRIT)
-        call message(msg)
-        ignited_patch(i)=0
-        do ij=1,num_tiles
-            ignited_patch(i)=ignited_patch(i)+ignited_tile(i,ij)
-        enddo
-#ifdef DM_PARALLEL
-        call message('fire_driver_phys: checking ignitions, collect counts')
-        call wrf_dm_maxval(ignited_patch(i),idex,jdex)
-        call message('fire_driver_phys: collected')
-#endif
-        if(ignited_patch(i).eq.0)then
-            call crash('fire_driver_phys: Ignition failed, no nodes ignited. Bad coordinates?')
-        endif
-    enddo
+ ! dead post-loop ignition check removed (plan 9.0): ignitions run at ifun 5,
+ ! so this ifun 3 loop never saw a nonzero count
 
  call print_chsum(itimestep,ims,ime,1,1,jms,jme,ids,ide,1,1,jds,jde,ips,ipe,1,1,jps,jpe,1,0,0,uah,'uah')
  call print_chsum(itimestep,ims,ime,1,1,jms,jme,ids,ide,1,1,jds,jde,ips,ipe,1,1,jps,jpe,0,0,1,vah,'vah')
