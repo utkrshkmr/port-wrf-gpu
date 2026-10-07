@@ -1560,7 +1560,6 @@ real,dimension(ifms:ifme,jfms:jfme),intent(inout)::lfn_2,lfn_s0,lfn_s1,lfn_s2,lf
 real,dimension(ifms:ifme,jfms:jfme),intent(inout)::lfn_out
 real,intent(in)::dx,dy,ts,dt
 real::dt_s
-real,dimension(ifts:ifte,jfts:jfte):: tend_1,tend_2,tend_3
 real::diffLx,diffLy,diffRx,diffRy,diff2x,diff2y,grad,time_now
 integer::nts,i,j,k,kk
 intrinsic epsilon
