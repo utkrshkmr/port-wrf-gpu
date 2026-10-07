@@ -62,7 +62,7 @@ the H100.
 `findings: <count>`).
 
 ### A-01 · Baseline CPU verification of the handoff tree
-- **Goal:** 0 · **Size:** S · **Area:** review · **Needs:** cpu · **Depends:** — · **Status:** todo
+- **Goal:** 0 · **Size:** S · **Area:** review · **Needs:** cpu · **Depends:** — · **Status:** done 43819e6
 - **Read:** port/agent/CODE_ONLY.md §7; port/gates/cpu_verify.sh (header)
 - **Do:** Run `bash port/gates/cpu_verify.sh --base <handoff>` on the handoff branch itself, before any work package
   is merged. In the cloud environment use the host-mode prefix of TASK_PROTOCOL.md §2. Every check must pass on unported code. This proves the gate is sound before it judges anyone's work.
