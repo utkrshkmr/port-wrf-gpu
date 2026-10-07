@@ -4,3 +4,6 @@ WRF/phys/physics_mmm/mp_wsm6.F90|w4(1)=transfer(x,w4(1))|T-TAB bit pattern of on
 WRF/phys/physics_mmm/mp_wsm6.F90|w4=transfer(x,w4)|T-TAB bit pattern of a real64 SAVE scalar into two int32 words
 WRF/phys/physics_mmm/mp_wsm6.F90|wsm6_gpu_ibits=int(w4(1),kind=8)+int(w4(2),kind=8)|T-TAB integer bit-sum of those words; same operations on host and device
 WRF/phys/physics_mmm/mp_wsm6.F90|bad=trim(bad)//' '//trim(name)|T-TAB appends a differing table name; not model arithmetic
+WRF/phys/module_mp_wsm6.F|nz=kte-kts+1|column active length; index remap, not model arithmetic
+WRF/phys/module_mp_wsm6.F|kk=k-kts+1|column index kk = k - kts + 1; index remap, not model arithmetic
+WRF/phys/module_mp_wsm6.F|errmsg='mp_wsm6_run OK'|host copy of the success string mp_wsm6_run always stores
