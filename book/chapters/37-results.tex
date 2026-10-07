@@ -1,3 +1,116 @@
 \chapter{Results}\label{ch:results}
 
-This chapter is being written.
+This chapter collects the results of the port: first whether it is correct, then how fast it is, and what that speed
+costs. Its numbers come from \code{port/RESULTS.md} (correctness) and \code{port/PERF.md} with the profiler's database
+(performance), and each table names its source. The port is in progress. What has been measured is reported; the rest
+is marked \tbr\ and will be filled in from the same sources as the gates pass.
+
+\section{Correctness}
+
+\subsection{The gates}
+
+\begin{center}
+\small
+\begin{tabular}{lp{0.55\textwidth}l}
+\toprule
+Gate & Criterion & Status \\
+\midrule
+G0 & reproducible arithmetic and math library; reproducible CPU reference; reference runs archived & partly passed
+  (local checks) \\
+G1 & infrastructure: state, pool, work arrays, tables on the device; GPU build with all compute on the host bitwise
+  & \tbr \\
+G2 & dynamics on the device, bitwise on the dev-case windows & \tbr \\
+G3 & physics on the device; radiation window bitwise; memory within 70~GB & \tbr \\
+G4 & fire on the device; ignition and spread windows bitwise; 0 differing burned cells & \tbr \\
+G5 & full 17-hour run bitwise on A100 80~GB or H100; A100 and H100 equal & \tbr \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{What Phase 0 established}
+
+The local checks of Phase~0 were run with gfortran~13 on a CPU (\code{port/RESULTS.md}):
+\begin{itemize}
+  \item \textbf{The reproducible math library} is correctly rounded on all $2^{32}$ single-precision inputs of each of
+    the twelve one-argument functions, on $2\cdot10^6$ samples of \code{atan2} and $7.3\cdot10^6$ samples of
+    \code{pow}. The double-precision functions are within 1~ulp, and within 2.05~ulp for $\log_{10}$, $\sinh$,
+    $\cosh$, $\tanh$, which is fdlibm's accuracy for them.
+  \item \textbf{The substitutions} of 646 intrinsic calls and 265 powers left the model bitwise unchanged on two
+    smoke cases (T-SHARED-1): 241 history fields in 7 frames and 189\,000 trace records over 360 steps on the physics
+    case; on the fire case, the same 3\,444 burned cells after 6 minutes and no differing cell in any frame.
+  \item \textbf{The scratch pool} changes nothing (T-SHARED-POOL), and no uninitialized memory is read (T-UNINIT:
+    signaling-NaN and zero initialization give identical runs).
+  \item \textbf{The memory estimator} agrees with WRF's own allocation count to within 3.5\,\% on the smoke cases.
+\end{itemize}
+Getting T-SHARED-1 to bitwise took three fixes, each found with the tracer. The first was vectorized math functions
+in the comparison builds. The second was a power with the constant exponent 2.0, which the compiler had folded into a
+product while the substituted function computed a general power. The third was a missing include path in an
+incremental build rule. The lesson is in the tracer: the first differing record pointed at the field, the step and the
+routine each time.
+
+\subsection{On the GPU}
+
+The device tests (T-FMA, T-SUBNORM, T-RM-EXH on the device, the probes), the per-routine tests T-AB, and the windows
+T-TRACE, T-TRACE-RAD, T-FIRE-IGN and T-FIRE-WIN: \tbr.
+
+\section{Speed}
+
+\subsection{Time to solution}
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+Run & Wall time per simulated hour & Speedup vs CPU-REF & Speedup vs original run \\
+\midrule
+original CCR run (P0.2) & \tbr & --- & 1 \\
+CPU-REF on $N$ CCR cores & \tbr & 1 & \tbr \\
+GPU-REPRO, A100 80 GB, full case & \tbr & \tbr & \tbr \\
+GPU-REPRO, H100 SXM, full case & \tbr & \tbr & \tbr \\
+GPU-REPRO, 2 $\times$ A100 40 GB, full case (\cref{ch:mgpu}) & \tbr & \tbr & \tbr \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Where the time goes}
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Part of the step & CPU-REF & A100 & H100 & H100/A100 \\
+\midrule
+RK dynamics (tendencies) & \tbr & \tbr & \tbr & \tbr \\
+acoustic loop & \tbr & \tbr & \tbr & \tbr \\
+scalar transport & \tbr & \tbr & \tbr & \tbr \\
+turbulence and diffusion & \tbr & \tbr & \tbr & \tbr \\
+WSM6 & \tbr & \tbr & \tbr & \tbr \\
+surface (sfclayrev, Noah) & \tbr & \tbr & \tbr & \tbr \\
+radiation & \tbr & \tbr & \tbr & \tbr \\
+fire & \tbr & \tbr & \tbr & \tbr \\
+nest forcing & \tbr & \tbr & \tbr & \tbr \\
+I/O & \tbr & \tbr & \tbr & \tbr \\
+\bottomrule
+\end{tabular}
+\end{center}
+The share of each part on the CPU comes from WRF's own timers (Prof-CPU, \code{plan.md} P0.15), on the GPU from the
+NVTX ranges (\cref{ch:prof}). The last column tests the expectation of \cref{ch:gpuarch}: about 2 for memory-bound parts,
+less for launch-bound and column-physics parts.
+
+\subsection{Against the models}
+
+For each GPU: the bandwidth floor of a step and the measured efficiency (\cref{ch:perf}); the launches per d02 step
+and the time in gaps; the measured peak memory against the estimate of 56.6~GB. \tbr.
+
+\subsection{Stage 6}
+
+Each optimization of \cref{ch:fusion,ch:memory,ch:tiling,ch:warp,ch:colphys}, with its gain on each GPU and the
+decision to keep or reject it, is recorded in \code{port/PERF.md} and summarized here. \tbr.
+
+\section{Costs}
+
+\paragraph{The cost of reproducibility.} The speed of the REPRO build against the FAST build of the same source
+(ADR-003), and the statistical validation of FAST against an ensemble of REPRO runs. \tbr.
+
+\paragraph{Energy to solution.} The energy for the 17 simulated hours: GPU node power times time, against CPU node power
+times time for CPU-REF and for the original run. \tbr.

@@ -1,3 +1,123 @@
 \chapter{Optimization IV: warp-level work}\label{ch:warp}
 
-This chapter is being written.
+The 32 threads of a warp execute one instruction at a time, together (\cref{ch:gpuarch}). Code that keeps them
+together runs at full speed; code that splits them, or that uses so many registers that few warps fit on an SM, does
+not. This chapter is about the warp as the unit of execution: divergence and how to remove it without changing a bit,
+registers, occupancy and spills, and reductions, where the warp's own exchange instructions are useful for exact
+results and forbidden for inexact ones.
+
+\section{Divergence}
+
+When the threads of a warp disagree on a condition, the warp executes both branches, each with the other branch's
+threads masked off. With branches costing $c_1$ and $c_2$, a warp in which both are taken costs $c_1 + c_2$, where a
+uniform warp costs one of them. The profiler measures the effect as the average number of active threads per executed
+instruction (\cref{tab:ncu}); analyzer A4 flags kernels below 90\,\% branch efficiency.
+
+WRF has divergence of several kinds:
+\begin{description}
+  \item[Position.] Advection uses lower-order formulas in the rows next to the domain boundary; boundary routines
+    treat strips; the fire's level set uses ENO within ten nodes of the edge of the fire domain.
+  \item[State.] The fire's level set is differenced with WENO5 near the front ($|\psi| <$
+    \code{fire_lsm_band_ngp}$\cdot\Delta x$) and ENO elsewhere; ignition and fuel consumption apply only to some nodes.
+  \item[Physics.] Microphysical processes act only where the hydrometeor exists; shortwave radiation skips night
+    columns; the land model runs on land points, the sea-ice model on ice points; the boundary layer takes different
+    paths for stable and unstable columns.
+\end{description}
+
+\subsection{Removing divergence without changing bits}
+
+Each point must still be computed with the formula the source chooses for it. Within that rule, three techniques
+remove divergence.
+
+\paragraph{Warp-uniform conditions by mapping.} A condition that depends only on $j$ (the boundary rows of the
+$y$-advection) is uniform in every warp whose threads share one $j$. With the gangs over $(j, k)$ and the vector
+lanes over $i$, no warp straddles two rows:
+\begin{lstlisting}
+!$acc parallel loop gang collapse(2) ...
+DO j = j_start, j_end
+DO k = kts, ktf
+!$acc loop vector
+DO i = i_start, i_end
+\end{lstlisting}
+The price: a row of 810 points fills 25 warps and one warp of 10 threads, so some lanes idle. The mapping changes the
+schedule only (class R0).
+
+\paragraph{Splitting by branch.} When a condition depends on position, the kernel can be split into one kernel for the
+interior, where every thread takes the main branch, and small kernels for the special rows or columns. Each point is
+computed by the formula the source gives it, in a kernel of its own (class R1). The cost is extra launches, so the
+split pays only when the divergent warps are a large share of the kernel.
+
+\paragraph{Compaction.} When a condition depends on the state, as the fire's band does, the points of each class can
+be gathered into a list first, and each class processed by its own kernel over its list:
+\begin{algorithm}[ht]
+\caption{Splitting the level-set tendency by band (phase S6-12.1; class R1).}
+\label{alg:band-split}
+\begin{algorithmic}[1]
+\State flag every node: in the WENO band, or not (the source's test, unchanged)
+\State integer prefix sum of the flags: the position of each band node in a compact list (exact)
+\State kernel over the nodes not in the band: the ENO tendency, the source's statements
+\State kernel over the band list: the WENO tendency, the source's statements
+\State the maximum of the time-step bound over both kernels (an exact maximum)
+\end{algorithmic}
+\end{algorithm}
+Every node gets the formula the source would give it, from the same operands. The prefix sum is integer arithmetic,
+and the maximum is exact in any order, so the split is bitwise neutral. It pays when the band is a small and scattered
+part of the grid, as it is during the first hours of a fire.
+
+\paragraph{Leaving it.} Not all divergence is worth removing. Night columns of the shortwave scheme leave at once, so
+only the warps on the day-night boundary diverge. Most microphysics branches are short. The profiler decides.
+
+\section{Registers, occupancy and spills}
+
+A thread's registers are its fastest storage, but the register file is shared: by \cref{eq:occ-regs}, a kernel with
+128 registers per thread fits only 16 warps per SM. Fewer warps hide less latency. The compiler can be told to use
+fewer registers (\code{-gpu=maxregcount:N} per file, or launch bounds per kernel in CUDA Fortran), but values that do
+not fit then spill to local memory, which costs memory traffic.
+
+The right number differs by kernel and by GPU:
+\begin{itemize}
+  \item a stencil kernel with few live values is limited by memory, and more warps help it;
+  \item a column-physics kernel holds dozens of values per level and spills anyway; capping its registers may make it
+    slower;
+  \item the H100 and A100 have the same register file per SM but different memory systems, so the best cap differs.
+\end{itemize}
+Phase S6-15 sweeps the caps per kernel on each GPU and records them in \code{port/ENVIRONMENT.md}. Register caps change
+where values are kept, never what is computed: class R0.
+
+\paragraph{Splitting a kernel to reduce spills.} A long kernel with many live arrays (a column scheme) can be split into
+two kernels that pass their intermediate values through work arrays. Each column still executes its statements in the
+source's order, and the values stored and reloaded are the same bits (class R1). The second kernel may also have a
+different launch shape from the first.
+
+\section{Reductions}
+
+A reduction combines one value from each thread: a maximum, a count, a sum. On a GPU, a fast reduction combines
+values in a tree: pairs within a warp with shuffle instructions (\code{__shfl_down}), then warps within a block, then
+blocks. The order of combination follows the tree, not the source's loop.
+
+\paragraph{Exact reductions.} Integer sums and counts, bitwise operations, and the maximum or minimum of
+floating-point values give the same result in any order, apart from the sign of zero and NaN operands, which T-SIGNZERO
+and T-MINMAX check. The port uses parallel reductions for them freely: the Courant-number maxima of \code{w_damp}, the
+time-step bound of the level set, the counts of NaNs and of ignited nodes, the error flags. Warp vote instructions
+(\code{ballot}, \code{anythread}) compute such flags in a single instruction.
+
+\paragraph{Sums of floating-point numbers.} A sum is not associative (\cref{ch:repro}). With $x_1 = 2^{24}$,
+$x_2 = x_3 = 1$ in single precision,
+\begin{equation}
+  (x_1 + x_2) + x_3 = 2^{24}, \qquad x_1 + (x_2 + x_3) = 2^{24} + 2 .
+\end{equation}
+A tree reduction of a floating-point sum is therefore in class F: it belongs to the FAST build only. In REPRO, a sum
+over levels or species stays a sequential loop inside a thread. A sum over many independent items can still use
+parallelism in the R2 way: compute the terms in parallel, store them, and add them sequentially in the source's order
+(\cref{ch:colphys}).
+
+\section{Worked examples}
+
+Phase S6-12 takes the analyzer's list in order:
+\begin{enumerate}
+  \item the fire level set split by band (\cref{alg:band-split});
+  \item the boundary branches of the advection kernels: mapping and, where it pays, splitting;
+  \item register caps per kernel and GPU;
+  \item spills of the column-physics kernels: splitting the longest ones.
+\end{enumerate}
+Branch efficiency, occupancy and time before and after are \tbr.

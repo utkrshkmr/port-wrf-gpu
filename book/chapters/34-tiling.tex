@@ -1,3 +1,133 @@
 \chapter{Optimization III: tiling and shared memory}\label{ch:tiling}
 
-This chapter is being written.
+A stencil reads each value several times: once for each point whose stencil contains it. If every read went to device
+memory, a 5th-order flux would move six times the bytes it needs. Caches catch part of the reuse by chance; tiling
+catches it by design. A block of threads loads a tile of the input, with the halo its stencil needs, into shared
+memory once, and every thread then reads its stencil from there. This chapter derives what tiling saves, shows the
+tiled 5th-order flux of WRF's advection, and describes what the H100 adds.
+
+\section{What a stencil reuses}
+
+Take the $y$-flux of 5th-order advection (\cref{ch:adv}). The flux through face $j$ is
+\begin{equation}
+  f_j = v_j\,\Bigl[\bigl(37(q_j + q_{j-1}) - 8(q_{j+1} + q_{j-2}) + (q_{j+2} + q_{j-3})\bigr)/60
+        - s\,\bigl((q_{j+2} - q_{j-3}) - 5(q_{j+1} - q_{j-2}) + 10(q_j - q_{j-1})\bigr)/60\Bigr],
+  \label{eq:flux5-y}
+\end{equation}
+with $s = \operatorname{sign}(\Delta t)\operatorname{sign}(v_j)$, exactly as the statement functions \code{flux6}
+and \code{flux5} write it (\src{dyn_em/module_advect_em.F}{advect_u}). It reads six values of $q$, from row $j-3$ to
+row $j+2$. Neighbouring faces share five of their six values.
+
+A block that computes the tendency of $T_i \times T_j$ points at one level needs the $T_j + 1$ faces around them,
+and for those $T_i \times (T_j + 6)$ values of $q$: its own $T_j$ rows and six rows of halo. The ratio of the bytes it
+loads to the minimal bytes is
+\begin{equation}
+  \rho = \frac{T_j + 6}{T_j},
+\end{equation}
+1.38 for $T_j = 16$ and 1.19 for $T_j = 32$, against up to 6 without any reuse. The halo is the price of tiling: the
+larger the tile, the smaller the price, until the tile no longer fits in shared memory or leaves too few blocks per
+SM to hide latency.
+
+\section{The tiled flux}
+
+\Cref{alg:tile-flux} shows the tiled version of Template B's two kernels (\cref{ch:port}), fused into one: each block
+computes the faces of its tile and the tendency of its rows, so that the face fluxes never go to device memory.
+
+\begin{algorithm}[ht]
+\caption{Tiled 5th-order $y$-flux and its divergence for one level $k$ (CUDA Fortran sketch of phase S6-11.1). Block
+size $T_i \times T_j$ threads; tile rows $j_0 \ldots j_0 + T_j - 1$.}
+\label{alg:tile-flux}
+\begin{algorithmic}[1]
+\State load $q(i, k, j)$ for the block's $T_i$ columns and rows $j_0 - 3 \ldots j_0 + T_j + 2$ into shared array $Q$
+\State load $v(i, k, j)$ and $v(i-1, k, j)$ for rows $j_0 \ldots j_0 + T_j$ into shared arrays
+\State \code{call syncthreads()}
+\For{each face $j \in \{j_0, \ldots, j_0 + T_j\}$ of the tile, one per thread (one thread does two)}
+  \State choose the formula by $j$ exactly as the source: 5th order inside, 3rd order at $j_{ds}+2$ and
+    $j_{de}-2$, 2nd order at $j_{ds}+1$ and $j_{de}-1$
+  \State $F[j] \gets$ the source's expression (\cref{eq:flux5-y}) with operands read from $Q$
+\EndFor
+\State \code{call syncthreads()}
+\For{each row $j \in \{j_0, \ldots, j_0 + T_j - 1\}$, one per thread}
+  \State $\mathit{mrdy} \gets m_{u}(i, j)\cdot r_{dy}$; \quad $\mathit{tend}(i,k,j) \gets \mathit{tend}(i,k,j) - \mathit{mrdy}\,(F[j+1] - F[j])$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Why the bits do not change.} Every face flux is computed by the source's expression on the source's operands:
+shared memory holds copies of the same values, so the reads return the same bits. Every tendency is the same
+difference of the same two fluxes, subtracted from the same tendency value. The face at the edge of a tile is computed
+by both neighbouring blocks, identically. The tile is in class R1 (\cref{tab:bitclass}). What it changes is the
+traffic: the 3D array \code{fqy3} of Template B, written once and read twice, disappears, and $q$ is read from device
+memory about $\rho$ times instead of up to six.
+
+\paragraph{Branches by row.} The formula depends on $j$ near the domain boundaries. In the tile, a row is one value of
+$j$, and with the block shaped so that a warp covers one row (32 values of $i$), every warp takes a single branch: no
+divergence (\cref{ch:warp}).
+
+\section{Streaming along a dimension}
+
+A different way to reuse a stencil is to give each thread a line of points and let it march along the stencil's
+direction, keeping the values it still needs in registers. For the $y$-flux, a thread owns one $(i,k)$ and loops over
+$j$; it keeps the last six values of $q$ and the previous face flux in registers. This is the CPU's rolling buffer
+(\cref{alg:advect-y}) turned around: there a row of fluxes was kept for all $i$, here one flux for one $i$. Each
+value of $q$ is then read exactly once.
+
+The difficulty is parallelism. The d02 domain has $810 \times 59 \approx 48\,000$ lines $(i,k)$, about a fifth of the
+threads an A100 can hold. Splitting $j$ into a few segments, each starting with its rows of halo, restores the
+parallelism; the faces at the segment boundaries are computed twice, with the same operations, which is again exact.
+This is \emph{2.5D blocking}: parallel in two dimensions, streaming in the third. It also applies to the vertical
+stencils of diffusion, streaming along $k$.
+
+\section{Choosing the tile}
+
+The tile size is a trade-off between the halo overhead $\rho$, the shared memory per block, and the number of blocks
+per SM:
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+ & A100 & H100 \\
+\midrule
+shared memory per block (max) & 164 KB & 228 KB \\
+$q$ tile $32 \times (16 + 6)$ at one level & 2.75 KB & 2.75 KB \\
+$q$ tile $32 \times (16 + 6) \times 8$ levels & 22 KB & 22 KB \\
+blocks of 22 KB per SM (shared memory only) & 7 & 10 \\
+\bottomrule
+\end{tabular}
+\end{center}
+A tile that spans several levels shares the cost of the halo rows over more work per block. The profiler's analyzer A3
+proposes a tile for each kernel whose DRAM bytes exceed 1.5 times the minimal bytes, and the per-GPU tuning of phase
+S6-15 sets the shape that runs fastest on each GPU.
+
+\section{What the H100 adds}
+
+\paragraph{Tensor Memory Accelerator.} On the A100, the threads of a block load the tile themselves, computing every
+address. The H100's TMA copies a whole tile, described by its corner and its shape, from device memory to shared
+memory, while the threads compute. A kernel can double-buffer: compute on tile $n$ while the TMA loads tile $n+1$,
+synchronizing through a barrier in shared memory. For a stencil that marches along $k$ or $j$, this hides the load
+latency almost completely.
+
+\paragraph{Thread-block clusters.} Blocks of a cluster run on neighbouring SMs and can read each other's shared memory.
+Two blocks with adjacent tiles then need not both load their common halo from device memory: one loads it, the other
+reads it from its neighbour. The halo overhead $\rho$ falls towards that of a tile as large as the whole cluster.
+
+Both features change where values are loaded from, not what is computed with them: class R1. They are the second step
+of phase S6-11 (task S6-11.5), after the plain shared-memory tile has been measured on both GPUs.
+
+\section{Candidates in WRF}
+
+\begin{description}
+  \item[Advection] The $y$- and $z$-fluxes of all four advection routines, 5th and 3rd order (phases S6-11.1 and
+    S6-11.2). The $x$-fluxes read along $i$, inside a warp, where the L1 cache already catches most of the reuse.
+  \item[Diffusion] The deformation tensor and the stress divergence: many small stencils over the same arrays, best
+    fused and tiled together (S6-11.3).
+  \item[Fire] \code{tend_ls} reads a $\pm3$ neighbourhood of the level set in both directions for its WENO
+    differences. A $32 \times 32$ tile needs $38 \times 38$ values, $\rho = 1.41$ (S6-11.4).
+\end{description}
+The measured gains are \tbr.
+
+\begin{portnote}
+A tiled kernel is written in CUDA Fortran, beside the OpenACC kernel it replaces, under \code{WRF_CUF_<KERNEL>}. Its
+test is the comparison with the OpenACC version on a window, bit for bit, in addition to T-AB and T-TRACE. The
+OpenACC version stays: it is the reference, and the fallback if a tiled kernel ever disagrees.
+\end{portnote}

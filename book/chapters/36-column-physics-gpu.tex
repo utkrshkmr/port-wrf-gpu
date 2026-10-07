@@ -1,3 +1,117 @@
 \chapter{Column physics on GPUs}\label{ch:colphys}
 
-This chapter is being written.
+The physics schemes of \cref{ch:mp,ch:rad,ch:sfc,ch:lsm,ch:pbl} work on one column at a time. Their columns are
+independent, so they parallelize naturally over columns, but each column is a long sequential computation with many
+temporary values per level. This is the opposite of a stencil: little memory traffic per operation, much state per
+thread. This chapter looks at what limits such kernels on a GPU, and at the port's two designs: one thread per column
+(Template CP) for most schemes, and a batched, restructured RRTMG for the longwave radiation.
+
+\section{One thread per column}
+
+Template CP (\cref{ch:port}) gives each $(i,j)$ column to one thread, which copies its column into private arrays,
+calls the scheme for a single column, and copies the results back. The parallelism is the number of columns:
+\begin{itemize}
+  \item 656\,100 on d02 ($810 \times 810$);
+  \item 201\,601 on d01 ($449 \times 449$).
+\end{itemize}
+An A100 holds at most 221\,184 resident threads (108 SMs $\times$ 2048) and an H100 SXM 270\,336. d02 fills the GPU
+three times over; d01 about once, if the occupancy were full, which for these kernels it is not.
+
+\section{What limits a column kernel}
+
+\paragraph{State per thread.} WSM6 keeps about 78 arrays of one column level each, plus the sedimentation arrays; Noah
+and YSU keep dozens. Most of this lives in local memory (\cref{ch:gpuarch}): per thread in device memory, cached in L1
+and L2. Thanks to the interleaving of local memory, accesses at the same level by the threads of a warp are coalesced
+(\cref{ch:memory}).
+
+\paragraph{The local-memory reservation.} The GPU reserves local memory for every thread that can be resident at
+once, whether it runs or not:
+\begin{equation}
+  M_{\text{local}} = s_{\text{frame}} \times n_{\text{resident}},
+\end{equation}
+where $s_{\text{frame}}$ is the largest per-thread stack frame of any kernel, which the compiler reports
+(\code{-gpu=ptxinfo}). With about 30~KB per thread for WSM6, that is about 6.6~GB on an A100 and 8.1~GB on an H100
+SXM. The memory estimate of the case reserves 8.3~GB for it (\cref{ch:perf}). The device stack limit must be at least
+the largest frame; the port sets it from the measured frames (\code{NV_ACC_CUDA_STACKSIZE}) and checks it at startup.
+
+\paragraph{Fixed sizes.} The private arrays have a fixed size, \code{WRF_KMAX} = 64 levels, for 59 used: arrays sized
+at run time would live in the device heap, which is slow and small. The 8\,\% of unused levels cost reservation, not
+traffic.
+
+\paragraph{Registers and occupancy.} A column kernel uses many registers, often the maximum, so few warps fit on an
+SM (\cref{eq:occ-regs}). With few warps, latency is poorly hidden, and each thread's long sequence of dependent
+operations runs at the latency of local memory. The best register cap and launch shape differ between the A100 and
+the H100 (\cref{ch:warp}).
+
+\paragraph{Divergence and imbalance.} Columns do different amounts of work: cloudy columns run microphysical processes
+that clear columns skip; the sedimentation of WSM6 takes as many sub-steps as the fastest-falling hydrometeor needs; a
+night column leaves the shortwave scheme at once. A warp runs as long as its slowest column.
+
+\section{RRTMG: a batched design}
+
+The longwave scheme RRTMG \citep{iacono2008} does not fit one thread per column. For each column it computes optical
+depths for 140 spectral $g$-points on 109 layers (the model's layers plus the layers it adds above the model top), and
+then a radiative transfer for each $g$-point (\cref{ch:rad}). Its temporary storage is about 1.1~MB per column. For all
+656\,100 columns of d02 at once, that would be 720~GB.
+
+\paragraph{Correctness version.} The port processes the columns in batches of $B = 4096$ (\code{WRF_RRTMG_BATCH}),
+with the per-column temporaries hoisted into batch work arrays with a trailing batch index: 4.5~GB. A kernel runs one
+thread per column of the batch, and each thread executes the original code for its column, unchanged apart from its
+declarations. It is correct, and slow: 4096 threads use 2\,\% of the threads an A100 can hold, and d02 needs 161 such
+batches per radiation call.
+
+\paragraph{Performance version.} The work inside a column has more parallelism than the code shows: the optical depths
+of different layers are independent, and the radiative transfer of different $g$-points is independent until their
+fluxes are added. Optimization O6 (phase S6-13) splits the column into three kernels (\cref{alg:rrtmg-perf}).
+
+\begin{algorithm}[ht]
+\caption{The performance version of RRTMG longwave for a batch of $B$ columns (phase S6-13; class R2).}
+\label{alg:rrtmg-perf}
+\begin{algorithmic}[1]
+\State \textbf{K-RRTMG-TAU}, one thread per (column $b$, layer): the optical depths of all $g$-points (\code{taumol}, \code{taugb1} \dots\ \code{taugb16})
+\State \textbf{K-RRTMG-RT1}, one thread per (column $b$, $g$-point): the downward recurrence from the top, the
+  surface reflection, the upward recurrence, as in \code{rtrnmc} for that $g$-point; store the radiances
+  $d_{\ell,g}$ and $u_{\ell,g}$ of every level $\ell$
+\State \textbf{K-RRTMG-RT2}, one thread per (column $b$, level $\ell$):
+\For{each band, in order}
+  \State $D \gets 0$; \quad $U \gets 0$
+  \For{each $g$-point of the band, in order}
+    \State $D \gets D + d_{\ell,g}$; \quad $U \gets U + u_{\ell,g}$
+  \EndFor
+  \State $F^{\downarrow}_\ell \gets F^{\downarrow}_\ell + (D\,w_{\text{diff}})\,\Delta\nu_{\text{band}}$; \quad
+    the same for $F^{\uparrow}_\ell$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Why are the bits unchanged? In \code{rtrnmc}, the radiances of each $g$-point depend only on that $g$-point's optical
+depths and Planck fractions, so computing them in separate threads gives the same values. The fluxes are sums: within
+a band, the source adds the radiances of the $g$-points one after the other into \code{drad} and \code{urad}; after the
+band, it multiplies by the diffusivity factor and adds the result, times the band width, to the total fluxes. Kernel
+RT2 performs exactly these additions, in exactly this order. The parallel work computes the terms; the sums are still
+sequential. This is class R2 (\cref{tab:bitclass}): parallel work, ordered accumulation.
+
+The performance version has $4096 \times 140 = 573\,440$ threads in RT1, enough to fill either GPU, and its tests are
+the column harness T-RRTMG-COL (host against device on $10^5$ columns from the reference state) and the radiation
+window T-TRACE-RAD.
+
+\section{WSM6 and Noah}
+
+For the other schemes the questions are of shape, not of structure:
+\begin{itemize}
+  \item \textbf{Batch shape.} A column kernel over all columns at once needs the full local-memory reservation; a
+    kernel over a part of the domain at a time needs less memory but more launches. Phase S6-13.4 measures both for
+    WSM6 on each GPU.
+  \item \textbf{Splitting.} A scheme can be split at a point where all columns have finished one phase (for WSM6,
+    before and after sedimentation), with the intermediate values in work arrays. Fewer live values per kernel mean
+    fewer registers and spills (\cref{ch:warp}); the statements of each column keep their order.
+  \item \textbf{Level parallelism.} Parts of a scheme that are pointwise in $k$ (the saturation computations of WSM6,
+    the slope parameters) could run one thread per level. The recurrences in $k$ (sedimentation, the implicit
+    vertical diffusion of YSU) cannot.
+\end{itemize}
+
+\begin{keypoint}
+Column physics is where a GPU's strengths matter least and the bitwise rule constrains most: the recurrences and sums
+in $k$ must stay sequential. The gains come from more parallelism around the recurrences (RRTMG's $g$-points), from
+less state per thread, and from the right launch shape for each GPU.
+\end{keypoint}

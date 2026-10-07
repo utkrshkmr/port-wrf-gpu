@@ -1,3 +1,145 @@
 \chapter{Optimization I: fewer launches and kernel fusion}\label{ch:fusion}
 
-This chapter is being written.
+The port's first rule produces many kernels: each loop nest of the source becomes its own kernel, in the source order
+(\cref{ch:port}). This keeps the arithmetic recognizably the source's, and it is the right way to get correct. It is
+not the fastest way to run. This chapter shows how the number of launches is reduced afterwards without changing a
+bit: by merging kernels that run the same statements, by fusing producers and consumers, by letting independent
+kernels overlap, and by replaying recorded launch sequences.
+
+\section{What a launch costs}
+
+A kernel launch costs time in three places:
+\begin{itemize}
+  \item on the host, where the OpenACC runtime checks that the arrays are present, packs the arguments and submits
+    the launch;
+  \item on the device, where the kernel's blocks are distributed to the SMs, and where the last blocks of a kernel run
+    while most SMs already idle (the \emph{tail});
+  \item between kernels, where a kernel cannot start until the previous one in its queue has finished.
+\end{itemize}
+The profiler measures these as the gaps between kernels (\cref{ch:prof}). For a kernel that runs 100~$\mu$s they do
+not matter; for one that runs 5~$\mu$s they can double its cost. The model of \cref{ch:perf} shows that the full
+case's d02 is mostly bandwidth-bound, while the dev case's d02 and the boundary strips of both are launch-bound.
+
+\section{Fusion in bitwise terms}
+
+Two kernels $K_1$ then $K_2$ over the same iteration space can be fused into one kernel that, at each point $p$,
+executes $K_1$'s statements at $p$ and then $K_2$'s statements at $p$. The fused kernel computes the same values if
+every value each statement reads is the value it read before. Let $W_1, R_1$ be the sets of (array, index) pairs that
+$K_1$ writes and reads, and likewise $W_2, R_2$. The fusion is legal when:
+\begin{enumerate}
+  \item $K_2$ reads $K_1$'s outputs only at the same point: if $(a, q) \in R_2$ and $(a, q) \in W_1$, then the read
+    is made at $p = q$. (Otherwise $K_2$ at $p$ might run before $K_1$ at $q$ has written.)
+  \item $K_2$ does not overwrite what $K_1$ reads at another point: if $(a, q) \in W_2$ and $(a, q) \in R_1$, then
+    $p = q$.
+  \item Values both write at the same point are written in the original order, which the fused body keeps.
+\end{enumerate}
+Under these conditions every statement reads the same operands and performs the same operations: the fusion is in
+class R1 (\cref{tab:bitclass}). A \emph{pointwise} producer and consumer always satisfy them. A \emph{stencil}
+consumer, which reads the producer's output at neighbouring points, does not; it can be fused only in two ways:
+\begin{itemize}
+  \item each thread \emph{recomputes} the producer's values at the neighbouring points it needs, with the same
+    operations on the same operands. The result is the same bits, at the cost of repeated work;
+  \item a tile of the producer's output is computed into shared memory with its halo, synchronized, and then read
+    (\cref{ch:tiling}).
+\end{itemize}
+
+When the two kernels have different iteration ranges, as the $u$ and $v$ updates do on the staggered grid, the fused
+kernel runs over the union of the ranges and guards each statement group with its own range: the same technique as
+Template C.
+
+\begin{algorithm}[ht]
+\caption{Fusion legality of two consecutive kernels (analyzer A1, on the read and write sets of the kernel bodies).}
+\label{alg:fusion}
+\begin{algorithmic}[1]
+\Require kernels $K_1$, $K_2$ consecutive in one queue, no host statement between them
+\For{each array $a$ written by $K_1$ and read by $K_2$}
+  \If{$K_2$ reads $a$ at an offset $\ne 0$} \Return stencil: fuse only with recomputation or a tile \EndIf
+\EndFor
+\For{each array $a$ written by $K_2$ and read by $K_1$}
+  \If{$K_1$ reads $a$ at an offset $\ne 0$} \Return illegal \EndIf
+\EndFor
+\If{the iteration ranges differ} \State fuse over the union, guard each body with its own range \EndIf
+\State \Return legal (R1); estimated saving: one launch, plus the write and re-read of each intermediate array that
+  is not needed afterwards
+\end{algorithmic}
+\end{algorithm}
+
+Fusion saves more than a launch when an intermediate array is used only to pass values from $K_1$ to $K_2$: the fused
+kernel can keep them in registers and never write them. That changes no arithmetic either: the value in a register is
+the value that would have been stored.
+
+\section{Merging boundary strips}
+
+Template G turns each strip of a boundary routine into its own kernel (\cref{ch:port}). The strips of one call are
+disjoint and execute the same statement on different points. Merging the four strips of a call into one kernel, with
+an index map from the merged iteration space to the strip and point, changes nothing but the schedule: class R0
+(optimization O2, phase S6-04). Strips of \emph{different phases} (the $x$ phase and the $y$ phase of
+\code{set_physical_bc3d}) stay separate, because the second reads corners the first wrote.
+
+\section{Asynchronous queues}
+
+Kernels that touch disjoint data could run at the same time, but by default each waits for the previous one. With
+\code{async(q)}, kernels go into queues, and kernels in different queues may overlap. Examples in WRF:
+\begin{itemize}
+  \item the boundary updates of $\theta$, $\mu$ and $\mu_t$ after \code{advance_mu_t}, which touch three different
+    fields;
+  \item the per-species work of scalar transport, where each species is independent until the next RK stage;
+  \item the boundary-condition calls of different fields at the end of a stage.
+\end{itemize}
+The schedule changes, the statements do not: class R0. The risk is a missing \code{wait} before a kernel that needs
+the results, which is a race and would show as a difference in T-AB. The dependency map comes from the read and write
+sets that analyzer A1 already extracts (phase S6-05).
+
+\section{CUDA Graphs}
+
+A CUDA Graph records a sequence of launches once and replays it with a single call, which removes most of the host
+cost per kernel. The acoustic sub-step is a natural candidate: the same kernels in the same order, seven times per
+d02 step. Two difficulties make it an experiment (phase S6-08):
+\begin{itemize}
+  \item OpenACC does not expose graphs. They are recorded by CUDA stream capture on the CUDA stream of an OpenACC
+    queue (\code{acc_get_cuda_stream}), from CUDA Fortran;
+  \item a graph records the kernels' arguments, but some scalars change between sub-steps (the iteration number, the
+    sub-step's time step in the first RK stage). They must be passed through device memory, or the recorded parameters
+    updated before each replay.
+\end{itemize}
+A graph changes nothing in what the kernels compute: class R0.
+
+\section{Worked example: the acoustic sub-step}
+
+On d02 the acoustic sub-step calls, in order (\code{dyn_em/solve_em.F}):
+\code{advance_uv}; the boundary updates of $u$ and $v$; \code{advance_mu_t}; the boundary updates of $\theta$,
+$\mu$ and $\mu_t$; \code{advance_w}; \code{sumflux}; the boundary updates of $\phi$ and $w$; \code{calc_p_rho}.
+From the port's kernel table, that is
+\begin{itemize}
+  \item 8 interior kernels: two in \code{advance_uv}, three in \code{advance_mu_t}, one each in \code{advance_w},
+    \code{sumflux} and \code{calc_p_rho};
+  \item 28 boundary-strip kernels: four strips for each of the six \code{spec_bdyupdate} calls ($u$, $v$, $\theta$,
+    $\mu$, $\mu_t$, $w$) and four for \code{spec_bdyupdate_ph}.
+\end{itemize}
+That is 36 launches per sub-step and 252 per d02 step from the acoustic loop alone, most of them for strips five points
+wide. The planned reductions, each with its class:
+\begin{center}
+\small
+\begin{tabular}{p{0.52\textwidth}lr}
+\toprule
+Change & Class & Launches per sub-step \\
+\midrule
+as ported & --- & 36 \\
+four strips of each boundary call merged (S6-04) & R0 & 15 \\
+the three boundary calls after \code{advance_mu_t} merged into one multi-field strip kernel & R0 & 13 \\
+the $u$ and $v$ kernels of \code{advance_uv} fused over the union of their ranges (S6-07) & R1 & 12 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Further fusions need a legality note per chain, which phase S6-07 writes before any code. For example,
+\code{advance_mu_t}'s first and third kernels both work column by column, and the third reads the vertical mass flux
+the first wrote only in the same column; whether the second, pointwise kernel between them allows the fusion is
+decided by \cref{alg:fusion}. The measured times before and after are \tbr.
+
+\begin{portnote}
+Fusion is the most tempting optimization to get wrong, because the fused code looks almost identical. The port's
+safeguards are the same as for porting: a written legality note, \code{arith_guard} and \code{check_verbatim} on the
+statements, T-AB of every route the fused kernel serves, and T-TRACE over the windows. T-AB must still be able to
+isolate each routine, so a fused kernel needs a fallback: one simple design runs the unfused kernels whenever any of
+the fused routes is switched off.
+\end{portnote}

@@ -1,3 +1,211 @@
 \chapter{Profiling methodology}\label{ch:prof}
 
-This chapter is being written.
+Optimization starts with measurement. A GPU kernel that looks expensive in the source may take no time, and a few
+bytes copied at the wrong place may dominate a step. This chapter describes how the port measures itself: the
+profiler that is built alongside the port (\code{roadmap/plan-profiler.md}), the tools it rests on, and the rules
+that make its numbers trustworthy. \Cref{ch:perf} turns the measurements into models, and
+\cref{ch:fusion,ch:memory,ch:tiling,ch:warp,ch:colphys} into optimizations.
+
+\section{The questions}
+
+The profiler must answer four questions, for the A100 and the H100 separately:
+\begin{enumerate}
+  \item Where does a step spend its time: per domain, per part of the step (RK dynamics, acoustic loop, scalar
+    transport, turbulence, each physics scheme, fire, nest forcing, I/O)?
+  \item For each kernel: what share of the step it takes, how many bytes it moves from device memory, how close it
+    comes to the GPU's bandwidth or arithmetic limit, and what limits it.
+  \item Which changes would make the step faster without changing a bit, and by how much, before anyone writes code?
+  \item Did a commit make anything slower?
+\end{enumerate}
+
+\section{Layers}
+
+The profiler is built in layers, each in the phase of the port that first needs it (\cref{tab:prof-layers}). Every
+kernel is therefore measured from the day it first runs on the device.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{0.17\textwidth}p{0.5\textwidth}p{0.22\textwidth}}
+\toprule
+Layer & What it gives & Source \\
+\midrule
+L0 static & per kernel: schedule, implicit data movement, registers, spills, stack frame, shared memory & compiler
+  (\code{-Minfo=accel}, \code{-gpu=ptxinfo}) \\
+L1 hooks & NVTX ranges per route, per part of \code{solve_em}, per domain and RK stage; timing and memory logs;
+  launches per step & instrumentation in WRF \\
+L1b OpenACC library & per compute region: file, line, launches, launch shape, device time; every data event &
+  OpenACC profiling interface \\
+L2 system profile & kernel table, copy table, gaps between kernels, API overhead, NVTX summary & Nsight Systems \\
+L3 kernel metrics & DRAM bytes, cache hit rates, coalescing, divergence, occupancy, stalls, spills, instruction
+  counts & Nsight Compute \\
+L4 models & roofline per kernel, bandwidth floor per step, launch, transfer and memory models & \cref{ch:perf} \\
+L5 kernel database & one row per kernel, GPU, case, window and commit; differences between commits & CSV files \\
+L6 analyzers & opportunity finders: fusion, caching, tiling, warp level, launches, transfers & scripts over L0--L5 \\
+\bottomrule
+\end{tabular}
+\caption{The layers of the profiler (\code{roadmap/plan-profiler.md}, section~3).}
+\label{tab:prof-layers}
+\end{table}
+
+\subsection{L0: what the compiler says}
+
+The compiler already knows a lot about each kernel. \code{-Minfo=accel} reports how each loop was scheduled and
+whether the compiler added a data copy; \code{-gpu=ptxinfo} reports the registers per thread, the bytes spilled to
+local memory, the stack frame and the shared memory. A parser maps these lines to the port's kernel IDs: each kernel
+has an \code{! K-...} comment directly above its directive, and the compiler names a kernel after its routine and line.
+Registers and spills explain occupancy (\cref{eq:occ-regs}) before a single run.
+
+\subsection{L1: ranges in the time step}
+
+\emph{NVTX} is NVIDIA's library for marking ranges of a program's run, which the profilers display on their
+timeline. WRF already has timers around the parts of \code{solve_em} (the \code{BENCH_START} and \code{BENCH_END}
+macros); in the GPU build they open and close NVTX ranges. Every route's call site gets a range too, generated with
+its island. A range costs a function call, so the overhead is checked: the W-20 window must run less than 1\,\% slower
+with the ranges on (task PR-L1.3).
+
+\subsection{L1b: the OpenACC profiling interface}
+
+OpenACC defines a profiling interface: a library registers callbacks (\code{acc_prof_register}) that the runtime
+calls at every event: kernel launch, upload, download, allocation. The library is loaded at run time through the
+environment variable \code{ACC_PROFLIB}, without rebuilding WRF. The port's own small library records, per compute
+region, its source file and line, the number of launches, the launch shape, and the device time measured with CUDA
+events. It is cheap enough to run on every regression window, and it gives the launches per step, which the other
+tools do not report directly.
+
+\subsection{L2: the timeline}
+
+Nsight Systems (\code{nsys}) records a timeline of the whole run: every kernel, every copy, every API call, every NVTX
+range. From its database the port extracts:
+\begin{itemize}
+  \item the kernel table: count, total, mean, minimum and maximum time per kernel;
+  \item the copy table: every host--device copy of any size, which is also a correctness check (T-NSYS: every copy
+    must be explained by an island, a sync point or the forcing);
+  \item the gaps: the time the GPU is idle between two kernels, per step;
+  \item the time per NVTX range.
+\end{itemize}
+
+\subsection{L3: inside a kernel}
+
+Nsight Compute (\code{ncu}) runs a kernel several times, each time collecting different hardware counters, and
+reports what happened inside it. \Cref{tab:ncu} lists the metrics the port collects.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{0.27\textwidth}p{0.63\textwidth}}
+\toprule
+Question & Metric (Nsight Compute names) \\
+\midrule
+time & \code{gpu__time_duration.sum} \\
+DRAM traffic & \code{dram__bytes_read.sum}, \code{dram__bytes_write.sum} \\
+bandwidth used & \code{dram__throughput.avg.pct_of_peak_sustained_elapsed} \\
+cache hit rates & \code{lts__t_sector_hit_rate.pct} (L2), \code{l1tex__t_sector_hit_rate.pct} (L1) \\
+coalescing & sectors per request of global loads (4 is ideal for 4-byte loads by a full warp) \\
+divergence & \code{smsp__thread_inst_executed_per_inst_executed.ratio}, branch efficiency \\
+occupancy & \code{sm__warps_active.avg.pct_of_peak_sustained_active}, and its theoretical limiter \\
+stalls & the three most frequent stall reasons from PC sampling \\
+spills & local-memory load and store bytes \\
+work & FP32 and FP64 add, multiply and FMA instruction counts \\
+\bottomrule
+\end{tabular}
+\caption{The kernel metrics of profiler layer L3 (\code{roadmap/plan-profiler.md}, section~3.1).}
+\label{tab:ncu}
+\end{table}
+
+Because \code{ncu} replays a kernel and serializes all kernels, its timings are never used for the time of a step;
+those come from L1b and L2. And because it is slow, it profiles a sample: one launch of each kernel at a typical step,
+for the 30 kernels that take the most time, one kernel of each template, and every kernel new in the phase.
+
+\subsection{L5 and L6: the database and the analyzers}
+
+Each measurement becomes a row of the kernel database: the kernel's ID, route, routine, file, line and template; the
+GPU, case, window, build and commit; and the measured quantities, from the time per launch to the arithmetic
+intensity. A \code{bound_class} column records what limits the kernel: \code{bandwidth}, \code{latency},
+\code{launch}, \code{occupancy}, \code{divergence}, \code{uncoalesced}, \code{spills} or \code{compute}.
+The analyzers read the database and rank opportunities (\cref{tab:analyzers}).
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lp{0.25\textwidth}p{0.52\textwidth}}
+\toprule
+ID & Opportunity & Rule \\
+\midrule
+A1 & fusion & consecutive kernels with the same iteration space, no host work between them, the consumer reading the
+  producer's output at the same index (\cref{ch:fusion}) \\
+A2 & caching & arrays read at three or more offsets; small read-only arrays read by many kernels; working sets
+  near the L2 size (\cref{ch:memory}) \\
+A3 & tiling & stencil kernels moving more than 1.5 times the minimal bytes (\cref{ch:tiling}) \\
+A4 & warp level & branch efficiency below 90\,\%; more than 4.5 sectors per request; occupancy limited by registers;
+  spills (\cref{ch:warp}) \\
+A5 & launches & kernels shorter than 10~$\mu$s; idle time between kernels (\cref{ch:fusion}) \\
+A6 & transfers & copies not explained by a sync point; pageable host buffers \\
+\bottomrule
+\end{tabular}
+\caption{The analyzers of profiler layer L6.}
+\label{tab:analyzers}
+\end{table}
+
+\section{Rules for trustworthy numbers}
+
+\begin{itemize}
+  \item \textbf{Fixed clocks.} GPU clocks vary with temperature and power. Measurements are taken with locked clocks
+    where the machine allows it, and the clock mode is recorded otherwise.
+  \item \textbf{Repeatability.} Each window is run five times; the coefficient of variation of each range must be
+    below 2\,\% (task PR-V1).
+  \item \textbf{Warm-up.} The first steps of a run include one-time costs: module loading, allocation, the first
+    touch of memory. Timings skip them.
+  \item \textbf{The right case.} The dev case and the full case differ in more than size: the full-case fire grid does
+    not fit the A100's L2, the dev-case one does (\cref{ch:gpuarch}). Fire kernels are measured on the full case
+    before conclusions are drawn.
+  \item \textbf{Nothing by hand.} Every number in the reports and in this book comes from the database, through a
+    generator that names the command that produced it.
+\end{itemize}
+
+\section{From a finding to an optimization}
+
+An optimization of the port must keep the bits. The profiler therefore classifies every proposed change before it is
+written (\cref{tab:bitclass}).
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lp{0.3\textwidth}p{0.45\textwidth}}
+\toprule
+Class & Meaning & Examples \\
+\midrule
+R0 & neutral by construction: no arithmetic statement changes & asynchronous queues; merging boundary strips that run
+  the same statements; launch shape; register limits; L2 persistence; removing kernels that write no state \\
+R1 & neutral by proof: the same statements on the same operands, regrouped & fusing a pointwise producer and
+  consumer; shared-memory tiles that only stage loads; splitting a kernel by branch; recomputing a value with the same
+  operations \\
+R2 & order-preserving parallel accumulation & contributions computed in parallel and summed sequentially in the
+  original order (RRTMG's $g$-points) \\
+F & changes bits & FMA, fast math, tree reductions of floats, mixed precision; only in the FAST build \\
+\bottomrule
+\end{tabular}
+\caption{Classes of optimization by their effect on the bits (\code{roadmap/plan-profiler.md}, section~4).}
+\label{tab:bitclass}
+\end{table}
+
+Integer reductions and maxima or minima of floating-point values are exact in any order, and belong to R0. A
+floating-point sum computed in parallel adds in a different order, and belongs to F.
+
+Each optimization then climbs its own ladder (\code{roadmap/plan-4.6/stage-6-performance.md}):
+\begin{algorithm}[ht]
+\caption{The optimization ladder of Stage 6.}
+\label{alg:optladder}
+\begin{algorithmic}[1]
+\State \textbf{evidence:} an analyzer row names the kernels and the expected gain in bytes, launches or divergence
+\State \textbf{legality:} a written note shows that every IEEE operation, its operands and its order are kept for every output value
+\State \textbf{code:} under \code{WRF_GPU}; a CUDA Fortran version beside the OpenACC one if needed
+\State \textbf{bitwise:} T-AB of the touched routes, T-TRACE-100, T-TRACE-RAD, T-REG-20; OpenACC against CUDA Fortran
+\State \textbf{measure:} on the A100 (dev case) and the H100 (full case)
+\If{the step is at least 3\,\% faster, or the kernel 10\,\%, and no other kernel slower}
+  \State keep it, and record the numbers
+\Else
+  \State reject it, and record the numbers, so that it is not tried again
+\EndIf
+\end{algorithmic}
+\end{algorithm}

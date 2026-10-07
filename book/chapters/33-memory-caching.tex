@@ -1,3 +1,117 @@
 \chapter{Optimization II: memory, caching and data layout}\label{ch:memory}
 
-This chapter is being written.
+Most of WRF on a GPU is limited by memory bandwidth (\cref{ch:perf}). A kernel can therefore become faster in two
+ways only: by moving fewer bytes, or by moving them more efficiently. This chapter covers both: how WRF's array
+layout meets the GPU's memory system, how to keep data in the caches between uses, and how to use the special memory
+paths a GPU offers. None of it changes an arithmetic statement, so all of it is class R0 or R1 (\cref{tab:bitclass}).
+
+\section{Coalescing and WRF's layout}
+
+A warp's load is served in 32-byte sectors. It is \emph{coalesced} when the 32 threads read 32 consecutive 4-byte
+values, which costs four sectors (\cref{ch:gpuarch}). The profiler reports the average number of sectors per request;
+four is ideal, 32 is the worst case.
+
+\paragraph{Fields.} WRF stores a 3D field as \code{a(ims:ime, kms:kme, jms:jme)}: $i$ is contiguous, then $k$, then
+$j$. A pointwise kernel collapses the source's loops \code{j}, \code{k}, \code{i} into one iteration space, and
+consecutive threads get consecutive $i$. The loads are coalesced, apart from the warps that straddle the end of one
+row and the start of the next, which need one or two extra sectors. The 4D arrays (moisture species, scalars) have the
+species index last, so each species is a 3D field of its own, with the same layout.
+
+\paragraph{Columns.} A column kernel gives each thread an $(i,j)$ column and loops over $k$ inside the thread. At each
+level $k$ the 32 threads of a warp read 32 consecutive $i$: coalesced again. This is the reason WRF's layout suits
+GPUs for both kinds of kernel. The layout that seems natural for column physics, with $k$ contiguous, would make each
+thread's column contiguous, but the threads of a warp would then read addresses a whole column apart, and every load
+would be uncoalesced.
+
+\paragraph{Private arrays.} The private column arrays of a column kernel live in local memory. The compiler
+interleaves local memory across threads: element $m$ of thread $t$ lies next to element $m$ of thread $t+1$. When all
+threads of a warp access the same element (the same level $k$), the access is coalesced.
+
+\paragraph{Exceptions.} A row-parallel kernel (Template R) gives each thread a row $j$, and loops over $i$ inside. The
+threads of a warp then read addresses one whole $(i,k)$ plane apart: 32 sectors per request. The ozone interpolation
+is such a kernel. It runs only on d01 and only at radiation steps, so it costs little; if the profiler finds it
+expensive, the remedy is to show (test T-OZN) that a per-column search finds the same bracket as the source's shared
+search, and to give each column its own thread.
+
+\section{Reuse through the caches}
+
+A value read twice from device memory costs twice; a value read once and found in a cache the second time costs once.
+Whether the second read hits depends on how much data passes through the cache between the two reads, the
+\emph{reuse distance}:
+\begin{itemize}
+  \item \textbf{Within a kernel.} A stencil reads each value several times, from neighbouring threads. Neighbours in
+    $i$ are in the same warp and share sectors. Neighbours in $j$ or $k$ are in other warps or blocks, and their reads
+    hit only if the data is still in L1 or L2. The 5th-order flux in $y$ reads six rows of the field. If those rows
+    are not in a cache, the kernel moves six times the minimal bytes. Tiling (\cref{ch:tiling}) makes the reuse
+    explicit.
+  \item \textbf{Between kernels.} A kernel that reads what the previous kernel wrote finds it in L2 if the data fits.
+    A d02 3D field of the full case (162~MB) never fits; a dev-case field (7.9~MB) does. This is a second reason why
+    dev-case timings do not carry over to the full case, and a reason why fusion (\cref{ch:fusion}) saves more on the
+    full case: there, the intermediate array really goes to device memory and back.
+\end{itemize}
+
+\subsection{L2 residency control}
+
+The A100 and H100 let a program set aside part of the L2 cache for \emph{persisting} accesses: an address window,
+attached to a CUDA stream, whose lines the cache prefers to keep (an access policy window). Candidates are arrays that
+many kernels read again and again and that fit:
+\begin{itemize}
+  \item the absorption tables of RRTMG (about 0.75~MB), read by every column at every radiation step;
+  \item the lookup tables of the surface layer and the Noah parameters;
+  \item the fire grid's level-set function, read by every kernel of the fire step. One full-case fire field
+    (43~MB) does not fit the A100's 40~MB L2 at all, and only just fits the H100's 50~MB.
+\end{itemize}
+Phase S6-09 measures the effect on both GPUs. The change is in class R0: the cache policy changes where a value is
+read from, never its bits.
+
+\subsection{The cache directive}
+
+OpenACC's \code{cache} directive asks the compiler to keep a range of an array in the fastest memory available
+inside a loop, for example the six values a 5th-order stencil reads along one direction. It is a hint: how much the
+compiler does with it varies, and only the measured sectors per request and DRAM bytes show whether it helped.
+Where it does not, the same staging is written by hand in CUDA Fortran (\cref{ch:tiling}).
+
+\section{Special memory paths}
+
+\paragraph{Read-only path.} Loads of data that the kernel never writes can go through the read-only (texture) data
+path, which has its own cache and handles scattered access well. The compiler uses it when it can prove that the
+array is not written in the kernel. Listing arrays as read-only in CUDA Fortran (\code{intent(in)} with the
+\code{device} attribute) makes that proof easy.
+
+\paragraph{Constant memory.} A small read-only area of 64~KB, cached separately, which serves all threads of a warp in
+one transaction when they read the \emph{same} address. It suits constants that every thread reads (WSM6's
+coefficients, the fire flags). It does not suit tables indexed by data, such as the stability-function tables of the
+surface layer, which are indexed by the stability parameter $z/L$ of each point: when the threads of a warp read
+different addresses, constant memory serializes them. Those tables are better left in device memory, where L1
+serves them.
+
+\paragraph{Shared memory.} The memory a block manages itself: the basis of tiling (\cref{ch:tiling}).
+
+\section{Transfers to the host}
+
+Copies between host and device go fastest from \emph{pinned} host memory, which the operating system may not move.
+From ordinary (pageable) memory, the driver copies through a pinned staging buffer, which halves the bandwidth and
+prevents overlap with computation. The history output of d02, written every 15 simulated minutes, is the largest
+regular copy to the host. Optimization O8 copies it into pinned buffers asynchronously, so that the GPU continues with
+the next steps while the host writes the file. The values written are the same; only the timing changes.
+
+\section{Worked examples}
+
+The profiler's analyzers A2 (caching) and A4 (coalescing) produce the candidate lists. Phases S6-09 and S6-10 take them
+in order:
+\begin{enumerate}
+  \item \textbf{Advection.} The $y$-flux kernels read six rows of the advected field per face. The measured DRAM bytes
+    against the minimal bytes show how much the caches already catch; the \code{cache} directive and then the tile of
+    \cref{ch:tiling} are tried in turn.
+  \item \textbf{Fire WENO.} \code{tend_ls} reads a $\pm 3$ neighbourhood of the level-set function in both directions.
+    On the full case, L2 persistence of the level-set field is tried on the H100, where it fits.
+  \item \textbf{Coalescing.} Kernels with more than 4.5 sectors per request are listed and their access patterns
+    examined; each fix is one kernel per commit.
+\end{enumerate}
+The numbers before and after each step are \tbr.
+
+\begin{keypoint}
+WRF's layout, with $i$ contiguous, is already the right one for a GPU: it coalesces both the pointwise stencils and
+the column kernels. Most memory optimizations of the port are therefore about reuse (moving each byte fewer times),
+not about layout.
+\end{keypoint}
