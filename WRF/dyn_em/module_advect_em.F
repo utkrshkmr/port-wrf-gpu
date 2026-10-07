@@ -136,6 +136,12 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
                         ims, ime, jms, jme, kms, kme,  &
                         its, ite, jts, jte, kts, kte  )
 
+      USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_ADVECT_U
+      USE module_gpu_callcheck
+#ifdef WRF_GPU
+      USE module_gpu_work, ONLY : work_p2_b1_fqy3
+#endif
+
    IMPLICIT NONE
    
    ! Input data
@@ -188,7 +194,15 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
    REAL,  DIMENSION( its-1:ite+1, kts:kte ) :: fqx
    REAL,  DIMENSION( its:ite, kts:kte, 2) :: fqy
-   
+
+#ifdef WRF_GPU
+#include "gpu_col.h"
+   LOGICAL :: gpu_isl
+   REAL :: fqx_i, fqx_ip1
+   REAL :: vflux_k(WRF_KMAX+1)
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: fqy3
+#endif
+
    LOGICAL :: degrade_xs, degrade_ys
    LOGICAL :: degrade_xe, degrade_ye
 
@@ -215,6 +229,281 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
 
    LOGICAL :: specified
+
+#ifdef WRF_GPU
+      IF (config_flags%h_mom_adv_order /= 5 .OR. config_flags%v_mom_adv_order /= 3) THEN
+         CALL wrf_error_fatal('advect_u: order not ported to the GPU')
+      END IF
+      IF (config_flags%polar) THEN
+         CALL wrf_error_fatal('advect_u: polar not ported to the GPU')
+      END IF
+      IF (config_flags%periodic_x .OR. config_flags%periodic_y) THEN
+         CALL wrf_error_fatal('advect_u: periodic boundary not ported to the GPU')
+      END IF
+      IF (config_flags%symmetric_xs .OR. config_flags%symmetric_xe .OR. &
+          config_flags%symmetric_ys .OR. config_flags%symmetric_ye) THEN
+         CALL wrf_error_fatal('advect_u: symmetric boundary not ported to the GPU')
+      END IF
+      IF (config_flags%open_xs .OR. config_flags%open_xe .OR. &
+          config_flags%open_ys .OR. config_flags%open_ye) THEN
+         CALL wrf_error_fatal('advect_u: open boundary not ported to the GPU')
+      END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_ADVECT_U)) THEN
+        CALL gpu_cc_save_r(1, tendency, SIZE(tendency,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_ADVECT_U)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(u, u_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, msfvy, &
+!$acc&   msftx, msfty, fzm, fzp, rdzw)
+        ELSE
+!$acc update self(u, u_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, msfvy, msftx, &
+!$acc&   msfty, fzm, fzp, rdzw)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+
+      fqy3(ims:ime,kms:kme,jms:jme) => work_p2_b1_fqy3(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+
+      specified = .false.
+      if(config_flags%specified .or. config_flags%nested) specified = .true.
+      horz_order = config_flags%h_mom_adv_order
+      vert_order = config_flags%v_mom_adv_order
+      ktf=MIN(kte,kde-1)
+
+      degrade_xs = .true.
+      degrade_xe = .true.
+      degrade_ys = .true.
+      degrade_ye = .true.
+
+      IF( config_flags%periodic_x   .or. &
+          config_flags%symmetric_xs .or. &
+          (its > ids+3)                ) degrade_xs = .false.
+      IF( config_flags%periodic_x   .or. &
+          config_flags%symmetric_xe .or. &
+          (ite < ide-2)                ) degrade_xe = .false.
+      IF( config_flags%periodic_y   .or. &
+          config_flags%symmetric_ys .or. &
+          (jts > jds+3)                ) degrade_ys = .false.
+      IF( config_flags%periodic_y   .or. &
+          config_flags%symmetric_ye .or. &
+          (jte < jde-4)                ) degrade_ye = .false.
+
+      i_start = its
+      i_end   = ite
+      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = ite
+
+      j_start = jts
+      j_end   = MIN(jte,jde-1)
+
+      j_start_f = j_start
+      j_end_f   = j_end+1
+
+      IF(degrade_ys) then
+        j_start = MAX(jts,jds+1)
+        j_start_f = jds+3
+      ENDIF
+
+      IF(degrade_ye) then
+        j_end = MIN(jte,jde-2)
+        j_end_f = jde-3
+      ENDIF
+
+      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+
+      ! K-ADVU-Y1: face fluxes (Template B)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_U)) default(none) &
+!$acc& present(fqy3, u, rv) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, j_start_f, j_end_f, jds, jde, kts, ktf, time_step) &
+!$acc& private(vel)
+      DO j = j_start, j_end+1
+      DO k=kts,ktf
+      DO i = i_start, i_end
+         IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+            fqy3( i, k, j ) = vel*advect_u_gpu_flux5(               &
+                    u(i,k,j-3), u(i,k,j-2), u(i,k,j-1),       &
+                    u(i,k,j  ), u(i,k,j+1), u(i,k,j+2),  vel, time_step )
+         ELSE IF ( j == jds+1 ) THEN
+            fqy3(i, k, j) = 0.25*(rv(i,k,j)+rv(i-1,k,j))  &
+                                   *(u(i,k,j)+u(i,k,j-1))
+         ELSE IF  ( j == jds+2 ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+            fqy3( i, k, j ) = vel*advect_u_gpu_flux3(      &
+                 u(i,k,j-2),u(i,k,j-1), u(i,k,j),u(i,k,j+1),vel, time_step )
+         ELSE IF ( j == jde-1 ) THEN
+            fqy3(i, k, j) = 0.25*(rv(i,k,j)+rv(i-1,k,j))    &
+                   *(u(i,k,j)+u(i,k,j-1))
+         ELSE IF ( j == jde-2 ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i-1,k,j))
+            fqy3( i, k, j ) = vel*advect_u_gpu_flux3(     &
+                 u(i,k,j-2),u(i,k,j-1),    &
+                 u(i,k,j),u(i,k,j+1),vel, time_step )
+         END IF
+      ENDDO
+      ENDDO
+      ENDDO
+
+      ! K-ADVU-Y2: y flux divergence (Template B)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_U)) default(none) &
+!$acc& present(tendency, fqy3, msfux) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy) &
+!$acc& private(mrdy)
+      DO j = j_start+1, j_end+1
+      DO k=kts,ktf
+      DO i = i_start, i_end
+            mrdy=msfux(i,j-1)*rdy
+            tendency(i,k,j-1) = tendency(i,k,j-1) - mrdy*(fqy3(i,k,j)-fqy3(i,k,j-1))
+      ENDDO
+      ENDDO
+      ENDDO
+
+      i_start = its
+      i_end   = ite
+
+      j_start = jts
+      j_end   = MIN(jte,jde-1)
+
+      i_start_f = i_start
+      i_end_f   = i_end+1
+
+      IF(degrade_xs) then
+        i_start = MAX(ids+1,its)
+        i_start_f = ids+3
+      ENDIF
+
+      IF(degrade_xe) then
+        i_end = MIN(ide-1,ite)
+        i_end_f = ide-2
+      ENDIF
+
+      ! K-ADVU-X: x flux, both faces per thread
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_U)) default(none) &
+!$acc& present(tendency, u, ru, msfux) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, ids, ide, rdx, time_step, &
+!$acc& degrade_xs, degrade_xe, specified) &
+!$acc& private(vel, ub, mrdx, fqx_i, fqx_ip1)
+      DO j = j_start, j_end
+      DO k=kts,ktf
+      DO i = i_start, i_end
+         IF (degrade_xe .AND. (i == ide) .AND. (i_end == ide-1)) THEN
+            ub = u(i,k,j)
+            IF (specified .AND. u(i-1,k,j) .GT. 0.)ub = u(i-1,k,j)
+            fqx_i = 0.25*(ru(i,k,j)+ru(i-1,k,j)) &
+                   *(u(i-1,k,j)+ub)
+         ELSE IF (degrade_xe .AND. (i == ide-1)) THEN
+            vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+            fqx_i = vel*advect_u_gpu_flux3( u(i-2,k,j), u(i-1,k,j),  &
+                                           u(i  ,k,j), u(i+1,k,j),  &
+                                           vel, time_step               )
+         ELSE IF (degrade_xs .AND. (i == ids+1) .AND. (i_start == ids+1)) THEN
+            ub = u(i-1,k,j)
+            IF (specified .AND. u(i,k,j) .LT. 0.)ub = u(i,k,j)
+            fqx_i = 0.25*(ru(i,k,j)+ru(i-1,k,j)) &
+                   *(u(i,k,j)+ub)
+         ELSE IF (degrade_xs .AND. (i == ids+2)) THEN
+            vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+            fqx_i = vel*advect_u_gpu_flux3( u(i-2,k,j), u(i-1,k,j),  &
+                                           u(i  ,k,j), u(i+1,k,j),  &
+                                           vel, time_step               )
+         ELSE
+            vel = 0.5*(ru(i,k,j)+ru(i-1,k,j))
+            fqx_i = vel*advect_u_gpu_flux5( u(i-3,k,j), u(i-2,k,j),  &
+                                           u(i-1,k,j), u(i  ,k,j),  &
+                                           u(i+1,k,j), u(i+2,k,j),  &
+                                           vel, time_step               )
+         END IF
+         IF (degrade_xe .AND. (i+1 == ide) .AND. (i_end == ide-1)) THEN
+            ub = u(i+1,k,j)
+            IF (specified .AND. u(i,k,j) .GT. 0.)ub = u(i,k,j)
+            fqx_ip1 = 0.25*(ru(i+1,k,j)+ru(i,k,j)) &
+                   *(u(i,k,j)+ub)
+         ELSE IF (degrade_xe .AND. (i+1 == ide-1)) THEN
+            vel = 0.5*(ru(i+1,k,j)+ru(i,k,j))
+            fqx_ip1 = vel*advect_u_gpu_flux3( u(i-1,k,j), u(i,k,j),  &
+                                           u(i+1,k,j), u(i+2,k,j),  &
+                                           vel, time_step               )
+         ELSE IF (degrade_xs .AND. (i+1 == ids+1) .AND. (i_start == ids+1)) THEN
+            ub = u(i,k,j)
+            IF (specified .AND. u(i+1,k,j) .LT. 0.)ub = u(i+1,k,j)
+            fqx_ip1 = 0.25*(ru(i+1,k,j)+ru(i,k,j)) &
+                   *(u(i+1,k,j)+ub)
+         ELSE IF (degrade_xs .AND. (i+1 == ids+2)) THEN
+            vel = 0.5*(ru(i+1,k,j)+ru(i,k,j))
+            fqx_ip1 = vel*advect_u_gpu_flux3( u(i-1,k,j), u(i,k,j),  &
+                                           u(i+1,k,j), u(i+2,k,j),  &
+                                           vel, time_step               )
+         ELSE
+            vel = 0.5*(ru(i+1,k,j)+ru(i,k,j))
+            fqx_ip1 = vel*advect_u_gpu_flux5( u(i-2,k,j), u(i-1,k,j),  &
+                                           u(i,k,j), u(i+1,k,j),  &
+                                           u(i+2,k,j), u(i+3,k,j),  &
+                                           vel, time_step               )
+         END IF
+         mrdx=msfux(i,j)*rdx
+         tendency(i,k,j) = tendency(i,k,j) - mrdx*(fqx_ip1-fqx_i)
+      ENDDO
+      ENDDO
+      ENDDO
+
+      i_start = its
+      i_end   = ite
+      j_start = jts
+      j_end   = min(jte,jde-1)
+
+      IF ( config_flags%open_ys .or. specified ) i_start = MAX(ids+1,its)
+      IF ( config_flags%open_ye .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%periodic_x ) i_start = its
+      IF ( config_flags%periodic_x ) i_end = ite
+
+      ! K-ADVU-Z: vertical flux, column (Template C)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_U)) default(none) &
+!$acc& present(tendency, u, rom, fzm, fzp, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, kte, ktf, time_step) &
+!$acc& private(k, vel, vflux_k)
+      DO j = j_start, j_end
+      DO i = i_start, i_end
+         vflux_k(kts)=0.
+         vflux_k(kte)=0.
+!$acc loop seq
+         DO k=kts+2,ktf-1
+            vel=0.5*(rom(i-1,k,j)+rom(i,k,j))
+            vflux_k(k) = vel*advect_u_gpu_flux3(               &
+                    u(i,k-2,j), u(i,k-1,j),       &
+                    u(i,k  ,j), u(i,k+1,j),  -vel, time_step )
+         ENDDO
+         k=kts+1
+         vflux_k(k)=0.5*(rom(i,k,j)+rom(i-1,k,j))  &
+                                 *(fzm(k)*u(i,k,j)+fzp(k)*u(i,k-1,j))
+         k=ktf
+         vflux_k(k)=0.5*(rom(i,k,j)+rom(i-1,k,j)) &
+                                 *(fzm(k)*u(i,k,j)+fzp(k)*u(i,k-1,j))
+!$acc loop seq
+         DO k=kts,ktf
+            tendency(i,k,j)=tendency(i,k,j)-rdzw(k)*(vflux_k(k+1)-vflux_k(k))
+         ENDDO
+      ENDDO
+      ENDDO
+
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVECT_U)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_ADVECT_U)) GOTO 99901
+      END IF
+      RETURN
+#endif
 
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
@@ -1524,7 +1813,57 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
    ENDIF vert_order_test
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVECT_U)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_ADVECT_U)) GOTO 99901
+      END IF
+#endif
 END SUBROUTINE advect_u
+#ifdef WRF_GPU
+PURE REAL FUNCTION advect_u_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   advect_u_gpu_flux4 = ( 7.*(q_i + q_im1) - (q_ip1 + q_im2) )/12.0
+END FUNCTION advect_u_gpu_flux4
+
+PURE REAL FUNCTION advect_u_gpu_flux3(q_im2, q_im1, q_i, q_ip1, ua, time_step)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_u_gpu_flux3 = advect_u_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua) +                &
+            sign(1,time_step)*sign(1.,ua)*((q_ip1 - q_im2)-3.*(q_i-q_im1))/12.0
+END FUNCTION advect_u_gpu_flux3
+
+PURE REAL FUNCTION advect_u_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   advect_u_gpu_flux6 = ( 37.*(q_i+q_im1) - 8.*(q_ip1+q_im2)       &
+                     +(q_ip2+q_im3) )/60.0
+END FUNCTION advect_u_gpu_flux6
+
+PURE REAL FUNCTION advect_u_gpu_flux5(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua, time_step)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_u_gpu_flux5 = advect_u_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)     &
+            -sign(1,time_step)*sign(1.,ua)*(                     &
+              (q_ip2-q_im3)-5.*(q_ip1-q_im2)+10.*(q_i-q_im1) )/60.0
+END FUNCTION advect_u_gpu_flux5
+#endif
 
 !-------------------------------------------------------------------------------
 
