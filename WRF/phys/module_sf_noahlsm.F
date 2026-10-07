@@ -9,6 +9,9 @@ USE module_model_constants, only : CP, R_D, XLF, XLV, RHOWATER, STBOLT, KARMAN
 use module_wrf_error
 #define FATAL_ERROR(M) call wrf_error_fatal( M )
 #endif
+#ifdef WRF_GPU
+   USE module_gpu_route, ONLY : gpu_on, R_LSM
+#endif
 
 !ckay=KIRAN ALAPATY @ US EPA -- November 01, 2015
 !
@@ -58,6 +61,18 @@ use module_wrf_error
                  REFKDT_DATA,FRZK_DATA,ZBOT_DATA,  SMLOW_DATA,SMHIGH_DATA,        &
                         CZIL_DATA
         REAL ::  LVCOEF_DATA
+
+#ifdef WRF_GPU
+        INTEGER(KIND=8) :: noahlsm_gpu_chksum
+!$acc declare create(LUCATS, BARE, NATURAL, NROTBL, SNUPTBL, RSTBL, RGLTBL, &
+!$acc& HSTBL, SHDTBL, MAXALB, EMISSMINTBL, EMISSMAXTBL, LAIMINTBL, LAIMAXTBL, &
+!$acc& Z0MINTBL, Z0MAXTBL, ALBEDOMINTBL, ALBEDOMAXTBL, ZTOPVTBL, ZBOTVTBL, &
+!$acc& TOPT_DATA, CMCMAX_DATA, CFACTR_DATA, RSMAX_DATA, SLCATS, BB, DRYSMC, &
+!$acc& F11, MAXSMC, REFSMC, SATPSI, SATDK, SATDW, WLTSMC, QTZ, SLPCATS, &
+!$acc& SLOPE_DATA, SBETA_DATA, FXEXP_DATA, CSOIL_DATA, SALP_DATA, REFDK_DATA, &
+!$acc& REFKDT_DATA, FRZK_DATA, ZBOT_DATA, SMLOW_DATA, SMHIGH_DATA, CZIL_DATA, &
+!$acc& LVCOEF_DATA, noahlsm_gpu_chksum)
+#endif
 
         CHARACTER*256  :: err_message
 !
@@ -4791,5 +4806,207 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
          noahlsm_sltype_code = 0
       END IF
       END FUNCTION noahlsm_sltype_code
+
+#ifdef WRF_GPU
+! island of R_LSM in lsm
+! P1.4 tables. noahlsm_gpu_chksum is scratch for the bit-sum, not one of the 49.
+
+      INTEGER(KIND=8) FUNCTION noahlsm_gpu_bits_r(x)
+!$acc routine seq
+      IMPLICIT NONE
+      REAL, INTENT(IN) :: x
+      INTEGER(KIND=4) :: i4
+      INTEGER(KIND=8) :: i8
+      IF (STORAGE_SIZE(x) == 32) THEN
+         i4 = TRANSFER(x, i4)
+         noahlsm_gpu_bits_r = INT(i4, KIND=8)
+      ELSE
+         i8 = TRANSFER(x, i8)
+         noahlsm_gpu_bits_r = i8
+      END IF
+      END FUNCTION noahlsm_gpu_bits_r
+
+      INTEGER(KIND=8) FUNCTION noahlsm_gpu_bits_i(x)
+!$acc routine seq
+      IMPLICIT NONE
+      INTEGER, INTENT(IN) :: x
+      noahlsm_gpu_bits_i = INT(x, KIND=8)
+      END FUNCTION noahlsm_gpu_bits_i
+
+      SUBROUTINE noahlsm_gpu_chk_finish(host_sum, nm, n, nbad, bad)
+      IMPLICIT NONE
+      INTEGER(KIND=8), INTENT(IN) :: host_sum
+      CHARACTER(LEN=*), INTENT(IN) :: nm
+      INTEGER, INTENT(INOUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      IF (gpu_on(R_LSM)) THEN
+!$acc update self(noahlsm_gpu_chksum)
+      END IF
+      n = n + 1
+      IF (host_sum .NE. noahlsm_gpu_chksum) THEN
+         nbad = nbad + 1
+         IF (LEN_TRIM(bad) + 1 + LEN_TRIM(nm) <= LEN(bad)) THEN
+            bad = TRIM(bad)//' '//TRIM(nm)
+         END IF
+      END IF
+      END SUBROUTINE noahlsm_gpu_chk_finish
+
+      SUBROUTINE noahlsm_gpu_chk_rv(a, nm, n, nbad, bad)
+      IMPLICIT NONE
+      REAL, INTENT(IN) :: a(:)
+      CHARACTER(LEN=*), INTENT(IN) :: nm
+      INTEGER, INTENT(INOUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      INTEGER :: i, k, nelt
+      INTEGER(KIND=8) :: host_sum
+      nelt = SIZE(a)
+      host_sum = 0_8
+      DO i = 1, nelt
+         host_sum = IEOR(host_sum, noahlsm_gpu_bits_r(a(i)))
+      END DO
+! noahlsm table bit-sum
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_LSM)) default(none) &
+!$acc& present(a, noahlsm_gpu_chksum) firstprivate(nelt)
+      DO k = 1, 1
+         noahlsm_gpu_chksum = 0_8
+!$acc loop seq
+         DO i = 1, nelt
+            noahlsm_gpu_chksum = IEOR(noahlsm_gpu_chksum, noahlsm_gpu_bits_r(a(i)))
+         END DO
+      END DO
+      CALL noahlsm_gpu_chk_finish(host_sum, nm, n, nbad, bad)
+      END SUBROUTINE noahlsm_gpu_chk_rv
+
+      SUBROUTINE noahlsm_gpu_chk_rs(a, nm, n, nbad, bad)
+      IMPLICIT NONE
+      REAL, INTENT(IN) :: a
+      CHARACTER(LEN=*), INTENT(IN) :: nm
+      INTEGER, INTENT(INOUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      INTEGER :: k
+      INTEGER(KIND=8) :: host_sum
+      host_sum = noahlsm_gpu_bits_r(a)
+! noahlsm table bit-sum
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_LSM)) default(none) &
+!$acc& present(a, noahlsm_gpu_chksum)
+      DO k = 1, 1
+         noahlsm_gpu_chksum = noahlsm_gpu_bits_r(a)
+      END DO
+      CALL noahlsm_gpu_chk_finish(host_sum, nm, n, nbad, bad)
+      END SUBROUTINE noahlsm_gpu_chk_rs
+
+      SUBROUTINE noahlsm_gpu_chk_iv(a, nm, n, nbad, bad)
+      IMPLICIT NONE
+      INTEGER, INTENT(IN) :: a(:)
+      CHARACTER(LEN=*), INTENT(IN) :: nm
+      INTEGER, INTENT(INOUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      INTEGER :: i, k, nelt
+      INTEGER(KIND=8) :: host_sum
+      nelt = SIZE(a)
+      host_sum = 0_8
+      DO i = 1, nelt
+         host_sum = IEOR(host_sum, noahlsm_gpu_bits_i(a(i)))
+      END DO
+! noahlsm table bit-sum
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_LSM)) default(none) &
+!$acc& present(a, noahlsm_gpu_chksum) firstprivate(nelt)
+      DO k = 1, 1
+         noahlsm_gpu_chksum = 0_8
+!$acc loop seq
+         DO i = 1, nelt
+            noahlsm_gpu_chksum = IEOR(noahlsm_gpu_chksum, noahlsm_gpu_bits_i(a(i)))
+         END DO
+      END DO
+      CALL noahlsm_gpu_chk_finish(host_sum, nm, n, nbad, bad)
+      END SUBROUTINE noahlsm_gpu_chk_iv
+
+      SUBROUTINE noahlsm_gpu_chk_is(a, nm, n, nbad, bad)
+      IMPLICIT NONE
+      INTEGER, INTENT(IN) :: a
+      CHARACTER(LEN=*), INTENT(IN) :: nm
+      INTEGER, INTENT(INOUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      INTEGER :: k
+      INTEGER(KIND=8) :: host_sum
+      host_sum = noahlsm_gpu_bits_i(a)
+! noahlsm table bit-sum
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_LSM)) default(none) &
+!$acc& present(a, noahlsm_gpu_chksum)
+      DO k = 1, 1
+         noahlsm_gpu_chksum = noahlsm_gpu_bits_i(a)
+      END DO
+      CALL noahlsm_gpu_chk_finish(host_sum, nm, n, nbad, bad)
+      END SUBROUTINE noahlsm_gpu_chk_is
+
+      SUBROUTINE noahlsm_gpu_upload()
+      IMPLICIT NONE
+!$acc update device(LUCATS, BARE, NATURAL, NROTBL, SNUPTBL, RSTBL, RGLTBL, &
+!$acc& HSTBL, SHDTBL, MAXALB, EMISSMINTBL, EMISSMAXTBL, LAIMINTBL, LAIMAXTBL, &
+!$acc& Z0MINTBL, Z0MAXTBL, ALBEDOMINTBL, ALBEDOMAXTBL, ZTOPVTBL, ZBOTVTBL, &
+!$acc& TOPT_DATA, CMCMAX_DATA, CFACTR_DATA, RSMAX_DATA, SLCATS, BB, DRYSMC, &
+!$acc& F11, MAXSMC, REFSMC, SATPSI, SATDK, SATDW, WLTSMC, QTZ, SLPCATS, &
+!$acc& SLOPE_DATA, SBETA_DATA, FXEXP_DATA, CSOIL_DATA, SALP_DATA, REFDK_DATA, &
+!$acc& REFKDT_DATA, FRZK_DATA, ZBOT_DATA, SMLOW_DATA, SMHIGH_DATA, CZIL_DATA, &
+!$acc& LVCOEF_DATA)
+      END SUBROUTINE noahlsm_gpu_upload
+
+      SUBROUTINE noahlsm_gpu_tabcheck(n, nbad, bad)
+      IMPLICIT NONE
+      INTEGER, INTENT(OUT) :: n, nbad
+      CHARACTER(LEN=*), INTENT(INOUT) :: bad
+      n = 0
+      nbad = 0
+      CALL noahlsm_gpu_chk_is(LUCATS, 'LUCATS', n, nbad, bad)
+      CALL noahlsm_gpu_chk_is(BARE, 'BARE', n, nbad, bad)
+      CALL noahlsm_gpu_chk_is(NATURAL, 'NATURAL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_iv(NROTBL, 'NROTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SNUPTBL, 'SNUPTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(RSTBL, 'RSTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(RGLTBL, 'RGLTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(HSTBL, 'HSTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SHDTBL, 'SHDTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(MAXALB, 'MAXALB', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(EMISSMINTBL, 'EMISSMINTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(EMISSMAXTBL, 'EMISSMAXTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(LAIMINTBL, 'LAIMINTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(LAIMAXTBL, 'LAIMAXTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(Z0MINTBL, 'Z0MINTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(Z0MAXTBL, 'Z0MAXTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(ALBEDOMINTBL, 'ALBEDOMINTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(ALBEDOMAXTBL, 'ALBEDOMAXTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(ZTOPVTBL, 'ZTOPVTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(ZBOTVTBL, 'ZBOTVTBL', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(TOPT_DATA, 'TOPT_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(CMCMAX_DATA, 'CMCMAX_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(CFACTR_DATA, 'CFACTR_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(RSMAX_DATA, 'RSMAX_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_is(SLCATS, 'SLCATS', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(BB, 'BB', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(DRYSMC, 'DRYSMC', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(F11, 'F11', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(MAXSMC, 'MAXSMC', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(REFSMC, 'REFSMC', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SATPSI, 'SATPSI', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SATDK, 'SATDK', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SATDW, 'SATDW', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(WLTSMC, 'WLTSMC', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(QTZ, 'QTZ', n, nbad, bad)
+      CALL noahlsm_gpu_chk_is(SLPCATS, 'SLPCATS', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rv(SLOPE_DATA, 'SLOPE_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(SBETA_DATA, 'SBETA_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(FXEXP_DATA, 'FXEXP_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(CSOIL_DATA, 'CSOIL_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(SALP_DATA, 'SALP_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(REFDK_DATA, 'REFDK_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(REFKDT_DATA, 'REFKDT_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(FRZK_DATA, 'FRZK_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(ZBOT_DATA, 'ZBOT_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(SMLOW_DATA, 'SMLOW_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(SMHIGH_DATA, 'SMHIGH_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(CZIL_DATA, 'CZIL_DATA', n, nbad, bad)
+      CALL noahlsm_gpu_chk_rs(LVCOEF_DATA, 'LVCOEF_DATA', n, nbad, bad)
+      END SUBROUTINE noahlsm_gpu_tabcheck
+#endif
 
 END MODULE module_sf_noahlsm

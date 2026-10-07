@@ -1,2 +1,12 @@
 # arith_guard exceptions of P3-NOAH (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/phys/module_sf_noahlsm.F|i4=transfer(x,i4)|table bit-sum: reinterpret a 32-bit real as bits; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|noahlsm_gpu_bits_r=int(i4,kind=8)|table bit-sum: widen the 32-bit pattern; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|i8=transfer(x,i8)|table bit-sum: reinterpret a 64-bit real as bits; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|noahlsm_gpu_bits_i=int(x,kind=8)|table bit-sum: widen an integer table value; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|bad=trim(bad)//' '//trim(nm)|tabcheck appends a differing table name; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|nelt=size(a)|tabcheck extent of a declared table; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|host_sum=ieor(host_sum,noahlsm_gpu_bits_r(a(i)))|host integer bit-sum of a real table; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|noahlsm_gpu_chksum=ieor(noahlsm_gpu_chksum,noahlsm_gpu_bits_r(a(i)))|device integer bit-sum of a real table; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|host_sum=ieor(host_sum,noahlsm_gpu_bits_i(a(i)))|host integer bit-sum of an integer table; not model arithmetic
+WRF/phys/module_sf_noahlsm.F|noahlsm_gpu_chksum=ieor(noahlsm_gpu_chksum,noahlsm_gpu_bits_i(a(i)))|device integer bit-sum of an integer table; not model arithmetic
