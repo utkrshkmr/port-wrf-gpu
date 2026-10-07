@@ -12,6 +12,11 @@
           mp_wsm6_init,     &
           mp_wsm6_finalize, &
           refl10cm_wsm6
+#ifdef WRF_GPU
+ public :: wsm6_gpu_upload, wsm6_gpu_tabcheck
+ integer(kind=8), save :: wsm6_gpu_dbits(66)
+!$acc declare create(wsm6_gpu_dbits)
+#endif
 
  real(kind=kind_phys),parameter,private:: dtcldcr = 120.    ! maximum time step for minor loops
  real(kind=kind_phys),parameter,private:: n0r = 8.e6        ! intercept parameter rain
@@ -62,6 +67,13 @@
     rsloper3max,rslopes3max,rslopeg3max
 
  real(kind=kind_phys),public,save:: pidn0s,pidnc
+!$acc declare create(qc0, qck1, bvtr1, bvtr2, bvtr3, bvtr4, g1pbr, g3pbr, g4pbr, g5pbro2, &
+!$acc& pvtr, eacrr, pacrr, bvtr6, g6pbr, precr1, precr2, roqimax, bvts1, bvts2, bvts3, &
+!$acc& bvts4, g1pbs, g3pbs, g4pbs, n0g, avtg, bvtg, deng, lamdagmax, g5pbso2, pvts, pacrs, &
+!$acc& precs1, precs2, pidn0r, xlv1, pacrc, pi, bvtg1, bvtg2, bvtg3, bvtg4, g1pbg, g3pbg, &
+!$acc& g4pbg, g5pbgo2, pvtg, pacrg, precg1, precg2, pidn0g, rslopermax, rslopesmax, &
+!$acc& rslopegmax, rsloperbmax, rslopesbmax, rslopegbmax, rsloper2max, rslopes2max, &
+!$acc& rslopeg2max, rsloper3max, rslopes3max, rslopeg3max, pidn0s, pidnc)
 
 
  contains
@@ -2446,5 +2458,270 @@
 
 
 !=================================================================================================================
+#ifdef WRF_GPU
+!=================================================================================================================
+! P1.4: upload and T-TAB bit-sum of the 66 SAVE scalars (INTERFACES.md I-4).
+! wsm6_gpu_dbits holds the device bit-sums for the check only.
+!=================================================================================================================
+
+subroutine wsm6_gpu_upload()
+!$acc update device(qc0, qck1, bvtr1, bvtr2, bvtr3, bvtr4, g1pbr, g3pbr, g4pbr, g5pbro2, &
+!$acc& pvtr, eacrr, pacrr, bvtr6, g6pbr, precr1, precr2, roqimax, bvts1, bvts2, bvts3, &
+!$acc& bvts4, g1pbs, g3pbs, g4pbs, n0g, avtg, bvtg, deng, lamdagmax, g5pbso2, pvts, pacrs, &
+!$acc& precs1, precs2, pidn0r, xlv1, pacrc, pi, bvtg1, bvtg2, bvtg3, bvtg4, g1pbg, g3pbg, &
+!$acc& g4pbg, g5pbgo2, pvtg, pacrg, precg1, precg2, pidn0g, rslopermax, rslopesmax, &
+!$acc& rslopegmax, rsloperbmax, rslopesbmax, rslopegbmax, rsloper2max, rslopes2max, &
+!$acc& rslopeg2max, rsloper3max, rslopes3max, rslopeg3max, pidn0s, pidnc)
+end subroutine wsm6_gpu_upload
+
+integer(kind=8) function wsm6_gpu_ibits(x)
+!$acc routine seq
+   ! Copy the scalar into int32 words and add the words. A real32 value uses
+   ! the first word; a real64 value uses both. Host and device run the same
+   ! statements, so the sums match.
+   real(kind=kind_phys), intent(in) :: x
+   integer(kind=4) :: w4(2)
+   w4(1) = 0_4
+   w4(2) = 0_4
+   if (storage_size(x) <= 32) then
+      w4(1) = transfer(x, w4(1))
+   else
+      w4 = transfer(x, w4)
+   end if
+   wsm6_gpu_ibits = int(w4(1), kind=8) + int(w4(2), kind=8)
+end function wsm6_gpu_ibits
+
+subroutine wsm6_gpu_note(name, nbad, bad)
+   character(len=*), intent(in) :: name
+   integer, intent(inout) :: nbad
+   character(len=*), intent(inout) :: bad
+   nbad = nbad + 1
+   if (len_trim(bad) + len_trim(name) + 1 <= len(bad)) then
+      bad = trim(bad) // ' ' // trim(name)
+   end if
+end subroutine wsm6_gpu_note
+
+subroutine wsm6_gpu_tabcheck(n, nbad, bad)
+   use module_gpu_route, only : gpu_on, r_wsm6
+   integer, intent(out) :: n, nbad
+   character(len=*), intent(inout) :: bad
+   integer :: i
+   integer(kind=8) :: hb(66)
+   n = 66
+   nbad = 0
+   hb(1) = wsm6_gpu_ibits(qc0)
+   hb(2) = wsm6_gpu_ibits(qck1)
+   hb(3) = wsm6_gpu_ibits(bvtr1)
+   hb(4) = wsm6_gpu_ibits(bvtr2)
+   hb(5) = wsm6_gpu_ibits(bvtr3)
+   hb(6) = wsm6_gpu_ibits(bvtr4)
+   hb(7) = wsm6_gpu_ibits(g1pbr)
+   hb(8) = wsm6_gpu_ibits(g3pbr)
+   hb(9) = wsm6_gpu_ibits(g4pbr)
+   hb(10) = wsm6_gpu_ibits(g5pbro2)
+   hb(11) = wsm6_gpu_ibits(pvtr)
+   hb(12) = wsm6_gpu_ibits(eacrr)
+   hb(13) = wsm6_gpu_ibits(pacrr)
+   hb(14) = wsm6_gpu_ibits(bvtr6)
+   hb(15) = wsm6_gpu_ibits(g6pbr)
+   hb(16) = wsm6_gpu_ibits(precr1)
+   hb(17) = wsm6_gpu_ibits(precr2)
+   hb(18) = wsm6_gpu_ibits(roqimax)
+   hb(19) = wsm6_gpu_ibits(bvts1)
+   hb(20) = wsm6_gpu_ibits(bvts2)
+   hb(21) = wsm6_gpu_ibits(bvts3)
+   hb(22) = wsm6_gpu_ibits(bvts4)
+   hb(23) = wsm6_gpu_ibits(g1pbs)
+   hb(24) = wsm6_gpu_ibits(g3pbs)
+   hb(25) = wsm6_gpu_ibits(g4pbs)
+   hb(26) = wsm6_gpu_ibits(n0g)
+   hb(27) = wsm6_gpu_ibits(avtg)
+   hb(28) = wsm6_gpu_ibits(bvtg)
+   hb(29) = wsm6_gpu_ibits(deng)
+   hb(30) = wsm6_gpu_ibits(lamdagmax)
+   hb(31) = wsm6_gpu_ibits(g5pbso2)
+   hb(32) = wsm6_gpu_ibits(pvts)
+   hb(33) = wsm6_gpu_ibits(pacrs)
+   hb(34) = wsm6_gpu_ibits(precs1)
+   hb(35) = wsm6_gpu_ibits(precs2)
+   hb(36) = wsm6_gpu_ibits(pidn0r)
+   hb(37) = wsm6_gpu_ibits(xlv1)
+   hb(38) = wsm6_gpu_ibits(pacrc)
+   hb(39) = wsm6_gpu_ibits(pi)
+   hb(40) = wsm6_gpu_ibits(bvtg1)
+   hb(41) = wsm6_gpu_ibits(bvtg2)
+   hb(42) = wsm6_gpu_ibits(bvtg3)
+   hb(43) = wsm6_gpu_ibits(bvtg4)
+   hb(44) = wsm6_gpu_ibits(g1pbg)
+   hb(45) = wsm6_gpu_ibits(g3pbg)
+   hb(46) = wsm6_gpu_ibits(g4pbg)
+   hb(47) = wsm6_gpu_ibits(g5pbgo2)
+   hb(48) = wsm6_gpu_ibits(pvtg)
+   hb(49) = wsm6_gpu_ibits(pacrg)
+   hb(50) = wsm6_gpu_ibits(precg1)
+   hb(51) = wsm6_gpu_ibits(precg2)
+   hb(52) = wsm6_gpu_ibits(pidn0g)
+   hb(53) = wsm6_gpu_ibits(rslopermax)
+   hb(54) = wsm6_gpu_ibits(rslopesmax)
+   hb(55) = wsm6_gpu_ibits(rslopegmax)
+   hb(56) = wsm6_gpu_ibits(rsloperbmax)
+   hb(57) = wsm6_gpu_ibits(rslopesbmax)
+   hb(58) = wsm6_gpu_ibits(rslopegbmax)
+   hb(59) = wsm6_gpu_ibits(rsloper2max)
+   hb(60) = wsm6_gpu_ibits(rslopes2max)
+   hb(61) = wsm6_gpu_ibits(rslopeg2max)
+   hb(62) = wsm6_gpu_ibits(rsloper3max)
+   hb(63) = wsm6_gpu_ibits(rslopes3max)
+   hb(64) = wsm6_gpu_ibits(rslopeg3max)
+   hb(65) = wsm6_gpu_ibits(pidn0s)
+   hb(66) = wsm6_gpu_ibits(pidnc)
+   ! island of R_WSM6 in wsm6
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_WSM6)) default(none) &
+!$acc& present(wsm6_gpu_dbits, qc0, qck1, bvtr1, bvtr2, bvtr3, bvtr4, g1pbr, g3pbr, g4pbr, &
+!$acc& g5pbro2, pvtr, eacrr, pacrr, bvtr6, g6pbr, precr1, precr2, roqimax, bvts1, bvts2, &
+!$acc& bvts3, bvts4, g1pbs, g3pbs, g4pbs, n0g, avtg, bvtg, deng, lamdagmax, g5pbso2, pvts, &
+!$acc& pacrs, precs1, precs2, pidn0r, xlv1, pacrc, pi, bvtg1, bvtg2, bvtg3, bvtg4, g1pbg, &
+!$acc& g3pbg, g4pbg, g5pbgo2, pvtg, pacrg, precg1, precg2, pidn0g, rslopermax, rslopesmax, &
+!$acc& rslopegmax, rsloperbmax, rslopesbmax, rslopegbmax, rsloper2max, rslopes2max, &
+!$acc& rslopeg2max, rsloper3max, rslopes3max, rslopeg3max, pidn0s, pidnc)
+   do i = 1, 1
+      wsm6_gpu_dbits(1) = wsm6_gpu_ibits(qc0)
+      wsm6_gpu_dbits(2) = wsm6_gpu_ibits(qck1)
+      wsm6_gpu_dbits(3) = wsm6_gpu_ibits(bvtr1)
+      wsm6_gpu_dbits(4) = wsm6_gpu_ibits(bvtr2)
+      wsm6_gpu_dbits(5) = wsm6_gpu_ibits(bvtr3)
+      wsm6_gpu_dbits(6) = wsm6_gpu_ibits(bvtr4)
+      wsm6_gpu_dbits(7) = wsm6_gpu_ibits(g1pbr)
+      wsm6_gpu_dbits(8) = wsm6_gpu_ibits(g3pbr)
+      wsm6_gpu_dbits(9) = wsm6_gpu_ibits(g4pbr)
+      wsm6_gpu_dbits(10) = wsm6_gpu_ibits(g5pbro2)
+      wsm6_gpu_dbits(11) = wsm6_gpu_ibits(pvtr)
+      wsm6_gpu_dbits(12) = wsm6_gpu_ibits(eacrr)
+      wsm6_gpu_dbits(13) = wsm6_gpu_ibits(pacrr)
+      wsm6_gpu_dbits(14) = wsm6_gpu_ibits(bvtr6)
+      wsm6_gpu_dbits(15) = wsm6_gpu_ibits(g6pbr)
+      wsm6_gpu_dbits(16) = wsm6_gpu_ibits(precr1)
+      wsm6_gpu_dbits(17) = wsm6_gpu_ibits(precr2)
+      wsm6_gpu_dbits(18) = wsm6_gpu_ibits(roqimax)
+      wsm6_gpu_dbits(19) = wsm6_gpu_ibits(bvts1)
+      wsm6_gpu_dbits(20) = wsm6_gpu_ibits(bvts2)
+      wsm6_gpu_dbits(21) = wsm6_gpu_ibits(bvts3)
+      wsm6_gpu_dbits(22) = wsm6_gpu_ibits(bvts4)
+      wsm6_gpu_dbits(23) = wsm6_gpu_ibits(g1pbs)
+      wsm6_gpu_dbits(24) = wsm6_gpu_ibits(g3pbs)
+      wsm6_gpu_dbits(25) = wsm6_gpu_ibits(g4pbs)
+      wsm6_gpu_dbits(26) = wsm6_gpu_ibits(n0g)
+      wsm6_gpu_dbits(27) = wsm6_gpu_ibits(avtg)
+      wsm6_gpu_dbits(28) = wsm6_gpu_ibits(bvtg)
+      wsm6_gpu_dbits(29) = wsm6_gpu_ibits(deng)
+      wsm6_gpu_dbits(30) = wsm6_gpu_ibits(lamdagmax)
+      wsm6_gpu_dbits(31) = wsm6_gpu_ibits(g5pbso2)
+      wsm6_gpu_dbits(32) = wsm6_gpu_ibits(pvts)
+      wsm6_gpu_dbits(33) = wsm6_gpu_ibits(pacrs)
+      wsm6_gpu_dbits(34) = wsm6_gpu_ibits(precs1)
+      wsm6_gpu_dbits(35) = wsm6_gpu_ibits(precs2)
+      wsm6_gpu_dbits(36) = wsm6_gpu_ibits(pidn0r)
+      wsm6_gpu_dbits(37) = wsm6_gpu_ibits(xlv1)
+      wsm6_gpu_dbits(38) = wsm6_gpu_ibits(pacrc)
+      wsm6_gpu_dbits(39) = wsm6_gpu_ibits(pi)
+      wsm6_gpu_dbits(40) = wsm6_gpu_ibits(bvtg1)
+      wsm6_gpu_dbits(41) = wsm6_gpu_ibits(bvtg2)
+      wsm6_gpu_dbits(42) = wsm6_gpu_ibits(bvtg3)
+      wsm6_gpu_dbits(43) = wsm6_gpu_ibits(bvtg4)
+      wsm6_gpu_dbits(44) = wsm6_gpu_ibits(g1pbg)
+      wsm6_gpu_dbits(45) = wsm6_gpu_ibits(g3pbg)
+      wsm6_gpu_dbits(46) = wsm6_gpu_ibits(g4pbg)
+      wsm6_gpu_dbits(47) = wsm6_gpu_ibits(g5pbgo2)
+      wsm6_gpu_dbits(48) = wsm6_gpu_ibits(pvtg)
+      wsm6_gpu_dbits(49) = wsm6_gpu_ibits(pacrg)
+      wsm6_gpu_dbits(50) = wsm6_gpu_ibits(precg1)
+      wsm6_gpu_dbits(51) = wsm6_gpu_ibits(precg2)
+      wsm6_gpu_dbits(52) = wsm6_gpu_ibits(pidn0g)
+      wsm6_gpu_dbits(53) = wsm6_gpu_ibits(rslopermax)
+      wsm6_gpu_dbits(54) = wsm6_gpu_ibits(rslopesmax)
+      wsm6_gpu_dbits(55) = wsm6_gpu_ibits(rslopegmax)
+      wsm6_gpu_dbits(56) = wsm6_gpu_ibits(rsloperbmax)
+      wsm6_gpu_dbits(57) = wsm6_gpu_ibits(rslopesbmax)
+      wsm6_gpu_dbits(58) = wsm6_gpu_ibits(rslopegbmax)
+      wsm6_gpu_dbits(59) = wsm6_gpu_ibits(rsloper2max)
+      wsm6_gpu_dbits(60) = wsm6_gpu_ibits(rslopes2max)
+      wsm6_gpu_dbits(61) = wsm6_gpu_ibits(rslopeg2max)
+      wsm6_gpu_dbits(62) = wsm6_gpu_ibits(rsloper3max)
+      wsm6_gpu_dbits(63) = wsm6_gpu_ibits(rslopes3max)
+      wsm6_gpu_dbits(64) = wsm6_gpu_ibits(rslopeg3max)
+      wsm6_gpu_dbits(65) = wsm6_gpu_ibits(pidn0s)
+      wsm6_gpu_dbits(66) = wsm6_gpu_ibits(pidnc)
+   end do
+   if (gpu_on(R_WSM6)) then
+!$acc update self(wsm6_gpu_dbits)
+   end if
+   if (hb(1) /= wsm6_gpu_dbits(1)) call wsm6_gpu_note('qc0', nbad, bad)
+   if (hb(2) /= wsm6_gpu_dbits(2)) call wsm6_gpu_note('qck1', nbad, bad)
+   if (hb(3) /= wsm6_gpu_dbits(3)) call wsm6_gpu_note('bvtr1', nbad, bad)
+   if (hb(4) /= wsm6_gpu_dbits(4)) call wsm6_gpu_note('bvtr2', nbad, bad)
+   if (hb(5) /= wsm6_gpu_dbits(5)) call wsm6_gpu_note('bvtr3', nbad, bad)
+   if (hb(6) /= wsm6_gpu_dbits(6)) call wsm6_gpu_note('bvtr4', nbad, bad)
+   if (hb(7) /= wsm6_gpu_dbits(7)) call wsm6_gpu_note('g1pbr', nbad, bad)
+   if (hb(8) /= wsm6_gpu_dbits(8)) call wsm6_gpu_note('g3pbr', nbad, bad)
+   if (hb(9) /= wsm6_gpu_dbits(9)) call wsm6_gpu_note('g4pbr', nbad, bad)
+   if (hb(10) /= wsm6_gpu_dbits(10)) call wsm6_gpu_note('g5pbro2', nbad, bad)
+   if (hb(11) /= wsm6_gpu_dbits(11)) call wsm6_gpu_note('pvtr', nbad, bad)
+   if (hb(12) /= wsm6_gpu_dbits(12)) call wsm6_gpu_note('eacrr', nbad, bad)
+   if (hb(13) /= wsm6_gpu_dbits(13)) call wsm6_gpu_note('pacrr', nbad, bad)
+   if (hb(14) /= wsm6_gpu_dbits(14)) call wsm6_gpu_note('bvtr6', nbad, bad)
+   if (hb(15) /= wsm6_gpu_dbits(15)) call wsm6_gpu_note('g6pbr', nbad, bad)
+   if (hb(16) /= wsm6_gpu_dbits(16)) call wsm6_gpu_note('precr1', nbad, bad)
+   if (hb(17) /= wsm6_gpu_dbits(17)) call wsm6_gpu_note('precr2', nbad, bad)
+   if (hb(18) /= wsm6_gpu_dbits(18)) call wsm6_gpu_note('roqimax', nbad, bad)
+   if (hb(19) /= wsm6_gpu_dbits(19)) call wsm6_gpu_note('bvts1', nbad, bad)
+   if (hb(20) /= wsm6_gpu_dbits(20)) call wsm6_gpu_note('bvts2', nbad, bad)
+   if (hb(21) /= wsm6_gpu_dbits(21)) call wsm6_gpu_note('bvts3', nbad, bad)
+   if (hb(22) /= wsm6_gpu_dbits(22)) call wsm6_gpu_note('bvts4', nbad, bad)
+   if (hb(23) /= wsm6_gpu_dbits(23)) call wsm6_gpu_note('g1pbs', nbad, bad)
+   if (hb(24) /= wsm6_gpu_dbits(24)) call wsm6_gpu_note('g3pbs', nbad, bad)
+   if (hb(25) /= wsm6_gpu_dbits(25)) call wsm6_gpu_note('g4pbs', nbad, bad)
+   if (hb(26) /= wsm6_gpu_dbits(26)) call wsm6_gpu_note('n0g', nbad, bad)
+   if (hb(27) /= wsm6_gpu_dbits(27)) call wsm6_gpu_note('avtg', nbad, bad)
+   if (hb(28) /= wsm6_gpu_dbits(28)) call wsm6_gpu_note('bvtg', nbad, bad)
+   if (hb(29) /= wsm6_gpu_dbits(29)) call wsm6_gpu_note('deng', nbad, bad)
+   if (hb(30) /= wsm6_gpu_dbits(30)) call wsm6_gpu_note('lamdagmax', nbad, bad)
+   if (hb(31) /= wsm6_gpu_dbits(31)) call wsm6_gpu_note('g5pbso2', nbad, bad)
+   if (hb(32) /= wsm6_gpu_dbits(32)) call wsm6_gpu_note('pvts', nbad, bad)
+   if (hb(33) /= wsm6_gpu_dbits(33)) call wsm6_gpu_note('pacrs', nbad, bad)
+   if (hb(34) /= wsm6_gpu_dbits(34)) call wsm6_gpu_note('precs1', nbad, bad)
+   if (hb(35) /= wsm6_gpu_dbits(35)) call wsm6_gpu_note('precs2', nbad, bad)
+   if (hb(36) /= wsm6_gpu_dbits(36)) call wsm6_gpu_note('pidn0r', nbad, bad)
+   if (hb(37) /= wsm6_gpu_dbits(37)) call wsm6_gpu_note('xlv1', nbad, bad)
+   if (hb(38) /= wsm6_gpu_dbits(38)) call wsm6_gpu_note('pacrc', nbad, bad)
+   if (hb(39) /= wsm6_gpu_dbits(39)) call wsm6_gpu_note('pi', nbad, bad)
+   if (hb(40) /= wsm6_gpu_dbits(40)) call wsm6_gpu_note('bvtg1', nbad, bad)
+   if (hb(41) /= wsm6_gpu_dbits(41)) call wsm6_gpu_note('bvtg2', nbad, bad)
+   if (hb(42) /= wsm6_gpu_dbits(42)) call wsm6_gpu_note('bvtg3', nbad, bad)
+   if (hb(43) /= wsm6_gpu_dbits(43)) call wsm6_gpu_note('bvtg4', nbad, bad)
+   if (hb(44) /= wsm6_gpu_dbits(44)) call wsm6_gpu_note('g1pbg', nbad, bad)
+   if (hb(45) /= wsm6_gpu_dbits(45)) call wsm6_gpu_note('g3pbg', nbad, bad)
+   if (hb(46) /= wsm6_gpu_dbits(46)) call wsm6_gpu_note('g4pbg', nbad, bad)
+   if (hb(47) /= wsm6_gpu_dbits(47)) call wsm6_gpu_note('g5pbgo2', nbad, bad)
+   if (hb(48) /= wsm6_gpu_dbits(48)) call wsm6_gpu_note('pvtg', nbad, bad)
+   if (hb(49) /= wsm6_gpu_dbits(49)) call wsm6_gpu_note('pacrg', nbad, bad)
+   if (hb(50) /= wsm6_gpu_dbits(50)) call wsm6_gpu_note('precg1', nbad, bad)
+   if (hb(51) /= wsm6_gpu_dbits(51)) call wsm6_gpu_note('precg2', nbad, bad)
+   if (hb(52) /= wsm6_gpu_dbits(52)) call wsm6_gpu_note('pidn0g', nbad, bad)
+   if (hb(53) /= wsm6_gpu_dbits(53)) call wsm6_gpu_note('rslopermax', nbad, bad)
+   if (hb(54) /= wsm6_gpu_dbits(54)) call wsm6_gpu_note('rslopesmax', nbad, bad)
+   if (hb(55) /= wsm6_gpu_dbits(55)) call wsm6_gpu_note('rslopegmax', nbad, bad)
+   if (hb(56) /= wsm6_gpu_dbits(56)) call wsm6_gpu_note('rsloperbmax', nbad, bad)
+   if (hb(57) /= wsm6_gpu_dbits(57)) call wsm6_gpu_note('rslopesbmax', nbad, bad)
+   if (hb(58) /= wsm6_gpu_dbits(58)) call wsm6_gpu_note('rslopegbmax', nbad, bad)
+   if (hb(59) /= wsm6_gpu_dbits(59)) call wsm6_gpu_note('rsloper2max', nbad, bad)
+   if (hb(60) /= wsm6_gpu_dbits(60)) call wsm6_gpu_note('rslopes2max', nbad, bad)
+   if (hb(61) /= wsm6_gpu_dbits(61)) call wsm6_gpu_note('rslopeg2max', nbad, bad)
+   if (hb(62) /= wsm6_gpu_dbits(62)) call wsm6_gpu_note('rsloper3max', nbad, bad)
+   if (hb(63) /= wsm6_gpu_dbits(63)) call wsm6_gpu_note('rslopes3max', nbad, bad)
+   if (hb(64) /= wsm6_gpu_dbits(64)) call wsm6_gpu_note('rslopeg3max', nbad, bad)
+   if (hb(65) /= wsm6_gpu_dbits(65)) call wsm6_gpu_note('pidn0s', nbad, bad)
+   if (hb(66) /= wsm6_gpu_dbits(66)) call wsm6_gpu_note('pidnc', nbad, bad)
+end subroutine wsm6_gpu_tabcheck
+#endif
  end module mp_wsm6
 !=================================================================================================================

@@ -1,2 +1,6 @@
 # arith_guard exceptions of P3-WSM6 (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/phys/physics_mmm/mp_wsm6.F90|w4(1)=transfer(x,w4(1))|T-TAB bit pattern of one SAVE scalar; TRANSFER copies bits and is not model arithmetic
+WRF/phys/physics_mmm/mp_wsm6.F90|w4=transfer(x,w4)|T-TAB bit pattern of a real64 SAVE scalar into two int32 words
+WRF/phys/physics_mmm/mp_wsm6.F90|wsm6_gpu_ibits=int(w4(1),kind=8)+int(w4(2),kind=8)|T-TAB integer bit-sum of those words; same operations on host and device
+WRF/phys/physics_mmm/mp_wsm6.F90|bad=trim(bad)//' '//trim(name)|T-TAB appends a differing table name; not model arithmetic
