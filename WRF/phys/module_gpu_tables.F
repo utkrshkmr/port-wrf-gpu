@@ -47,5 +47,55 @@ SUBROUTINE gpu_update_tables()
 END SUBROUTINE gpu_update_tables
 
 SUBROUTINE gpu_selftest_tab()
-   ! TODO(P1-TAB): under #ifdef WRF_GPU, CALL the five tabcheck routines, sum n and nbad, print the T-TAB line
+   ! T-TAB (INTERFACES.md I-4, I-5). Each tabcheck sets n and nbad and appends
+   ! the names that differ onto bad. This routine sums the counts and prints
+   ! exactly one line through wrf_message. The table variables stay in the
+   ! physics modules. n is that sum, including the RRTMG tables, not a fixed 120.
+#ifdef WRF_GPU
+   USE mp_wsm6, ONLY : wsm6_gpu_tabcheck
+   USE sf_sfclayrev, ONLY : sfclayrev_gpu_tabcheck
+   USE module_sf_noahlsm, ONLY : noahlsm_gpu_tabcheck
+   USE module_ra_sw, ONLY : ra_sw_gpu_tabcheck
+   USE module_ra_rrtmg_lw, ONLY : rrtmg_lw_gpu_tabcheck
+#endif
+   IMPLICIT NONE
+#ifdef WRF_GPU
+   INTEGER :: n, nbad, nsum, nbadsum, nlen
+   CHARACTER(LEN=8192) :: bad
+   CHARACTER(LEN=8448) :: line
+   nsum = 0
+   nbadsum = 0
+   bad = ''
+   CALL wsm6_gpu_tabcheck(n, nbad, bad)
+   nsum = nsum + n
+   nbadsum = nbadsum + nbad
+   CALL sfclayrev_gpu_tabcheck(n, nbad, bad)
+   nsum = nsum + n
+   nbadsum = nbadsum + nbad
+   CALL noahlsm_gpu_tabcheck(n, nbad, bad)
+   nsum = nsum + n
+   nbadsum = nbadsum + nbad
+   CALL ra_sw_gpu_tabcheck(n, nbad, bad)
+   nsum = nsum + n
+   nbadsum = nbadsum + nbad
+   CALL rrtmg_lw_gpu_tabcheck(n, nbad, bad)
+   nsum = nsum + n
+   nbadsum = nbadsum + nbad
+   IF (nbadsum == 0) THEN
+      WRITE(line, '(A,I0,A)') 'gpu_selftest: T-TAB PASS ', nsum, ' tables'
+   ELSE
+      ! Leading blanks dropped so the colon has one space before the first name.
+      ! The buffer keeps the front of the list: the first bad names.
+      bad = ADJUSTL(bad)
+      nlen = LEN_TRIM(bad)
+      IF (nlen == 0) THEN
+         WRITE(line, '(A,I0,A,I0,A)') 'gpu_selftest: T-TAB FAIL ', &
+              nbadsum, ' of ', nsum, ':'
+      ELSE
+         WRITE(line, '(A,I0,A,I0,A,A)') 'gpu_selftest: T-TAB FAIL ', &
+              nbadsum, ' of ', nsum, ': ', bad(1:nlen)
+      END IF
+   END IF
+   CALL wrf_message(TRIM(line))
+#endif
 END SUBROUTINE gpu_selftest_tab
