@@ -114,6 +114,7 @@ END SUBROUTINE column
 #else
 
 MODULE module_advect_em
+   USE module_repro_math
 
   USE module_bc
   USE module_model_constants
@@ -10884,6 +10885,7 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
                         ids, ide, jds, jde, kds, kde,  &
                         ims, ime, jms, jme, kms, kme,  &
                         its, ite, jts, jte, kts, kte  )
+   USE module_repro_math
 
 !
 ! 5th-order WENO (Weighted Essentially Non-Oscillatory) scheme adapted from COMMAS.  
@@ -11531,6 +11533,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
                         ids, ide, jds, jde, kds, kde,  &
                         ims, ime, jms, jme, kms, kme,  &
                         its, ite, jts, jte, kts, kte  )
+   USE module_repro_math
 
 !
 ! 5th-order WENO (Weighted Essentially Non-Oscillatory) scheme adapted from COMMAS.  
@@ -12226,6 +12229,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
                          ids, ide, jds, jde, kds, kde,  &
                          ims, ime, jms, jme, kms, kme,  &
                          its, ite, jts, jte, kts, kte  )
+   USE module_repro_math
 
 !
 ! 5th-order WENO (Weighted Essentially Non-Oscillatory) scheme adapted from COMMAS.  

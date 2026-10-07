@@ -209,6 +209,20 @@ module_io_quilt.o: \
 module_machine.o: \
 	module_driver_constants.o 
 
+libmassv.o: \
+	module_repro_math.o 
+
+module_bittrace.o: \
+	module_domain.o \
+	module_driver_constants.o \
+	module_wrf_error.o 
+
+module_gpu_route.o: \
+	module_wrf_error.o 
+
+module_gpu_scratch.o: \
+	module_wrf_error.o 
+
 
 module_nesting.o: \
 	module_machine.o \
@@ -2803,6 +2817,7 @@ solve_em.o: \
 	../share/module_bc.o \
 	module_bc_em.o \
 	module_big_step_utilities_em.o \
+	../frame/module_bittrace.o \
 	../frame/module_comm_dm.o \
 	../frame/module_configure.o \
 	../frame/module_cpl.o \
@@ -2816,6 +2831,7 @@ solve_em.o: \
 	../phys/module_firebrand_spotting.o \
 	module_first_rk_step_part1.o \
 	module_first_rk_step_part2.o \
+	../frame/module_gpu_scratch.o \
 	../share/module_llxy.o \
 	../frame/module_machine.o \
 	../phys/module_microphysics_driver.o \
@@ -2823,6 +2839,7 @@ solve_em.o: \
 	../share/module_model_constants.o \
 	../phys/module_physics_addtendc.o \
 	module_polarfft.o \
+	../frame/module_repro_math.o \
 	module_small_step_em.o \
 	module_solvedebug_em.o \
 	../frame/module_tiles.o 
