@@ -1,3 +1,192 @@
 \chapter{GPU architecture: A100 and H100}\label{ch:gpuarch}
 
-This chapter is being written.
+A GPU is a processor built for throughput: it runs tens of thousands of threads at once and hides the latency of
+each memory access behind the work of other threads. This chapter explains the parts of an NVIDIA GPU that matter
+for WRF, and compares the two GPUs the port targets:
+\begin{itemize}
+  \item the A100 (Ampere, compute capability 8.0) \citep{nvidia2020a100};
+  \item the H100 (Hopper, compute capability 9.0) \citep{nvidia2022h100}.
+\end{itemize}
+The numbers in this chapter are datasheet values. The port measures the real ceilings of its machines with
+micro-benchmarks (\cref{ch:prof}), and the performance models of \cref{ch:perf} use the measured values.
+
+\section{Throughput instead of latency}
+
+A CPU core is built to finish one instruction stream as fast as possible. It has large caches, branch prediction
+and out-of-order execution, all to keep the latency of each instruction low. A GPU spends the same transistors on
+many simple arithmetic units and on registers for many threads. A single GPU thread is slow; a GPU is fast only when
+it has enough independent threads to keep its units busy.
+
+WRF's dynamics fits this model well: almost every loop nest updates each grid point of a field independently of the
+others. The d02 domain of the case has $810 \times 810 \times 59 \approx 3.9 \times 10^7$ mass points, so a
+pointwise loop offers almost forty million independent iterations. Column physics offers fewer, one per column
+($6.6\times10^5$ on d02), each with a long sequential body. The fire grid offers $10^7$ nodes.
+
+\section{Streaming multiprocessors, warps and threads}
+
+An NVIDIA GPU consists of \emph{streaming multiprocessors} (SMs): 108 on the A100, 132 on the H100 SXM and 114 on
+the H100 PCIe. A program launches a \emph{kernel} as a grid of \emph{thread blocks}. Each block runs on one SM, and
+an SM holds several blocks at once.
+
+\paragraph{Warps.} The threads of a block are executed in groups of 32, called \emph{warps}. The 32 threads of a
+warp execute the same instruction at the same time on different data (single instruction, multiple threads, SIMT).
+Each SM has four sub-partitions, each with its own warp scheduler, which issues one instruction per clock from one
+of its ready warps.
+
+\paragraph{Latency hiding.} When a warp waits for memory, which takes hundreds of clock cycles, the scheduler simply
+issues from another warp. An SM can hold up to 64 warps (2048 threads). The more warps are resident, the better the
+latency is hidden. The fraction of the 64 slots in use is the \emph{occupancy}.
+
+How many accesses must be in flight follows from Little's law: to sustain a bandwidth $B$ with a memory latency
+$L$, the GPU must have $B \cdot L$ bytes in flight. With $B = 1.56$~TB/s and an assumed latency of 500~ns, that is
+about 780~KB, or 7~KB per SM of the A100: some 1800 outstanding 4-byte loads per SM. Only many resident warps, each
+with several independent loads, supply that.
+
+\paragraph{Divergence.} When the threads of a warp take different branches of an \code{IF}, the warp executes both
+branches one after the other, with the threads of the other branch masked off. The cost is the sum of both branches.
+WRF has many such branches: the fire's WENO/ENO choice, the boundary rows of advection, the night columns of the
+shortwave scheme (\cref{ch:warp}).
+
+\section{The memory hierarchy}
+
+\Cref{fig:memhier} shows the levels of memory a kernel sees, from the fastest and smallest to the slowest and
+largest.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[lvl/.style={draw, rounded corners, minimum height=0.9cm, align=center, font=\small}]
+  \node[lvl, fill=green!10, minimum width=4cm] (r) at (0,4.4) {Registers: 64\,K $\times$ 32 bit per SM\\(at most 255 per thread)};
+  \node[lvl, fill=green!6, minimum width=6cm] (s) at (0,3.2) {L1 cache and shared memory, per SM\\A100: 192 KB ($\le$ 164 KB shared); H100: 256 KB ($\le$ 228 KB shared)};
+  \node[lvl, fill=yellow!10, minimum width=8cm] (l2) at (0,2.0) {L2 cache, shared by all SMs\\A100: 40 MB; H100: 50 MB};
+  \node[lvl, fill=orange!10, minimum width=10cm] (m) at (0,0.8) {Device memory (HBM): 40 or 80 GB\\A100 40 GB: 1.56 TB/s; A100 80 GB SXM: 2.04 TB/s; H100 PCIe: 2.0 TB/s; H100 SXM: 3.35 TB/s};
+  \node[lvl, fill=red!6, minimum width=12cm] (h) at (0,-0.4) {Host memory, over PCIe or NVLink: tens of GB/s};
+  \draw[-{Latex}] (6.6,4.6) -- node[right, font=\small, align=left] {larger,\\slower} (6.6,-0.5);
+\end{tikzpicture}
+\caption{The memory hierarchy of the A100 and H100 (datasheet values). Measured bandwidths and latencies of the
+port's machines are \tbr\ (profiler tasks PR-H1 to PR-H4).}
+\label{fig:memhier}
+\end{figure}
+
+\paragraph{Registers.} Each thread's scalars live in registers. The SM's register file of 65\,536 32-bit registers
+is shared by all resident threads, so the registers per thread limit the occupancy:
+\begin{equation}
+  \text{resident warps per SM} \le \min\left(64,\ \left\lfloor \frac{65\,536}{32\,R} \right\rfloor\right),
+  \label{eq:occ-regs}
+\end{equation}
+where $R$ is the number of registers per thread, rounded up to the allocation granularity. A kernel with $R = 32$
+can fill all 64 warps; one with $R = 128$ only 16, an occupancy of 25\,\%.
+
+\paragraph{Local memory.} What does not fit in registers is \emph{spilled} to local memory: a per-thread area in
+device memory, cached in L1 and L2. Private arrays indexed by a loop variable also go there, because registers
+cannot be indexed. Column physics, with dozens of private column arrays per thread, lives largely in local memory
+(\cref{ch:colphys}).
+
+\paragraph{Shared memory and L1.} Each SM has a fast on-chip memory that is split between the L1 cache and
+\emph{shared memory}, which a thread block manages explicitly. Shared memory lets the threads of a block load a tile
+of an array once and read it many times: the basis of tiling (\cref{ch:tiling}).
+
+\paragraph{L2 cache.} All SMs share the L2 cache. Data that a kernel writes and the next kernel reads may still be in
+L2 if it fits:
+\begin{itemize}
+  \item a dev-case fire field ($724^2$ values, 2~MB) fits easily;
+  \item a d02 3D field ($821 \times 60 \times 821$ values, 162~MB) does not;
+  \item a full-case fire field ($3284^2$ values, 43~MB) lies between the two GPUs: just over the A100's 40~MB and
+    just under the H100's 50~MB.
+\end{itemize}
+
+\paragraph{Device memory.} High-bandwidth memory (HBM2e on the A100, HBM3 on the H100 SXM) holds all of the model's
+state. Its bandwidth sets the speed of most of WRF. Reading one d02 3D field once takes
+\begin{equation}
+  \frac{162\ \text{MB}}{1.56\ \text{TB/s}} \approx 104\ \mu\text{s on an A100 40 GB}, \qquad
+  \frac{162\ \text{MB}}{3.35\ \text{TB/s}} \approx 48\ \mu\text{s on an H100 SXM}.
+\end{equation}
+
+\paragraph{Host memory.} The host is reached over PCIe (A100 PCIe: Gen4, about 32~GB/s per direction; H100 PCIe:
+Gen5, about 64~GB/s) or NVLink. This is two orders of magnitude slower than device memory. The port therefore keeps
+the whole model state on the device and copies only what the host must see (\cref{ch:port}).
+
+\section{Coalescing}
+
+Device memory is accessed in 32-byte \emph{sectors}. When the 32 threads of a warp load 32 consecutive 4-byte
+values, the warp needs exactly four sectors: the access is \emph{coalesced}. When the threads load values that are
+far apart, each needs its own sector, and the warp moves eight times more data than it uses.
+
+WRF stores 3D fields as \code{a(i,k,j)}, with $i$ the fastest index in memory. A kernel whose consecutive threads
+take consecutive values of $i$ is coalesced. The port's kernels keep the source's loop order (\code{j}, \code{k},
+\code{i}, with \code{i} innermost), and the compiler gives consecutive $i$ to consecutive threads. A column kernel,
+with one thread per $(i,j)$ and a sequential loop over $k$ inside, is coalesced too: at each $k$ the threads of a warp
+read consecutive $i$ (\cref{ch:memory}).
+
+\section{Arithmetic}
+
+Each SM has units for single precision (FP32), double precision (FP64) and integers.
+\begin{itemize}
+  \item The A100 peaks at 19.5~TFLOP/s in FP32 and 9.7~TFLOP/s in FP64; the H100 SXM at about 67 and 34.
+  \item These peaks count a fused multiply-add (FMA) as two operations. The port's REPRO mode forbids FMA
+    contraction (\cref{ch:repro}), so its peak is half of these numbers.
+  \item WRF computes in FP32. Its double-precision work is the inside of the reproducible elementary functions
+    (\code{rp_*}), which evaluate in FP64 and round once to FP32.
+\end{itemize}
+For most of WRF the arithmetic peak does not matter. A stencil kernel does a few operations per value it loads, far
+below the ratio of compute to bandwidth of either GPU (\cref{ch:perf}). Column physics and the reproducible
+transcendental functions are the exceptions.
+
+\section{A100 and H100 compared}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+ & A100 40 GB & A100 80 GB SXM & H100 PCIe 80 GB & H100 SXM 80 GB \\
+\midrule
+Compute capability & 8.0 & 8.0 & 9.0 & 9.0 \\
+SMs & 108 & 108 & 114 & 132 \\
+HBM bandwidth (TB/s) & 1.56 & 2.04 & 2.0 & 3.35 \\
+L2 cache (MB) & 40 & 40 & 50 & 50 \\
+L1 + shared per SM (KB) & 192 & 192 & 256 & 256 \\
+Max shared per block (KB) & 164 & 164 & 228 & 228 \\
+FP32 / FP64 (TFLOP/s) & 19.5 / 9.7 & 19.5 / 9.7 & $\approx$ 51 / 26 & $\approx$ 67 / 34 \\
+Registers per SM & 64 K & 64 K & 64 K & 64 K \\
+Max threads per SM & 2048 & 2048 & 2048 & 2048 \\
+\bottomrule
+\end{tabular}
+\caption{The GPUs of the port (datasheet values; \citealp{nvidia2020a100,nvidia2022h100}).}
+\label{tab:gpus}
+\end{table}
+
+Beyond the numbers in \cref{tab:gpus}, the H100 adds features that change how a kernel can be written:
+\begin{description}
+  \item[Tensor Memory Accelerator (TMA).] A unit that copies a multi-dimensional tile between device memory and
+    shared memory asynchronously, given only the tile's coordinates. A stencil kernel can load its next tile while it
+    computes on the current one, without spending threads on address arithmetic.
+  \item[Thread-block clusters.] Up to 16 blocks on neighbouring SMs form a cluster. They can read each other's shared
+    memory (\emph{distributed shared memory}), so neighbouring tiles of a stencil can share their halos.
+  \item[Larger L2 and shared memory.] 50 instead of 40~MB of L2, and 228 instead of 164~KB of shared memory per
+    block. This changes the best tile size (\cref{ch:tiling}).
+\end{description}
+The A100 already has asynchronous copies from device to shared memory, and a control of the L2 cache that keeps a
+chosen address range resident (\emph{persisting} accesses, \cref{ch:memory}).
+
+\section{What to expect for WRF}
+
+From these facts, and before any measurement:
+\begin{itemize}
+  \item \textbf{Memory-bound stencils} (most of the dynamics) should run in proportion to the memory bandwidth:
+    about twice as fast on an H100 SXM as on an A100 40 GB.
+  \item \textbf{Short kernels} gain less. The acoustic loop launches many kernels that each run for a few
+    microseconds, and the cost of a launch does not shrink with bandwidth. Fewer launches and fused kernels matter
+    more on the H100 (\cref{ch:fusion}).
+  \item \textbf{Column physics} is limited by registers, local memory and divergence rather than bandwidth. The
+    larger register and L1 budget of the H100 changes the best batch shape (\cref{ch:colphys}).
+  \item \textbf{The fire grid} of the full case fits the H100's L2 but not the A100's, so the fire kernels may scale
+    differently from the rest. Measurements on the dev case, whose fire grid fits both caches, must not be
+    extrapolated to the full case.
+\end{itemize}
+
+\begin{portnote}
+The port builds one executable for both GPUs (\texttt{-gpu=cc80,cc90}). Both must give the same bits as CPU-REF,
+and therefore as each other (G5 item 5). The performance settings that differ between the GPUs, such as vector
+lengths and register limits, change only the schedule, never the arithmetic. They are kept per GPU in
+\code{port/ENVIRONMENT.md}.
+\end{portnote}

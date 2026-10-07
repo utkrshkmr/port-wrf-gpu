@@ -1,3 +1,244 @@
 \chapter{The port, subsystem by subsystem}\label{ch:subsys}
 
-This chapter is being written.
+This chapter walks through the port in the order of a time step, using the method of \cref{ch:port}. For each
+subsystem it names the routines, the templates they need, and the places where keeping the bits required care. The
+kernel table of the port (\code{port/agent/kernels.csv}, generated from \code{plan.md}; \cref{app:kernels}) has one row
+per kernel or family of kernels of a routine; \cref{tab:kernel-rows} counts them.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{llr}
+\toprule
+Plan section & Subsystem & Kernel rows \\
+\midrule
+7.1 & Runge--Kutta preparation, physical boundary conditions & 11 \\
+7.2 & Large-step tendencies (advection, pressure gradient, Coriolis, curvature) & 16 \\
+7.3 & Tendency combination, lateral boundaries & 4 \\
+7.4 & Acoustic loop & 14 \\
+7.5 & Scalar transport & 14 \\
+7.6 & End of step & 5 \\
+7.7 & Turbulence and diffusion & 18 \\
+8.1 & Physics glue & 6 \\
+8.2 & WSM6 microphysics & 6 \\
+8.3 & Surface layer, Noah, sea ice & 6 \\
+8.4 & YSU boundary layer & 4 \\
+8.5 & Radiation & 14 \\
+9.1 & WRF-Fire & 32 \\
+P5.1 & Coupling for nest forcing & 6 \\
+\midrule
+ & Total & 156 \\
+\bottomrule
+\end{tabular}
+\caption{Kernel rows of the port's kernel table by subsystem (rows marked ``n/a'', which are callers without kernels
+of their own, are not counted). A row such as K-DEF-01..40 stands for a family of kernels.}
+\label{tab:kernel-rows}
+\end{table}
+
+\section{Dynamics}
+
+\subsection{Runge--Kutta preparation}
+
+At the start of each RK stage, \code{rk_step_prep} computes the coupled velocities, the vertical mass flux $\omega$,
+the moisture coefficients and the inverse density (\cref{alg:solve-em}). Most of it is pointwise (Template A). Two
+routines are not:
+\begin{itemize}
+  \item \code{calc_ww_cp} integrates the column divergence from the surface upward to obtain $\omega$: a recurrence in
+    $k$. It becomes a column kernel (Template C). The source zeroes $\omega$ over \code{its..ite} but integrates over
+    \code{its..itf}; the column kernel runs over the union and guards each statement group with its own range.
+  \item \code{calc_cq} sums the moisture species to form the moisture coefficient. The sum stays a sequential loop in
+    the thread, over the species in the source's order.
+\end{itemize}
+The physical boundary conditions (\code{set_physical_bc2d}, \code{_3d}) are boundary strips (Template G): an $x$ phase
+kernel and a $y$ phase kernel, in that order, because the $y$ copies read corners the $x$ copies wrote.
+
+\subsection{Large-step tendencies}
+
+\paragraph{Advection.} \code{advect_u}, \code{advect_v}, \code{advect_w} and \code{advect_scalar} each become four
+kernel families: Y1 and Y2 for the $y$-fluxes (Template B), X for the $x$-fluxes, and Z for the vertical fluxes,
+a column with the zero fluxes at the bottom and the lid set inside the kernel. The branches by row (5th order in the
+interior, 3rd and 2nd order next to boundaries) are kept exactly: the same row gets the same formula.
+
+\paragraph{Quirks kept.} The port reproduces what the source does, including what may be unintended:
+\begin{itemize}
+  \item \code{rhs_ph} has no 4th-order $x$-advection at \code{ids+2} and \code{ide-3} under specified or nested
+    boundaries, because that branch is guarded by \code{open_xs}/\code{open_xe} only;
+  \item \code{w_damp} activates on \code{w_beta} but offsets by \code{w_crit_cfl};
+  \item \code{add_a2c_v} runs its $k$ loop to \code{kte}, where its sibling \code{add_a2c_u} stops at \code{ktf = min(kte,kde-1)}.
+\end{itemize}
+A bitwise port is not the place to fix them. Each is recorded, so that a later change can be made deliberately and
+in both builds.
+
+\paragraph{Pressure gradient and buoyancy.} \code{horizontal_pressure_gradient} uses a slab of pressure differences
+per row, which becomes a private column (Template C). \code{pg_buoy_w} writes the top level from the original
+\code{cqw(kde-1)} and then converts \code{cqw} in place, so it becomes two kernels in that order.
+
+\paragraph{Reductions.} \code{w_damp} also reports the largest vertical and horizontal Courant numbers. A maximum of
+floating-point numbers is exact in any order, so it is computed with a parallel \code{reduction(max:)}. The location of
+the maximum and the warning messages are not computed on the device: when the debug level asks for them, a host pass
+recomputes them from the same data.
+
+\subsection{The acoustic loop}
+
+Each d02 step contains seven acoustic sub-steps (one, two and four in the three RK stages), and each sub-step calls
+about ten routines (\cref{alg:small-step}):
+\begin{itemize}
+  \item \code{advance_uv}: a column kernel per velocity component, with the pressure-gradient slab as a private
+    column and two statement groups with different $i$ ranges;
+  \item \code{advance_mu_t}: the column-integrated divergence, an upward recurrence for $\omega$, and the
+    potential-temperature update;
+  \item \code{advance_w}: one column kernel containing the whole implicit solve (\cref{alg:tridiag}): the right-hand
+    side, the forward and backward sweeps of the tridiagonal system with the coefficients of \code{calc_coef_w}, the
+    Rayleigh damping at the top, and the geopotential update;
+  \item the boundary updates of the nest (\code{spec_bdyupdate}, \code{spec_bdyupdate_ph}): boundary strips.
+\end{itemize}
+In \code{advance_w}, the damping weight is $\sin^2$ written as \code{rp_sin(x)*rp_sin(x)}, two calls and a product,
+as in the source, and $\pi$ is \code{4.*rp_atan(1.)} in default precision, computed on the host and passed into the
+kernel. Writing $\sin^2$ any other way would round differently.
+
+The acoustic loop launches about 150 kernels per d02 step, each running a few microseconds on the dev case. It is
+where launch overhead matters most (\cref{ch:fusion}).
+
+\subsection{Scalar transport}
+
+Moisture species and TKE are advected in every RK stage, with the positive-definite version
+\code{advect_scalar_pd} in the last stage. Its limiter is the reason for Template L: the cell loop that scales
+outflow fluxes becomes a cell kernel and three face kernels (\cref{ch:port}). The eight temporary 3D arrays of the
+routine, which the source allocates on the stack at every call, become work arrays. The scalar updates
+(\code{rk_update_scalar}) are pointwise.
+
+\subsection{End of step}
+
+\code{calc_p_rho_phi} computes the full pressure from the equation of state. The source calls a vector power routine
+of WRF's MASSV library (\code{vspow}); the kernel inlines the same operation as \code{rp_pow}, which the CPU-REF
+version of \code{vspow} also calls, so both builds evaluate the identical function.
+
+\subsection{Turbulence}
+
+The deformation tensor (\code{cal_deform_and_div}) is about forty short loop nests, each its own kernel in the source
+order; horizontal scalar diffusion is eleven. The TKE routines evaluate $e^{3/2}$, $(\Delta x\Delta y\Delta z)^{1/3}$
+and similar powers with \code{rp_pow}. This part of the step is many small pointwise kernels over the whole domain, a
+natural target for fusion once the port is complete (\cref{ch:fusion}).
+
+\section{Physics}
+
+\subsection{Glue}
+
+\code{phy_prep} converts the dynamics' variables to the physics' (\cref{ch:phys}): mostly pointwise, except the
+hydrostatic pressure at full levels, which is integrated downward from the model top, with a sum over the moisture
+species at each level. It becomes a column kernel with the species sum sequential in the source's order. The coupling
+of the radiation and boundary-layer tendencies with the dry-air mass (\code{calculate_phy_tend}) is pointwise.
+
+\subsection{WSM6}
+
+WSM6 is the first column-physics scheme of the port (Template CP). Its core, \code{mp_wsm6_run}, has about 78
+automatic arrays of shape \code{(its:ite,kts:kte)}, ten of them with a third dimension, and its sedimentation routines
+about 27 column vectors; all become fixed-size. Whole-array statements such as \code{precip(:) = 0.0} are rewritten to
+the active extent, because the fixed arrays are longer than the column. The statement functions (\code{cpmcal},
+\code{xlcal}, \code{diffus}, \dots) stay if the compiler accepts them in device code, or become module functions with
+the identical expression. The surface accumulators (rain, snow, graupel) are copied per column into one-element
+arrays, so that the accumulation happens inside \code{mp_wsm6_run} as in the source.
+
+The effective-radius calculation returns at once in this configuration (\code{has_reqc = 0}), so the GPU wrapper skips
+its call: the values it would copy are unchanged.
+
+\subsection{Surface}
+
+\paragraph{sfclayrev.} Only the lowest level is used, so each thread gathers one point. The secant iteration
+\code{zolri} (\cref{alg:zolri}) could return an undefined value; the port defines it in both builds, and counts the
+occurrences: T-ZOLRI must find none in the reference run, which proves that the fix changes nothing in this case.
+
+\paragraph{Noah.} One thread runs the whole land-surface model for its point: \code{SFLX} and its tree of about thirty
+routines (\cref{alg:noah}). The changes are about data, not arithmetic:
+\begin{itemize}
+  \item the point indices \code{iloc}, \code{jloc}, which Noah keeps in module variables, become arguments, since a
+    module variable is shared by all threads;
+  \item the land-use and soil type names, character strings of 256 characters, become integer codes;
+  \item locals that Fortran saves implicitly because they are initialized in their declaration become
+    \code{PARAMETER}s;
+  \item the parameter tables are uploaded once.
+\end{itemize}
+
+\subsection{YSU}
+
+YSU (d01 only) follows Template CP. Its wrapper copies thirteen arrays of the urban model even when the urban model is
+off, from arrays allocated with size one: an out-of-bounds read on the CPU. The port guards the copies by the urban
+flag in both builds; the values were never used, so nothing changes. The PBL-height search \code{get_pblh} is a
+\code{DO WHILE} loop without a bound, kept as it is; the column harness checks that it terminates.
+
+\subsection{Radiation}
+
+Radiation runs every step for accumulations and cloud fractions, and fully once a minute (every 20 d01 steps and every
+180 d02 steps).
+\begin{itemize}
+  \item \textbf{Ozone.} \code{ozn_p_int} follows Template R, so that the bracket search of each column starts where
+    the source's did.
+  \item \textbf{Tables.} RRTMG's initialization rebuilt its absorption tables at every radiation call; the port calls
+    it once at initialization and uploads the tables. The tables were declared with \code{EQUIVALENCE}, which device
+    code does not support; each pair becomes one 1D array with explicit index arithmetic, in the same storage order.
+  \item \textbf{Batching.} An RRTMG column needs about 1.1~MB of temporary storage (109 layers, including the 50
+    layers added above the model top, times 140 $g$-points). The columns are processed in batches of 4096
+    (\code{WRF_RRTMG_BATCH}), with the per-column temporaries hoisted into batch work arrays of about 4.5~GB.
+  \item \textbf{Random numbers.} The McICA cloud sampling draws from the KISS generator, seeded from the pressures.
+    Its integer arithmetic relies on 32-bit wraparound; T-KISS checks that host and device give the same streams.
+  \item \textbf{Dudhia shortwave.} One thread per column, with the night columns leaving early (\cref{ch:warp}).
+\end{itemize}
+
+\section{Fire}
+
+\paragraph{Data.} WRF-Fire keeps its fuel parameters in pointer components of a derived type (\texttt{fp\%r\_0},
+\dots). The port passes them to the kernels as explicit arrays. The flags that \code{set_flags} sets at every fire
+call, always to the same values, are set once per domain at initialization. The statistics routines checked for NaN
+by summing floating-point values; they now count NaNs with an integer reduction.
+
+\paragraph{Ghost cells.} The fuel calculation reads the outermost fire rows and columns, which are never written: on
+the CPU they keep the zeros of their allocation. The device copy is made by \code{enter data copyin} from the host
+array, so it holds the same zeros. T-FIRE-GHOST checks it.
+
+\paragraph{Level set.} \code{tend_ls} becomes one kernel over the fire nodes, with the upwinded differences, the
+WENO/ENO choice by node, the call of \code{fire_ros} (Template D), the artificial viscosity, and a maximum reduction for
+the stable time step. \code{continue_at_boundary} becomes three kernels in the source order: $j$ strips, $i$ strips,
+corners. \code{interpolate_2d} gives each coarse cell to one thread, which writes its $4 \times 4$ fine nodes. This is
+safe only because the refinement ratio is even, so that no two coarse cells write the same node; the startup check
+rejects odd ratios.
+
+\paragraph{Fuel and fluxes.} \code{fuel_left} gives each fire cell to one thread, which evaluates its four sub-cells
+in the source's order. \code{sum_2d_cells} sums the fire-grid fluxes over each atmospheric cell: one thread per
+atmospheric cell, the inner loops over the fine cells sequential in the source's order. A parallel sum here would add
+in a different order and change the heat that drives the plume.
+
+\paragraph{Fire windows.} The fire's sensitivity (\cref{ch:fire}) makes its tests the strictest of the port:
+\begin{itemize}
+  \item T-FIRE-IGN runs from 02:00 to 02:35, through the whole ignition period, and compares every fire array at every
+    step;
+  \item T-FIRE-WIN runs from 02:20 to 03:00 and compares the burned cells at each history time.
+\end{itemize}
+
+\section{Nest forcing}
+
+Once per d01 step, the parent forces the nest's lateral boundaries (\cref{ch:bdy}). The forcing couples both domains'
+fields with the dry-air mass, interpolates parent values to the nest boundary on the host, and uncouples again. The
+port moves the coupling to the device. It cannot be skipped: uncoupling multiplies by a stored reciprocal, so
+coupling followed by uncoupling does not return the original bits ($x\,m\,(1/m) \ne x$ in general), and CPU-REF does
+both.
+
+The interpolation stays on the host, and only what it reads and writes moves:
+\begin{itemize}
+  \item the parent rows that the interpolation reads, a slab of the parent's fields;
+  \item the six boundary rows and columns of the nest's own fields, which the boundary interpolation also reads;
+  \item back to the device: the nest's boundary arrays and \code{o3rad}, the one field the forcing writes in full.
+\end{itemize}
+T-SLAB proves that these lists are complete: it fills everything outside them on the host with signaling NaNs before
+the forcing, and the results must still equal CPU-REF.
+
+\section{Where the port stands}
+
+At the time of writing, the port has finished its ground work (Phase~0, \code{port/RESULTS.md}):
+\begin{itemize}
+  \item the reproducible math library, correctly rounded on every single-precision input of each function;
+  \item the substitutions of 646 intrinsic calls and 265 powers, certified bitwise on two smoke cases;
+  \item the tracer, routes, pool, comparison tools and gates.
+\end{itemize}
+A first code-only run wrote kernels for 19 of the 44 work packages of Phases 1 to 3. They are now being landed,
+compiled and tested on the A100 workstation (Stage~0 of the plan). The device results of every test named in this
+chapter are \tbr.

@@ -1,22 +1,225 @@
-\chapter{GPUs and OpenMP offload for Fortran}\label{ch:gpu}
+\chapter{Programming models: OpenACC and CUDA Fortran}\label{ch:gpu}
 
-Enough about GPU hardware to reason about performance, and the OpenMP offload model the port uses.
-
-\begin{outline}[(card B-16)]
-\textbf{Sections.}
+A GPU programming model answers three questions:
 \begin{itemize}
-    \item \textbf{GPU hardware.} Streaming multiprocessors, warps and wavefronts, the memory hierarchy, bandwidth and latency, occupancy, registers and local memory.
-    \item \textbf{The OpenMP device model.} \code{target}, \code{teams}, \code{distribute}, \code{parallel do}, \code{loop}; data mapping, \code{enter data}, \code{update}, \code{declare target}.
-    \item \textbf{Kernel templates.} The port's templates A to G and when each applies.
-    \item \textbf{Data residency.} State on the device for the whole run; islands while the port is incomplete.
-    \item \textbf{The choice of programming model.} CUDA, HIP, OpenACC, CUDA Fortran, standard parallelism, C++ libraries, and why the port uses OpenMP (ADR-001).
+  \item which code runs on the device;
+  \item where the data lives, and when it moves;
+  \item how the iterations of a loop are mapped onto threads.
 \end{itemize}
-\textbf{Sources.} \citet{openmp52}; \code{roadmap/decisions/ADR-001-gpu-programming-model.md}.
+The port writes every kernel in OpenACC \citep{openacc33}, a set of directives in the existing Fortran, and uses
+CUDA Fortran \citep{cudafortran} only for kernels that profiling shows to be the bottleneck. Both are compiled by
+NVIDIA's \code{nvfortran}. This chapter explains both, with the constructs the port uses, and the reasons for the
+choice.
 
-\textbf{Code.}
+\section{OpenACC}
+
+\subsection{Execution model}
+
+OpenACC describes parallelism at three levels:
 \begin{itemize}
-    \item \code{port/agent/CODING_STANDARD.md}: the templates
-    \item \code{port/tests/omp_features}: the compiler feature probes
+  \item \emph{gangs}, which run independently of each other;
+  \item \emph{workers} within a gang;
+  \item \emph{vector lanes} within a worker, which execute in lockstep.
 \end{itemize}
-\textbf{The port.} Every construct the port uses is first checked by a small probe program on each compiler.
-\end{outline}
+On an NVIDIA GPU, \code{nvfortran} maps a gang to a thread block and the vector lanes to the threads of the block,
+128 by default. Workers, if used, become the warps of a block. The port uses only gangs and vector lanes: every
+kernel is a \code{parallel loop gang vector}, whose collapsed iteration space is split into blocks of
+\code{vector_length} threads.
+
+\subsection{The kernel directive}
+
+Every kernel of the port has the same form (\code{port/agent/CODING_STANDARD.md}, section~4):
+\begin{lstlisting}
+!$acc parallel loop gang vector collapse(N) if(gpu_on(R_X)) default(none) &
+!$acc& present(<arrays>) firstprivate(<scalars read>) private(<scalars written>)
+\end{lstlisting}
+Each clause has a purpose:
+\begin{description}
+  \item[\code{collapse(N)}] Flattens $N$ perfectly nested loops into one iteration space: \code{collapse(3)} over
+    $(j,k,i)$ for pointwise kernels, \code{collapse(2)} over $(j,i)$ for column kernels.
+  \item[\code{if(gpu_on(R_X))}] When the condition is false, the region runs on the host over host data. This is
+    OpenACC's \emph{host fallback}, and it is what lets one routine be switched between device and host at run time
+    (\cref{ch:port}).
+  \item[\code{default(none)}] Every variable used in the region must be listed in a clause. The compiler reports what
+    is missing at compile time, so a forgotten \code{private}, which would be a data race, cannot pass unnoticed.
+  \item[\code{present(...)}] The arrays must already be on the device; if one is not, the run stops. A data clause
+    such as \code{copyin} would instead copy the array at every launch: correct, but hundreds of times slower.
+  \item[\code{firstprivate}, \code{private}] Scalars read in the loop get their host value in each thread; scalars
+    written in the loop get a private copy per thread.
+\end{description}
+
+Inner loops that must run sequentially inside a thread, such as the $k$ loop of a column or a loop over species, are
+marked \texttt{!\$acc loop seq}. They then run in the source order and direction. (A \code{DO WHILE} loop, or a loop with
+an \code{EXIT}, takes no directive at all: OpenACC forbids one there, and it runs sequentially anyway.)
+
+\Cref{lst:calc-alt-acc} shows a complete pointwise kernel: \code{calc_alt}, which forms the full inverse density
+$\alpha = \alpha' + \bar\alpha$ (\cref{ch:eq}).
+
+\begin{figure}[ht]
+\begin{lstlisting}
+      itf=MIN(ite,ide-1)
+      jtf=MIN(jte,jde-1)
+      ktf=MIN(kte,kde-1)
+! K-PREP-7: full inverse density (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALC_ALT)) default(none) &
+!$acc& present(alt, al, alb) firstprivate(its, itf, jts, jtf, kts, ktf)
+      DO j=jts,jtf
+      DO k=kts,ktf
+      DO i=its,itf
+        alt(i,k,j) = al(i,k,j)+alb(i,k,j)
+      ENDDO
+      ENDDO
+      ENDDO
+\end{lstlisting}
+\caption{\code{calc_alt} as an OpenACC kernel (\code{dyn_em/module_big_step_utilities_em.F}; the island around it is
+omitted, \cref{ch:port}). The loops are the CPU loops, unchanged.}
+\label{lst:calc-alt-acc}
+\end{figure}
+
+\subsection{Data}
+
+OpenACC assumes that host and device have separate memories, and that each array may have a copy on both. The port
+uses these constructs:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+What & OpenACC \\
+\midrule
+allocate on the device and copy, once & \texttt{!\$acc enter data copyin(a)} or \code{create(a)} \\
+release & \texttt{!\$acc exit data delete(a)} \\
+copy host to device & \texttt{!\$acc update device(a)} \\
+copy device to host & \texttt{!\$acc update self(a)} \\
+module variable on the device & \texttt{!\$acc declare create(t)} in the module \\
+is it there? & \code{acc_is_present(a)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+The model's
+state is copied to the device once, when each domain is allocated, and stays there (\cref{ch:port}). All other
+movement is an explicit \code{update} at a place the port can name.
+
+\subsection{Procedures}
+
+A procedure called inside a kernel must be compiled for the device too. \texttt{!\$acc routine seq} after its
+\code{SUBROUTINE} or \code{FUNCTION} statement makes the compiler build a device version that runs sequentially in
+the calling thread, beside the normal host version. The port uses it for every column-physics scheme, for
+\code{fire_ros}, and for the reproducible math functions.
+
+\subsection{Asynchrony}
+
+By default, a kernel launch waits until the kernel has finished. With \code{async(q)} the host continues at once and
+the kernel joins queue $q$; kernels in one queue run in order, kernels in different queues may overlap, and
+\texttt{!\$acc wait(q)} waits for a queue. On NVIDIA GPUs a queue is a CUDA stream. The port leaves asynchrony to the
+performance stage (\cref{ch:fusion}), because it changes only the schedule, never the results.
+
+\section{CUDA Fortran}
+
+CUDA Fortran is NVIDIA's extension of Fortran with the concepts of CUDA \citep{cudafortran}:
+\begin{itemize}
+  \item \code{attributes(global)} marks a kernel, \code{attributes(device)} a routine called from kernels;
+  \item arrays with the \code{device} attribute live in device memory;
+  \item a kernel is launched with an explicit grid and block shape,
+    \texttt{call k<{}<{}<grid, block, shmem, stream>{}>{}>(args)};
+  \item inside a kernel, \code{blockIdx}, \code{blockDim} and \code{threadIdx} give the thread's position;
+  \item \code{attributes(shared)} declares shared memory, and \code{call syncthreads()} synchronizes a block;
+  \item warp-level functions exchange values between the threads of a warp (\code{__shfl_down}) or vote on a
+    condition (\code{ballot}, \code{allthreads}, \code{anythread}).
+\end{itemize}
+The programmer chooses everything that OpenACC leaves to the compiler: the shape of the blocks, what each thread
+does, what is staged in shared memory. \Cref{lst:calc-alt-cuf} shows \code{calc_alt} in this form. It is an
+illustration; the port writes CUDA Fortran only where a measurement justifies it.
+
+\begin{figure}[ht]
+\begin{lstlisting}
+attributes(global) subroutine calc_alt_cuf(alt, al, alb, ims, ime, kms, kme, jms, jme, &
+                                           its, itf, kts, ktf, jts, jtf)
+   integer, value :: ims, ime, kms, kme, jms, jme, its, itf, kts, ktf, jts, jtf
+   real, device :: alt(ims:ime,kms:kme,jms:jme), al(ims:ime,kms:kme,jms:jme), &
+                   alb(ims:ime,kms:kme,jms:jme)
+   integer :: i, k, j
+   i = its + (blockIdx%x-1)*blockDim%x + threadIdx%x - 1
+   k = kts + blockIdx%y - 1
+   j = jts + blockIdx%z - 1
+   if (i <= itf) alt(i,k,j) = al(i,k,j)+alb(i,k,j)
+end subroutine calc_alt_cuf
+
+! launch: one block of 128 threads per 128 values of i, one block row per (k,j)
+!$acc host_data use_device(alt, al, alb)
+call calc_alt_cuf<<<dim3((itf-its+128)/128, ktf-kts+1, jtf-jts+1), dim3(128,1,1)>>>( &
+     alt, al, alb, ims, ime, kms, kme, jms, jme, its, itf, kts, ktf, jts, jtf)
+!$acc end host_data
+\end{lstlisting}
+\caption{\code{calc_alt} in CUDA Fortran (illustration). The statement is the same; the mapping of iterations to
+threads is written out by hand. \code{host_data use_device} hands the device addresses of OpenACC's copies to the
+CUDA Fortran kernel.}
+\label{lst:calc-alt-cuf}
+\end{figure}
+
+\paragraph{Working together.} The two models share one compiler and one device memory:
+\begin{itemize}
+  \item \texttt{!\$acc host\_data use\_device(a)} passes the device address of an OpenACC array to a CUDA Fortran
+    kernel, so the state never needs a second copy;
+  \item \code{acc_get_cuda_stream(q)} gives the CUDA stream of OpenACC queue $q$, so a CUDA Fortran kernel can run in
+    order with the OpenACC kernels around it;
+  \item the build flag \code{-cuda} enables CUDA Fortran beside \code{-acc=gpu}.
+\end{itemize}
+
+\begin{portnote}
+A CUDA Fortran kernel lives next to its OpenACC version, under \texttt{\#ifdef WRF\_CUF\_<KERNEL>}, and must give the same
+bits: the same statements in the same order (\code{CODING_STANDARD.md} section~11). The OpenACC version stays the
+reference. The test runs both on the same window and compares the traces.
+\end{portnote}
+
+\section{What the compiler tells}
+
+\code{nvfortran -Minfo=accel} reports, for every compute region:
+\begin{itemize}
+  \item whether a device kernel was generated;
+  \item how each loop was scheduled (gang, vector, sequential);
+  \item every data movement the compiler added implicitly.
+\end{itemize}
+The port requires that every kernel is offloaded, that its inner loops are sequential where the source has a
+recurrence, and that no implicit data movement appears (rung L4 of the routine ladder, \cref{ch:port}). With
+\code{-gpu=ptxinfo} the compiler also reports the registers, spills and stack frame of each kernel: the first layer of
+the profiler (\cref{ch:prof}).
+
+The flags that keep the arithmetic reproducible belong to the same command line: \code{-gpu=nofma,noflushz} for the
+device and \code{-Mnofma -Mnoflushz -Kieee} for the host (\cref{ch:repro,ch:iobuild}).
+
+\section{Why this pair}
+
+The choice was made twice (\code{roadmap/decisions/ADR-001-gpu-programming-model.md}).
+
+\paragraph{Revision 1: OpenMP offload.} The first decision chose OpenMP~5 \code{target} directives
+\citep{openmp52}, because OpenMP offload is the one standard that every GPU vendor supports in its own Fortran
+compiler. The port's first kernels and its compiler probes were written in OpenMP.
+
+\paragraph{Revision 2: OpenACC with CUDA Fortran.} The project's owner then chose performance over portability: the
+point of the port is speed on the GPUs the project has, NVIDIA A100 and H100. On NVIDIA hardware OpenACC is the more
+mature model in \code{nvfortran}, and CUDA Fortran gives full control where it is needed, without leaving Fortran.
+The kernels written before the switch were converted mechanically (\code{port/tools/omp2acc.py}); the kernel form,
+the tests and the bitwise method did not change.
+
+What the pair keeps:
+\begin{itemize}
+  \item \textbf{One Fortran source.} The kernels are the CPU loops with directives in front. The line-by-line
+    correspondence with NCAR's source, on which both the bitwise verification and the forward port to newer WRF
+    versions rely (\cref{ch:versions}), is preserved.
+  \item \textbf{Checks without a GPU.} gfortran with \code{-fopenacc} compiles the GPU view of the source and runs its
+    OpenACC regions on the host. The arithmetic of every restructured kernel can therefore be checked on any CPU, and
+    \code{default(none)} omissions are reported by two compilers.
+  \item \textbf{Control of the arithmetic.} No FMA contraction, no flush to zero, and the portable elementary
+    functions, on both host and device (\cref{ch:repro}).
+\end{itemize}
+What it gives up: AMD and Intel GPUs. OpenACC reaches AMD GPUs only through the HPE Cray and GCC compilers, and CUDA
+Fortran not at all. A later port to AMD would rewrite the directives as OpenMP offload (the reverse of
+\code{omp2acc.py}) and translate the few CUDA Fortran kernels to HIP. The bitwise method would carry over unchanged:
+contraction off, the portable math library, and the same probes and tests.
+
+\begin{portnote}
+Every construct the port uses is first tried in a small probe program on the pinned compiler version: \code{if}
+host fallback, presence of arrays mapped through pointers, \code{declare create} on module allocatables, calls of
+\code{routine seq} procedures, private arrays, reductions, the device stack size. The probes of revision 1 are in
+\code{port/tests/omp_features}; their OpenACC versions are phase S0-05 of the plan, and must pass before any kernel
+is believed.
+\end{portnote}

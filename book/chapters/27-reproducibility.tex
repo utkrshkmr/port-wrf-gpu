@@ -79,7 +79,7 @@ Signed zeros, NaN in \code{MAX}, \code{MIN}, \code{SIGN} & checked; replaced if 
 Integer powers & checked for each exponent used & T-IPOW \\
 Uninitialized memory & scratch and work arrays zero-filled in both builds & T-UNINIT \\
 Integer overflow (random numbers) & explicit 32-bit arithmetic & T-KISS \\
-Data races & every scalar written in a kernel is private; parallel runs compared & 4-thread check, T-AB \\
+Data races & every variable listed (\code{default(none)}); every written scalar private & T-AB, call check \\
 \bottomrule
 \end{tabular}
 \caption{Sources of CPU/GPU differences and how the port handles them.}\label{tab:repro-sources}
@@ -140,6 +140,63 @@ returns the Fortran intrinsics, which gives the upstream behaviour.
 \end{itemize}
 \end{portnote}
 
+\subsection{Inside a portable function: the sine}
+
+How can a function be portable and still accurate? \Cref{alg:rp-sin} shows the double-precision sine on which
+\code{rp_sin} is built (\src{frame/module_repro_math.F}{rm_sin}, \code{rem_pio2}, \code{k_sin}), translated from
+fdlibm \citep{fdlibm}. It has two parts.
+
+\paragraph{Argument reduction.} The argument is written as $x = n\,\pi/2 + y$ with $|y| \le \pi/4$, and
+$\sin x$ is then $\pm\sin y$ or $\pm\cos y$, depending on $n \bmod 4$. The difficulty is that $\pi/2$ is not a
+floating-point number. Subtracting $n$ times a rounded $\pi/2$ would leave the rounding error of $\pi/2$ multiplied
+by $n$ in $y$, and for large $n$ that error would be larger than $y$'s last bit. The algorithm therefore splits
+$\pi/2$ into parts (the method of Cody and Waite):
+\begin{equation}
+  \frac{\pi}{2} = p_1 + p_{1t}, \qquad p_{1t} = p_2 + p_{2t}, \qquad p_{2t} = p_3 + p_{3t},
+\end{equation}
+where $p_1$, $p_2$ and $p_3$ have only 33 significant bits. For $|n| < 2^{20}$ the product $n\,p_1$ then has at most
+53 bits and is computed exactly, so $x - n\,p_1$ is exact as well. Only the small tail $n\,p_{1t}$ is rounded. When
+the result has lost many leading bits by cancellation (when $x$ is close to a multiple of $\pi/2$), the next part is
+subtracted too, giving about 118 and then 151 correct bits. The reduced argument is returned as a pair $y_0 + y_1$,
+its head and its rounding error.
+
+\paragraph{Polynomial.} On $|y| \le \pi/4$, $\sin y$ is a polynomial of degree 13 in $y$, with coefficients
+chosen to minimize the maximum error (a minimax polynomial). It is evaluated in Horner form, with the tail $y_1$ of
+the reduced argument entering as a first-order correction.
+
+\begin{algorithm}[ht]
+\caption{The portable sine (\code{rm_sin}, \code{rem_pio2}, \code{k_sin}; double precision). For \code{REAL(4)},
+\code{rp_sin} converts $x$ to double, calls this, and rounds once to single.}
+\label{alg:rp-sin}
+\begin{algorithmic}[1]
+\Require $x$ in double precision
+\If{$|x| \le \pi/4$} \Return $k_{\sin}(x, 0)$ \EndIf
+\If{$x$ is $\pm\infty$ or NaN} \Return the canonical NaN \EndIf
+\If{$|x| < 3\pi/4$} \Comment{$n = \pm1$}
+  \State $z \gets |x| - p_1$; \quad $y_0 \gets z - p_{1t}$; \quad $y_1 \gets (z - y_0) - p_{1t}$; \quad $n \gets 1$
+\ElsIf{$|x| \le 2^{19}\pi/2$} \Comment{medium arguments}
+  \State $n \gets \operatorname{int}(|x|\cdot(2/\pi) + 0.5)$; \quad $r \gets |x| - n\,p_1$ (exact); \quad
+    $w \gets n\,p_{1t}$; \quad $y_0 \gets r - w$
+  \If{$y_0$ lost more than 16 bits to cancellation}
+    \State $t \gets r$; $w \gets n\,p_2$; $r \gets t - w$; $w \gets n\,p_{2t} - ((t - r) - w)$; $y_0 \gets r - w$
+    \If{it lost more than 49 bits} \State the same with $p_3$, $p_{3t}$ \EndIf
+  \EndIf
+  \State $y_1 \gets (r - y_0) - w$
+\Else
+  \State Payne--Hanek reduction with the bits of $2/\pi$ (\code{k_rem_pio2})
+\EndIf
+\State restore the sign of $x$ in $y_0$, $y_1$ and $n$
+\State \Return $k_{\sin}(y_0, y_1)$, $k_{\cos}(y_0, y_1)$, $-k_{\sin}(y_0,y_1)$ or $-k_{\cos}(y_0,y_1)$ for
+  $n \bmod 4 = 0, 1, 2, 3$
+\end{algorithmic}
+\end{algorithm}
+
+Every step is a basic operation or an exact manipulation of bits, so the result is the same on every IEEE processor,
+provided no step is contracted into an FMA. The reduction is a case in point: $t - n\,p_2$ evaluated with an FMA
+would round differently from the two roundings the algorithm was designed for. Correct rounding of the final
+single-precision result follows from the double-precision accuracy of the steps, and the exhaustive test confirms it
+for every one of the $2^{32}$ inputs.
+
 \subsection{Order of operations}
 
 Reassociation changes results, as shown above. The rule of the port is therefore that a GPU kernel performs the
@@ -154,6 +211,27 @@ may change. Three places need care.
     may run in parallel.
 \end{itemize}
 A static checker, \code{arith_guard}, compares every statement in the GPU code with the CPU lines it replaces.
+
+\subsection{Compiler flags}
+
+The flags of the two builds (\cref{ch:iobuild}) state the rules of this chapter to the compilers:
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+Rule & Host (\code{nvfortran}) & Device (\code{-gpu=...}) \\
+\midrule
+no FMA contraction & \code{-Mnofma} & \code{nofma} \\
+no flush of subnormals to zero & \code{-Mnoflushz -Mnodaz} & \code{noflushz} \\
+IEEE-conforming division and square root & \code{-Kieee} & (default) \\
+no reassociation by the vectorizer & \code{-Mvect=noassoc} & --- \\
+own elementary functions & \code{-DREPRO_MATH} & \code{-DREPRO_MATH} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Flags are only promises of the compiler. Each is checked by a test that would fail if the promise were broken: T-FMA
+for contraction, T-SUBNORM for subnormals and correctly rounded division and square root, T-SYM for leftover
+math-library calls in the objects.
 
 \subsection{Rewritten powers}
 
@@ -198,10 +276,14 @@ The speed difference between the two is the measured cost of reproducibility (\c
 
 \paragraph{The bit-hash tracer.} At chosen points of the time step, \code{module_bittrace} reduces each field to
 two 64-bit integers computed from the bit patterns of its values over the patch interior:
-\begin{itemize}
-  \item the sum of the bit patterns;
-  \item a sum weighted by the global position of each point, which changes when values move between points.
-\end{itemize}
+\begin{equation}
+  h_1 = \sum_{g} b_g \bmod 2^{64}, \qquad
+  h_2 = \sum_{g} \bigl((b_g \bmod M)\, w_g \bmod M\bigr) \bmod 2^{64}, \qquad M = 2^{31} - 1,
+\end{equation}
+where $b_g$ is the bit pattern of the value at global point $g$, read as an unsigned 32-bit integer, and
+$w_g \in [1, M-1]$ a weight computed from $g$. The first word changes when any bit changes; the second also changes
+when values move to other points, which a plain sum would not notice
+(\src{frame/module_bittrace.F}{bt_field3}).
 The arithmetic is exact integer arithmetic. The hashes therefore do not depend on the order of evaluation, on the
 MPI decomposition, or on whether the reduction ran on a CPU or a GPU. Two runs are compared line by line, and the
 first differing line names the step, the Runge--Kutta stage, the place in the step and the field.
@@ -216,15 +298,19 @@ first differing line names the step, the Runge--Kutta stage, the place in the st
     17-hour run, compared field by field and fire cell by fire cell.
 \end{itemize}
 
-\paragraph{Without a GPU.} Much can be checked on a CPU. With gfortran, the GPU view of the source compiles with its
-OpenMP \code{target} regions running on the host. It must then give the same bits as the CPU view:
+\paragraph{Without a GPU.} Much can be checked on a CPU. gfortran with \code{-fopenacc} compiles the GPU view of the
+source and runs its OpenACC regions on the host. The GPU view must then give the same bits as the CPU view. This
+proves that the restructured kernels keep the arithmetic: a column that replaced a slab, a flux split into two
+kernels, a limiter split into flags and faces.
+
+A mutation test shows that the check has teeth. The correct column port of \code{calc_coef_w} passes, and the same
+port with one product reassociated fails. What a CPU cannot check is everything that depends on two memories and
+many threads:
 \begin{itemize}
-  \item with one thread, which proves that the restructured kernels keep the arithmetic;
-  \item with four threads, which exposes data races such as a scalar that should have been private.
+  \item data movement between host and device memory, which are the same memory there;
+  \item data races, since the host fallback runs each region in a single thread.
 \end{itemize}
-A mutation test shows the check has teeth: the correct column port of \code{calc_coef_w} passes, and the same port
-with one product reassociated fails. What a CPU cannot check is data movement between host and device memory, which
-are the same memory there. That is left to the GPU tests.
+These are left to the GPU tests: T-AB, the call check, and T-TRACE.
 
 \section{Limits}
 

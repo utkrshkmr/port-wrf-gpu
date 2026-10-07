@@ -1,23 +1,385 @@
-\chapter{The port, phase by phase}\label{ch:port}
+\chapter{The porting method}\label{ch:port}
 
-How the port was organized and verified, and what was found on the way.
+The port moves about two hundred loop nests of WRF onto the GPU, spread over some fifty source files, and every one
+of them must give the same bits as before. No single test can find a mistake in a change of that size. The method
+therefore breaks the work into steps so small that each can be verified on its own, and it surrounds every step with
+checks that run without human judgement. This chapter describes the method; \cref{ch:subsys} applies it to WRF's
+subsystems.
 
-\begin{outline}[(card B-17)]
-\textbf{Sections.}
+\section{Two views of one source}
+
+Every ported file compiles in two ways:
 \begin{itemize}
-    \item \textbf{Phase 0.} Reproducible CPU reference, bit-hash tracer, comparison tools.
-    \item \textbf{Phase 1.} The GPU infrastructure: device-resident state, update lists, tables, scratch pool, work arrays, startup check.
-    \item \textbf{Phases 2--4.} Dynamics, physics, fire; tests per routine and per window.
-    \item \textbf{Phase 5.} Nest forcing and the device world; acceptance over 17 hours.
-    \item \textbf{Organization.} Work packages, code-only agents, CPU-only verification, review.
-    \item \textbf{Lessons.} What went wrong and how it was found.
+  \item the \emph{CPU view}, with the macro \code{WRF_GPU} undefined, is what CPU-REF compiles;
+  \item the \emph{GPU view}, with \code{WRF_GPU} defined, is what GPU-REPRO compiles.
 \end{itemize}
-\textbf{Sources.} \code{plan.md}; \code{port/RESULTS.md}.
+The rule is that the CPU view must compile to exactly what the unported source compiled to, statement for statement.
+Everything the GPU needs that is not a directive goes under \texttt{\#ifdef WRF\_GPU}. Directive lines are comments for a
+compiler without \code{-acc}, so a kernel directive in front of an unchanged loop needs no \texttt{\#ifdef}.
 
-\textbf{Code.}
+The reference text is fixed: the \emph{CPU-view base commit} (\code{port/agent/cpu_view_base}). The static checker
+\code{arith_guard} preprocesses each file without \code{WRF_GPU}, compares every executable statement with the same
+file at the base commit, and fails on any difference. A small list of additions is allowed: \code{USE} of the port's
+modules, \code{CALL gpu_*} and \code{CALL bt_*}, island includes, and route tests that do no arithmetic.
+
+Some changes must reach both views: replacing the intrinsic \code{EXP} by \code{rp_exp}, or fixing an undefined
+result. These \emph{shared refactors} are allowed only with evidence: the refactored CPU build must equal the
+unrefactored one bit for bit on the test windows (tests T-SHARED-1 to T-SHARED-9). Only then does the base commit move,
+by a recorded procedure.
+
+\section{Residency: the state lives on the device}
+
+The model state of the case takes about 31~GB (d01 6.8~GB, d02 24.7~GB including the fire grid; the estimator's
+numbers in \code{port/RESULTS.md}). Copying it over PCIe would take about a second, while a d02 step must take
+milliseconds. The port therefore keeps the whole state on the device for the whole run:
 \begin{itemize}
-    \item \code{plan.md}: the plan
-    \item \code{port/agent/}: the agent guides
+  \item \textbf{Allocation.} WRF's Registry generates the code that allocates every field of a domain
+    (\code{tools/gen_allocs.c}, \cref{ch:arch}). The port extends the generator to add, after each allocation, an
+    \code{enter data} that creates the device copy and fills it. The allocation of a domain thus also allocates its
+    device copy, for every field of every package in use.
+  \item \textbf{Generated update lists.} A second generator writes, for each purpose, the list of \code{update}
+    statements over the fields concerned: all fields, the lateral boundary arrays, the fields the nest forcing reads
+    from the parent.
+  \item \textbf{Tables.} Module data that kernels read (the Noah parameter tables, RRTMG's absorption coefficients,
+    WSM6's constants, the fire flags) is declared on the device and uploaded once after initialization.
 \end{itemize}
-\textbf{The port.} This chapter is written as the phases pass their gates.
-\end{outline}
+
+\paragraph{Sync points.} The host still runs initialization, I/O and part of the nest forcing. Data moves only at
+named points (\code{plan.md}, P1.5):
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+Point & Where & What moves \\
+\midrule
+S1 & after the initial state is read & all fields and tables to the device \\
+S2 & when a nest starts & parent to the host; both domains to the device \\
+S3 & first statement of \code{med_hist_out} & the fields of that history stream to the host \\
+S4 & first statement of \code{med_restart_out} & the fields of the restart stream to the host \\
+S5 & after a lateral boundary read & the boundary arrays to the device \\
+S6 & around the nest forcing & what the host forcing reads and writes \\
+\bottomrule
+\end{tabular}
+\end{center}
+The history and restart transfers walk the domain's list of state variables at run time, because the content of a
+stream can change through \code{iofields_filename} (\cref{ch:iobuild}).
+
+\paragraph{The world flag.} While the port is incomplete, most routines still run on the host. One flag,
+\code{gpu_world_host}, records where the current values of the model arrays are. During Phases 1 to 4 the model
+lives on the host: \code{solve_em} downloads the state at its start and uploads it at its end (the \emph{bracket}),
+and each ported routine moves its own arguments to the device and back. In Phase 5, when every routine of the step is
+ported, the bracket is removed and the flag flips: the model lives on the device, and only a routine switched off
+moves data.
+
+\section{Routes and islands}
+
+Every ported routine has a \emph{route}, an integer \code{R_<NAME>} in \code{frame/module_gpu_route.F} (101 routes
+for this case). Every kernel of the routine carries \code{if(gpu_on(R_<NAME>))}, and the environment variables
+\code{WRF_GPU_OFF} and \code{WRF_GPU_ONLY} switch routes at run time. A route that is off runs the same GPU-view code
+on the host, through OpenACC's host fallback.
+
+A routine that runs where its data are not needs an \emph{island}: copies of its arguments to where it runs, and
+back. The islands are generated from each routine's argument list (\code{port/tools/gen_island.py}), never written by
+hand. \Cref{alg:island} shows what they do.
+
+\begin{algorithm}[ht]
+\caption{The island of a routine with route $R$ (generated; GPU view only).}
+\label{alg:island}
+\begin{algorithmic}[1]
+\State $\mathit{isl} \gets$ (\code{gpu_world_host} and \code{gpu_on}($R$)) or (not \code{gpu_world_host} and not \code{gpu_on}($R$))
+\If{$\mathit{isl}$} \Comment{the routine runs where its data are not}
+  \State copy every array argument to where the routine runs
+  \State \code{gpu_world_host} $\gets$ not \code{gpu_world_host} \Comment{nested routines see the right world}
+\EndIf
+\State the routine's statements and kernels
+\If{$\mathit{isl}$} \Comment{before every \code{RETURN} and at the end}
+  \State \code{gpu_world_host} $\gets$ not \code{gpu_world_host}
+  \State copy every argument that is not \code{INTENT(IN)} back
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+Islands make every routine portable alone. A routine can be ported, tested and committed while its neighbours still
+run on the host, and two routines can be ported in parallel by different people. The price is speed: each island
+moves its arguments twice per call. Islands are scaffolding, and they move nothing once the whole step runs on the
+device.
+
+\begin{keypoint}
+Between the entry and the exit of an island, no host code may read or write a moved array. Its host copy is stale
+while the routine runs on the device, and a host write would be overwritten by the exit copy. This mistake is
+invisible to every CPU check, because host and ``device'' memory are the same there; only a GPU run reveals it.
+\end{keypoint}
+
+\section{Checking one routine}
+
+Three tests check a ported routine, from the narrowest to the widest.
+
+\paragraph{The harness.} \code{port/h100/harness.sh} calls one routine alone with random inputs, three times: the
+CPU view, the GPU view on the host, the GPU view on the device. The outputs must agree bit for bit. It takes seconds
+and reaches code paths that a short model run may not.
+
+\paragraph{The call check.} Inside a real model run, the island of a routine can check its own calls
+(\code{frame/module_gpu_callcheck.F}). \Cref{alg:callcheck} shows how. Because both executions start from the same
+inputs, any difference is the kernel's own: a race, a missing \code{private}, a wrong index range, a reordered
+statement, or data the island does not move.
+
+\begin{algorithm}[ht]
+\caption{The call check of route $R$ (\code{WRF_GPU_CALLCHECK}=$R$:$n$).}
+\label{alg:callcheck}
+\begin{algorithmic}[1]
+\State save every argument the routine may change
+\State run the routine with $R$ on the device; keep its results
+\State restore the saved arguments
+\State run the routine again with every route on the host, as CPU-REF would
+\State compare every argument bit for bit; report the first differing element with both values in hexadecimal
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{T-AB and T-TRACE.} Over a window of the dev case, T-AB compares the run with the route on against the run
+with the route off: the routine's device execution against its host execution, on real data, over many calls and
+both domains. T-TRACE then compares GPU-REPRO with CPU-REF over the same window. The comparison uses the bit-hash
+traces of \cref{ch:repro}; the first differing line names the step, the RK stage, the checkpoint and the field.
+
+T-AB and T-TRACE test different things. T-AB compares the GPU view with itself and finds mistakes in kernels and
+islands. T-TRACE compares the GPU view with the original source and finds mistakes in the restructuring itself, such
+as a column kernel whose statements are in a different order than the slab loop's.
+
+\section{Templates}
+
+A loop nest is ported by recognizing its pattern and applying the matching template
+(\code{port/agent/CODING_STANDARD.md}, section~5). Each template has a tested example in \code{port/tests}, and most
+have \emph{mutants}: deliberately wrong versions that the test must reject.
+
+\subsection{A: pointwise}
+
+Every iteration writes only its own point and reads nothing that another iteration writes. The directive goes in
+front of the loop and nothing else changes (\cref{lst:calc-alt-acc}). When the source has several nests in a row, each
+becomes its own kernel, in source order; the end of a kernel is the synchronization that the order needs. 92 of the
+174 rows of the port's kernel table are of this kind.
+
+\subsection{B: rolling buffer}
+
+Advection computes the flux through each cell face and takes its difference. The CPU code does this row by row, and
+keeps the fluxes of the previous row in a two-row buffer, swapping two indices (\cref{alg:advect-y}). Iteration $j$
+uses what iteration $j-1$ computed, so the rows cannot run in parallel. Template B removes the dependence by storing
+all faces:
+\begin{itemize}
+  \item kernel Y1 computes the flux of every face $j$ into a 3D work array \code{fqy3(i,k,j)}, with the same branch
+    for the same $j$ (5th order inside, 3rd or 2nd order next to the boundaries) and the same expressions;
+  \item kernel Y2 computes, for every row, the tendency from \code{fqy3(i,k,j) - fqy3(i,k,j-1)}.
+\end{itemize}
+Every face flux is still computed once, from the same operands, and every tendency is the same difference. Only the
+storage changed. The price is one 3D work array, written once and read twice.
+
+\begin{figure}[ht]
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+   ! K-ADVU-Y2: flux divergence of rows j_start .. j_end (the source's j-1)
+!$acc parallel loop gang vector collapse(3) if(dev) default(none) present(tendency, fqy3, msfux) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy) private(mrdy)
+   DO j = j_start+1, j_end+1
+   DO k=kts,ktf
+   DO i = i_start, i_end
+      mrdy=msfux(i,j-1)*rdy   ! ADT eqn 44, 2nd term on RHS
+      tendency(i,k,j-1) = tendency(i,k,j-1) - mrdy*(fqy3(i,k,j)-fqy3(i,k,j-1))
+   ENDDO
+   ENDDO
+   ENDDO
+\end{lstlisting}
+\caption{The second kernel of Template B for the $y$-flux of \code{advect_u} (from \code{port/tests/templates/t_tmpl_b.F90}).
+The statements are the source's; only the buffer index became the row index.}
+\label{lst:tmpl-b}
+\end{figure}
+
+The $x$-fluxes have no such buffer: the two faces of a cell are computed in the same iteration. A thread can compute
+both faces of its own cell; each face is then computed twice, by two neighbouring threads, with the same operations
+on the same operands, which gives the same bits.
+
+\subsection{C: column}
+
+A vertical recurrence, such as the tridiagonal sweep of the acoustic solver (\cref{alg:tridiag}) or the
+integration of $\omega$ in \code{calc_ww_cp}, cannot be parallel in $k$. The source usually runs it over a slab:
+for each $j$, an array \code{s(its:ite,kts:kte)} is filled level by level for all $i$ at once. Template C gives each
+$(i,j)$ column one thread, and turns the slab into a private column:
+\begin{itemize}
+  \item a slab \code{s(its:ite,kts:kte)} becomes a private fixed-size array \code{s_col(WRF_KMAX+1)};
+  \item a per-row vector \code{v(its:ite)} becomes a private scalar;
+  \item initializations done once before the $j$ loop move into the column;
+  \item statement groups that the source runs over different $i$ ranges keep their own range, as an \code{IF} on $i$;
+  \item the $k$ loops run sequentially inside the thread, in the source's order and direction (\texttt{!\$acc loop seq}).
+\end{itemize}
+The private arrays have a fixed size because a private array of run-time size would live in the slow device heap.
+\code{WRF_KMAX} is 64, and the startup check stops a run with more levels.
+
+\Cref{lst:tmpl-c} shows the start of the column kernel of \code{calc_coef_w}, which sets up the coefficients of the
+implicit $w$ equation. In the source, \code{cof(i)} is a vector over a row; here it is the private scalar \code{cofs}.
+
+\begin{figure}[ht]
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALC_COEF_W)) default(none) &
+!$acc& present(a,alpha,gamma,mut,c1h,c2h,c1f,c2f,cqw,rdn,rdnw,c2a) &
+!$acc& firstprivate(i_start,i_end,j_start,j_end,kde,dts,g,epssm,lid_flag) private(k,kk,b,c,cofs)
+      DO j = j_start, j_end
+      DO i = i_start, i_end
+        k = kde-1
+        cofs  = (.5*dts*g*(1.+epssm))**2
+        a(i, 2 ,j) = 0.
+        ...
+        !$acc loop seq
+        DO k=2,kde-1
+          b = 1.+cqw(i,k,j)*cofs*rdn(k)*( ... )
+          c =   -cqw(i,k,j)*cofs*rdn(k)*rdnw(k  )*c2a(i,k,j  )/( ... )
+          alpha(i,k,j) = 1./(b-a(i,k,j)*gamma(i,k-1,j))
+          gamma(i,k,j) = c*alpha(i,k,j)
+        ENDDO
+\end{lstlisting}
+\caption{Template C: the column kernel of \code{calc_coef_w} (excerpt of \code{port/tests/tools/calc_coef_w_gpu.inc};
+the elided expressions are the source's, verbatim).}
+\label{lst:tmpl-c}
+\end{figure}
+
+\subsection{D: calls inside kernels}
+
+When a loop body calls a procedure, such as \code{fire_ros} for every fire node or a column scheme for every column,
+the callee and everything it calls get \texttt{!\$acc routine seq}. The compiler builds a device version that runs in
+the calling thread, beside the host version. A device routine may not do I/O, allocate memory, stop the model, or
+touch \code{grid} or \code{config_flags}; error branches set an integer code instead, and the host acts on it after
+the kernel with the source's own message.
+
+\subsection{G: boundary strips}
+
+Boundary conditions copy values into rows and columns at the edges of the domain (\cref{ch:bdy}). Each strip of the
+source becomes its own kernel, in the source order. The order matters: the $y$ strips read the corners that the $x$
+strips wrote, so strips of different phases are never merged into one kernel.
+
+\subsection{L: split update}
+
+The positive-definite limiter of \code{advect_scalar_pd} (\cref{alg:pd}) loops over cells, and a cell that would be
+emptied scales the fluxes through its outflow faces. A face is shared by two cells. In a parallel loop, one thread
+would write the face while its neighbour reads it to test the flux's sign: a data race. It happens to be harmless
+here, but only through an argument about signs and zeros that no compiler checks. Template L splits the update in
+two:
+\begin{itemize}
+  \item a cell kernel computes each cell's scale factor, or $-1$ when the cell is not limited;
+  \item a face kernel per direction looks at the sign of each face flux, finds the donor cell, and multiplies by the
+    donor's factor if the donor lies in the source's cell range and is limited.
+\end{itemize}
+Each face is then written by exactly one thread, with one multiplication by the same factor as in the source, and only
+the faces the source scales are touched. The unit test T-PDLIM compares the original loop and the split version on
+random and real states, including zero fluxes and the edges of the range.
+
+\subsection{R: row-parallel}
+
+The ozone interpolation \code{ozn_p_int} searches, for each level, the two pressure levels of the climatology that
+bracket it. The source starts the search of column $i$ where the search of column $i-1$ ended. The iterations over
+$i$ therefore share state. Template R keeps the source's $i$ loop sequential inside one thread per row $j$, so that
+each search starts where the source's started and finds the same bracket.
+
+\subsection{CP: column physics}
+
+A physics scheme is called by a wrapper that loops over rows, copies a slab of the model fields into the scheme's
+arrays, calls the scheme for the row, and copies the results back. Template CP (\code{plan.md} section~8.0) replaces
+the wrapper's row loop by one kernel over $(j,i)$:
+\begin{enumerate}
+  \item each thread copies its column into private fixed-size arrays, with the wrapper's own expressions (for WSM6,
+    \code{t = th*pii});
+  \item it calls the scheme with a single column, \code{its = ite = 1}, \code{kts = 1}, \code{kte = nz};
+  \item it copies the results back with the wrapper's expressions (\code{th = t/pii}).
+\end{enumerate}
+The scheme and its callees become device routines; their automatic arrays sized by the tile become fixed-size, and
+every whole-array statement on them (\code{a(:) = 0.}) is rewritten to the active extent \code{a(1:nz)}. The original
+wrapper stays in the CPU view, unchanged. \Cref{ch:colphys} discusses the performance of this pattern.
+
+\section{Memory for temporaries}
+
+WRF's routines declare large temporary arrays as \emph{automatic arrays}: arrays sized by the arguments, allocated on
+the stack at each call. A kernel cannot use them: they are host memory, created afresh at every call. The port
+replaces them in two ways.
+\begin{itemize}
+  \item \textbf{The scratch pool.} The \code{i1} arrays of \code{solve_em}, which the Registry declares as automatic
+    tendency arrays, become pointers into one large array allocated once (\code{frame/module_gpu_scratch.F}). The
+    generator that declares them emits the pointer form.
+  \item \textbf{Work arrays.} Other large automatic arrays (the flux arrays of advection, the temporaries of the fire
+    and radiation drivers) become named arrays allocated once at initialization for the largest domain
+    (\code{frame/module_gpu_work.F}). The routine remaps a pointer onto the work array with the bounds the automatic
+    array had.
+\end{itemize}
+Both are compiled into both builds (\code{-DWRF_POOL}) and zero-filled once. So CPU-REF and GPU-REPRO see the same
+memory in every temporary, even if some code read a temporary before writing it. The test T-UNINIT shows that no code
+of the case does: a build that fills every local with signaling NaNs and a build that fills them with zeros give the
+same bits.
+
+\section{Static guards}
+
+Some mistakes can be found by reading the code mechanically. \code{port/gates/static.sh} runs these checks before
+every commit:
+\begin{description}
+  \item[\code{arith_guard}] The CPU view of every file equals the base commit, apart from the allowed additions.
+  \item[\code{kernel_lint}] Every kernel has a route, \code{default(none)}, no data clause, a perfect nest under
+    \code{collapse}, \code{loop seq} on every inner loop that is not an early-exit search, no I/O, and no intrinsic
+    transcendental function (it must be \code{rp_*}); every file with kernels has the island of each route.
+  \item[\code{check_verbatim}] The statements of a restructured kernel are the source's statements, character for
+    character, apart from index changes the template allows.
+  \item[Protection] The tests, gates and comparison tools are checksummed, so that no one, human or agent, can make a
+    failing test pass by editing it.
+\end{description}
+
+\section{The routine ladder}
+
+Each routine climbs eight rungs (\code{roadmap/plan-4.6/README.md}):
+\begin{center}
+\small
+\begin{tabular}{llll}
+\toprule
+Rung & What & Machine & Passes when \\
+\midrule
+L1 & write the GPU view & CLOUD & \code{static.sh} passes \\
+L2 & compile both gfortran views & CLOUD & no errors \\
+L3 & GPU view equals CPU view on the host & CLOUD & identical bits \\
+L4 & compile with \code{nvfortran} & WS-A100 & kernels offloaded, no implicit copies \\
+L5 & harness: host, device, CPU view & WS-A100 & three-way identical \\
+L6 & T-AB on a dev-case window & WS-A100 & identical traces \\
+L7 & T-TRACE against CPU-REF & WS-A100 & bitwise \\
+L8 & record in the kernel database & WS-A100 & rows present \\
+\bottomrule
+\end{tabular}
+\end{center}
+The first three rungs need no GPU and run in a cloud environment; the others need a GPU and the case data. A routine
+is done at rung L7. The machines are named by what they can do:
+\begin{itemize}
+  \item \textbf{CLOUD}, a cloud coding environment with gfortran and no GPU;
+  \item \textbf{WS-A100}, a workstation with two A100 40~GB and the dev case;
+  \item \textbf{GPU80}, an 80~GB GPU for the full case;
+  \item \textbf{CCR}, CPU nodes for the reference runs;
+  \item \textbf{CI}, GitHub Actions, which builds this book.
+\end{itemize}
+
+\section{Organization}
+
+The plan (\code{roadmap/plan-4.6/}) arranges the work in nine stages and 139 phases:
+\begin{itemize}
+  \item 0, ground truth: the reproducible CPU reference, the probes, the dev case;
+  \item 1, infrastructure: state, pool, work arrays, tables and sync points, with all compute still on the host;
+  \item 2, dynamics; 3, physics; 4, fire;
+  \item 5, nest forcing on the device, the end of the bracket, and the full 17-hour acceptance run;
+  \item 6, performance without changing a bit (Part~VII of this book);
+  \item 7, other fires and a release; 8, the rest of WRF~4.6.0, including several GPUs.
+\end{itemize}
+Each stage ends with a gate that someone else can repeat. Inside a stage the phases are independent, thanks to the
+islands, and can run in parallel.
+
+\paragraph{Code-only runs.} Rungs L1 to L3 need no GPU, so the writing of kernels can be spread over many workers in
+parallel. The routines of Phases 1 to 3 were divided into 44 work packages, each owning a fixed set of routines, so
+that two workers never edit the same routine. A scope checker enforces the ownership. The first such run, with AI
+coding agents as workers, wrote code for 19 of the 44 packages; 234 kernels passed \code{kernel_lint}, and
+\code{arith_guard} found no new arithmetic in GPU code (\code{roadmap/plan-4.6/README.md}).
+
+\paragraph{What the first run taught.} The review of that run found problems that no static check could see:
+\begin{itemize}
+  \item an infrastructure module that the run's own CPU-view changes depended on had not been written, so the CPU view
+    compiled but crashed;
+  \item kernels written against code paths the smoke case does not take, which stopped on its open boundaries;
+  \item incremental builds that kept stale objects after an include file changed, because \code{make} does not track
+    includes (\cref{ch:iobuild}).
+\end{itemize}
+Each became a phase of Stage~0 of the plan. The lesson is that the static checks bound what can go wrong in the
+arithmetic, but only builds and runs show whether the pieces fit.
