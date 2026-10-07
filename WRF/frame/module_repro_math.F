@@ -125,68 +125,10 @@ MODULE module_repro_math
    INTEGER(i8), PARAMETER :: HIDDEN52 = INT(Z'0010000000000000', i8)
    INTEGER(i4), PARAMETER :: NAN4_BITS = INT(Z'7FC00000', i4)
 
-   ! 2/pi in 24-bit chunks (fdlibm e_rem_pio2.c)
-   INTEGER(i8), PARAMETER :: two_over_pi(0:65) = (/                                    &
-      INT(Z'A2F983',i8), INT(Z'6E4E44',i8), INT(Z'1529FC',i8), INT(Z'2757D1',i8),     &
-      INT(Z'F534DD',i8), INT(Z'C0DB62',i8), INT(Z'95993C',i8), INT(Z'439041',i8),     &
-      INT(Z'FE5163',i8), INT(Z'ABDEBB',i8), INT(Z'C561B7',i8), INT(Z'246E3A',i8),     &
-      INT(Z'424DD2',i8), INT(Z'E00649',i8), INT(Z'2EEA09',i8), INT(Z'D1921C',i8),     &
-      INT(Z'FE1DEB',i8), INT(Z'1CB129',i8), INT(Z'A73EE8',i8), INT(Z'8235F5',i8),     &
-      INT(Z'2EBB44',i8), INT(Z'84E99C',i8), INT(Z'7026B4',i8), INT(Z'5F7E41',i8),     &
-      INT(Z'3991D6',i8), INT(Z'398353',i8), INT(Z'39F49C',i8), INT(Z'845F8B',i8),     &
-      INT(Z'BDF928',i8), INT(Z'3B1FF8',i8), INT(Z'97FFDE',i8), INT(Z'05980F',i8),     &
-      INT(Z'EF2F11',i8), INT(Z'8B5A0A',i8), INT(Z'6D1F6D',i8), INT(Z'367ECF',i8),     &
-      INT(Z'27CB09',i8), INT(Z'B74F46',i8), INT(Z'3F669E',i8), INT(Z'5FEA2D',i8),     &
-      INT(Z'7527BA',i8), INT(Z'C7EBE5',i8), INT(Z'F17B3D',i8), INT(Z'0739F7',i8),     &
-      INT(Z'8A5292',i8), INT(Z'EA6BFB',i8), INT(Z'5FB11F',i8), INT(Z'8D5D08',i8),     &
-      INT(Z'560330',i8), INT(Z'46FC7B',i8), INT(Z'6BABF0',i8), INT(Z'CFBC20',i8),     &
-      INT(Z'9AF436',i8), INT(Z'1DA9E3',i8), INT(Z'91615E',i8), INT(Z'E61B08',i8),     &
-      INT(Z'659985',i8), INT(Z'5F14A0',i8), INT(Z'68408D',i8), INT(Z'FFD880',i8),     &
-      INT(Z'4D7327',i8), INT(Z'310606',i8), INT(Z'1556CA',i8), INT(Z'73A8C9',i8),     &
-      INT(Z'60E27B',i8), INT(Z'C08C6B',i8) /)
 
-   ! High words of n*pi/2, n = 1..32 (fdlibm e_rem_pio2.c)
-   INTEGER(i8), PARAMETER :: npio2_hw(1:32) = (/                                                      &
-      INT(Z'3FF921FB',i8), INT(Z'400921FB',i8), INT(Z'4012D97C',i8), INT(Z'401921FB',i8),           &
-      INT(Z'401F6A7A',i8), INT(Z'4022D97C',i8), INT(Z'4025FDBB',i8), INT(Z'402921FB',i8),           &
-      INT(Z'402C463A',i8), INT(Z'402F6A7A',i8), INT(Z'4031475C',i8), INT(Z'4032D97C',i8),           &
-      INT(Z'40346B9C',i8), INT(Z'4035FDBB',i8), INT(Z'40378FDB',i8), INT(Z'403921FB',i8),           &
-      INT(Z'403AB41B',i8), INT(Z'403C463A',i8), INT(Z'403DD85A',i8), INT(Z'403F6A7A',i8),           &
-      INT(Z'40407E4C',i8), INT(Z'4041475C',i8), INT(Z'4042106C',i8), INT(Z'4042D97C',i8),           &
-      INT(Z'4043A28C',i8), INT(Z'40446B9C',i8), INT(Z'404534AC',i8), INT(Z'4045FDBB',i8),           &
-      INT(Z'4046C6CB',i8), INT(Z'40478FDB',i8), INT(Z'404858EB',i8), INT(Z'404921FB',i8) /)
 
-   ! pi/2 in 24-bit pieces (fdlibm k_rem_pio2.c)
-   REAL(r8), PARAMETER :: PIo2(0:7) = (/                    &
-      1.57079625129699707031e+00_r8, 7.54978941586159635335e-08_r8, &
-      5.39030252995776476554e-15_r8, 3.28200341580791294123e-22_r8, &
-      1.27065575308067607349e-29_r8, 1.22933308981111328932e-36_r8, &
-      2.73370053816464559624e-44_r8, 2.16741683877804819444e-51_r8 /)
 
-   ! atan tables (fdlibm s_atan.c)
-   REAL(r8), PARAMETER :: atanhi(0:3) = (/                  &
-      4.63647609000806093515e-01_r8, 7.85398163397448278999e-01_r8, &
-      9.82793723247329054082e-01_r8, 1.57079632679489655800e+00_r8 /)
-   REAL(r8), PARAMETER :: atanlo(0:3) = (/                  &
-      2.26987774529616870924e-17_r8, 3.06161699786838301793e-17_r8, &
-      1.39033110312309984516e-17_r8, 6.12323399573676603587e-17_r8 /)
-   REAL(r8), PARAMETER :: aT(0:10) = (/                     &
-      3.33333333333329318027e-01_r8, -1.99999999998764832476e-01_r8, &
-      1.42857142725034663711e-01_r8, -1.11111104054623557880e-01_r8, &
-      9.09088713343650656196e-02_r8, -7.69187620504482999495e-02_r8, &
-      6.66107313738753120669e-02_r8, -5.83357013379057348645e-02_r8, &
-      4.97687799461593236017e-02_r8, -3.65315727442169155270e-02_r8, &
-      1.62858201153657823623e-02_r8 /)
 
-   ! tan kernel coefficients (fdlibm k_tan.c)
-   REAL(r8), PARAMETER :: TT(0:12) = (/                     &
-      3.33333333333334091986e-01_r8, 1.33333333333201242699e-01_r8, &
-      5.39682539762260521377e-02_r8, 2.18694882948595424599e-02_r8, &
-      8.86323982359930005737e-03_r8, 3.59207910759131235356e-03_r8, &
-      1.45620945432529025516e-03_r8, 5.88041240820264096874e-04_r8, &
-      2.46463134818469906812e-04_r8, 7.81794442939557092300e-05_r8, &
-      7.14072491382608190305e-05_r8, -1.85586374855275456654e-05_r8, &
-      2.59073051863633712884e-05_r8 /)
 
 CONTAINS
 
@@ -208,7 +150,6 @@ CONTAINS
 
    ! unsigned high 32-bit word of x, in 0 .. 2**32-1
    PURE FUNCTION hiw(x) RESULT(h)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8) :: h
       h = ISHFT(TRANSFER(x, 0_i8), -32)
@@ -216,7 +157,6 @@ CONTAINS
 
    ! unsigned low 32-bit word of x
    PURE FUNCTION low(x) RESULT(l)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8) :: l
       l = IAND(TRANSFER(x, 0_i8), MASK32)
@@ -224,7 +164,6 @@ CONTAINS
 
    ! double from high and low words
    PURE FUNCTION mkd(h, l) RESULT(x)
-!$omp declare target
       INTEGER(i8), INTENT(IN) :: h, l
       REAL(r8) :: x
       x = TRANSFER(IOR(ISHFT(IAND(h, MASK32), 32), IAND(l, MASK32)), 1.0_r8)
@@ -232,7 +171,6 @@ CONTAINS
 
    ! x with its high word replaced (fdlibm __HI(x) = h)
    PURE FUNCTION set_hi(x, h) RESULT(y)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       INTEGER(i8), INTENT(IN) :: h
       REAL(r8) :: y
@@ -241,14 +179,12 @@ CONTAINS
 
    ! x with its low word cleared (fdlibm __LO(x) = 0)
    PURE FUNCTION lo0(x) RESULT(y)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: y
       y = TRANSFER(IAND(TRANSFER(x, 0_i8), NOT(MASK32)), 1.0_r8)
    END FUNCTION lo0
 
    PURE FUNCTION fabs8(x) RESULT(y)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: y
       y = TRANSFER(IAND(TRANSFER(x, 0_i8), ABS_MASK), 1.0_r8)
@@ -256,27 +192,23 @@ CONTAINS
 
    ! |a| with the sign bit of b
    PURE FUNCTION copysign8(a, b) RESULT(y)
-!$omp declare target
       REAL(r8), INTENT(IN) :: a, b
       REAL(r8) :: y
       y = TRANSFER(IOR(IAND(TRANSFER(a, 0_i8), ABS_MASK), IAND(TRANSFER(b, 0_i8), NOT(ABS_MASK))), 1.0_r8)
    END FUNCTION copysign8
 
    PURE FUNCTION inf8() RESULT(y)
-!$omp declare target
       REAL(r8) :: y
       y = TRANSFER(INF_BITS, 1.0_r8)
    END FUNCTION inf8
 
    PURE FUNCTION nan8() RESULT(y)
-!$omp declare target
       REAL(r8) :: y
       y = TRANSFER(NAN_BITS, 1.0_r8)
    END FUNCTION nan8
 
    ! arithmetic shift right (floor division by 2**s), as C >> on signed int
    PURE FUNCTION asr(v, s) RESULT(r)
-!$omp declare target
       INTEGER(i8), INTENT(IN) :: v
       INTEGER, INTENT(IN) :: s
       INTEGER(i8) :: r
@@ -289,7 +221,6 @@ CONTAINS
 
    ! REAL(8) result -> REAL(4), canonical NaN
    PURE FUNCTION to_r4(d) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: d
       REAL(r4) :: r
       IF (d /= d) THEN
@@ -301,7 +232,6 @@ CONTAINS
 
    ! canonical NaN for REAL(8) results
    PURE FUNCTION canon8(d) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: d
       REAL(r8) :: r
       IF (d /= d) THEN
@@ -316,7 +246,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_scalbn(xin, n) RESULT(x)
-!$omp declare target
       REAL(r8), INTENT(IN) :: xin
       INTEGER(i8), INTENT(IN) :: n
       REAL(r8) :: x
@@ -369,7 +298,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_exp(xin) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: o_threshold =  7.09782712893383973096e+02_r8
@@ -464,7 +392,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_log(xin) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: ln2_hi = 6.93147180369123816490e-01_r8
@@ -557,7 +484,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_log10(xin) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: two54     = 1.80143985094819840000e+16_r8
@@ -606,7 +532,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_pow(x, y) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       REAL(r8), PARAMETER :: bp(0:1)   = (/ 1.0_r8, 1.5_r8 /)
@@ -907,7 +832,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION k_sin(x, y, iy) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x, y
       INTEGER, INTENT(IN) :: iy
       REAL(r8) :: res
@@ -936,7 +860,6 @@ CONTAINS
    END FUNCTION k_sin
 
    PURE FUNCTION k_cos(x, y) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       REAL(r8), PARAMETER :: C1 =  4.16666666666666019037e-02_r8
@@ -970,7 +893,15 @@ CONTAINS
    END FUNCTION k_cos
 
    PURE FUNCTION k_tan(xin, yin, iy) RESULT(res)
-!$omp declare target
+      ! tan kernel coefficients (fdlibm k_tan.c)
+      REAL(r8), PARAMETER :: TT(0:12) = (/                     &
+         3.33333333333334091986e-01_r8, 1.33333333333201242699e-01_r8, &
+         5.39682539762260521377e-02_r8, 2.18694882948595424599e-02_r8, &
+         8.86323982359930005737e-03_r8, 3.59207910759131235356e-03_r8, &
+         1.45620945432529025516e-03_r8, 5.88041240820264096874e-04_r8, &
+         2.46463134818469906812e-04_r8, 7.81794442939557092300e-05_r8, &
+         7.14072491382608190305e-05_r8, -1.85586374855275456654e-05_r8, &
+         2.59073051863633712884e-05_r8 /)
       REAL(r8), INTENT(IN) :: xin, yin
       INTEGER, INTENT(IN) :: iy
       REAL(r8) :: res
@@ -1042,7 +973,31 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE SUBROUTINE k_rem_pio2(x, y, e0, nx, nout)
-!$omp declare target
+      ! 2/pi in 24-bit chunks (fdlibm e_rem_pio2.c)
+      INTEGER(i8), PARAMETER :: two_over_pi(0:65) = (/                                    &
+         INT(Z'A2F983',i8), INT(Z'6E4E44',i8), INT(Z'1529FC',i8), INT(Z'2757D1',i8),     &
+         INT(Z'F534DD',i8), INT(Z'C0DB62',i8), INT(Z'95993C',i8), INT(Z'439041',i8),     &
+         INT(Z'FE5163',i8), INT(Z'ABDEBB',i8), INT(Z'C561B7',i8), INT(Z'246E3A',i8),     &
+         INT(Z'424DD2',i8), INT(Z'E00649',i8), INT(Z'2EEA09',i8), INT(Z'D1921C',i8),     &
+         INT(Z'FE1DEB',i8), INT(Z'1CB129',i8), INT(Z'A73EE8',i8), INT(Z'8235F5',i8),     &
+         INT(Z'2EBB44',i8), INT(Z'84E99C',i8), INT(Z'7026B4',i8), INT(Z'5F7E41',i8),     &
+         INT(Z'3991D6',i8), INT(Z'398353',i8), INT(Z'39F49C',i8), INT(Z'845F8B',i8),     &
+         INT(Z'BDF928',i8), INT(Z'3B1FF8',i8), INT(Z'97FFDE',i8), INT(Z'05980F',i8),     &
+         INT(Z'EF2F11',i8), INT(Z'8B5A0A',i8), INT(Z'6D1F6D',i8), INT(Z'367ECF',i8),     &
+         INT(Z'27CB09',i8), INT(Z'B74F46',i8), INT(Z'3F669E',i8), INT(Z'5FEA2D',i8),     &
+         INT(Z'7527BA',i8), INT(Z'C7EBE5',i8), INT(Z'F17B3D',i8), INT(Z'0739F7',i8),     &
+         INT(Z'8A5292',i8), INT(Z'EA6BFB',i8), INT(Z'5FB11F',i8), INT(Z'8D5D08',i8),     &
+         INT(Z'560330',i8), INT(Z'46FC7B',i8), INT(Z'6BABF0',i8), INT(Z'CFBC20',i8),     &
+         INT(Z'9AF436',i8), INT(Z'1DA9E3',i8), INT(Z'91615E',i8), INT(Z'E61B08',i8),     &
+         INT(Z'659985',i8), INT(Z'5F14A0',i8), INT(Z'68408D',i8), INT(Z'FFD880',i8),     &
+         INT(Z'4D7327',i8), INT(Z'310606',i8), INT(Z'1556CA',i8), INT(Z'73A8C9',i8),     &
+         INT(Z'60E27B',i8), INT(Z'C08C6B',i8) /)
+      ! pi/2 in 24-bit pieces (fdlibm k_rem_pio2.c)
+      REAL(r8), PARAMETER :: PIo2(0:7) = (/                    &
+         1.57079625129699707031e+00_r8, 7.54978941586159635335e-08_r8, &
+         5.39030252995776476554e-15_r8, 3.28200341580791294123e-22_r8, &
+         1.27065575308067607349e-29_r8, 1.22933308981111328932e-36_r8, &
+         2.73370053816464559624e-44_r8, 2.16741683877804819444e-51_r8 /)
       REAL(r8), INTENT(IN) :: x(0:2)
       REAL(r8), INTENT(OUT) :: y(0:1)
       INTEGER(i8), INTENT(IN) :: e0, nx
@@ -1223,7 +1178,16 @@ CONTAINS
    END SUBROUTINE k_rem_pio2
 
    PURE SUBROUTINE rem_pio2(x, y0, y1, n)
-!$omp declare target
+      ! High words of n*pi/2, n = 1..32 (fdlibm e_rem_pio2.c)
+      INTEGER(i8), PARAMETER :: npio2_hw(1:32) = (/                                                      &
+         INT(Z'3FF921FB',i8), INT(Z'400921FB',i8), INT(Z'4012D97C',i8), INT(Z'401921FB',i8),           &
+         INT(Z'401F6A7A',i8), INT(Z'4022D97C',i8), INT(Z'4025FDBB',i8), INT(Z'402921FB',i8),           &
+         INT(Z'402C463A',i8), INT(Z'402F6A7A',i8), INT(Z'4031475C',i8), INT(Z'4032D97C',i8),           &
+         INT(Z'40346B9C',i8), INT(Z'4035FDBB',i8), INT(Z'40378FDB',i8), INT(Z'403921FB',i8),           &
+         INT(Z'403AB41B',i8), INT(Z'403C463A',i8), INT(Z'403DD85A',i8), INT(Z'403F6A7A',i8),           &
+         INT(Z'40407E4C',i8), INT(Z'4041475C',i8), INT(Z'4042106C',i8), INT(Z'4042D97C',i8),           &
+         INT(Z'4043A28C',i8), INT(Z'40446B9C',i8), INT(Z'404534AC',i8), INT(Z'4045FDBB',i8),           &
+         INT(Z'4046C6CB',i8), INT(Z'40478FDB',i8), INT(Z'404858EB',i8), INT(Z'404921FB',i8) /)
       REAL(r8), INTENT(IN) :: x
       REAL(r8), INTENT(OUT) :: y0, y1
       INTEGER(i8), INTENT(OUT) :: n
@@ -1352,7 +1316,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_sin(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1378,7 +1341,6 @@ CONTAINS
    END FUNCTION rm_sin
 
    PURE FUNCTION rm_cos(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1404,7 +1366,6 @@ CONTAINS
    END FUNCTION rm_cos
 
    PURE FUNCTION rm_tan(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res, y0, y1
       INTEGER(i8) :: ix, n
@@ -1425,7 +1386,20 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_atan(xin) RESULT(res)
-!$omp declare target
+      ! atan tables (fdlibm s_atan.c)
+      REAL(r8), PARAMETER :: atanhi(0:3) = (/                  &
+         4.63647609000806093515e-01_r8, 7.85398163397448278999e-01_r8, &
+         9.82793723247329054082e-01_r8, 1.57079632679489655800e+00_r8 /)
+      REAL(r8), PARAMETER :: atanlo(0:3) = (/                  &
+         2.26987774529616870924e-17_r8, 3.06161699786838301793e-17_r8, &
+         1.39033110312309984516e-17_r8, 6.12323399573676603587e-17_r8 /)
+      REAL(r8), PARAMETER :: aT(0:10) = (/                     &
+         3.33333333333329318027e-01_r8, -1.99999999998764832476e-01_r8, &
+         1.42857142725034663711e-01_r8, -1.11111104054623557880e-01_r8, &
+         9.09088713343650656196e-02_r8, -7.69187620504482999495e-02_r8, &
+         6.66107313738753120669e-02_r8, -5.83357013379057348645e-02_r8, &
+         4.97687799461593236017e-02_r8, -3.65315727442169155270e-02_r8, &
+         1.62858201153657823623e-02_r8 /)
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8) :: x, w, s1, s2, z
@@ -1489,7 +1463,6 @@ CONTAINS
    END FUNCTION rm_atan
 
    PURE FUNCTION rm_atan2(y, x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: y, x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pi_o_4 = 7.8539816339744827900e-01_r8
@@ -1602,7 +1575,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_asin(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pio2_hi = 1.57079632679489655800e+00_r8
@@ -1667,7 +1639,6 @@ CONTAINS
    END FUNCTION rm_asin
 
    PURE FUNCTION rm_acos(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8), PARAMETER :: pi      = 3.14159265358979311600e+00_r8
@@ -1738,7 +1709,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_expm1(xin) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: xin
       REAL(r8) :: res
       REAL(r8), PARAMETER :: o_threshold = 7.09782712893383973096e+02_r8
@@ -1858,7 +1828,6 @@ CONTAINS
    END FUNCTION rm_expm1
 
    PURE FUNCTION rm_sinh(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, w, h
@@ -1901,7 +1870,6 @@ CONTAINS
    END FUNCTION rm_sinh
 
    PURE FUNCTION rm_cosh(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, w
@@ -1943,7 +1911,6 @@ CONTAINS
    END FUNCTION rm_cosh
 
    PURE FUNCTION rm_tanh(x) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: res
       REAL(r8) :: t, z
@@ -1989,7 +1956,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    PURE FUNCTION rm_fmod(x, y) RESULT(res)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: res
       INTEGER(i8) :: ax, ay, ex, ey, mx, my, rr, d, s
@@ -2042,7 +2008,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_exp_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2053,7 +2018,6 @@ CONTAINS
    END FUNCTION rp_exp_r4
 
    ELEMENTAL FUNCTION rp_log_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2064,7 +2028,6 @@ CONTAINS
    END FUNCTION rp_log_r4
 
    ELEMENTAL FUNCTION rp_log10_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2075,7 +2038,6 @@ CONTAINS
    END FUNCTION rp_log10_r4
 
    ELEMENTAL FUNCTION rp_sin_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2086,7 +2048,6 @@ CONTAINS
    END FUNCTION rp_sin_r4
 
    ELEMENTAL FUNCTION rp_cos_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2097,7 +2058,6 @@ CONTAINS
    END FUNCTION rp_cos_r4
 
    ELEMENTAL FUNCTION rp_tan_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2108,7 +2068,6 @@ CONTAINS
    END FUNCTION rp_tan_r4
 
    ELEMENTAL FUNCTION rp_asin_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2119,7 +2078,6 @@ CONTAINS
    END FUNCTION rp_asin_r4
 
    ELEMENTAL FUNCTION rp_acos_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2130,7 +2088,6 @@ CONTAINS
    END FUNCTION rp_acos_r4
 
    ELEMENTAL FUNCTION rp_atan_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2141,7 +2098,6 @@ CONTAINS
    END FUNCTION rp_atan_r4
 
    ELEMENTAL FUNCTION rp_atan2_r4(y, x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: y, x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2152,7 +2108,6 @@ CONTAINS
    END FUNCTION rp_atan2_r4
 
    ELEMENTAL FUNCTION rp_sinh_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2163,7 +2118,6 @@ CONTAINS
    END FUNCTION rp_sinh_r4
 
    ELEMENTAL FUNCTION rp_cosh_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2174,7 +2128,6 @@ CONTAINS
    END FUNCTION rp_cosh_r4
 
    ELEMENTAL FUNCTION rp_tanh_r4(x) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2185,7 +2138,6 @@ CONTAINS
    END FUNCTION rp_tanh_r4
 
    ELEMENTAL FUNCTION rp_pow_r4(x, y) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x, y
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2203,7 +2155,6 @@ CONTAINS
    END FUNCTION rp_pow_r4
 
    ELEMENTAL FUNCTION rp_mod_r4(a, p) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: a, p
       REAL(r4) :: r
 #ifdef REPRO_MATH
@@ -2218,7 +2169,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_exp_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2229,7 +2179,6 @@ CONTAINS
    END FUNCTION rp_exp_r8
 
    ELEMENTAL FUNCTION rp_log_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2240,7 +2189,6 @@ CONTAINS
    END FUNCTION rp_log_r8
 
    ELEMENTAL FUNCTION rp_log10_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2251,7 +2199,6 @@ CONTAINS
    END FUNCTION rp_log10_r8
 
    ELEMENTAL FUNCTION rp_sin_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2262,7 +2209,6 @@ CONTAINS
    END FUNCTION rp_sin_r8
 
    ELEMENTAL FUNCTION rp_cos_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2273,7 +2219,6 @@ CONTAINS
    END FUNCTION rp_cos_r8
 
    ELEMENTAL FUNCTION rp_tan_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2284,7 +2229,6 @@ CONTAINS
    END FUNCTION rp_tan_r8
 
    ELEMENTAL FUNCTION rp_asin_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2295,7 +2239,6 @@ CONTAINS
    END FUNCTION rp_asin_r8
 
    ELEMENTAL FUNCTION rp_acos_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2306,7 +2249,6 @@ CONTAINS
    END FUNCTION rp_acos_r8
 
    ELEMENTAL FUNCTION rp_atan_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2317,7 +2259,6 @@ CONTAINS
    END FUNCTION rp_atan_r8
 
    ELEMENTAL FUNCTION rp_atan2_r8(y, x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: y, x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2328,7 +2269,6 @@ CONTAINS
    END FUNCTION rp_atan2_r8
 
    ELEMENTAL FUNCTION rp_sinh_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2339,7 +2279,6 @@ CONTAINS
    END FUNCTION rp_sinh_r8
 
    ELEMENTAL FUNCTION rp_cosh_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2350,7 +2289,6 @@ CONTAINS
    END FUNCTION rp_cosh_r8
 
    ELEMENTAL FUNCTION rp_tanh_r8(x) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2361,7 +2299,6 @@ CONTAINS
    END FUNCTION rp_tanh_r8
 
    ELEMENTAL FUNCTION rp_pow_r8(x, y) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x, y
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2372,7 +2309,6 @@ CONTAINS
    END FUNCTION rp_pow_r8
 
    ELEMENTAL FUNCTION rp_mod_r8(a, p) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: a, p
       REAL(r8) :: r
 #ifdef REPRO_MATH
@@ -2387,7 +2323,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 
    ELEMENTAL FUNCTION rp_pow_r4r8(x, y) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       REAL(r8), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2395,7 +2330,6 @@ CONTAINS
    END FUNCTION rp_pow_r4r8
 
    ELEMENTAL FUNCTION rp_pow_r8r4(x, y) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       REAL(r4), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2403,7 +2337,6 @@ CONTAINS
    END FUNCTION rp_pow_r8r4
 
    ELEMENTAL FUNCTION rp_pow_i4r4(x, y) RESULT(r)
-!$omp declare target
       INTEGER(i4), INTENT(IN) :: x
       REAL(r4), INTENT(IN) :: y
       REAL(r4) :: r
@@ -2411,7 +2344,6 @@ CONTAINS
    END FUNCTION rp_pow_i4r4
 
    ELEMENTAL FUNCTION rp_pow_i4r8(x, y) RESULT(r)
-!$omp declare target
       INTEGER(i4), INTENT(IN) :: x
       REAL(r8), INTENT(IN) :: y
       REAL(r8) :: r
@@ -2420,7 +2352,6 @@ CONTAINS
 
    ! Integer exponents: evaluated exactly as the original expression x**n.
    ELEMENTAL FUNCTION rp_pow_r4i4(x, n) RESULT(r)
-!$omp declare target
       REAL(r4), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r4) :: r
@@ -2428,7 +2359,6 @@ CONTAINS
    END FUNCTION rp_pow_r4i4
 
    ELEMENTAL FUNCTION rp_pow_r8i4(x, n) RESULT(r)
-!$omp declare target
       REAL(r8), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r8) :: r
@@ -2436,21 +2366,18 @@ CONTAINS
    END FUNCTION rp_pow_r8i4
 
    ELEMENTAL FUNCTION rp_pow_i4i4(x, n) RESULT(r)
-!$omp declare target
       INTEGER(i4), INTENT(IN) :: x, n
       INTEGER(i4) :: r
       r = x**n
    END FUNCTION rp_pow_i4i4
 
    ELEMENTAL FUNCTION rp_mod_i4(a, p) RESULT(r)
-!$omp declare target
       INTEGER(i4), INTENT(IN) :: a, p
       INTEGER(i4) :: r
       r = MOD(a, p)
    END FUNCTION rp_mod_i4
 
    ELEMENTAL FUNCTION rp_mod_i8(a, p) RESULT(r)
-!$omp declare target
       INTEGER(i8), INTENT(IN) :: a, p
       INTEGER(i8) :: r
       r = MOD(a, p)
