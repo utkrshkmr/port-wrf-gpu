@@ -3039,6 +3039,12 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
                              ims, ime, jms, jme, kms, kme,  &
                              its, ite, jts, jte, kts, kte  )
 
+      USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_ADVECT_SCALAR
+      USE module_gpu_callcheck
+#ifdef WRF_GPU
+      USE module_gpu_work, ONLY : work_p2_b4_fqy3
+#endif
+
    IMPLICIT NONE
    
    ! Input data
@@ -3097,6 +3103,15 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
    INTEGER :: jp1, jp0, jtmp
 
+#ifdef WRF_GPU
+#include "gpu_col.h"
+      LOGICAL :: gpu_isl
+      REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: fqy3
+      REAL :: vflux_col(WRF_KMAX+1)
+      INTEGER :: ii, iface
+      REAL :: fqx_face, fqx_i, fqx_ip1
+#endif
+
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
 
@@ -3122,6 +3137,34 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
    LOGICAL :: specified
 
+
+#ifdef WRF_GPU
+      IF (config_flags%h_sca_adv_order /= 5 .OR. config_flags%v_sca_adv_order /= 3) THEN
+         CALL wrf_error_fatal('advect_scalar: order not ported to the GPU')
+      END IF
+      IF (config_flags%polar) THEN
+         CALL wrf_error_fatal('advect_scalar: polar not ported to the GPU')
+      END IF
+      IF (config_flags%open_xs .OR. config_flags%open_xe .OR. &
+          config_flags%open_ys .OR. config_flags%open_ye) THEN
+         CALL wrf_error_fatal('advect_scalar: open boundary not ported to the GPU')
+      END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_ADVECT_SCALAR)) THEN
+        CALL gpu_cc_save_r(1, tendency, SIZE(tendency,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_ADVECT_SCALAR)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(field, field_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, &
+!$acc&   msfvy, msftx, msfty, fzm, fzp, rdzw)
+        ELSE
+!$acc update self(field, field_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, msfvy, &
+!$acc&   msftx, msfty, fzm, fzp, rdzw)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
@@ -3135,6 +3178,219 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  here is the choice of flux operators
 
 
+#ifdef WRF_GPU
+      fqy3(ims:ime,kms:kme,jms:jme) => work_p2_b4_fqy3(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+
+      degrade_xs = .true.
+      degrade_xe = .true.
+      degrade_ys = .true.
+      degrade_ye = .true.
+
+      IF( config_flags%periodic_x   .or. &
+          config_flags%symmetric_xs .or. &
+          (its > ids+3)                ) degrade_xs = .false.
+      IF( config_flags%periodic_x   .or. &
+          config_flags%symmetric_xe .or. &
+          (ite < ide-3)                ) degrade_xe = .false.
+      IF( config_flags%periodic_y   .or. &
+          config_flags%symmetric_ys .or. &
+          (jts > jds+3)                ) degrade_ys = .false.
+      IF( config_flags%periodic_y   .or. &
+          config_flags%symmetric_ye .or. &
+          (jte < jde-4)                ) degrade_ye = .false.
+
+      i_start = its
+      i_end   = MIN(ite,ide-1)
+      j_start = jts
+      j_end   = MIN(jte,jde-1)
+
+      j_start_f = j_start
+      j_end_f   = j_end+1
+
+      IF(degrade_ys) then
+        j_start = MAX(jts,jds+1)
+        j_start_f = jds+3
+      ENDIF
+
+      IF(degrade_ye) then
+        j_end = MIN(jte,jde-2)
+        j_end_f = jde-3
+      ENDIF
+
+      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+
+! K-ADVS-Y1: y-face fluxes into fqy3 (Template B)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_SCALAR)) default(none) &
+!$acc& present(fqy3, field, rv) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, j_start_f, j_end_f, jds, jde, kts, ktf, time_step) &
+!$acc& private(vel)
+      DO j = j_start, j_end+1
+      DO k=kts,ktf
+      DO i = i_start, i_end
+         IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN
+            vel = rv(i,k,j)
+            fqy3( i, k, j ) = vel*advect_scalar_gpu_flux5(                &
+                  field(i,k,j-3), field(i,k,j-2), field(i,k,j-1),       &
+                  field(i,k,j  ), field(i,k,j+1), field(i,k,j+2),  vel, time_step)
+         ELSE IF ( j == jds+1 ) THEN
+            fqy3(i,k, j) = 0.5*rv(i,k,j)*          &
+                   (field(i,k,j)+field(i,k,j-1))
+         ELSE IF ( j == jds+2 ) THEN
+            vel = rv(i,k,j)
+            fqy3( i, k, j ) = vel*advect_scalar_gpu_flux3(              &
+                   field(i,k,j-2),field(i,k,j-1),field(i,k,j),field(i,k,j+1),vel, time_step)
+         ELSE IF ( j == jde-1 ) THEN
+            fqy3(i, k, j) = 0.5*rv(i,k,j)*      &
+                   (field(i,k,j)+field(i,k,j-1))
+         ELSE IF ( j == jde-2 ) THEN
+            vel = rv(i,k,j)
+            fqy3( i, k, j) = vel*advect_scalar_gpu_flux3(             &
+                   field(i,k,j-2),field(i,k,j-1),    &
+                   field(i,k,j),field(i,k,j+1),vel, time_step)
+         END IF
+      ENDDO
+      ENDDO
+      ENDDO
+
+! K-ADVS-Y2: y flux divergence
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_SCALAR)) default(none) &
+!$acc& present(tendency, fqy3, msftx) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy) &
+!$acc& private(mrdy)
+      DO j = j_start+1, j_end+1
+      DO k=kts,ktf
+      DO i = i_start, i_end
+            mrdy=msftx(i,j-1)*rdy
+            tendency(i,k,j-1) = tendency(i,k,j-1) - mrdy*(fqy3(i,k,j)-fqy3(i,k,j-1))
+      ENDDO
+      ENDDO
+      ENDDO
+
+      i_start = its
+      i_end   = MIN(ite,ide-1)
+
+      j_start = jts
+      j_end   = MIN(jte,jde-1)
+
+      i_start_f = i_start
+      i_end_f   = i_end+1
+
+      IF(degrade_xs) then
+        i_start = MAX(ids+1,its)
+        i_start_f = MIN(i_start+2,ids+3)
+      ENDIF
+
+      IF(degrade_xe) then
+        i_end = MIN(ide-2,ite)
+        i_end_f = ide-3
+      ENDIF
+
+! K-ADVS-X: both faces per cell, then the x flux divergence
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_SCALAR)) default(none) &
+!$acc& present(tendency, field, ru, msftx) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, i_start_f, i_end_f, kts, ktf, &
+!$acc& ids, ide, degrade_xs, degrade_xe, rdx, time_step) &
+!$acc& private(vel, mrdx, ii, iface, fqx_face, fqx_i, fqx_ip1)
+      DO j = j_start, j_end
+      DO k=kts,ktf
+      DO i = i_start, i_end
+!$acc loop seq
+         DO iface = 0, 1
+            IF (iface == 0) THEN
+               ii = i
+            ELSE
+               ii = i+1
+            END IF
+            IF( (ii >= i_start_f) .and. (ii <= i_end_f) ) THEN
+               vel = ru(ii,k,j)
+               fqx_face = vel*advect_scalar_gpu_flux5( field(ii-3,k,j), field(ii-2,k,j),  &
+                                         field(ii-1,k,j), field(ii  ,k,j),  &
+                                         field(ii+1,k,j), field(ii+2,k,j),  &
+                                         vel, time_step)
+            END IF
+            IF( degrade_xs ) THEN
+               IF(ii == ids+1) THEN
+                  fqx_face = 0.5*(ru(ii,k,j)) &
+                         *(field(ii,k,j)+field(ii-1,k,j))
+               END IF
+               IF(ii == ids+2) THEN
+                  vel = ru(ii,k,j)
+                  fqx_face = vel*advect_scalar_gpu_flux3( field(ii-2,k,j), field(ii-1,k,j),  &
+                                              field(ii  ,k,j), field(ii+1,k,j),  &
+                                              vel, time_step)
+               END IF
+            END IF
+            IF( degrade_xe ) THEN
+               IF( ii == ide-1 ) THEN
+                  fqx_face = 0.5*(ru(ii,k,j))      &
+                         *(field(ii,k,j)+field(ii-1,k,j))
+               END IF
+               IF( ii == ide-2 ) THEN
+                  vel = ru(ii,k,j)
+                  fqx_face = vel*advect_scalar_gpu_flux3( field(ii-2,k,j), field(ii-1,k,j),  &
+                                       field(ii  ,k,j), field(ii+1,k,j),  &
+                                       vel, time_step)
+               END IF
+            END IF
+            IF (iface == 0) THEN
+               fqx_i = fqx_face
+            ELSE
+               fqx_ip1 = fqx_face
+            END IF
+         ENDDO
+            mrdx=msftx(i,j)*rdx
+            tendency(i,k,j) = tendency(i,k,j) - mrdx*(fqx_ip1-fqx_i)
+      ENDDO
+      ENDDO
+      ENDDO
+
+      i_start = its
+      i_end   = MIN(ite,ide-1)
+      j_start = jts
+      j_end   = MIN(jte,jde-1)
+
+! K-ADVS-Z: vertical flux, vflux(kts) and vflux(kte) inside the column
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_SCALAR)) default(none) &
+!$acc& present(tendency, field, rom, fzm, fzp, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, kte, time_step) &
+!$acc& private(k, vel, vflux_col)
+      DO j = j_start, j_end
+      DO i = i_start, i_end
+         vflux_col(kts)=0.
+         vflux_col(kte)=0.
+!$acc loop seq
+         DO k=kts+2,ktf-1
+           vel=rom(i,k,j)
+           vflux_col(k) = vel*advect_scalar_gpu_flux3(                      &
+                   field(i,k-2,j), field(i,k-1,j),      &
+                   field(i,k  ,j), field(i,k+1,j),  -vel, time_step)
+         ENDDO
+         k=kts+1
+         vflux_col(k)=rom(i,k,j)*(fzm(k)*field(i,k,j)+fzp(k)*field(i,k-1,j))
+         k=ktf
+         vflux_col(k)=rom(i,k,j)*(fzm(k)*field(i,k,j)+fzp(k)*field(i,k-1,j))
+!$acc loop seq
+         DO k=kts,ktf
+            tendency(i,k,j)=tendency(i,k,j)-rdzw(k)*(vflux_col(k+1)-vflux_col(k))
+         ENDDO
+      ENDDO
+      ENDDO
+
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVECT_SCALAR)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_ADVECT_SCALAR)) GOTO 99901
+      END IF
+      RETURN
+#endif
   horizontal_order_test : IF( horz_order == 6 ) THEN
 
 !  determine boundary mods for flux operators
@@ -4357,7 +4613,55 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
    ENDIF vert_order_test
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVECT_SCALAR)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_ADVECT_SCALAR)) GOTO 99901
+      END IF
+#endif
 END SUBROUTINE advect_scalar
+#ifdef WRF_GPU
+! Statement functions of advect_scalar as module functions (F-STMTFN not recorded
+! as passing). Identical expressions; time_step is an argument of flux3 and flux5.
+PURE REAL FUNCTION advect_scalar_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua)
+!$acc routine seq
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   advect_scalar_gpu_flux4 = ( 7.*(q_i + q_im1) - (q_ip1 + q_im2) )/12.0
+END FUNCTION advect_scalar_gpu_flux4
+
+PURE REAL FUNCTION advect_scalar_gpu_flux3(q_im2, q_im1, q_i, q_ip1, ua, time_step)
+!$acc routine seq
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_scalar_gpu_flux3 = advect_scalar_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua) +                &
+           sign(1,time_step)*sign(1.,ua)*((q_ip1 - q_im2)-3.*(q_i-q_im1))/12.0
+END FUNCTION advect_scalar_gpu_flux3
+
+PURE REAL FUNCTION advect_scalar_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)
+!$acc routine seq
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   advect_scalar_gpu_flux6 = ( 37.*(q_i+q_im1) - 8.*(q_ip1+q_im2)                  &
+            +(q_ip2+q_im3) )/60.0
+END FUNCTION advect_scalar_gpu_flux6
+
+PURE REAL FUNCTION advect_scalar_gpu_flux5(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua, time_step)
+!$acc routine seq
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_scalar_gpu_flux5 = advect_scalar_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)    &
+            -sign(1,time_step)*sign(1.,ua)*(                    &
+              (q_ip2-q_im3)-5.*(q_ip1-q_im2)+10.*(q_i-q_im1) )/60.0
+END FUNCTION advect_scalar_gpu_flux5
+#endif
 #ifndef ADVECT_KERNEL
 
 !---------------------------------------------------------------------------------
