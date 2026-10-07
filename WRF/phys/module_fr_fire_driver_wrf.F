@@ -24,6 +24,7 @@ subroutine fire_driver_em_init (grid , config_flags               &
 #ifdef WRF_GPU
     USE module_fr_fire_phys, ONLY : fire_phys_gpu_upload
 #endif
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_FIRE_MODEL
     implicit none
 
     TYPE(domain) , TARGET          :: grid   ! data
@@ -41,7 +42,32 @@ subroutine fire_driver_em_init (grid , config_flags               &
     ! dummies
 
     real,dimension(1,1,1)::rho,z_at_w,dz8w
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
     
+#ifdef WRF_GPU
+! Round trip. fire_driver_em must see host data so its own island runs.
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+          CALL gpu_upd_host_all(grid)
+        ELSE
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+      gpu_isl = .FALSE.
+#endif
+
     call message('fire_driver_em_init: FIRE initialization start')
 
     ! get fire mesh dimensions
@@ -66,6 +92,17 @@ subroutine fire_driver_em_init (grid , config_flags               &
 #endif
 
     call message('fire_driver_em_init: FIRE initialization complete')
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+          CALL gpu_upd_host_all(grid)
+        ELSE
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
 
 end subroutine fire_driver_em_init
 

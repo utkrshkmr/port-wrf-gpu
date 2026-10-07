@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_model
-- Last commit: (this commit; through 855b7bb)
+- Last commit: (this commit; through 15e9414)
 
 ## Items
 
@@ -24,8 +24,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | port fire_model | coded | f0eafa1 | island plus host bracket around fuel init |
 | port fire_driver_em | coded | c095f21 | round-trip island; does not hold the device |
 | port fire_driver_phys | coded | 855b7bb | round-trip, then re-enter around K-FSC |
-| port set_flags | coded | (this commit) | 0 arrays; call check 99901; world flag restored before return |
-| port fire_driver_em_init | todo | | |
+| port set_flags | coded | 15e9414 | 0 arrays; call check 99901; world flag restored before return |
+| port fire_driver_em_init | coded | (this commit) | round-trip so fire_driver_em owns the island |
 | port fire_driver_em_step | todo | | |
 | port print_2d_stats | todo | | |
 | port print_3d_stats | todo | | |
@@ -53,4 +53,5 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - fire_model: pasted the `R_FIRE_MODEL` island at the first executable and before `END`. K-FM5 and K-FM6 are unchanged loops with a Template A directive. The ifun 2 slope check is a message-only max reduction (`present(fp)`). Observed perimeter, constant heat, `fire_print_msg.ge.1`, and `run_fuel_moisture` call `wrf_error_fatal` before the island. `set_nfuel_cat`, `set_fire_params`, and `init_no_fire` have no route, so the island downloads around those three calls and uploads again. `DEBUG_OUT` array dumps are host-only. kernel_lint: 3 kernels, 0 errors. Commit f0eafa1.
 - fire_driver_em: pasted the island, then the exit immediately, then `gpu_isl = .FALSE.` so the exit before `END` is a no-op. A held island would hide `fire_model` host fuel setup and the ifun 1 and 2 writers that have no route. Moisture run, moisture interpolation, moisture only, and `tracer_opt.eq.3` stop before the island. Commit c095f21.
 - fire_driver_phys: same round trip at entry, so ifun 1 and 2 host writers see host data. After `sum_2d_cells`, the island re-enters for K-FSC only, then exits before `print_2d_stats`. Observed perimeter, fuel moisture, and moisture advance stop before the island. kernel_lint: 1 kernel, 0 errors. Commit 855b7bb.
-- set_flags: pasted the empty-array island and call check label 99901. The routine only copies scalars, then uploads them. The exit restores `gpu_world_host` before return, so the caller still sees host data.
+- set_flags: pasted the empty-array island and call check label 99901. The routine only copies scalars, then uploads them. The exit restores `gpu_world_host` before return, so the caller still sees host data. Commit 15e9414.
+- fire_driver_em_init: pasted the whole-grid island and exited it immediately. `fire_driver_em` then runs with host data and takes its own island. `cmbcnst` is still uploaded after that call returns.
