@@ -24,3 +24,38 @@
 !
 ! Names start with work_p2_e1_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+!
+! Shared refactor of advect_scalar_pd: fqx, fqy, fqz, fqxl, fqyl, fqzl,
+! flux_out and ph_low were automatic arrays
+! (its-1:ite+2, kts:kte, jts-1:jte+2).  The pointer keeps those bounds.
+! A tile that spans the memory domain needs three extra points in i and in j
+! (its-1 .. ite+2), so the allocation is (ni+3)*(nj+3)*nk.
+
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqx(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqy(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqz(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqxl(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqyl(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqzl(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_flux_out(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_ph_low(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p2_e1_fqx, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqx")
+   CALL gpu_work_alloc_r(work_p2_e1_fqy, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqy")
+   CALL gpu_work_alloc_r(work_p2_e1_fqz, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqz")
+   CALL gpu_work_alloc_r(work_p2_e1_fqxl, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqxl")
+   CALL gpu_work_alloc_r(work_p2_e1_fqyl, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqyl")
+   CALL gpu_work_alloc_r(work_p2_e1_fqzl, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqzl")
+   CALL gpu_work_alloc_r(work_p2_e1_flux_out, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_flux_out")
+   CALL gpu_work_alloc_r(work_p2_e1_ph_low, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_ph_low")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p2_e1_fqx, "work_p2_e1_fqx", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_fqy, "work_p2_e1_fqy", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_fqz, "work_p2_e1_fqz", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_fqxl, "work_p2_e1_fqxl", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_fqyl, "work_p2_e1_fqyl", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_fqzl, "work_p2_e1_fqzl", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_flux_out, "work_p2_e1_flux_out", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_e1_ph_low, "work_p2_e1_ph_low", nwork, nbad)
+#endif

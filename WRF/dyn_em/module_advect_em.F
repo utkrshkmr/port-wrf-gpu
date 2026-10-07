@@ -6093,6 +6093,10 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !  WCS, 3 December 2002, 24 February 2003
 
+   USE module_gpu_work, ONLY : work_p2_e1_fqx, work_p2_e1_fqy, work_p2_e1_fqz, &
+                               work_p2_e1_fqxl, work_p2_e1_fqyl, work_p2_e1_fqzl, &
+                               work_p2_e1_flux_out, work_p2_e1_ph_low
+
    IMPLICIT NONE
    
    ! Input data
@@ -6143,10 +6147,11 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
    REAL    :: mrdx, mrdy, ub, vb, uw, vw, mu
 
 !  storage for high and low order fluxes
+!  Shared refactor: pointers into work arrays, same bounds as the automatic arrays.
 
-   REAL,  DIMENSION( its-1:ite+2, kts:kte, jts-1:jte+2  ) :: fqx, fqy, fqz
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: fqx, fqy, fqz
 
-   REAL,  DIMENSION( its-1:ite+2, kts:kte, jts-1:jte+2  ) :: fqxl, fqyl, fqzl
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: fqxl, fqyl, fqzl
 
    INTEGER :: horz_order, vert_order
    
@@ -6155,7 +6160,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
    INTEGER :: jp1, jp0, jtmp
 
-   REAL,DIMENSION( its-1:ite+2, kts:kte, jts-1:jte+2  ) :: flux_out, ph_low
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: flux_out, ph_low
    REAL :: scale
    !REAL :: flux_out, ph_low, scale
    REAL, PARAMETER :: eps=1.e-20
@@ -6196,6 +6201,15 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 ! set order for the advection schemes
 
 !  write(6,*) ' in pd advection routine '
+
+    fqx (its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqx (1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    fqy (its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqy (1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    fqz (its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqz (1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    fqxl(its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqxl(1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    fqyl(its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqyl(1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    fqzl(its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_fqzl(1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    flux_out(its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_flux_out(1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
+    ph_low  (its-1:ite+2, kts:kte, jts-1:jte+2) => work_p2_e1_ph_low  (1:(ite-its+4)*(kte-kts+1)*(jte-jts+4))
 
     ! Empty arrays just in case:
     IF (config_flags%polar) THEN
