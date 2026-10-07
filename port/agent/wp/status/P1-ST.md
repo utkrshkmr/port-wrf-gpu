@@ -4,14 +4,14 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p1_st
-- Last commit:
+- Last commit: 9a92bdd
 
 ## Items
 
 | Item | State | Commit | Note |
 |---|---|---|---|
-| task 1: T-FIRE-GHOST gpu_selftest_fire_ghost(grid) | coded | | device lfn/tign_g ghosts are 0.0; called from gpu_selftests when ifire > 0 |
-| task 2: gpu_selftests(grid) WRF_GPU_SELFTEST=1 dispatcher | todo | | |
+| task 1: T-FIRE-GHOST gpu_selftest_fire_ghost(grid) | coded | 9a92bdd | device lfn/tign_g ghosts are 0.0; called from gpu_selftests when ifire > 0 |
+| task 2: gpu_selftests(grid) WRF_GPU_SELFTEST=1 dispatcher | coded | | calls map, tab, work, and fire ghost when ifire > 0; env read once |
 | task 3: gpu_selftest_map(grid) T-MAP | todo | | |
 
 ## Scope requests
@@ -25,4 +25,5 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 ## Log
 
-- T-FIRE-GHOST: `gpu_selftest_fire_ghost` plus `work_p1_st_fire_count` / `work_p1_st_ghost_pair`. `gpu_selftests` calls it under `WRF_GPU` when `grid%ifire > 0`. The env-var gate is the next item.
+- T-FIRE-GHOST (9a92bdd): `gpu_selftest_fire_ghost` plus `work_p1_st_fire_count` / `work_p1_st_ghost_pair`.
+- Dispatcher: `gpu_selftests` reads `WRF_GPU_SELFTEST` once (SAVE). When the value is `1` it calls `gpu_selftest_map`, `gpu_selftest_tab`, `gpu_selftest_work`, and `gpu_selftest_fire_ghost` if `ifire > 0`.

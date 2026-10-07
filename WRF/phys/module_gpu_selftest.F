@@ -31,13 +31,27 @@ END MODULE module_gpu_selftest
 
 SUBROUTINE gpu_selftests(grid)
    USE module_domain, ONLY : domain
+   USE module_gpu_work, ONLY : gpu_selftest_work
    IMPLICIT NONE
    TYPE(domain), INTENT(INOUT) :: grid
-   ! The WRF_GPU_SELFTEST gate and the I-5 calls are the next item.
-   ! T-FIRE-GHOST runs for every fire domain (ifire > 0).
-#ifdef WRF_GPU
+   CHARACTER(LEN=32) :: env
+   INTEGER :: st
+   LOGICAL, SAVE :: seen = .FALSE.
+   LOGICAL, SAVE :: enabled = .FALSE.
+
+   ! Read WRF_GPU_SELFTEST once. Later domains reuse the saved flag.
+   IF (.NOT. seen) THEN
+      seen = .TRUE.
+      env = ' '
+      CALL get_environment_variable('WRF_GPU_SELFTEST', env, status=st)
+      enabled = (st == 0 .AND. TRIM(ADJUSTL(env)) == '1')
+   END IF
+   IF (.NOT. enabled) RETURN
+
+   CALL gpu_selftest_map(grid)
+   CALL gpu_selftest_tab()
+   CALL gpu_selftest_work()
    IF (grid%ifire > 0) CALL gpu_selftest_fire_ghost(grid)
-#endif
 END SUBROUTINE gpu_selftests
 
 SUBROUTINE gpu_selftest_map(grid)
