@@ -1540,6 +1540,7 @@ end subroutine set_nfuel_cat
 
 subroutine fire_ros(ros_base,ros_wind,ros_slope, &
 propx,propy,i,j,fp)
+!$acc routine seq
 
 implicit none
 
@@ -1662,11 +1663,13 @@ endif
 !call message(msg)
       return
 
+#ifndef WRF_GPU
 contains
 real function nrm2(u,v)
 real, intent(in)::u,v
 nrm2=sqrt(u*u+v*v)
 end function nrm2
+#endif
 
 end subroutine fire_ros 
 
