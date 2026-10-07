@@ -2288,6 +2288,11 @@ END SUBROUTINE smag2d_km
                        ids, ide, jds, jde, kds, kde,                 &
                        ims, ime, jms, jme, kms, kme,                 &
                        its, ite, jts, jte, kts, kte                  )
+#ifdef WRF_GPU
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_TKE_KM
+    USE module_gpu_callcheck
+    USE module_gpu_work, ONLY : work_p2_g2_tke_dthrdn
+#endif
 
 ! History:     Sep 2003   Changes by Jason Knievel and George Bryan, NCAR
 !              Oct 2001   Converted to mass core by Bill Skamarock, NCAR
@@ -2348,8 +2353,13 @@ END SUBROUTINE smag2d_km
     REAL, DIMENSION( its:ite, kts:kte, jts:jte )  &  
     :: l_scale
 
+#ifndef WRF_GPU
     REAL, DIMENSION( its:ite, kts:kte, jts:jte )  &
     :: dthrdn
+#else
+    REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: dthrdn
+    LOGICAL :: gpu_isl
+#endif
 
     REAL  &
     :: deltas, tmp, mlen_s, mlen_h, mlen_v, tmpdz,  &
@@ -2371,6 +2381,36 @@ END SUBROUTINE smag2d_km
 ! End declarations.
 !-----------------------------------------------------------------------
 
+#ifdef WRF_GPU
+    IF (config_flags%km_opt .EQ. 5) THEN
+      CALL wrf_error_fatal('tke_km: km_opt=5 not ported to the GPU')
+    END IF
+    IF ((config_flags%km_opt .EQ. 2) .AND. (isotropic .NE. 0)) THEN
+      CALL wrf_error_fatal('tke_km: isotropic mixing not ported to the GPU')
+    END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_TKE_KM)) THEN
+        CALL gpu_cc_save_r(1, xkmh, SIZE(xkmh,KIND=8))
+        CALL gpu_cc_save_r(2, xkmv, SIZE(xkmv,KIND=8))
+        CALL gpu_cc_save_r(3, xkhh, SIZE(xkhh,KIND=8))
+        CALL gpu_cc_save_r(4, xkhv, SIZE(xkhv,KIND=8))
+        CALL gpu_cc_save_r(5, hpbl, SIZE(hpbl,KIND=8))
+        CALL gpu_cc_save_r(6, xkmv_meso, SIZE(xkmv_meso,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_TKE_KM)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, msfty, &
+!$acc&   hpbl, dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
+        ELSE
+!$acc update self(xkmh, xkmv, xkhh, xkhv, bn2, tke, p8w, t8w, theta, rdz, rdzw, msftx, msfty, hpbl, &
+!$acc&   dlk, xkmv_meso, defor11, defor22, defor12, zx, zy)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+    dthrdn(its:ite, kts:kte, jts:jte) => work_p2_g2_tke_dthrdn( &
+         1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+#endif
     ktf     = MIN( kte, kde-1 )
     i_start = its
     i_end   = MIN( ite, ide-1 )
@@ -2406,6 +2446,10 @@ END SUBROUTINE smag2d_km
       ENDIF
     ENDIF
 
+! K-TKEKM-1: dthrdn interior (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_TKE_KM)) default(none) &
+!$acc& present(dthrdn, rdz, theta) private(tmpdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf-1
     DO i = i_start, i_end
@@ -2416,6 +2460,10 @@ END SUBROUTINE smag2d_km
     END DO
 
     k = kts
+! K-TKEKM-2: dthrdn surface (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TKE_KM)) default(none) &
+!$acc& present(dthrdn, rdzw, t8w, p8w, theta) private(tmpdz, thetasfc) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, k, kts)
     DO j = j_start, j_end
     DO i = i_start, i_end
       tmpdz         = 1.0 / rdzw(i,k+1,j) + 1.0 / rdzw(i,k,j)
@@ -2425,6 +2473,10 @@ END SUBROUTINE smag2d_km
     END DO
 
     k = ktf
+! K-TKEKM-3: dthrdn top (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TKE_KM)) default(none) &
+!$acc& present(dthrdn, rdz, rdzw, t8w, p8w, theta) private(tmpdz, thetatop) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, k, kde)
     DO j = j_start, j_end
     DO i = i_start, i_end
       tmpdz         = 1.0 / rdz(i,k,j) + 0.5 / rdzw(i,k,j)
@@ -2434,6 +2486,11 @@ END SUBROUTINE smag2d_km
     END DO
 
     IF ( config_flags%km_opt .EQ. 2 .and. isotropic .EQ. 0 ) THEN  !XZ
+! K-TKEKM-4: length scales and eddy viscosity (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_TKE_KM)) default(none) &
+!$acc& present(xkmh, xkmv, xkhh, xkhv, msftx, msfty, tke, rdzw, dthrdn, theta) &
+!$acc& private(mlen_h, tmp, deltas, mlen_v, mlen_s, pr_inv_h, pr_inv_v) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, dx, dy, c_k, tke_seed, mix_upper_bound, dt)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -2566,6 +2623,31 @@ END SUBROUTINE smag2d_km
 
     ENDIF
 !!!
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
+        ELSE
+!$acc update device(xkmh, xkmv, xkhh, xkhv, hpbl, xkmv_meso)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_TKE_KM)) THEN
+        CALL gpu_cc_done_r(1, xkmh, SIZE(xkmh,KIND=8), 'xkmh', &
+          LBOUND(xkmh), UBOUND(xkmh))
+        CALL gpu_cc_done_r(2, xkmv, SIZE(xkmv,KIND=8), 'xkmv', &
+          LBOUND(xkmv), UBOUND(xkmv))
+        CALL gpu_cc_done_r(3, xkhh, SIZE(xkhh,KIND=8), 'xkhh', &
+          LBOUND(xkhh), UBOUND(xkhh))
+        CALL gpu_cc_done_r(4, xkhv, SIZE(xkhv,KIND=8), 'xkhv', &
+          LBOUND(xkhv), UBOUND(xkhv))
+        CALL gpu_cc_done_r(5, hpbl, SIZE(hpbl,KIND=8), 'hpbl', &
+          LBOUND(hpbl), UBOUND(hpbl))
+        CALL gpu_cc_done_r(6, xkmv_meso, SIZE(xkmv_meso,KIND=8), 'xkmv_meso', &
+          LBOUND(xkmv_meso), UBOUND(xkmv_meso))
+        IF (gpu_cc_next(R_TKE_KM)) GOTO 99901
+      END IF
+#endif
     END SUBROUTINE tke_km
 
 !=======================================================================

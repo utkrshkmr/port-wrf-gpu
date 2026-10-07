@@ -67,3 +67,18 @@
    CALL gpu_work_check_r(work_p2_g2_smag_def2, "work_p2_g2_smag_def2", nwork, nbad)
 #endif
 #endif
+
+! tke_km dthrdn tile. GPU view only.
+#if GPU_WORK_SECTION == 1
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_tke_dthrdn(:)
+#endif
+#elif GPU_WORK_SECTION == 2
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_g2_tke_dthrdn, n3d, "work_p2_g2_tke_dthrdn")
+#endif
+#elif GPU_WORK_SECTION == 3
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_g2_tke_dthrdn, "work_p2_g2_tke_dthrdn", nwork, nbad)
+#endif
+#endif
