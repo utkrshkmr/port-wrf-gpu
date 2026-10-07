@@ -21,6 +21,9 @@ subroutine fire_driver_em_init (grid , config_flags               &
 
     USE module_domain , only: domain , get_ijk_from_subgrid
     USE module_configure , only : grid_config_rec_type
+#ifdef WRF_GPU
+    USE module_fr_fire_phys, ONLY : fire_phys_gpu_upload
+#endif
     implicit none
 
     TYPE(domain) , TARGET          :: grid   ! data
@@ -56,6 +59,11 @@ subroutine fire_driver_em_init (grid , config_flags               &
             ,ifms,ifme, jfms,jfme                                   &
             ,ifps,ifpe, jfps,jfpe                                   &
             ) 
+
+#ifdef WRF_GPU
+    ! init_fuel_cats has run inside the call above and may have changed cmbcnst
+    call fire_phys_gpu_upload()
+#endif
 
     call message('fire_driver_em_init: FIRE initialization complete')
 

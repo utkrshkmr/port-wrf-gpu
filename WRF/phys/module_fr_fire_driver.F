@@ -1652,8 +1652,9 @@ fire_viscosity_ngp      = config_flags%fire_viscosity_ngp
 fire_slope_factor       = config_flags%fire_slope_factor 
 fire_fmc_read           = config_flags%fire_fmc_read
 
-
-
+#ifdef WRF_GPU
+call print_2d_stats_gpu_flag_upload()
+#endif
 
 end subroutine set_flags
 

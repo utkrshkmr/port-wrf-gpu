@@ -51,6 +51,17 @@ logical,save::              &
  fire_lsm_reinit=.true.,    &  ! flag to activate reinitialization of level set method
  fire_lsm_zcoupling=.false.     ! flag to activate reference velocity at a different height from fire_wind_height
 
+#ifdef WRF_GPU
+! Flags set by set_flags. Uploaded once per domain by print_2d_stats_gpu_flag_upload.
+!$acc declare create(fire_print_msg, fire_print_file, fuel_left_method, fuel_left_irl, &
+!$acc& fuel_left_jrl, boundary_guard, fire_grows_only, fire_upwinding, fire_upwind_split, &
+!$acc& fire_test_steps, fire_advection, fire_fmc_read, fire_upwinding_reinit, &
+!$acc& fire_lsm_reinit_iter, fire_lsm_band_ngp, fire_viscosity_ngp, &
+!$acc& fire_const_time, fire_const_grnhfx, fire_const_grnqfx, fire_atm_feedback, &
+!$acc& fire_viscosity, fire_lfn_ext_up, fire_lsm_zcoupling_ref, fire_viscosity_bg, &
+!$acc& fire_viscosity_band, fire_slope_factor, fire_lsm_reinit, fire_lsm_zcoupling)
+#endif
+
 integer, parameter:: REAL_SUM=10, REAL_MAX=20, RNRM_SUM=30, RNRM_MAX=40
 
 contains
@@ -1190,6 +1201,18 @@ call print_3d_stats(ips,ipe,1,1,jps,jpe, &
 !!write(msg,'(2a,z16)')name,' address =',loc(a)
 !!call message(msg)
 end subroutine print_2d_stats
+#ifdef WRF_GPU
+subroutine print_2d_stats_gpu_flag_upload()
+! Host to device copy of the module flags set by set_flags.
+!$acc update device(fire_print_msg, fire_print_file, fuel_left_method, fuel_left_irl, &
+!$acc& fuel_left_jrl, boundary_guard, fire_grows_only, fire_upwinding, fire_upwind_split, &
+!$acc& fire_test_steps, fire_advection, fire_fmc_read, fire_upwinding_reinit, &
+!$acc& fire_lsm_reinit_iter, fire_lsm_band_ngp, fire_viscosity_ngp, &
+!$acc& fire_const_time, fire_const_grnhfx, fire_const_grnqfx, fire_atm_feedback, &
+!$acc& fire_viscosity, fire_lfn_ext_up, fire_lsm_zcoupling_ref, fire_viscosity_bg, &
+!$acc& fire_viscosity_band, fire_slope_factor, fire_lsm_reinit, fire_lsm_zcoupling)
+end subroutine print_2d_stats_gpu_flag_upload
+#endif
 
 real pure function avg_2darray( its,ite,jts,jte,               &
                                 ims,ime,jms,jme,               &

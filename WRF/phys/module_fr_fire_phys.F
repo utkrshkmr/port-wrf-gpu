@@ -16,6 +16,9 @@ PUBLIC:: moisture_classes
 PUBLIC::fuelmc_g
 
 PUBLIC::fire_params
+#ifdef WRF_GPU
+PUBLIC:: fire_phys_gpu_upload
+#endif
 
 ! arrays passed to fire_ros
 type fire_params
@@ -152,6 +155,10 @@ end type fire_params
    REAL, SAVE:: cmbcnst,hfgl,fuelmc_g,fuelmc_g_lh,fuelmc_c
 ! computed values
    REAL, SAVE:: fuelheat
+#ifdef WRF_GPU
+! heat_fluxes reads cmbcnst on the device. Other scalars here are host-only.
+!$acc declare create(cmbcnst)
+#endif
 
 ! defaults, may be changed in init_fuel_cats
    DATA cmbcnst  / 17.433e+06/             ! J/kg dry fuel
@@ -349,6 +356,12 @@ end type fire_params
 
 ! =========================================================================
 contains
+#ifdef WRF_GPU
+subroutine fire_phys_gpu_upload()
+! After init_fuel_cats, so a namelist value of cmbcnst is the one uploaded.
+!$acc update device(cmbcnst)
+end subroutine fire_phys_gpu_upload
+#endif
 
 subroutine fuel_moisture(                &
     id,                                  & ! for prints and maybe file names
