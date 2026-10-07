@@ -65,6 +65,7 @@ halo_fire_wind_a_sub, halo_fire_ph_sub, halo_fire_zsf_sub, halo_fire_longlat_sub
 halo_fire_phb_sub, halo_fire_z0_sub, halo_fire_lfn_sub, halo_fire_mfg_sub, &
 halo_fire_mag_sub
 #endif
+    USE module_gpu_work, ONLY : gpu_work_ensure, work_p4_model_lfn_out
 
     implicit none
 !*** arguments
@@ -86,7 +87,7 @@ halo_fire_mag_sub
     TYPE(ignition_line_type), DIMENSION(fire_max_ignitions):: ignition_line
     integer::fire_ifun,ir,jr,fire_ignition_longlat,istep,itimestep
     logical::need_lfn_update,restart
-    real, dimension(ifms:ifme, jfms:jfme)::lfn_out  
+    real, dimension(:,:), pointer, contiguous :: lfn_out  
     real:: corner_ll,corner_ul,corner_ur,corner_lr
     character(len=128)msg
     real:: unit_fxlong ,unit_fxlat
@@ -101,6 +102,9 @@ halo_fire_mag_sub
 !*** executable
 
 ! populate our structures from wrf
+
+    call gpu_work_ensure(ims, ime, jms, jme, kms, kme)
+    lfn_out(ifms:ifme, jfms:jfme) => work_p4_model_lfn_out(1:(ifme-ifms+1)*(jfme-jfms+1))
 
     ! pointers to be passed to fire rate of spread formulas
     fp%vx => grid%uf         ! W-E winds used in fire module

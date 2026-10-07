@@ -85,6 +85,7 @@ USE module_domain , only: domain
     USE module_comm_dm , ONLY : halo_fire_lfn_sub
 #endif
 USE module_configure, only: grid_config_rec_type
+USE module_gpu_work, ONLY : gpu_work_ensure, work_p4_model_fuel_frac_burnt, work_p4_model_fuel_frac_end
 
 implicit none
 
@@ -157,7 +158,7 @@ type(fire_params),intent(inout)::fp
 !*** local
 
 integer :: xifms,xifme,xjfms,xjfme  ! memory bounds for pass-through arguments to normal spread
-real, dimension(ifts:ifte,jfts:jfte)::fuel_frac_burnt,fuel_frac_end
+real, dimension(:,:), pointer, contiguous :: fuel_frac_burnt, fuel_frac_end
 integer::ignited,ig,i,j,itso,iteo,jtso,jteo
 real::tbound,err,erri,errj,maxgrad,grad,tfa,thf,mhf,tqf,mqf,aw,mw
 character(len=128)::msg
@@ -169,6 +170,10 @@ integer:: stat_lev=1
   real, parameter :: EPSILON = 0.00001
 
 !*** executable
+
+call gpu_work_ensure(ims_hu, ime_hu, jms_hu, jme_hu, kms_hu, kme_hu)
+fuel_frac_burnt(ifts:ifte,jfts:jfte) => work_p4_model_fuel_frac_burnt(1:(ifte-ifts+1)*(jfte-jfts+1))
+fuel_frac_end(ifts:ifte,jfts:jfte) => work_p4_model_fuel_frac_end(1:(ifte-ifts+1)*(jfte-jfts+1))
 
 call check_mesh_2dim(ifts-1,ifte+1,jfts-1,jfte+1,ifms,ifme,jfms,jfme)
 

@@ -24,3 +24,23 @@
 !
 ! Names start with work_p4_model_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+!
+! Fire-mesh arrays. plan section 2.2 fixes sr_x = sr_y = 4, and the fire
+! memory dimension is that ratio times the atmospheric memory dimension
+! (3284 vs 821 in plan section 3). Each array therefore needs 16*n2d
+! elements. fuel_frac_burnt and fuel_frac_end are tile-sized; the same
+! allocation covers one tile. One OpenMP thread reuses them across tiles.
+
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p4_model_lfn_out(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p4_model_fuel_frac_burnt(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p4_model_fuel_frac_end(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p4_model_lfn_out, 16_8*n2d, "work_p4_model_lfn_out")
+   CALL gpu_work_alloc_r(work_p4_model_fuel_frac_burnt, 16_8*n2d, "work_p4_model_fuel_frac_burnt")
+   CALL gpu_work_alloc_r(work_p4_model_fuel_frac_end, 16_8*n2d, "work_p4_model_fuel_frac_end")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p4_model_lfn_out, "work_p4_model_lfn_out", nwork, nbad)
+   CALL gpu_work_check_r(work_p4_model_fuel_frac_burnt, "work_p4_model_fuel_frac_burnt", nwork, nbad)
+   CALL gpu_work_check_r(work_p4_model_fuel_frac_end, "work_p4_model_fuel_frac_end", nwork, nbad)
+#endif
