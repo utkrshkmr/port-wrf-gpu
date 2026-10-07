@@ -1,0 +1,28 @@
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+This book grows with the GPU port of the Weather Research and Forecasting model (WRF) and its fire models. It has
+two aims. The first is to explain WRF and WRF-Fire as they are implemented: the equations, the numerical methods,
+and how they are coded, routine by routine. The second is to explain how such a code can be moved to graphics
+processors without changing a single bit of its results, and what that costs.
+
+The book is written alongside the port, so its chapters are at different stages:
+\begin{itemize}
+  \item Chapters marked with an \emph{Outline} box list what they will contain, their sources and the code they
+    describe. Each is a task card (B-03 \dots{} B-21) in \code{roadmap/BACKLOG.md}.
+  \item The other chapters are drafts.
+\end{itemize}
+
+\paragraph{Conventions.}
+\begin{itemize}
+  \item A routine is cited with its file in the WRF source tree, for example
+    \src{dyn_em/module_small_step_em.F}{advance_w}. Line numbers refer to WRF~4.6.0 as imported in this repository,
+    unless stated otherwise.
+  \item Kernel names such as K-AW and test names such as T-TRACE refer to the port's plan (\code{plan.md}).
+  \item Every equation names the routine that implements it, so that the reader can go from the mathematics to
+    the code and back.
+\end{itemize}
+
+\paragraph{Sources.} The model description follows the WRF Technical Note \citep{skamarock2019} and the papers
+cited in each chapter, checked against the code. Where the code and a paper differ, the book describes the code and
+says so.

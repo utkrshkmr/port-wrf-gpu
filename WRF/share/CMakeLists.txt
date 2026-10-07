@@ -16,6 +16,7 @@ target_sources(
                 PRIVATE
                   
                   module_model_constants.F
+                  module_gpu_check.F
                   module_llxy.F
                   module_soil_pre.F
                   module_date_time.F

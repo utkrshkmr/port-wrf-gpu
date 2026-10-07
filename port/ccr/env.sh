@@ -6,7 +6,7 @@
 export IMAGE=${IMAGE:-$HOME/wrf-gpu/wrf-gpu.sif}
 
 # This repository on the cluster
-export PORT_REPO=${PORT_REPO:-$HOME/wrf_gpu_port}
+export PORT_REPO=${PORT_REPO:-$HOME/port-wrf-gpu}
 
 # Case input folder with wrfinput_d01, wrfinput_d02, wrfbdy_d01 (the CCR run
 # folder of the reference case, plan.md 2.1)
@@ -14,7 +14,7 @@ export CASE_INPUTS=${CASE_INPUTS:-/path/to/runs/20260928_124741}
 
 # Where builds, runs and the reference archive go (needs ~2 TB for the 17 h
 # reference with hourly restarts and level-1 traces)
-export WORKROOT=${WORKROOT:-/scratch/$USER/wrf_gpu_port}
+export WORKROOT=${WORKROOT:-/scratch/$USER/port-wrf-gpu}
 export BUILDROOT=$WORKROOT/builds
 export RUNROOT=$WORKROOT/runs
 export REFROOT=$WORKROOT/reference

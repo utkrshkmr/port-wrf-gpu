@@ -1,0 +1,230 @@
+"""Work packages of the code-only parallel port, Phases 1-3 (port/agent/CODE_ONLY.md).
+
+The single source for port/tools/gen_wp.py, which writes the cards
+(port/agent/wp/<ID>.md), the ownership map (port/agent/wp/ownership.json) and the
+pre-generated islands (port/agent/wp/islands/<ID>/), and for
+port/tools/check_wp_scope.py, which checks that a work package changed only
+what it owns.
+
+Ownership is exclusive: no two work packages own the same file, routine or
+module specification part.  A work package owns
+  routes    every routine of the route (port/agent/ROUTES.md), in its file
+  routines  extra routines ("file:name"), e.g. sibling routines of a route
+  files     whole files (new files are pre-created as skeletons)
+  specs     the module specification part (MODULE ... CONTAINS) of a file
+Paths are relative to WRF/ (paths starting with port/ are relative to the
+repository).  Routine names are case-insensitive; "file:name@route" gives the
+route of an extra routine (for its island).
+"""
+
+# GPU-only and shared-refactor work arrays of a work package live in its own
+# include file WRF/inc/gpu_work_<id>.inc (port/agent/INTERFACES.md I-3).
+def work_inc(wp_id):
+    return "inc/gpu_work_" + wp_id.lower().replace("-", "_") + ".inc"
+
+
+WPS = [
+    # ------------------------------------------------------------------ Phase 1
+    dict(id="P1-SYNC", phase=1, title="Sync points S1-S6, the solve_em bracket and every driver call site",
+         card="PHASE1.md P1.5 + P1.9 (and the call sites of P1.6, P1.7, P1.8, P1.10-P1.12)",
+         files=["frame/module_gpu_updates.F", "dyn_em/solve_em.F", "main/module_wrf_top.F",
+                "frame/module_integrate.F", "share/mediation_integrate.F"],
+         routines=["frame/module_domain.F:alloc_and_configure_domain"],
+         work=True,
+         tasks=[
+             "gpu_bracket_begin/gpu_bracket_end in module_gpu_updates.F (WRF_GPU_UPD_EVERY_STEP round trip, PHASE1.md P1.5 + P1.9)",
+             "the bracket calls in solve_em.F (after #include \"bench_solve_em_init.h\"; before END SUBROUTINE and every RETURN)",
+             "sync points S1, S2', S2, S3, S4, S5, S6 exactly as the PHASE1.md table says",
+             "after S1 (and after S2): CALL gpu_update_tables(); then IF WRF_GPU_SELFTEST=1 CALL gpu_selftests(head_grid) (INTERFACES.md I-4, I-5)",
+             "solve_em.F: CALL gpu_work_ensure(ims, ime, jms, jme, kms, kme) right after CALL gpu_bracket_begin(grid) (I-3); CALL gpu_selftest_pool() once after #include \"i1_assoc.inc\" when WRF_GPU_SELFTEST=1 (I-5)",
+             "CALL gpu_check_config(...) in module_wrf_top.F after the namelist is read and in alloc_and_configure_domain for each nest (I-6, PHASE1.md P1.8)",
+             "the logging calls of P1.11/P1.12 (I-7): CALL gpu_mem_log('<where>') at startup, after each domain's init, after the first step of each domain and once per simulated hour; CALL gpu_timing_step(grid%id, <simulated hour>, <last step>) at the end of every solve_em call; USE module_gpu_prof in solve_em (BENCH_START/BENCH_END call wrf_nvtx_push/pop)",
+             "shared refactor (separate commit): solve_em's automatic arrays h_tendency, z_tendency become pointers into work arrays declared in WRF/" + work_inc("P1-SYNC") + " (plan.md P1.7 table)",
+         ],
+         notes=[
+             "Every inserted call is `CALL gpu_*` (allowed in the CPU view) or sits under #ifdef WRF_GPU.",
+             "solve_em.F is owned whole by this package: no Phase 2/3 package edits it. Kernels that need finer trace checkpoints in solve_em ask in their status file; verification adds them.",
+         ]),
+    dict(id="P1-TAB", phase=1, title="Module tables on the device: gpu_update_tables and T-TAB",
+         card="PHASE1.md P1.4",
+         files=["phys/module_gpu_tables.F"],
+         tasks=[
+             "gpu_update_tables(): calls the upload routine of each table module (INTERFACES.md I-4): wsm6_gpu_upload, sfclayrev_gpu_upload, noahlsm_gpu_upload, ra_sw_gpu_upload, rrtmg_lw_gpu_upload",
+             "gpu_selftest_tab(): calls each <module>_gpu_tabcheck, sums n and nbad, prints `gpu_selftest: T-TAB PASS <n> tables` or `gpu_selftest: T-TAB FAIL <nbad> of <n>: <first bad names>`",
+         ],
+         notes=[
+             "The `!$omp declare target(...)` lines, the upload routines and the tabcheck routines live in the physics modules (three of them keep their tables PRIVATE) and are written by P3-WSM6, P3-SFCLAY, P3-NOAH, P3-SW and P3-RRTMG. This package only calls them, with the exact names of INTERFACES.md I-4.",
+             "The fixed list of 120 variables is in PHASE1.md P1.4.",
+         ]),
+    dict(id="P1-ST", phase=1, title="Self-test dispatcher and T-MAP",
+         card="PHASE1.md P1.2 (self test T-MAP)",
+         files=["phys/module_gpu_selftest.F"],
+         tasks=[
+             "gpu_selftests(grid): only when WRF_GPU_SELFTEST=1 (read once): CALL gpu_selftest_map(grid), gpu_selftest_tab(), gpu_selftest_work() (I-5)",
+             "gpu_selftest_map(grid): omp_target_is_present of every in-use field of grid; print `gpu_selftest: T-MAP PASS d0N <n> fields present` or `... FAIL d0N <k> of <n> fields not present: <first names>` (PHASE1.md P1.2)",
+         ],
+         notes=[
+             "T-MAP walks the fields with grid%head_statevars (the state list of module_domain_type) or with a generated include; do not write a list by hand.",
+         ]),
+    dict(id="P1-POOL", phase=1, title="Scratch pool on the device and T-POOL",
+         card="PHASE1.md P1.6",
+         files=["frame/module_gpu_scratch.F"],
+         tasks=[
+             "map gpu_pool in gpu_scratch_reserve under #ifdef WRF_GPU (exit data before DEALLOCATE; enter data map(alloc:) + a device zero-fill kernel after the host zero fill)",
+             "gpu_selftest_pool(): omp_target_is_present of gpu_pool and of 10 evenly spaced elements; print `gpu_selftest: T-POOL PASS ...` / `FAIL ...` (I-5)",
+         ]),
+    dict(id="P1-WORK", phase=1, title="Work-array module and T-WORK",
+         card="PHASE1.md P1.7 and plan.md P1.7",
+         files=["frame/module_gpu_work.F"],
+         tasks=[
+             "implement the bodies marked TODO(P1-WORK) in module_gpu_work.F: gpu_work_ensure (sizes of the largest domain so far; grow when a larger domain arrives), gpu_work_alloc_r (allocate, host zero fill, and under WRF_GPU enter data map(alloc:) + device zero fill), gpu_work_check_r, gpu_selftest_work",
+             "do not change the include mechanism or the interface names (INTERFACES.md I-3): 35 work packages write into it in parallel",
+         ]),
+    dict(id="P1-CHECK", phase=1, title="Startup gate gpu_check_config and its reference table",
+         card="PHASE1.md P1.8 and plan.md P1.8",
+         files=["share/module_gpu_check.F", "inc/gpu_check_table.inc", "port/tools/gen_check_table.py"],
+         tasks=[
+             "port/tools/gen_check_table.py: writes WRF/inc/gpu_check_table.inc from cases/eaton_20250108/namelist.input and port/config_envelope.txt (same rules as port/check_case.py)",
+             "WRF/inc/gpu_check_table.inc: write it by hand exactly as the generator would (verification runs the generator and compares)",
+             "gpu_check_config(id) in module_gpu_check.F with the output contract of PHASE1.md P1.8 (VIOLATION lines, PASS line, WRF_GPU_CHECK_ONLY, WRF_GPU_CHECK=warn)",
+         ]),
+    dict(id="P1-PROF", phase=1, title="NVTX ranges, device memory info, timing and memory logs",
+         card="PHASE1.md P1.10, P1.11, P1.12",
+         files=["frame/wrf_gpu_shim.c", "frame/module_gpu_prof.F", "inc/bench_solve_em_def.h"],
+         tasks=[
+             "wrf_gpu_shim.c: wrf_nvtx_push / wrf_nvtx_pop (NVTX3 header-only) and wrf_gpu_mem_info (cuMemGetInfo_v2 through dlopen(\"libcuda.so.1\")); everything under #ifdef WRF_GPU, empty functions otherwise; when the NVTX header is missing at compile time (no NVHPC), compile to empty push/pop",
+             "module_gpu_prof.F: the BIND(C) interfaces, gpu_mem_log(where) (P1.12 line format) and gpu_timing_step(grid) (P1.11, only when WRF_GPU_TIMING=1)",
+             "bench_solve_em_def.h: under WRF_GPU, BENCH_START/BENCH_END also push/pop an NVTX range of the same name",
+         ],
+         notes=[
+             "plan.md put the BIND(C) interfaces into module_gpu_route.F; they are in module_gpu_prof.F instead, so that no shared file is edited (owner decision, code-only run).",
+         ]),
+    dict(id="P1-B4", phase=1, title="B4: module_repro_math tables usable in device code (owner-approved shared refactor)",
+         card="this card (blocker B4 of the first H100 session)",
+         files=["frame/module_repro_math.F"],
+         tasks=[
+             "move the module-level PARAMETER arrays two_over_pi, PIo2 (k_rem_pio2), npio2_hw (rem_pio2), atanhi, atanlo, aT (rm_atan) and TT (k_tan) into the routine that uses each, the declaration text unchanged character for character (grep first: if a name is used by more than one routine, put an identical copy in each)",
+             "both views, no #ifdef (the locked test port/tests/repro_math/Makefile preprocesses without -DWRF_GPU), no executable statement changes",
+         ],
+         notes=[
+             "nvfortran 25.1 rejected the module-level tables in declare-target routines: NVFORTRAN-S-1054 \"Module variables used in acc routine need to be in acc declare create()\".",
+             "This file is locked; the owner allows exactly this change. Do not edit port/agent/protected.md5, cpu_view_base or REFACTORS.md: verification runs the repro-math tests, checks the CPU view, regenerates the checksums and moves the base.",
+             "Second option, only if the reviewer later reports that nvfortran rejects the first: module-level SAVE variables with the same initializers plus !$omp declare target(<names>). Do not write it now.",
+         ]),
+
+    # ------------------------------------------------------------------ Phase 2
+    dict(id="P2-A1", phase=2, title="RK preparation: pointwise and column kernels of module_big_step_utilities_em.F",
+         card="PHASE2.md P2.A",
+         routes=["initialize_moist_old", "calculate_full", "calc_mu_uv", "couple_momentum", "calc_ww_cp", "calc_cq",
+                 "calc_alt", "calc_php"],
+         notes=["calc_alt is the worked example (port/tests/tools/example_calc_alt.F): copy it exactly.",
+                "calc_ww_cp is template C, tested in port/tests/templates/t_tmpl_c.F90."]),
+    dict(id="P2-A2", phase=2, title="Physical boundary conditions set_physical_bc2d/3d",
+         card="PHASE2.md P2.A",
+         routes=["set_physical_bc3d", "set_physical_bc2d"],
+         notes=["Template G, tested in port/tests/templates/t_tmpl_g.F90 (set_physical_bc3d)."]),
+    dict(id="P2-B1", phase=2, title="advect_u", card="PHASE2.md P2.B", routes=["advect_u"], work=True,
+         notes=["Template B (rolling buffer -> Y1/Y2 kernels), tested in port/tests/templates/t_tmpl_b.F90; the fqy3 flux array is a GPU-only work array in your include file."]),
+    dict(id="P2-B2", phase=2, title="advect_v", card="PHASE2.md P2.B", routes=["advect_v"], work=True,
+         notes=["Template B as advect_u (t_tmpl_b.F90)."]),
+    dict(id="P2-B3", phase=2, title="advect_w", card="PHASE2.md P2.B", routes=["advect_w"], work=True,
+         notes=["Template B as advect_u (t_tmpl_b.F90)."]),
+    dict(id="P2-B4", phase=2, title="advect_scalar", card="PHASE2.md P2.B", routes=["advect_scalar"], work=True,
+         notes=["Template B as advect_u (t_tmpl_b.F90)."]),
+    dict(id="P2-B5", phase=2, title="zero_tend, ww_split, rhs_ph", card="PHASE2.md P2.B",
+         routes=["zero_tend", "ww_split", "rhs_ph"]),
+    dict(id="P2-B6", phase=2, title="Pressure gradient, buoyancy, w damping, Coriolis, curvature",
+         card="PHASE2.md P2.B",
+         routes=["horizontal_pressure_gradient", "pg_buoy_w", "w_damp", "coriolis", "curvature"]),
+    dict(id="P2-C", phase=2, title="Tendency combination and lateral boundary tendencies", card="PHASE2.md P2.C",
+         routes=["mass_weight", "relax_bdytend_core", "rk_addtend_dry", "spec_bdytend"], work=True,
+         tasks=["shared refactor (separate commit): relax_bdy_scalar's automatic array rscalar becomes a pointer into a work array (plan.md P1.7 table)"]),
+    dict(id="P2-D1", phase=2, title="Acoustic loop: prep, finish, p/rho, coefficients, flux sums",
+         card="PHASE2.md P2.D",
+         routes=["small_step_prep", "small_step_finish", "calc_p_rho", "calc_coef_w", "sumflux"],
+         notes=["calc_coef_w: the complete Template C port is port/tests/tools/calc_coef_w_gpu.inc (tested by test_agent_tools.py): use it."]),
+    dict(id="P2-D2", phase=2, title="Acoustic loop: advance_uv, advance_mu_t, advance_w", card="PHASE2.md P2.D",
+         routes=["advance_uv", "advance_mu_t", "advance_w"],
+         notes=["advance_w (K-AW): private fixed-size column arrays rhs_col, wdwn_col of size WRF_KMAX+1 (WRF/inc/gpu_col.h); no work array (plan.md P1.7 table)."]),
+    dict(id="P2-D3", phase=2, title="Acoustic loop: boundary updates", card="PHASE2.md P2.D",
+         routes=["spec_bdyupdate", "spec_bdyupdate_ph", "zero_grad_bdy"]),
+    dict(id="P2-E1", phase=2, title="advect_scalar_pd (positive-definite scalar advection)", card="PHASE2.md P2.E",
+         routes=["advect_scalar_pd"], work=True,
+         tasks=["shared refactor (separate commit): the automatic arrays fqx, fqy, fqz, fqxl, fqyl, fqzl, flux_out, ph_low become pointers into work arrays (plan.md P1.7 table)"],
+         notes=["The limiter split is tested in port/tests/pdlim/t_pdlim.F90 (K-PD-L3a/b): copy its GPU form."]),
+    dict(id="P2-E2", phase=2, title="Scalar update, flow-dependent boundaries, bound_tke", card="PHASE2.md P2.E",
+         routes=["rk_update_scalar_pd", "rk_update_scalar", "flow_dep_bdy", "bound_tke"], work=True,
+         tasks=["shared refactor (separate commit): the automatic array tendency of rk_update_scalar and rk_update_scalar_pd becomes a pointer into a work array (plan.md P1.7 table)"]),
+    dict(id="P2-F", phase=2, title="End of step", card="PHASE2.md P2.F",
+         routes=["calc_p_rho_phi", "spec_bdy_final", "set_w_surface", "update_phys_fields"]),
+    dict(id="P2-G1", phase=2, title="Diffusion metrics and deformation", card="PHASE2.md P2.G",
+         routes=["compute_diff_metrics", "cal_deform_and_div"]),
+    dict(id="P2-G2", phase=2, title="Turbulence: N2, eddy viscosities, TKE terms", card="PHASE2.md P2.G",
+         routes=["calculate_n2", "smag2d_km", "tke_km", "calc_l_scale", "tke_shear", "tke_buoyancy", "tke_dissip",
+                 "tke_rhs", "conv_t_tendf_to_moist"]),
+    dict(id="P2-G3", phase=2, title="Horizontal and vertical diffusion, stress tensor", card="PHASE2.md P2.G",
+         routes=["vertical_diffusion_2", "horizontal_diffusion_2", "cal_titau"], work=True,
+         routines=["dyn_em/module_diffusion_em.F:vertical_diffusion_v_2@vertical_diffusion_2",
+                   "dyn_em/module_diffusion_em.F:vertical_diffusion_w_2@vertical_diffusion_2",
+                   "dyn_em/module_diffusion_em.F:horizontal_diffusion_v_2@horizontal_diffusion_2",
+                   "dyn_em/module_diffusion_em.F:horizontal_diffusion_w_2@horizontal_diffusion_2",
+                   "dyn_em/module_diffusion_em.F:cal_titau_12_21@cal_titau",
+                   "dyn_em/module_diffusion_em.F:cal_titau_13_31@cal_titau",
+                   "dyn_em/module_diffusion_em.F:cal_titau_23_32@cal_titau"],
+         tasks=["shared refactor (separate commit): vertical_diffusion_2's automatic array var_mix becomes a pointer into a work array (plan.md P1.7 table)"],
+         notes=["The kernel rows also cover the v/w and 12/13/23 sibling routines (K-VDV, K-VDW, K-HDV-*, K-HDW-*, K-TT-12, K-TT-13, K-TT-23): they are owned by this package; they share the route of their row."]),
+
+    # ------------------------------------------------------------------ Phase 3
+    dict(id="P3-GLUE1", phase=3, title="Physics glue of module_big_step_utilities_em.F", card="PHASE3.md P3.A",
+         routes=["phy_prep", "phy_prep_part2", "moist_physics_prep_em", "moist_physics_finish_em"]),
+    dict(id="P3-GLUE2", phase=3, title="Physics glue: tendency init, physics tendencies, update_phy_ten",
+         card="PHASE3.md P3.A",
+         routes=["init_zero_tendency", "calculate_phy_tend", "update_phy_ten"],
+         files=["phys/module_physics_addtendc.F"]),
+    dict(id="P3-WSM6", phase=3, title="WSM6 microphysics (column physics)", card="PHASE3.md P3.B and How a column scheme is ported",
+         routes=["wsm6"], islands=["wsm6"],
+         files=["phys/module_mp_wsm6.F", "phys/physics_mmm/mp_wsm6.F90", "phys/physics_mmm/mp_wsm6_effectRad.F90",
+                "phys/physics_mmm/module_libmassv.F90", "phys/module_microphysics_driver.F"], work=True,
+         tasks=["the P1.4 tables of mp_wsm6 (the SAVE scalars of mp_wsm6.F90:46-64): !$omp declare target, wsm6_gpu_upload and wsm6_gpu_tabcheck (INTERFACES.md I-4)",
+                "shared refactor (separate commit): microphysics_driver's large 3D automatic arrays become pointers into work arrays (plan.md P1.7 table)"],
+         notes=["Copy the structure of port/tests/templates/t_tmpl_cp.F90 (T-TMPL-CP) and the fixed sizes of WRF/inc/gpu_col.h."]),
+    dict(id="P3-SFCLAY", phase=3, title="Surface layer sfclayrev (column physics)", card="PHASE3.md P3.C",
+         routes=["sfclayrev"], islands=["SFCLAYREV"],
+         files=["phys/module_sf_sfclayrev.F", "phys/physics_mmm/sf_sfclayrev.F90"],
+         tasks=["the P1.4 tables psim_stab, psim_unstab, psih_stab, psih_unstab: !$omp declare target, sfclayrev_gpu_upload and sfclayrev_gpu_tabcheck (I-4)"]),
+    dict(id="P3-NOAH", phase=3, title="Noah LSM, glacial, sea ice, surface diagnostics (column physics)", card="PHASE3.md P3.C",
+         routes=["lsm", "seaice_noah", "sfcdiags"], islands=["lsm", "seaice_noah", "SFCDIAGS"],
+         files=["phys/module_sf_noahdrv.F", "phys/module_sf_noahlsm.F", "phys/module_sf_noahlsm_glacial_only.F",
+                "phys/module_sf_noah_seaice_drv.F", "phys/module_sf_noah_seaice.F", "phys/module_sf_sfcdiags.F"],
+         tasks=["the P1.4 tables of module_sf_noahlsm (49 variables, PHASE1.md P1.4): !$omp declare target, noahlsm_gpu_upload and noahlsm_gpu_tabcheck (I-4)",
+                "shared refactors (separate commits, PHASE3.md): iloc/jloc as arguments; LUTYPE/SLTYPE as integer codes"]),
+    dict(id="P3-SFCDRV", phase=3, title="surface_driver kernels", card="PHASE3.md P3.C",
+         routes=["surface_driver"], islands=["surface_driver"],
+         files=["phys/module_surface_driver.F"], work=True,
+         tasks=["shared refactor (separate commit): surface_driver's large 3D automatic arrays become pointers into work arrays (plan.md P1.7 table)"]),
+    dict(id="P3-PBL", phase=3, title="PBL driver and YSU (column physics)", card="PHASE3.md P3.D",
+         routes=["pbl_driver", "ysu"], islands=["pbl_driver", "ysu"],
+         files=["phys/module_pbl_driver.F", "phys/module_bl_ysu.F", "phys/physics_mmm/bl_ysu.F90"], work=True,
+         tasks=["shared refactor (separate commit): pbl_driver's large 3D automatic arrays (u_phytmp, v_phytmp, ...) become pointers into work arrays (plan.md P1.7 table)"]),
+    dict(id="P3-RADDRV", phase=3, title="Radiation driver, cloud fraction, ozone, zenith angle, eclipse", card="PHASE3.md P3.E",
+         routes=["radiation_driver", "cal_cldfra1", "ozn_time_int", "ozn_p_int", "calc_coszen"],
+         islands=["phys/module_radiation_driver.F:radiation_driver@radiation_driver", "cal_cldfra1", "ozn_time_int",
+                  "ozn_p_int", "calc_coszen"],
+         files=["phys/module_radiation_driver.F", "phys/module_ra_eclipse.F"], work=True,
+         tasks=["shared refactor (separate commit): radiation_driver's automatic arrays of the plan.md P1.7 table become pointers into work arrays",
+                "shared refactor (separate commit), the hoist of row 8.5:hoist (plan.md 8.5): remove the per-call CALL RRTMG_LWINIT in radiation_driver (module_radiation_driver.F:2041 in the base commit); module_physics_init.F already calls RRTMG_LWINIT once at init, and the per-call call rebuilds identical tables (NLAYERS is constant for the case: 109)"],
+         notes=["ozn_p_int is one thread per j-row exactly as port/tests/ozn/t_ozn.F90 (ozn_p_int_gpu).",
+                "The K-RAD-* kernels are in the routine radiation_driver itself (ROUTES.md lists only solar_eclipse for this route, whose end line it does not know)."]),
+    dict(id="P3-RRTMG", phase=3, title="RRTMG longwave", card="PHASE3.md P3.E",
+         routes=["rrtmg_lwrad"], islands=["RRTMG_LWRAD"],
+         files=["phys/module_ra_rrtmg_lw.F"],
+         tasks=["shared refactor (separate commit): flatten the EQUIVALENCEd rrlw_kg* tables into 1D arrays (plan.md P0.9a item 6; required: gfortran and OpenMP reject EQUIVALENCE with declare target, probe F-EQUIV)",
+                "the RRTMG LW tables on the device: !$omp declare target of every table the kernel reads, rrtmg_lw_gpu_upload and rrtmg_lw_gpu_tabcheck in the module that contains RRTMG_LWRAD (INTERFACES.md I-4)",
+                "the batched column kernel of plan.md 8.5; random numbers as port/tests/kiss/t_kiss.F90 (T-KISS)"],
+         notes=["Row 8.5:hoist: the call-site change is in radiation_driver, owned by P3-RADDRV, which does it (a task of its card). Set the row to n/a here with that note."]),
+    dict(id="P3-SW", phase=3, title="Dudhia shortwave", card="PHASE3.md P3.E",
+         routes=["swrad"], islands=["SWRAD"],
+         files=["phys/module_ra_sw.F"],
+         tasks=["the P1.4 table CSSCA (PRIVATE): !$omp declare target, ra_sw_gpu_upload and ra_sw_gpu_tabcheck (I-4)",
+                "shared refactor (separate commit): the DATA-initialized tables of SWPARA (ALBTAB, ABSTAB, XMUVAL) become PARAMETER arrays with the same values"]),
+]

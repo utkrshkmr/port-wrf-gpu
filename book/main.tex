@@ -1,0 +1,54 @@
+\documentclass[11pt,openany]{book}
+\input{preamble}
+
+\title{WRF and WRF-Fire on GPUs\\[0.5em]
+  \large The model, its algorithms, and a bit-for-bit port}
+\author{The WRF GPU port project}
+\date{Draft of \today}
+
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+\input{chapters/00-preface}
+
+\mainmatter
+\input{chapters/01-introduction}
+\input{chapters/02-the-case}
+
+\part{The atmospheric model}
+\input{chapters/03-equations}
+\input{chapters/04-time-integration}
+\input{chapters/05-advection}
+\input{chapters/06-boundaries-nesting}
+\input{chapters/07-turbulence}
+
+\part{Physics}
+\input{chapters/08-microphysics}
+\input{chapters/09-radiation}
+\input{chapters/10-surface}
+\input{chapters/11-pbl}
+
+\part{Fire}
+\input{chapters/12-wrf-fire}
+\input{chapters/13-cfbm}
+
+\part{Software and GPUs}
+\input{chapters/14-architecture}
+\input{chapters/15-reproducibility}
+\input{chapters/16-gpu-openmp}
+\input{chapters/17-the-port}
+\input{chapters/18-performance}
+\input{chapters/19-multi-gpu}
+
+\part{Evolution}
+\input{chapters/20-versions}
+
+\appendix
+\input{chapters/A-kernels}
+\input{chapters/B-namelist}
+
+\backmatter
+\bibliographystyle{plainnat}
+\bibliography{refs}
+\end{document}

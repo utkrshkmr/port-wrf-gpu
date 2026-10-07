@@ -1,0 +1,24 @@
+\chapter{Lateral boundaries and nesting}\label{ch:bdy}
+
+How the outer domain is driven by boundary files, how the nest is driven by the outer domain, and the physical boundary conditions.
+
+\begin{outline}[(card B-06)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Specified and relaxation zones.} \code{spec_zone}, \code{relax_zone}; the boundary arrays and their tendencies; \code{relax_bdytend_core}, \code{spec_bdytend}, \code{spec_bdyupdate}.
+    \item \textbf{One-way nesting.} \code{med_force_domain}: coupling, interpolation from the parent (\code{bdy_interp}), uncoupling; why couple-then-uncouple is not the identity in floating point.
+    \item \textbf{Physical boundaries.} \code{set_physical_bc2d}, \code{set_physical_bc3d}; flow-dependent boundaries for scalars.
+    \item \textbf{Time interpolation.} Boundary tendencies in time; the 3-hourly boundary file.
+\end{itemize}
+\textbf{Sources.} \citet{skamarock2019}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{share/module_bc.F}: \code{relax_bdytend_core}, \code{spec_bdytend}, \code{spec_bdyupdate}, \code{flow_dep_bdy}, \code{set_physical_bc2d}, \code{set_physical_bc3d}
+    \item \code{dyn_em/module_bc_em.F}: \code{relax_bdy_dry}, \code{spec_bdy_dry}, \code{spec_bdy_final}
+    \item \code{share/mediation_force_domain.F}: \code{med_force_domain}
+    \item \code{dyn_em/couple_or_uncouple_em.F}: \code{couple_or_uncouple_em}
+    \item \code{share/interp_fcn.F}: \code{bdy_interp}
+\end{itemize}
+\textbf{The port.} Boundary updates are one kernel per strip (Template G). Nest forcing stays on the host until Phase 5, which moves only the data the host interpolation reads.
+\end{outline}

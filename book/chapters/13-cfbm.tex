@@ -1,0 +1,20 @@
+\chapter{CFBM: NCAR's Community Fire Behavior Model}\label{ch:cfbm}
+
+The standalone rewrite of WRF-Fire's spread model, in WRF~4.8.0 and in the UFS.
+
+\begin{outline}[(card B-13)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Design.} Modules, the fire-state type, the standalone driver and the NUOPC cap.
+    \item \textbf{Algorithms.} What is inherited from WRF-Fire and what differs.
+    \item \textbf{Coupling to WRF.} \code{ifire = 1}; initialization, wind interpolation, feedback.
+    \item \textbf{On the GPU.} The port of CFBM (track C of the roadmap).
+\end{itemize}
+\textbf{Sources.} \code{roadmap/analysis/cfbm.md}; the CFBM documentation.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/fire_behavior (WRF 4.8.0)}: \code{physics/level_set_mod}, \code{ros_wrffire_mod}, \code{fire_driver_mod; io/wrf_mod}
+\end{itemize}
+\textbf{The port.} Card C-02 maps every CFBM kernel to its WRF-Fire counterpart.
+\end{outline}

@@ -1,0 +1,21 @@
+\chapter{Planetary boundary layer: YSU}\label{ch:pbl}
+
+The Yonsei University scheme, used on the outer domain.
+
+\begin{outline}[(card B-11)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Non-local mixing.} The K-profile, the counter-gradient terms and entrainment at the top of the boundary layer.
+    \item \textbf{The boundary-layer height.} The bulk Richardson number (\code{get_pblh}).
+    \item \textbf{Implicit vertical diffusion.} The tridiagonal solvers \code{tridin_ysu} and \code{tridi2n}.
+\end{itemize}
+\textbf{Sources.} \citet{hong2006ysu}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/physics_mmm/bl_ysu.F90}: \code{bl_ysu_run}, \code{get_pblh}, \code{tridin_ysu}, \code{tridi2n}
+    \item \code{phys/module_bl_ysu.F}: ysu
+    \item \code{phys/module_pbl_driver.F}: \code{pbl_driver}
+\end{itemize}
+\textbf{The port.} YSU becomes one thread per column, as WSM6. The tridiagonal solves are sequential in the vertical inside each thread.
+\end{outline}

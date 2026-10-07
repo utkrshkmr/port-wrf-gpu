@@ -1,0 +1,26 @@
+\chapter{The software architecture of WRF}\label{ch:arch}
+
+How WRF is organized as software: layers, the Registry and its code generation, the domain type, parallel decomposition and I/O.
+
+\begin{outline}[(card B-14)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Layers.} Driver, mediation and model layers; the time loop (\code{integrate}) and the step (\code{solve_em}).
+    \item \textbf{The Registry.} One table that generates declarations, allocation, I/O, halo exchanges and nest interpolation.
+    \item \textbf{Index ranges.} Domain, memory, patch and tile dimensions (\code{ids}, \code{ims}, \code{ips}, \code{its}).
+    \item \textbf{Parallelism.} MPI patches through RSL\_LITE, OpenMP tiles, halo include files.
+    \item \textbf{I/O.} The I/O API, streams, history and restart.
+    \item \textbf{Strengths and costs.} What this design makes easy and what it makes hard, on CPUs and on GPUs (track X of the roadmap).
+\end{itemize}
+\textbf{Sources.} \code{roadmap/architecture/} (cards X-01, X-02).
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{main/module_wrf_top.F}: \code{wrf_init}, \code{wrf_run}
+    \item \code{frame/module_integrate.F}: integrate
+    \item \code{frame/module_domain.F}: \code{alloc_and_configure_domain}
+    \item \code{tools/registry.c, tools/gen_allocs.c}: the Registry compiler
+    \item \code{external/RSL_LITE}: halo exchanges
+\end{itemize}
+\textbf{The port.} The port adds generated code to the Registry tools: device allocation of every field, and update lists.
+\end{outline}

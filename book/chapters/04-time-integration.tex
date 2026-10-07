@@ -1,0 +1,23 @@
+\chapter{Time integration}\label{ch:time}
+
+The third-order Runge--Kutta scheme for the slow modes and the split-explicit integration of the acoustic modes inside each stage.
+
+\begin{outline}[(card B-04)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Runge--Kutta 3.} The three stages, the tendencies computed once per stage, the update sequence in \code{solve_em}.
+    \item \textbf{Acoustic sub-steps.} Forward--backward in the horizontal, vertically implicit for $w$ and the geopotential: the tridiagonal system of \code{advance_w} and its coefficients (\code{calc_coef_w}); 1, 2 and 4 sub-steps per stage.
+    \item \textbf{Filters and damping.} Divergence damping (\code{smdiv}), the external-mode filter, off-centering (\code{epssm}), the upper Rayleigh damping of $w$ (\code{damp_opt = 3}), vertical-velocity damping (\code{w_damp}).
+    \item \textbf{Scalars.} The RK3 transport of moisture and TKE, and the positive-definite final stage.
+    \item \textbf{The time step in the code.} A walk through \code{solve_em}: the order of tendencies, boundaries, acoustic loop, scalar transport, physics and fire.
+\end{itemize}
+\textbf{Sources.} \citet{wicker2002,klemp2007,skamarock2019}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{dyn_em/solve_em.F}: \code{solve_em}
+    \item \code{dyn_em/module_em.F}: \code{rk_tendency}, \code{rk_addtend_dry}, \code{rk_scalar_tend}, \code{rk_update_scalar}
+    \item \code{dyn_em/module_small_step_em.F}: \code{small_step_prep}, \code{calc_p_rho}, \code{calc_coef_w}, \code{advance_uv}, \code{advance_mu_t}, \code{advance_w}, \code{sumflux}, \code{small_step_finish}
+\end{itemize}
+\textbf{The port.} The acoustic loop is the most launched part of the GPU code: about 150 kernel launches per d02 step (P2-D1, P2-D2, P2-D3). Its vertical recurrences become one GPU thread per column (Template C).
+\end{outline}

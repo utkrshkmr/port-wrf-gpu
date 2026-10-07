@@ -1,0 +1,28 @@
+\chapter{WRF-Fire}\label{ch:fire}
+
+The coupled fire model of WRF: from the winds of the atmosphere to the spread of the fire front and back to the atmosphere.
+
+\begin{outline}[(card B-12)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{The fire grid.} Refinement, the memory and active regions, ghost cells.
+    \item \textbf{Winds for the fire.} Interpolation from the atmosphere to the fire grid with a logarithmic profile (\code{interpolate_atm2fire}).
+    \item \textbf{The level-set method.} The front as the zero contour of $\psi$; the equation $\partial_t\psi + R\,|\nabla\psi| = 0$; the upwind schemes (ENO1, WENO5) and the hybrid of \code{fire_upwinding = 9}; the RK3 integration; re-initialization.
+    \item \textbf{Rate of spread.} Rothermel's model and the fuel categories (\code{fire_ros}).
+    \item \textbf{Fuel consumption and heat release.} \code{fuel_left} with sub-cells; \code{heat_fluxes}.
+    \item \textbf{Feedback to the atmosphere.} \code{fire_tendency}: the vertical distribution of the fluxes.
+    \item \textbf{Ignition.} \code{ignite_fire}.
+\end{itemize}
+\textbf{Sources.} \citet{coen2013,mandel2011,munozesparza2018,rothermel1972,anderson1982,scott2005,osher2003,jiang1996,sussman1994}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/module_fr_fire_driver.F}: \code{fire_driver_em}, \code{interpolate_atm2fire}
+    \item \code{phys/module_fr_fire_model.F}: \code{fire_model}
+    \item \code{phys/module_fr_fire_core.F}: \code{prop_ls_rk3}, \code{tend_ls}, \code{reinit_ls_rk3}, \code{advance_ls_reinit}, \code{ignite_fire}, \code{fuel_left}
+    \item \code{phys/module_fr_fire_phys.F}: \code{fire_ros}, \code{heat_fluxes}
+    \item \code{phys/module_fr_fire_atm.F}: \code{fire_tendency}
+    \item \code{phys/module_fr_fire_util.F}: \code{continue_at_boundary}, \code{interpolate_2d}, \code{sum_2d_cells}
+\end{itemize}
+\textbf{The port.} Phase 4. The fire grid of the case has $3244\times3244$ cells; the level-set kernels are stencils of width 7 with data-dependent branches (WENO or ENO).
+\end{outline}

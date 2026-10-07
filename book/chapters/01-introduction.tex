@@ -1,0 +1,86 @@
+\chapter{Introduction}\label{ch:intro}
+
+\section{WRF and WRF-Fire}
+
+The Weather Research and Forecasting model (WRF) is a community model for atmospheric research and forecasting,
+maintained by the National Center for Atmospheric Research (NCAR). This book is about its Advanced Research WRF
+(ARW) dynamical core \citep{skamarock2019}, which solves the compressible, non-hydrostatic Euler equations on a
+staggered grid. It uses third-order Runge--Kutta time stepping, with the acoustic modes integrated in smaller steps
+\citep{wicker2002,klemp2007}. Around this core sit physics schemes for microphysics, radiation, the surface, the
+land and the boundary layer. A user selects one scheme per process in a namelist.
+
+WRF-Fire couples a model of wildland fire spread to the atmosphere \citep{coen2013,mandel2011}:
+\begin{itemize}
+  \item The fire lives on a finer grid than the atmosphere. Its front is the zero contour of a level-set function,
+    moved at the rate of spread given by Rothermel's model \citep{rothermel1972}.
+  \item The fire's heat and moisture fluxes feed back into the atmosphere, which in turn changes the winds that
+    drive the fire.
+  \item Since WRF~4.0 the level-set advection uses a fifth-order WENO scheme with re-initialization
+    \citep{munozesparza2018}.
+\end{itemize}
+
+WRF~4.8.0 adds NCAR's Community Fire Behavior Model (CFBM), a standalone rewrite of the same algorithms
+(\cref{ch:cfbm}).
+
+\section{Why GPUs, and why it is hard}
+
+A coupled fire forecast at 100~m resolution needs a nest of hundreds of cells on a side, sixty levels, steps of a
+third of a second, and a fire grid four times finer still. The case of this book (\cref{ch:case}) takes 183{,}600
+steps of the inner domain to cover 17 hours. Forecasts of this kind are useful only if they run faster than the
+fire. Ensembles, which tell how much a forecast can be trusted, multiply the cost.
+
+WRF's dynamics and most of its physics are limited by memory bandwidth, not by arithmetic. GPUs offer several times
+the memory bandwidth of a CPU socket, so they are an obvious candidate. WRF physics on GPUs has been studied since
+the port of a microphysics scheme by \citet{michalakes2008}. Moving the whole model to them is hard for three
+reasons.
+\begin{enumerate}
+  \item \textbf{Size.} WRF~4.6.0 has about 1.9 million lines of Fortran (1.5 million without the chemistry):
+    \begin{itemize}
+      \item the ARW dynamics, about 74{,}000;
+      \item the physics directory, about 670{,}000;
+      \item WRF-Fire, about 8{,}500.
+    \end{itemize}
+    Even the subset one case executes is a few hundred routines.
+  \item \textbf{Structure.} The code was written for CPUs:
+    \begin{itemize}
+      \item physics works on two-dimensional slabs;
+      \item routines allocate large automatic arrays on every call;
+      \item tables are initialized in the middle of the time step;
+      \item data lives in a deep derived type.
+    \end{itemize}
+    None of this is wrong on a CPU, and all of it is costly or impossible on a GPU.
+  \item \textbf{Trust.} A GPU port that changes the results cannot easily be told apart from a GPU port that is
+    wrong. Fire spread is sensitive: a change in the last bit of one temperature can, after a few hours, move the fire
+    front by whole cells. Chapter~\ref{ch:repro} explains this.
+\end{enumerate}
+
+\section{The approach of this project}
+
+The port described here makes three choices.
+\begin{description}
+  \item[Bit-for-bit.] The GPU build must give results identical, bit for bit, to a reference CPU build of the same
+    source. The reference build differs from a production build only in compiler flags and in a portable library of
+    elementary functions. Chapter~\ref{ch:repro} shows how this is achieved and how it is verified.
+  \item[One Fortran source.] The GPU code is OpenMP \code{target} directives in the existing Fortran, under a
+    preprocessor macro. With the macro undefined, the source is the CPU code. This choice and its alternatives
+    (CUDA, OpenACC, C++ libraries) are discussed in \cref{ch:gpu}.
+  \item[Small verified steps.] The port moves one routine at a time. Each step is checked by tests that compare the
+    device result with the host result of the same routine, and the whole model with the CPU reference
+    (\cref{ch:port}).
+\end{description}
+
+\section{How this book is organized}
+
+\begin{itemize}
+  \item \Cref{ch:case} describes the forecast case that defines which parts of WRF are used.
+  \item Parts~I and~II describe the atmospheric model: the dynamics, then the physics schemes of this case.
+  \item Part~III describes the fire models.
+  \item Part~IV is about software:
+    \begin{itemize}
+      \item WRF's architecture;
+      \item floating-point reproducibility;
+      \item GPU programming;
+      \item the port itself, its performance and multi-GPU runs.
+    \end{itemize}
+  \item Part~V follows the model from WRF~4.6.0 to 4.8.0.
+\end{itemize}

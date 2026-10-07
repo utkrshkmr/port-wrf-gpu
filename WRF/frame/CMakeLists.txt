@@ -96,6 +96,8 @@ target_sources(
                   ${WRF_INCLUDE_FILES}
 
                   module_configure.F
+                  module_gpu_prof.F
+                  module_gpu_work.F
                   module_repro_math.F
                   module_driver_constants.F
                   module_domain_type.F
@@ -127,6 +129,7 @@ target_sources(
                   clog.c
                   collect_on_comm.c
                   hires_timer.c
+                  wrf_gpu_shim.c
                   libmassv.F
                   
                   module_clear_halos.F
@@ -148,6 +151,9 @@ target_sources(
                   module_nesting.F
                   module_bittrace.F
                   module_gpu_route.F
+                  module_gpu_map.F
+                  module_gpu_callcheck.F
+                  module_gpu_updates.F
                   module_gpu_scratch.F
                   module_quilt_outbuf_ops.F
                   module_sm.F

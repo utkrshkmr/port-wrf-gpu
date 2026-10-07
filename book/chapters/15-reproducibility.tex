@@ -1,0 +1,238 @@
+\chapter{Floating-point reproducibility}\label{ch:repro}
+
+The port requires that the GPU build of WRF give the same bits as a CPU build of the same source. This chapter
+explains why that is the right requirement for a fire model, what stands in its way, and how the port meets it and
+checks it. The general background is in \citet{goldberg1991} and \citet{muller2018}.
+
+\section{Why bits matter}
+
+Weather is chaotic: small differences in the state grow until they are as large as the natural variability. A
+coupled fire model adds a threshold on top of this:
+\begin{itemize}
+  \item a fire cell is either burning or not;
+  \item the front is where a continuous field (the level-set function) changes sign.
+\end{itemize}
+A difference in the last bit of a wind component can move the front across a cell boundary a little earlier or
+later. The fire then spreads from a different set of cells, and from that moment the difference is no longer
+small.
+
+Experiment E1 of the port's plan measures this for the case of \cref{ch:case}. It changes the temperature at one
+grid point of the initial state by one unit in the last place, and compares the burned areas after 17~hours. The
+result will be reported here (card A-09 of the roadmap).
+
+The consequence for a GPU port is simple. A GPU build that rounds differently from the CPU build produces a
+different fire. Statistical comparison of such runs cannot tell a correct port that rounds differently from a port
+with a small bug. If the two builds agree bit for bit, every difference is a bug, and the first field that differs
+points to the routine that causes it. The port therefore defines correctness as bitwise identity with a CPU
+reference build (CPU-REF), and treats ``close'' as a failure.
+
+\section{IEEE arithmetic in brief}
+
+WRF computes mostly in IEEE~754 binary32 (single precision, \code{REAL(4)}) \citep{ieee754}:
+\begin{itemize}
+  \item 1 sign bit, 8 exponent bits and 23 fraction bits;
+  \item a significand of $p = 24$ bits, so the unit roundoff is $u = 2^{-24}$.
+\end{itemize}
+The distance between two consecutive floating-point numbers, the \emph{unit in the last place} $\ulp(x)$, is
+$2^{-23}$ for $x \in [1,2)$.
+
+The standard requires the basic operations $+$, $-$, $\times$, $/$ and $\sqrt{\phantom{x}}$ to be \emph{correctly
+rounded}. The result is the exact result rounded to a representable number, by default to the nearest one, with ties
+to the one whose last bit is even:
+\begin{equation}
+  \fl(a \circ b) = \operatorname{round}(a \circ b), \qquad \circ \in \{+,-,\times,/\}.
+\end{equation}
+This makes the basic operations deterministic: the same operands give the same bits on every conforming processor,
+CPU or GPU.
+
+It does not make arithmetic associative. In binary32, $2^{24} = 16\,777\,216$ and the next number is $2^{24}+2$, so
+\begin{align}
+  \fl(\fl(2^{24} + 1) + 1) &= \fl(2^{24} + 1) = 2^{24} \quad\text{(a tie, rounded to even), but}\\
+  \fl(2^{24} + \fl(1 + 1)) &= 2^{24} + 2.
+\end{align}
+
+\begin{keypoint}
+A computation is reproducible when the same operations are applied in the same order to the same operands. Every
+source of irreproducibility breaks one of these three.
+\end{keypoint}
+
+\section{What makes CPU and GPU results differ}
+
+\Cref{tab:repro-sources} lists what can make a GPU build differ from a CPU build of the same source, what the port
+does about each, and the test that checks it. The sections below explain the main ones.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{0.24\textwidth}p{0.45\textwidth}p{0.21\textwidth}}
+\toprule
+Source & Remedy in the port & Test \\
+\midrule
+Fused multiply-add & contraction off in both builds (\code{-Mnofma}, \code{-gpu=nofma}; gfortran
+  \code{-ffp-contract=off}) & T-FMA \\
+Elementary functions & own portable implementations, \code{module_repro_math} & T-RM-*, T-SYM \\
+Order of operations & statements copied verbatim; sums kept sequential in source order; no reassociation by the
+  vectorizer (\code{-Mvect=noassoc}) & T-AB, T-TRACE, \code{arith_guard} \\
+Subnormal numbers & no flush to zero (\code{-Mnoflushz}, \code{-gpu=noflushz}) & T-SUBNORM \\
+Signed zeros, NaN in \code{MAX}, \code{MIN}, \code{SIGN} & checked; replaced if host and device differ &
+  T-SIGNZERO, T-MINMAX \\
+Integer powers & checked for each exponent used & T-IPOW \\
+Uninitialized memory & scratch and work arrays zero-filled in both builds & T-UNINIT \\
+Integer overflow (random numbers) & explicit 32-bit arithmetic & T-KISS \\
+Data races & every scalar written in a kernel is private; parallel runs compared & 4-thread check, T-AB \\
+\bottomrule
+\end{tabular}
+\caption{Sources of CPU/GPU differences and how the port handles them.}\label{tab:repro-sources}
+\end{table}
+
+\subsection{Fused multiply-add}
+
+A fused multiply-add (FMA) computes $a \times b + c$ with a single rounding. It is more accurate than a multiply
+followed by an add, and it is the native operation of GPU floating-point units. Compilers for GPUs use it by default
+whenever the source has a product followed by a sum. The result then differs from the CPU result, which rounds twice.
+
+An example in binary32: take $a = b = 1 + 2^{-12}$ and $c = -1$. The exact product is $1 + 2^{-11} + 2^{-24}$. This
+lies exactly halfway between the representable numbers $1 + 2^{-11}$ and $1 + 2^{-11} + 2^{-23}$, so it rounds to
+the even one, $1 + 2^{-11}$. Therefore
+\begin{align}
+  \text{unfused:}\quad & \fl(\fl(a b) + c) = 2^{-11},\\
+  \text{fused:}\quad & \fl(a b + c) = 2^{-11} + 2^{-24}.
+\end{align}
+The port's test T-FMA computes exactly this on the host and on the device. It reads the operands from a file at run
+time, so that the compiler cannot fold the expression, and it adds a million random triples for which the two
+results differ. Contraction is switched off in both builds, and T-FMA must pass before any other GPU test is
+believed.
+
+\subsection{Elementary functions}
+
+IEEE~754 recommends, but does not require, correctly rounded elementary functions ($\exp$, $\log$, $\sin$, $x^y$,
+\dots). Math libraries trade accuracy for speed, and they differ between vendors, between CPU and GPU, and between
+versions. A result that differs in the last bit in one call of \code{EXP} is enough to change the fire.
+
+The port does not call any vendor math library. \code{module_repro_math} implements every elementary function WRF
+uses with only the basic operations and exact bit manipulation:
+\begin{itemize}
+  \item \code{REAL(4)} arguments are converted to double precision and evaluated with a fixed double-precision
+    algorithm, whose error is below one ulp of double precision. The result is then rounded once to single
+    precision.
+  \item \code{REAL(8)} arguments use the algorithms of fdlibm~5.3 \citep{fdlibm}, translated to Fortran.
+  \item NaN results are replaced by one canonical quiet NaN, because hardware NaN payloads differ between CPU and
+    GPU.
+\end{itemize}
+
+Each function is \code{ELEMENTAL} and is compiled for both the host and the device. Since it consists only of basic
+operations in a fixed order, it gives the same bits on both. The same module, compiled without \code{REPRO_MATH},
+returns the Fortran intrinsics, which gives the upstream behaviour.
+
+\begin{portnote}
+\begin{itemize}
+  \item \textbf{Correct rounding.} The single-precision functions were tested exhaustively, on all $2^{32}$ inputs
+    of each of $\exp$, $\log$, $\log_{10}$, $\sin$, $\cos$, $\tan$, $\arcsin$, $\arccos$, $\arctan$, $\sinh$, $\cosh$
+    and $\tanh$. Every result is correctly rounded. $x^y$ is correctly rounded on 7.3 million samples, including
+    every exponent WRF uses.
+
+    Correct rounding is a bonus, not the requirement: double rounding (to double, then to single) could in principle
+    miss it for an argument extremely close to a rounding boundary, and the result would still be the same on every
+    processor.
+  \item \textbf{Substitution.} A tool rewrote 646 intrinsic calls and 265 powers in 38 source files into calls of
+    the portable functions.
+  \item \textbf{Symbol audit.} T-SYM checks that no math-library symbol is left in the compiled objects.
+\end{itemize}
+\end{portnote}
+
+\subsection{Order of operations}
+
+Reassociation changes results, as shown above. The rule of the port is therefore that a GPU kernel performs the
+same statements as the CPU loop it replaces, copied verbatim; only the array indices of a slab that becomes a column
+may change. Three places need care.
+\begin{itemize}
+  \item \textbf{Sums.} A sum over species or over levels stays a sequential loop inside one GPU thread, in the
+    source order. It is never turned into a parallel reduction, which would add in a different order.
+  \item \textbf{Vectorizers.} The CPU compiler may also reorder a reduction to vectorize it. CPU-REF forbids this
+    with \code{-Mvect=noassoc}.
+  \item \textbf{Integer reductions.} Reductions of integers (counts, flags, checksums) are exact in any order and
+    may run in parallel.
+\end{itemize}
+A static checker, \code{arith_guard}, compares every statement in the GPU code with the CPU lines it replaces.
+
+\subsection{Rewritten powers}
+
+Some rewrites are exact and are used freely:
+\begin{itemize}
+  \item \code{x**2.0} becomes \code{x*x}: a correctly rounded square is the correctly rounded product.
+  \item \code{x**0.5} becomes \code{SQRT(x)} for the non-negative arguments where WRF uses it.
+\end{itemize}
+
+Integer powers are different. A compiler expands \code{x**4} into multiplications, and it may compute
+$(x\cdot x)\cdot(x\cdot x)$ or $((x\cdot x)\cdot x)\cdot x$. These can round differently, and host and device
+compilers need not choose the same expansion. T-IPOW compares host and device for every integer exponent left in the
+code: 2, 3, 4, 8 and 32.
+
+\subsection{Uninitialized memory}
+
+Fortran automatic arrays are not initialized. A CPU build reads whatever the stack contained, and a GPU build reads
+something else. A routine that reads an element before writing it therefore behaves differently on the two. The port
+replaces the large automatic arrays by work arrays and a scratch pool, which are zero-filled once in both builds.
+T-UNINIT checks the rest: a run that initializes every local to a signaling NaN and a run that initializes them to
+zero must agree.
+
+\section{What reproducibility costs}
+
+Bitwise reproducibility is not free.
+\begin{itemize}
+  \item Without FMA, a GPU reaches only half of its peak floating-point rate. Memory-bound code, which is most of
+    WRF, loses much less.
+  \item The portable elementary functions are slower than the hardware approximations GPUs provide.
+  \item Sums inside a column cannot be parallel.
+\end{itemize}
+
+The port therefore plans two build modes from one source (ADR-003):
+\begin{itemize}
+  \item \textbf{REPRO}, bitwise and used for all verification;
+  \item \textbf{FAST}, with the vendors' fast arithmetic. It is validated statistically against an ensemble of REPRO
+    runs, in the manner of the ensemble consistency tests of \citet{baker2015} and \citet{milroy2018}.
+\end{itemize}
+The speed difference between the two is the measured cost of reproducibility (\cref{ch:perf}).
+
+\section{How identity is checked}
+
+\paragraph{The bit-hash tracer.} At chosen points of the time step, \code{module_bittrace} reduces each field to
+two 64-bit integers computed from the bit patterns of its values over the patch interior:
+\begin{itemize}
+  \item the sum of the bit patterns;
+  \item a sum weighted by the global position of each point, which changes when values move between points.
+\end{itemize}
+The arithmetic is exact integer arithmetic. The hashes therefore do not depend on the order of evaluation, on the
+MPI decomposition, or on whether the reduction ran on a CPU or a GPU. Two runs are compared line by line, and the
+first differing line names the step, the Runge--Kutta stage, the place in the step and the field.
+
+\paragraph{Tests at three scales.}
+\begin{itemize}
+  \item \emph{Per routine, device against host} (T-AB). A route switch runs one ported routine on the host and the
+    rest on the device. The two traces must agree.
+  \item \emph{Per routine, random inputs} (the harness). The routine is called alone with random inputs, in the CPU
+    view and in the GPU view. This reaches code paths a short run does not.
+  \item \emph{Whole model, GPU against CPU-REF} (T-TRACE). Short windows restarted from the same file, then the full
+    17-hour run, compared field by field and fire cell by fire cell.
+\end{itemize}
+
+\paragraph{Without a GPU.} Much can be checked on a CPU. With gfortran, the GPU view of the source compiles with its
+OpenMP \code{target} regions running on the host. It must then give the same bits as the CPU view:
+\begin{itemize}
+  \item with one thread, which proves that the restructured kernels keep the arithmetic;
+  \item with four threads, which exposes data races such as a scalar that should have been private.
+\end{itemize}
+A mutation test shows the check has teeth: the correct column port of \code{calc_coef_w} passes, and the same port
+with one product reassociated fails. What a CPU cannot check is data movement between host and device memory, which
+are the same memory there. That is left to the GPU tests.
+
+\section{Limits}
+
+Bitwise identity holds between two builds of one source by one compiler family: CPU-REF and GPU-REPRO, both built
+with \code{nvfortran}. In REPRO mode only IEEE basic operations and the portable functions remain, so identity across
+compilers and vendors should also be within reach (card G-06 of the roadmap). That would mean the same results on
+every GPU.
+
+Finally, bitwise identity says only that the port did not change the model. Whether the model forecasts the fire
+well is a different question, which this book leaves to the cited literature and to the comparison with
+observations.

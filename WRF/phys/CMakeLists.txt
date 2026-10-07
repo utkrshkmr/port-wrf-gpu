@@ -26,6 +26,8 @@ target_sources(
                 ${PROJECT_NAME}_Core
                 PRIVATE
                   ccpp_kind_types.F
+                  module_gpu_selftest.F
+                  module_gpu_tables.F
                   complex_number_module.F
                   module_bep_bem_helper.F
                   module_bl_acm.F

@@ -1,12 +1,33 @@
-# WRF / WRF-Fire v4.6.0 (CPU reference)
+# port-wrf-gpu: WRF 4.6.0 and WRF-Fire on GPUs, bit for bit
 
-Unmodified copy of the WRF v4.6.0 modeling pipeline, including WRF-Fire. It is the
-CPU baseline that the GPU port is verified against, so nothing newer than v4.6.0 is
-included.
+A port of the Weather Research and Forecasting model (WRF) v4.6.0 with WRF-Fire to GPUs. It is written as Fortran
+with OpenMP offload directives, and it must give results bit-for-bit identical to a CPU reference build. The
+repository also holds the verification tools, the plan, the long-term roadmap and a textbook.
 
-For the GPU porting guide (architecture, time-step kernels, data movement, porting plan and
-verification), see [explain-wrf.md](explain-wrf.md). The step-by-step execution plan for A100 80 GB and
-H100 80 GB (tasks, kernels, wiring, tests, gates and performance analysis) is [plan.md](plan.md).
+**Stage 1 (now):** WRF 4.6.0 + WRF-Fire on one NVIDIA GPU. WRF 4.8.0 and NCAR's new fire model CFBM come after it
+([roadmap/](roadmap/README.md), ADR-002).
+
+## Layout
+
+The repository is divided into **areas**, each with its own instructions and the paths it may change
+([AREAS.md](AREAS.md)). Agents start there.
+
+| Path | Content | Area |
+|---|---|---|
+| `WRF/` | WRF v4.6.0 with the GPU port (all GPU code under `#ifdef WRF_GPU`; the CPU view is unchanged) | `port`, `port-wp` |
+| `WPS/` | WPS v4.6.0, unchanged (makes the cases; stays on the CPU) | — |
+| `port/` | the port's tools, tests, gates, run scripts and agent guides ([port/README.md](port/README.md), [port/agent/](port/agent/README.md)) | `review`, `port` |
+| `cases/` | the case contract of the Eaton fire case | `review` |
+| [plan.md](plan.md), [explain-wrf.md](explain-wrf.md) | the execution plan and the porting guide | `review` |
+| [AGENTS.md](AGENTS.md) | instructions of the port agent | `review` |
+| [roadmap/](roadmap/README.md) | decisions, analyses, the backlog of half-day tasks | `roadmap` |
+| [book/](book/README.md) | the LaTeX textbook (built by CI) | `book` |
+| [perf/](perf/README.md) | performance models, tools and reports | `perf` |
+| [docs/](docs/README.md) | user documentation (for the release) | `docs` |
+
+## Provenance
+
+The branch `upstream/v4.6.0` holds WRF, WPS and Noah-MP exactly as released. The table records the upstream commits.
 
 | Directory          | Upstream                                              | Version                       | Commit                                     |
 |--------------------|-------------------------------------------------------|-------------------------------|--------------------------------------------|
@@ -14,18 +35,16 @@ H100 80 GB (tasks, kernels, wiring, tests, gates and performance analysis) is [p
 | `WRF/phys/noahmp/` | [NCAR/noahmp](https://github.com/NCAR/noahmp)         | submodule pinned by WRF v4.6.0 | `848f54ad3d28c4303151fe5ad83724e232694422` |
 | `WPS/`             | [wrf-model/WPS](https://github.com/wrf-model/WPS)     | v4.6.0                        | `335c76a111f84503e8b963abaf273ea8053645bb` |
 
-The upstream git histories aren't included; the table records the exact upstream commits. To
-check a directory against its release, fetch that commit and diff (fetching only reads from the
-upstream repositories):
+To check the import against its release (fetching only reads from the upstream repositories):
 
 ```sh
 git fetch --depth 1 https://github.com/wrf-model/WRF refs/tags/v4.6.0
-git diff --stat FETCH_HEAD HEAD:WRF               # only phys/noahmp (submodule link -> vendored files)
+git diff --stat FETCH_HEAD upstream/v4.6.0:WRF        # only phys/noahmp (submodule link -> vendored files)
 git fetch --depth 1 https://github.com/wrf-model/WPS refs/tags/v4.6.0
-git diff --stat FETCH_HEAD HEAD:WPS               # empty
-git fetch --depth 1 https://github.com/NCAR/noahmp 848f54ad3d28c4303151fe5ad83724e232694422
-git diff --stat FETCH_HEAD HEAD:WRF/phys/noahmp   # empty
+git diff --stat FETCH_HEAD upstream/v4.6.0:WPS        # empty
 ```
+
+`git diff upstream/v4.6.0 -- WRF` shows every change the port made to WRF.
 
 ## WRF-Fire
 

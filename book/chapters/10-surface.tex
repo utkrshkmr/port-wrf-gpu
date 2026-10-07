@@ -1,0 +1,25 @@
+\chapter{Surface layer and land surface}\label{ch:sfc}
+
+The revised MM5 surface layer and the Noah land-surface model.
+
+\begin{outline}[(card B-10)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Monin--Obukhov similarity.} The stability functions, their tables, and the iteration for $z/L$ (\code{zolri}).
+    \item \textbf{The revised surface layer.} The formulation of \citet{jimenez2012} as coded in \code{sf_sfclayrev_run}.
+    \item \textbf{Noah.} The four soil layers, the surface energy balance, evaporation and transpiration, soil heat and moisture, snow; the \code{SFLX} call tree.
+    \item \textbf{Sea ice and diagnostics.} \code{seaice_noah}, \code{SFCDIAGS}.
+    \item \textbf{The surface driver.} \code{surface_driver}.
+\end{itemize}
+\textbf{Sources.} \citet{jimenez2012,chen2001}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/physics_mmm/sf_sfclayrev.F90}: \code{sf_sfclayrev_run}, \code{zolri}
+    \item \code{phys/module_sf_sfclayrev.F}: sfclayrev
+    \item \code{phys/module_sf_noahdrv.F}: lsm
+    \item \code{phys/module_sf_noahlsm.F}: SFLX and callees
+    \item \code{phys/module_surface_driver.F}: \code{surface_driver}
+\end{itemize}
+\textbf{The port.} The undefined result of \code{zolri} in one branch is given a defined value in both builds; the reference run shows the branch is never taken in this case.
+\end{outline}

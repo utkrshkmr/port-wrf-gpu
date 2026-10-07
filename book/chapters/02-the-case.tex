@@ -1,0 +1,86 @@
+\chapter{The forecast case}\label{ch:case}
+
+A model like WRF is a large set of options; a forecast uses a small subset of them. The port, and most of this book,
+is defined by one case: a coupled weather and fire simulation of the Eaton Fire, which started in the foothills above Altadena,
+California, on the evening of 7~January~2025 local time. The case's files are in \code{cases/eaton_20250108/}. The ignition used
+in the case is at 34.18604~N, 118.09325~W, at 02:18~UTC on 8~January~2025.
+
+\section{Domains and time steps}
+
+Two domains with one-way nesting (\code{feedback = 0}). The ratio is 9 in both space and time.
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+Domain & Grid & $\Delta x$ & $\Delta t$ & Steps in 17 h & Fire grid \\
+\midrule
+d01 & $450\times450\times60$ & 900 m & 3 s & 20{,}400 & -- \\
+d02 & $811\times811\times60$ & 100 m & 1/3 s & 183{,}600 & $3244\times3244$ (25 m) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each large time step has three Runge--Kutta stages, with 1, 2 and 4 acoustic sub-steps
+(\code{time_step_sound = 0} gives four per step): seven acoustic sub-steps in all (\cref{ch:time}).
+
+\section{Options}
+
+\paragraph{Dynamics.}
+\begin{itemize}
+  \item Non-hydrostatic, with the hybrid vertical coordinate (\code{hybrid_opt = 2}) and moist potential
+    temperature (\code{use_theta_m = 1}).
+  \item Advection: fifth order in the horizontal, third order in the vertical; positive-definite for moisture and
+    TKE.
+  \item Turbulence:
+    \begin{itemize}
+      \item d01: two-dimensional Smagorinsky horizontal diffusion with the YSU boundary layer
+        (\code{km_opt = 4});
+      \item d02: a three-dimensional TKE large-eddy simulation (\code{km_opt = 2}).
+    \end{itemize}
+  \item Damping: Rayleigh damping of $w$ at the top (\code{damp_opt = 3}) and vertical-velocity damping
+    (\code{w_damping = 1}).
+\end{itemize}
+
+\paragraph{Physics.}
+\begin{itemize}
+  \item WSM6 microphysics (\cref{ch:mp}).
+  \item Radiation (\cref{ch:rad}), called every minute:
+    \begin{itemize}
+      \item RRTMG longwave, in single precision in this build;
+      \item Dudhia shortwave.
+    \end{itemize}
+  \item The revised MM5 surface layer and the Noah land-surface model (\cref{ch:sfc}).
+  \item YSU boundary layer on d01 only (\cref{ch:pbl}).
+  \item No cumulus, shallow-convection, urban or lake schemes.
+\end{itemize}
+
+\paragraph{Fire, on d02.}
+\begin{itemize}
+  \item WRF-Fire (\code{ifire = 2}), refinement 4 in each direction.
+  \item Hybrid WENO5/ENO1 level-set advection (\code{fire_upwinding = 9}), with re-initialization.
+  \item Wind interpolated to 1~m with a logarithmic profile.
+  \item Heat and moisture fluxes fed back into the atmosphere.
+  \item The built-in 53-category fuel table and a uniform fuel moisture of 8\,\%.
+  \item One circular ignition of radius 100~m.
+\end{itemize}
+
+\section{What the case means for the port}
+
+The options fix the code paths:
+\begin{itemize}
+  \item every routine the case executes in a time step must run on the GPU;
+  \item every routine it does not execute may stay as it is.
+\end{itemize}
+
+A startup check in the GPU build refuses a namelist outside the supported envelope. Dates, sizes, the nest position
+and the ignition may change; the scheme choices may not. The full list of options, with the reasons for each, is in
+\code{plan.md} section~2. \Cref{app:namelist} reproduces the namelist with comments.
+
+\begin{portnote}
+For development, two smaller cases are used:
+\begin{itemize}
+  \item \emph{S-3M}, the WRF \code{em_fire} idealized case with the Eaton physics, runs in minutes on one CPU core.
+    It is the case of the CPU-only verification.
+  \item \emph{eaton\_small} is the real case with a $181\times181$ nest.
+\end{itemize}
+\end{portnote}

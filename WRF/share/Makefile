@@ -5,6 +5,7 @@ MAKE    =       make -i -r
 RM      =       rm -f
 
 MODULES1=                               \
+                module_gpu_check.o         \
         module_model_constants.o        \
         module_bc_time_utilities.o      \
         module_get_file_names.o         \

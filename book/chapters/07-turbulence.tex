@@ -1,0 +1,22 @@
+\chapter{Turbulence and diffusion}\label{ch:turb}
+
+Sub-grid turbulence in physical space (\code{diff_opt = 2}): two-dimensional Smagorinsky on d01, the 1.5-order TKE closure on d02.
+
+\begin{outline}[(card B-07)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Deformation and divergence.} \code{cal_deform_and_div}, the metric terms of \code{compute_diff_metrics}.
+    \item \textbf{Brunt--V\"ais\"al\"a frequency.} \code{calculate_N2}, moist and dry.
+    \item \textbf{Eddy viscosities.} \code{smag2d_km} (d01); \code{tke_km} with the length scale \code{calc_l_scale} (d02).
+    \item \textbf{The TKE equation.} Shear, buoyancy and dissipation terms.
+    \item \textbf{Stress tensor and diffusion.} \code{cal_titau_*}, horizontal and vertical diffusion of momentum and scalars; the LES stress output \code{nba_mij}.
+\end{itemize}
+\textbf{Sources.} \citet{skamarock2019}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{dyn_em/module_diffusion_em.F}: \code{cal_deform_and_div}, \code{calculate_N2}, \code{smag2d_km}, \code{tke_km}, \code{tke_shear}, \code{tke_buoyancy}, \code{tke_dissip}, \code{horizontal_diffusion_2}, \code{vertical_diffusion_2}
+    \item \code{dyn_em/module_first_rk_step_part2.F}: \code{first_rk_step_part2}
+\end{itemize}
+\textbf{The port.} Work packages P2-G1, P2-G2, P2-G3: about 100 pointwise kernels, kept in source order.
+\end{outline}

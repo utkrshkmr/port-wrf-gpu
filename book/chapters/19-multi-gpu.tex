@@ -1,0 +1,20 @@
+\chapter{Several GPUs}\label{ch:mgpu}
+
+Running one forecast on several GPUs: halo exchanges on the device, decomposition independence, scaling.
+
+\begin{outline}[(card B-19)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Halo exchanges in WRF.}
+    \item \textbf{Device-resident halos and GPU-aware MPI.}
+    \item \textbf{Bitwise across decompositions.}
+    \item \textbf{Scaling.}
+\end{itemize}
+\textbf{Sources.} \code{perf/reports/halo-model.md}, \code{perf/reports/multi-gpu.md} (track M).
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{external/RSL_LITE}: pack and unpack
+\end{itemize}
+\textbf{The port.} Cards M-01 to M-06.
+\end{outline}

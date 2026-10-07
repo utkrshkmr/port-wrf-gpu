@@ -24,7 +24,7 @@
 #   t_shared.sh check
 set -eu
 source "$(dirname "$0")/common.sh"
-BASE_REF=${BASE_REF:-99becf4}     # commit that imported WRF v4.6.0 unchanged
+BASE_REF=${BASE_REF:-dda741a}     # commit that imported WRF v4.6.0 unchanged
 T=$WORKROOT/t_shared/$(git -C "$PORT_REPO" rev-parse --short=12 HEAD)
 D=$WORKROOT/cases/eaton_small
 case ${1:?build|submit|check} in

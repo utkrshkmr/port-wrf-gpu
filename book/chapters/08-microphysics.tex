@@ -1,0 +1,23 @@
+\chapter{Microphysics: WSM6}\label{ch:mp}
+
+The WRF single-moment six-class scheme: water vapour, cloud water, rain, cloud ice, snow and graupel.
+
+\begin{outline}[(card B-08)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Classes and size distributions.} The slope parameters (\code{slope_wsm6} and its variants).
+    \item \textbf{Processes.} Condensation, deposition, autoconversion, accretion, melting, freezing; the order in which they are applied.
+    \item \textbf{Sedimentation.} The semi-Lagrangian fall of rain and of snow and graupel (\code{nislfv_rain_plm}, \code{nislfv_rain_plm6}).
+    \item \textbf{Surface precipitation.} The accumulators.
+    \item \textbf{The driver.} \code{microphysics_driver} and the slab wrapper \code{wsm6}.
+\end{itemize}
+\textbf{Sources.} \citet{hong2006wsm6}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/physics_mmm/mp_wsm6.F90}: \code{mp_wsm6_run}, \code{slope_wsm6}, \code{nislfv_rain_plm}, \code{nislfv_rain_plm6}
+    \item \code{phys/module_mp_wsm6.F}: wsm6
+    \item \code{phys/module_microphysics_driver.F}: \code{microphysics_driver}
+\end{itemize}
+\textbf{The port.} WSM6 is the model case for column physics on the GPU: one thread per column, fixed-size column arrays, and its routines compiled for the device (CP-1 to CP-5).
+\end{outline}

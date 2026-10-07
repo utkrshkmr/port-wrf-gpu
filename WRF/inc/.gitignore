@@ -13,3 +13,8 @@
 ##############################################################################
 *.inc
 commit_decl 
+
+# GPU port: these include files are source, not build products (port/tools/gen_wp.py writes them once and the
+# work packages edit them); the generated update lists (gpu_upd_*.inc, gpu_pack_*.inc) stay ignored
+!gpu_work_*.inc
+!gpu_check_table.inc

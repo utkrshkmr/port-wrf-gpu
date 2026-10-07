@@ -80,7 +80,11 @@ module_dm_stubs.F: \
 
 
 module_domain.o: \
+	module_gpu_route.o \
+	module_gpu_callcheck.o \
+	module_gpu_work.o \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_alloc_space_0.o \
 	module_alloc_space_1.o \
 	module_alloc_space_2.o \
@@ -107,51 +111,61 @@ module_domain_type.o: \
 
 module_alloc_space_0.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_1.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_2.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_3.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_4.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_5.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_6.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_7.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_8.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
 module_alloc_space_9.o: \
 	module_domain_type.o \
+	module_gpu_map.o \
 	module_configure.o 
 
 
@@ -165,7 +179,13 @@ module_driver_constants.o: \
 
 
 module_integrate.o: \
+	module_gpu_route.o \
+	module_gpu_callcheck.o \
+	module_gpu_work.o \
+	module_gpu_prof.o \
+	module_gpu_scratch.o \
 	module_domain.o \
+	module_gpu_updates.o \
 	module_timing.o \
 	module_driver_constants.o \
 	module_state_description.o \
@@ -214,6 +234,7 @@ libmassv.o: \
 
 module_bittrace.o: \
 	module_domain.o \
+	module_gpu_route.o \
 	module_driver_constants.o \
 	module_wrf_error.o 
 
@@ -221,6 +242,22 @@ module_gpu_route.o: \
 	module_wrf_error.o 
 
 module_gpu_scratch.o: \
+	module_wrf_error.o 
+
+module_gpu_updates.o: \
+	module_gpu_route.o \
+	module_gpu_callcheck.o \
+	module_gpu_work.o \
+	module_gpu_prof.o \
+	module_gpu_scratch.o \
+	module_domain.o \
+	module_gpu_map.o \
+	module_configure.o 
+
+module_gpu_map.o: 
+
+module_gpu_callcheck.o: \
+	module_gpu_route.o \
 	module_wrf_error.o 
 
 
@@ -293,6 +330,9 @@ module_madwrf.o: \
 
 
 module_bl_ysu.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o \
 	physics_mmm/bl_ysu.o
   
@@ -744,6 +784,9 @@ module_sf_gfs.o: \
 
 
 module_sf_noahdrv.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	module_ra_gfdleta.o \
 	../frame/module_wrf_error.o \
 	module_sf_noahlsm.o \
@@ -755,6 +798,9 @@ module_sf_noahdrv.o: \
 
 
 module_sf_noahlsm.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_wrf_error.o \
 	../share/module_model_constants.o 
 
@@ -782,11 +828,17 @@ module_sf_ssib.o: \
 
 
 module_sf_noah_seaice_drv.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_wrf_error.o \
 	module_sf_noah_seaice.o 
 
 
 module_sf_noah_seaice.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_model_constants.o \
 	module_sf_noahlsm.o \
 	module_sf_noahlsm.o \
@@ -809,6 +861,9 @@ module_sf_noahmpdrv.o: \
 
 
 module_sf_noahlsm_glacial_only.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_model_constants.o \
 	../frame/module_wrf_error.o \
 	module_sf_noahlsm.o \
@@ -857,6 +912,9 @@ module_sf_pxlsm.o: \
 
 
 module_sf_sfclayrev.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o \
 	physics_mmm/sf_sfclayrev.o
 
@@ -883,6 +941,9 @@ module_ra_rrtmg_swk.o: \
 
 
 module_ra_rrtmg_lw.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_wrf_error.o \
 	../share/module_model_constants.o \
 	module_ra_clWRF_support.o 
@@ -899,6 +960,9 @@ module_ra_rrtmg_lwk.o: \
 
 
 module_physics_addtendc.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	module_cu_kf.o \
 	module_cu_kfeta.o \
 	$(PHYS_CU) \
@@ -1030,6 +1094,9 @@ module_physics_init.o: \
 
 
 module_microphysics_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_domain.o \
 	module_fire_emis.o \
 	module_mp_full_sbm.o \
@@ -1131,6 +1198,9 @@ module_cumulus_driver.o: \
 
 
 module_pbl_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	module_bl_gbmpbl.o \
 	module_bl_keps.o \
 	module_bl_shinhong.o \
@@ -1168,6 +1238,9 @@ module_mixactivate.o: \
 
 
 module_radiation_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	module_ra_sw.o \
 	module_ra_gsfcsw.o \
 	module_ra_rrtm.o \
@@ -1199,6 +1272,9 @@ module_radiation_driver.o: \
 
 
 module_surface_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	module_ra_gfdleta.o \
 	module_sf_noahlsm.o \
 	module_sf_sfclay.o \
@@ -1243,6 +1319,9 @@ module_sf_ocean_driver.o: \
 
 
 module_diagnostics_driver.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_streams.o \
 	module_lightning_driver.o \
 	module_diag_misc.o \
@@ -1441,6 +1520,9 @@ module_mp_wdm5.o: \
 
 
 module_mp_wsm6.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o \
 	physics_mmm/mp_wsm6_effectRad.o \
 	physics_mmm/mp_radar.o \
@@ -1508,6 +1590,9 @@ module_mp_gsfcgce_4ice_nuwrf.o: \
 
 
 physics_mmm/sf_sfclayrev.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o
 
 
@@ -1516,17 +1601,26 @@ physics_mmm/cu_ntiedtke.o: \
 
 
 physics_mmm/mp_wsm6.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o \
 	physics_mmm/mp_radar.o \
 	physics_mmm/module_libmassv.o
 
 
 physics_mmm/mp_wsm6_effectRad.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o \
 	physics_mmm/mp_wsm6.o
 
 
 physics_mmm/bl_ysu.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	ccpp_kind_types.o
 
 
@@ -1581,6 +1675,9 @@ module_date_time.o: \
 
 
 module_bc.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_configure.o \
 	../frame/module_state_description.o \
 	../frame/module_wrf_error.o \
@@ -1770,11 +1867,18 @@ mediation_feedback_domain.o: \
 
 mediation_force_domain.o: \
 	../frame/module_domain.o \
+	../frame/module_gpu_updates.o \
 	../frame/module_configure.o 
 
 
 mediation_integrate.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
+	../frame/module_gpu_prof.o \
+	../frame/module_gpu_scratch.o \
 	module_bc.o \
+	../frame/module_gpu_updates.o \
 	../dyn_em/module_bc_em.o \
 	../frame/module_comm_dm.o \
 	../frame/module_streams.o \
@@ -2379,7 +2483,13 @@ wrf_SST_ESMF.o: \
 
 
 module_wrf_top.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
+	../frame/module_gpu_prof.o \
+	../frame/module_gpu_scratch.o \
 	../share/module_check_a_mundo.o \
+	../frame/module_gpu_updates.o \
 	../share/module_date_time.o \
 	../share/module_io_domain.o \
 	../frame/module_nesting.o \
@@ -2574,6 +2684,9 @@ interp_domain_em.o: \
 
 
 module_advect_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_bc.o \
 	../share/module_model_constants.o \
 	../frame/module_wrf_error.o 
@@ -2593,6 +2706,9 @@ module_avgflx_em.o: \
 
 
 module_bc_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_bc.o \
 	../frame/module_configure.o \
 	../share/module_model_constants.o \
@@ -2600,6 +2716,9 @@ module_bc_em.o: \
 
 
 module_big_step_utilities_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_configure.o \
 	../share/module_llxy.o \
 	../share/module_model_constants.o \
@@ -2611,12 +2730,19 @@ module_damping_em.o: \
 
 
 module_diffusion_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_bc.o \
 	module_big_step_utilities_em.o \
 	../share/module_model_constants.o 
 
 
 module_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
+	../frame/module_bittrace.o \
 	module_advect_em.o \
 	module_big_step_utilities_em.o \
 	../frame/module_configure.o \
@@ -2630,6 +2756,7 @@ module_em.o: \
 
 
 module_first_rk_step_part1.o: \
+	../frame/module_bittrace.o \
 	module_big_step_utilities_em.o \
 	../frame/module_comm_dm.o \
 	../frame/module_configure.o \
@@ -2648,6 +2775,7 @@ module_first_rk_step_part1.o: \
 
 
 module_first_rk_step_part2.o: \
+	../frame/module_bittrace.o \
 	../share/module_bc.o \
 	module_big_step_utilities_em.o \
 	../frame/module_comm_dm.o \
@@ -2668,6 +2796,9 @@ module_force_scm.o: \
 
 
 module_ieva_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../share/module_bc.o \
 	../share/module_model_constants.o \
 	../frame/module_wrf_error.o 
@@ -2775,6 +2906,9 @@ module_sfs_nba.o: \
 
 
 module_small_step_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
 	../frame/module_configure.o \
 	../share/module_model_constants.o 
 
@@ -2812,7 +2946,12 @@ shift_domain_em.o: \
 
 
 solve_em.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o \
+	../frame/module_gpu_prof.o \
 	module_after_all_rk_steps.o \
+	../frame/module_gpu_updates.o \
 	module_avgflx_em.o \
 	../share/module_bc.o \
 	module_bc_em.o \
@@ -2865,3 +3004,48 @@ start_em.o : \
 	../frame/module_tiles.o \
 	../share/module_trajectory.o \
 	../frame/module_wrf_error.o
+
+module_gpu_work.o: \
+	module_wrf_error.o
+
+module_gpu_prof.o: \
+	module_wrf_error.o
+
+module_gpu_tables.o: \
+	physics_mmm/mp_wsm6.o \
+	physics_mmm/sf_sfclayrev.o \
+	module_sf_noahlsm.o \
+	module_ra_sw.o
+
+module_gpu_selftest.o: \
+	module_gpu_tables.o \
+	../frame/module_gpu_work.o \
+	../frame/module_gpu_map.o \
+	../frame/module_domain.o 
+
+module_gpu_check.o: \
+	../frame/module_configure.o \
+	../frame/module_wrf_error.o
+
+module_ra_eclipse.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o 
+
+module_ra_sw.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o 
+
+module_sf_sfcdiags.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o 
+
+physics_mmm/module_libmassv.o: \
+	../frame/module_gpu_route.o \
+	../frame/module_gpu_callcheck.o \
+	../frame/module_gpu_work.o 
+
+physics_mmm/mp_radar.o: \
+	ccpp_kind_types.o 

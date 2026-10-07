@@ -1,0 +1,22 @@
+\chapter{GPUs and OpenMP offload for Fortran}\label{ch:gpu}
+
+Enough about GPU hardware to reason about performance, and the OpenMP offload model the port uses.
+
+\begin{outline}[(card B-16)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{GPU hardware.} Streaming multiprocessors, warps and wavefronts, the memory hierarchy, bandwidth and latency, occupancy, registers and local memory.
+    \item \textbf{The OpenMP device model.} \code{target}, \code{teams}, \code{distribute}, \code{parallel do}, \code{loop}; data mapping, \code{enter data}, \code{update}, \code{declare target}.
+    \item \textbf{Kernel templates.} The port's templates A to G and when each applies.
+    \item \textbf{Data residency.} State on the device for the whole run; islands while the port is incomplete.
+    \item \textbf{The choice of programming model.} CUDA, HIP, OpenACC, CUDA Fortran, standard parallelism, C++ libraries, and why the port uses OpenMP (ADR-001).
+\end{itemize}
+\textbf{Sources.} \citet{openmp52}; \code{roadmap/decisions/ADR-001-gpu-programming-model.md}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{port/agent/CODING_STANDARD.md}: the templates
+    \item \code{port/tests/omp_features}: the compiler feature probes
+\end{itemize}
+\textbf{The port.} Every construct the port uses is first checked by a small probe program on each compiler.
+\end{outline}

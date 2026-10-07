@@ -7,6 +7,8 @@ RM      =       rm -f
 
 
 MODULES =       module_repro_math.o        \
+                module_gpu_prof.o          \
+                module_gpu_work.o          \
                 module_driver_constants.o  \
                 module_domain_type.o       \
                 module_streams.o           \
@@ -21,6 +23,9 @@ MODULES =       module_repro_math.o        \
                 module_bittrace.o          \
                 module_gpu_scratch.o       \
                 module_gpu_route.o         \
+                module_gpu_map.o           \
+                module_gpu_callcheck.o     \
+                module_gpu_updates.o       \
                 module_wrf_error.o         \
                 module_state_description.o \
                 module_sm.o                \
@@ -75,6 +80,7 @@ OBJS    =       \
                 libmassv.o                 \
                 collect_on_comm.o          \
                 hires_timer.o              \
+                wrf_gpu_shim.o             \
 		clog.o
 
 #compile as a .o but do not link into the main library
@@ -155,6 +161,10 @@ nl_get_7_routines.o : nl_access_routines.F module_configure.o
 
 wrf_num_bytes_between.o :
 	$(CC) -c $(CFLAGS) wrf_num_bytes_between.c
+
+# GPU port (plan.md P1.10, P1.12): ARCH_LOCAL carries -DWRF_GPU in the GPU builds
+wrf_gpu_shim.o : wrf_gpu_shim.c
+	$(CC) -c $(CFLAGS) $(ARCH_LOCAL) wrf_gpu_shim.c
 
 pack_utils.o :
 	$(CC) -c $(CFLAGS) -DIWORDSIZE=$(IWORDSIZE) pack_utils.c

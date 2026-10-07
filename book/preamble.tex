@@ -1,0 +1,45 @@
+% Preamble of the book. Only packages from a standard TeX Live installation.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[skins]{tcolorbox}
+\usepackage[authoryear,round]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalise,noabbrev]{cleveref}
+
+% Fortran listings
+\lstdefinestyle{fortran}{
+  language=[95]Fortran,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  commentstyle=\itshape\color{black!60},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  morekeywords={target,teams,loop,collapse,private,firstprivate,map,declare},
+}
+\lstset{style=fortran}
+
+% Code references. The argument is printed verbatim (underscores allowed; no % or #).
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+% A routine in a file: \src{dyn_em/module_small_step_em.F}{advance_w}
+\newcommand{\src}[2]{\texttt{\detokenize{#2}} (\texttt{\detokenize{#1}})}
+
+% Notation
+\newcommand{\ulp}{\operatorname{ulp}}
+\newcommand{\fl}{\operatorname{fl}}
+
+% Boxes
+\newtcolorbox{outline}[1][]{colback=yellow!6,colframe=orange!70!black,fonttitle=\bfseries,
+  title={Outline: this chapter is still to be written #1}}
+\newtcolorbox{portnote}{colback=blue!3,colframe=blue!50!black,fonttitle=\bfseries,title={In the port}}
+\newtcolorbox{keypoint}{colback=green!4,colframe=green!40!black,fonttitle=\bfseries,title={Key point}}

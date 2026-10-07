@@ -1,0 +1,22 @@
+\chapter{Governing equations and the vertical coordinate}\label{ch:eq}
+
+The equations ARW solves, in the form the code uses: flux-form variables coupled with the dry-air mass, the hybrid terrain-following mass coordinate, and the split into a base state and perturbations.
+
+\begin{outline}[(card B-03)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{The hybrid vertical coordinate.} The dry hydrostatic pressure coordinate $\eta$, the hybrid terrain-following form (\code{hybrid_opt = 2}) and its coefficients $c_1$, $c_2$; the column mass $\mu_d$.
+    \item \textbf{Flux-form variables.} Momentum and scalars coupled with the mass ($U = \mu_d u/m$ and so on); map factors.
+    \item \textbf{The equations.} Momentum, mass continuity, the geopotential and the moist potential temperature $\theta_m$ (\code{use_theta_m = 1}); the equation of state; the moisture equations.
+    \item \textbf{Base state and perturbations.} The reference profiles and why the perturbation form is used in the acoustic steps.
+    \item \textbf{Diagnostic relations in the code.} \code{calc_mu_uv}, \code{couple_momentum}, \code{calc_ww_cp}, \code{calc_cq}, \code{calc_alt}, \code{calc_php}, \code{calc_p_rho_phi}: each equation next to the routine that evaluates it.
+\end{itemize}
+\textbf{Sources.} \citet{skamarock2019}, chapter 2.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{dyn_em/module_big_step_utilities_em.F}: \code{calc_mu_uv}, \code{couple_momentum}, \code{calc_ww_cp}, \code{calc_cq}, \code{calc_alt}, \code{calc_php}, \code{calc_p_rho_phi}
+    \item \code{dyn_em/start_em.F}: \code{start_domain_em (base state)}
+\end{itemize}
+\textbf{The port.} Phase 2 work packages P2-A1 and P2-F port these routines (kernels K-PREP-*, K-CPRP-*).
+\end{outline}

@@ -6,6 +6,8 @@ RM      =       rm -f
 
 
 MODULES = \
+                module_gpu_selftest.o      \
+                module_gpu_tables.o        \
 	ccpp_kind_types.o \
 	module_bep_bem_helper.o \
 	complex_number_module.o \

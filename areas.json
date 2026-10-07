@@ -1,0 +1,128 @@
+{
+  "comment": "Areas of the repository: who may change what. Read by port/tools/check_area_scope.py and roadmap/tools/backlog.py; described in AREAS.md (its table is generated from this file). Patterns are fnmatch globs on repository paths; '*' also matches '/'. {ID} is the work-package ID (port-wp only). LOCKED: change only as the reviewer, then run python3 port/tools/protect.py.",
+  "handoff_branch": "claude/wrf-gpu-port-cpu-7doq8n",
+  "shared": {
+    "comment": "Bookkeeping every area may write: its own task log file, and status lines of roadmap/BACKLOG.md.",
+    "paths": ["roadmap/log/*"],
+    "status_only": ["roadmap/BACKLOG.md"]
+  },
+  "areas": [
+    {
+      "id": "review",
+      "open": true,
+      "purpose": "Reviewer and integrator of record: verifies all work (cpu_verify, reviews), merges area branches into the handoff branch, owns the locked tools, gates, checksums and the area definitions.",
+      "entry": "port/agent/README.md",
+      "branch": "claude/wrf-gpu-port-cpu-7doq8n",
+      "who": "the owner's reviewer session",
+      "owns": ["*"],
+      "never": []
+    },
+    {
+      "id": "port-wp",
+      "open": true,
+      "purpose": "One work package of the code-only run of Phases 1-3 of the 4.6.0 port: only the WRF routines the package owns.",
+      "entry": "port/agent/CODE_ONLY.md",
+      "branch": "agent/wp/<id>",
+      "who": "a code-only worker (prompt B of port/agent/PROMPTS.md)",
+      "owns": ["WRF/*", "port/agent/wp/status/{ID}.md", "port/agent/arith_exceptions.d/{ID}.txt"],
+      "never": [],
+      "routine_scope": true
+    },
+    {
+      "id": "port-integrate",
+      "open": true,
+      "purpose": "Integrator of the code-only run: merges finished work-package branches into agent/code and keeps the workbook.",
+      "entry": "port/agent/PROMPTS.md",
+      "branch": "agent/code",
+      "who": "the code-only integrator (prompt A of port/agent/PROMPTS.md)",
+      "owns": ["WRF/*", "port/agent/wp/status/*", "port/agent/arith_exceptions.d/*", "port/agent/WORKBOOK.md"],
+      "never": []
+    },
+    {
+      "id": "port",
+      "open": true,
+      "purpose": "Development of the 4.6.0 port on a machine that can build and test it (H100 machine, CPU builds): WRF code, fixes found by tests, infrastructure tool fixes, results and the workbook.",
+      "entry": "AGENTS.md",
+      "branch": "agent/phase-<N>",
+      "who": "the port agent (AGENTS.md)",
+      "owns": ["WRF/*", "port/agent/WORKBOOK.md", "port/agent/BLOCKERS.md", "port/agent/TOOL_FIXES.md",
+               "port/agent/REFACTORS.md", "port/agent/cpu_view_base", "port/agent/kernels.csv",
+               "port/agent/KERNEL_REFS.md", "port/agent/ROUTES.md", "port/agent/infra.md5",
+               "port/agent/wp/status/*", "port/agent/arith_exceptions.txt", "port/agent/arith_exceptions.d/*",
+               "port/RESULTS.md", "port/ENVIRONMENT.md", "port/PERF.md", "port/regress.sh",
+               "port/h100/*", "port/container/*", "port/make_dev_case.py", "port/nml.py"],
+      "never": ["port/h100/compare.sh", "port/h100/windows.txt"]
+    },
+    {
+      "id": "port-ccr",
+      "open": true,
+      "purpose": "Phase 0 runs on CCR (CPU reference builds and runs, reproducibility tests, reference archives): records results only.",
+      "entry": "port/README.md",
+      "branch": "ccr/<card>",
+      "who": "an agent or person with CCR access",
+      "owns": ["port/RESULTS.md", "port/ENVIRONMENT.md"],
+      "never": []
+    },
+    {
+      "id": "book",
+      "open": true,
+      "purpose": "The LaTeX textbook.",
+      "entry": "book/AGENTS.md",
+      "branch": "book/<card>",
+      "who": "a writing agent",
+      "owns": ["book/*", ".github/workflows/book.yml"],
+      "never": ["book/AGENTS.md"]
+    },
+    {
+      "id": "roadmap",
+      "open": true,
+      "purpose": "Planning and studies: architecture documents, analyses, proposed decisions (ADRs), backlog cards.",
+      "entry": "roadmap/AGENTS.md",
+      "branch": "roadmap/<card>",
+      "who": "an analysis agent",
+      "owns": ["roadmap/*"],
+      "never": ["roadmap/AGENTS.md", "roadmap/TASK_PROTOCOL.md", "roadmap/tools/backlog.py"]
+    },
+    {
+      "id": "perf",
+      "open": true,
+      "purpose": "Performance models, profiling tools and performance reports (no changes to WRF or the port).",
+      "entry": "perf/AGENTS.md",
+      "branch": "perf/<card>",
+      "who": "a performance-analysis agent",
+      "owns": ["perf/*"],
+      "never": ["perf/AGENTS.md"]
+    },
+    {
+      "id": "docs",
+      "open": true,
+      "purpose": "User-facing documentation and community files for the release.",
+      "entry": "docs/AGENTS.md",
+      "branch": "docs/<card>",
+      "who": "a documentation agent",
+      "owns": ["docs/*", "CITATION.cff", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", ".github/ISSUE_TEMPLATE/*",
+               ".github/pull_request_template.md"],
+      "never": ["docs/AGENTS.md"]
+    },
+    {
+      "id": "versions",
+      "open": false,
+      "purpose": "Stage 2: WRF 4.8.0 (track V). Closed until the 4.6.0 port passes G5 (card A-29; ADR-002 stage gate).",
+      "entry": "roadmap/decisions/ADR-002-wrf-versions.md",
+      "branch": "port/v4.8",
+      "who": "opened by the owner after A-29",
+      "owns": ["WRF/*", "roadmap/analysis/*", "roadmap/tools/*", "port/h100/*", "cases/*"],
+      "never": []
+    },
+    {
+      "id": "cfbm",
+      "open": false,
+      "purpose": "Stage 3: the CFBM fire model (track C). Closed until stage 2 is done (ADR-002 stage gate).",
+      "entry": "roadmap/analysis/cfbm.md",
+      "branch": "cfbm/<card>",
+      "who": "opened by the owner after stage 2",
+      "owns": ["cfbm/*", "WRF/phys/fire_behavior/*"],
+      "never": []
+    }
+  ]
+}

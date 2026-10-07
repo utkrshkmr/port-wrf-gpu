@@ -1,0 +1,22 @@
+\chapter{Spatial discretization and advection}\label{ch:adv}
+
+The Arakawa C grid and the flux-form advection operators of orders 2 to 6, their reduction near boundaries, and the positive-definite limiter.
+
+\begin{outline}[(card B-05)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{The C grid and staggering.} Where $u$, $v$, $w$, $\phi$ and scalars live; index conventions of the code (\code{its}, \code{ite}, staggered ends).
+    \item \textbf{Flux-form advection.} The 5th-order horizontal and 3rd-order vertical fluxes as a centred flux plus an upwind correction; the statement functions \code{flux5}, \code{flux3}.
+    \item \textbf{Near the boundaries.} The lower-order fluxes in the rows next to specified and nested boundaries, and the quirks the port preserves.
+    \item \textbf{Positive-definite transport.} The limiter of \citet{skamarock2009} in \code{advect_scalar_pd}: low-order update, outgoing fluxes, scaling.
+    \item \textbf{Geopotential advection.} \code{rhs_ph}.
+\end{itemize}
+\textbf{Sources.} \citet{skamarock2019,skamarock2009}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{dyn_em/module_advect_em.F}: \code{advect_u}, \code{advect_v}, \code{advect_w}, \code{advect_scalar}, \code{advect_scalar_pd}
+    \item \code{dyn_em/module_big_step_utilities_em.F}: \code{rhs_ph}
+\end{itemize}
+\textbf{The port.} On the GPU the per-row flux loops are split into a face-flux kernel and a divergence kernel (Template B); the limiter is split into three kernels that scale exactly the faces the CPU code scales (test T-PDLIM).
+\end{outline}

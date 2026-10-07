@@ -490,7 +490,7 @@ but tuning effort follows the profile.
 ### 6.1 Repository layout
 
 ```
-wrf_gpu_port/
+port-wrf-gpu/
 ├── README.md            provenance: exact upstream commits
 ├── explain-wrf.md       this guide
 ├── WPS/                 WPS v4.6.0 (stays CPU)

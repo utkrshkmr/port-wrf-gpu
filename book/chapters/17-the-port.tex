@@ -1,0 +1,23 @@
+\chapter{The port, phase by phase}\label{ch:port}
+
+How the port was organized and verified, and what was found on the way.
+
+\begin{outline}[(card B-17)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Phase 0.} Reproducible CPU reference, bit-hash tracer, comparison tools.
+    \item \textbf{Phase 1.} The GPU infrastructure: device-resident state, update lists, tables, scratch pool, work arrays, startup check.
+    \item \textbf{Phases 2--4.} Dynamics, physics, fire; tests per routine and per window.
+    \item \textbf{Phase 5.} Nest forcing and the device world; acceptance over 17 hours.
+    \item \textbf{Organization.} Work packages, code-only agents, CPU-only verification, review.
+    \item \textbf{Lessons.} What went wrong and how it was found.
+\end{itemize}
+\textbf{Sources.} \code{plan.md}; \code{port/RESULTS.md}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{plan.md}: the plan
+    \item \code{port/agent/}: the agent guides
+\end{itemize}
+\textbf{The port.} This chapter is written as the phases pass their gates.
+\end{outline}

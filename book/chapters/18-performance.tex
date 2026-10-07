@@ -1,0 +1,21 @@
+\chapter{Performance}\label{ch:perf}
+
+Where the time goes on a GPU, and why a GPU is not automatically faster.
+
+\begin{outline}[(card B-18)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{Models.} Bandwidth floor, launch overhead, transfers; the roofline \citep{williams2009}.
+    \item \textbf{Measurements.} Profiles on the H100, against the models.
+    \item \textbf{Bottlenecks.} The classes of kernels and what limits each.
+    \item \textbf{Mitigations.} Bit-neutral optimizations; the FAST mode and the cost of reproducibility.
+    \item \textbf{Comparison with CPUs.} A fair baseline, energy to solution.
+\end{itemize}
+\textbf{Sources.} \code{perf/reports/} (track P).
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{perf/}: tools and reports
+\end{itemize}
+\textbf{The port.} Cards P-01 to P-27.
+\end{outline}

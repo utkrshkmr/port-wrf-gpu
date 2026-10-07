@@ -1,0 +1,22 @@
+\chapter{Radiation: RRTMG longwave and Dudhia shortwave}\label{ch:rad}
+
+The two radiation schemes of the case and the radiation driver.
+
+\begin{outline}[(card B-09)]
+\textbf{Sections.}
+\begin{itemize}
+    \item \textbf{RRTMG longwave.} The correlated-$k$ method: 16 bands, 140 $g$-points, the gas optical depths of \code{taumol}, the radiative transfer of \code{rtrnmc}.
+    \item \textbf{Clouds in RRTMG.} McICA sub-columns and their KISS random-number generator.
+    \item \textbf{Dudhia shortwave.} The single-band scheme: clear-air scattering and absorption, cloud albedo and absorption tables.
+    \item \textbf{The radiation driver.} The call frequency, cloud fraction, the ozone climatology and its interpolation, the solar zenith angle.
+\end{itemize}
+\textbf{Sources.} \citet{mlawer1997,iacono2008,pincus2003,dudhia1989}.
+
+\textbf{Code.}
+\begin{itemize}
+    \item \code{phys/module_ra_rrtmg_lw.F}: \code{rrtmg_lwrad}, \code{rrtmg_lw}, \code{taumol}, \code{rtrnmc}, \code{mcica_subcol_lw}
+    \item \code{phys/module_ra_sw.F}: \code{swrad}, \code{swpara}
+    \item \code{phys/module_radiation_driver.F}: \code{radiation_driver}, \code{cal_cldfra1}, \code{ozn_time_int}, \code{ozn_p_int}, \code{calc_coszen}
+\end{itemize}
+\textbf{The port.} RRTMG is the largest single routine tree of the port. Its tables become flat arrays on the device, and its columns run in batches with per-column work arrays.
+\end{outline}

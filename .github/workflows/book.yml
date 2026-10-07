@@ -1,0 +1,30 @@
+# Build the LaTeX book (book/) and keep the PDF as an artifact. Runs only when the book changes.
+name: book
+
+on:
+  push:
+    paths:
+      - 'book/**'
+      - '.github/workflows/book.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with latexmk (TeX Live)
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          working_directory: book
+          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
+      - name: Fail on undefined references or citations
+        run: |
+          if grep -E "Reference .* undefined|Citation .* undefined|There were undefined" book/main.log; then
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wrf-gpu-book
+          path: book/main.pdf
