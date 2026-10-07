@@ -1757,6 +1757,8 @@ subroutine advance_ls_reinit(ifms,ifme,jfms,jfme, &
                           ifts,ifte,jfts,jfte,    &
                           dx,dy,dt_s,bdy_eno1,threshold_HLu, &
                           lfn_s0,lfn_ini,lfn_curr,lfn_fin,rk_coeff)
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_ADVANCE_LS_REINIT
+USE module_gpu_callcheck
 
 ! Calculates right-hand-side forcing and advances a RK-stage the level-set reinitialization PDE
 ! Domingo Munoz-Esparza, NCAR/RAL
@@ -1775,8 +1777,78 @@ real,intent(in)::dx,dy,dt_s,threshold_HLu,rk_coeff
 !
 integer::i,j
 real::diffLx,diffLy,diffRx,diffRy,diff2x,diff2y,grad,tend_r
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 !
 
+#ifdef WRF_GPU
+      IF (fire_upwinding_reinit .ne. 4) THEN
+        CALL wrf_error_fatal('advance_ls_reinit: option not ported to the GPU')
+      END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_ADVANCE_LS_REINIT)) THEN
+        CALL gpu_cc_save_r(1, lfn_fin, SIZE(lfn_fin,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_ADVANCE_LS_REINIT)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(lfn_s0, lfn_ini, lfn_curr, lfn_fin)
+        ELSE
+!$acc update self(lfn_s0, lfn_ini, lfn_curr, lfn_fin)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+! K-ALR: one reinitialization stage (Template A); reinit_ls_rk3 calls this three times
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVANCE_LS_REINIT)) default(none) &
+!$acc& present(lfn_s0, lfn_ini, lfn_curr, lfn_fin) &
+!$acc& firstprivate(ifts, ifte, jfts, jfte, ifds, ifde, jfds, jfde, bdy_eno1, &
+!$acc& dx, dy, dt_s, threshold_HLu, rk_coeff) &
+!$acc& private(diffLx, diffLy, diffRx, diffRy, diff2x, diff2y, grad, tend_r)
+    do j=jfts,jfte
+        do i=ifts,ifte
+          if (i.lt.ifds+bdy_eno1 .OR. i.gt.ifde-bdy_eno1 .OR. j.lt.jfds+bdy_eno1 .OR. j.gt.jfde-bdy_eno1) then
+            diffLx=(lfn_curr(i,j)-lfn_curr(i-1,j))/dx
+            diffLy=(lfn_curr(i,j)-lfn_curr(i,j-1))/dy
+            diffRx=(lfn_curr(i+1,j)-lfn_curr(i,j))/dx
+            diffRy=(lfn_curr(i,j+1)-lfn_curr(i,j))/dy
+            diff2x=tend_ls_gpu_eno(diffLx,diffRx)
+            diff2y=tend_ls_gpu_eno(diffLy,diffRy)
+          else
+             if (lfn_curr(i,j).lt.threshold_HLu) then
+               diff2x=tend_ls_gpu_4th(dx,lfn_curr(i,j),lfn_curr(i-1,j),lfn_curr(i-2,j),lfn_curr(i+1,j),lfn_curr(i+2,j))
+               diff2y=tend_ls_gpu_4th(dy,lfn_curr(i,j),lfn_curr(i,j-1),lfn_curr(i,j-2),lfn_curr(i,j+1),lfn_curr(i,j+2))
+               diff2x=tend_ls_gpu_weno5(dx,lfn_curr(i,j),lfn_curr(i-1,j),lfn_curr(i-2,j),lfn_curr(i-3,j),lfn_curr(i+1,j),lfn_curr(i+2,j),lfn_curr(i+3,j),lfn_s0(i,j)*diff2x)
+               diff2y=tend_ls_gpu_weno5(dy,lfn_curr(i,j),lfn_curr(i,j-1),lfn_curr(i,j-2),lfn_curr(i,j-3),lfn_curr(i,j+1),lfn_curr(i,j+2),lfn_curr(i,j+3),lfn_s0(i,j)*diff2y)
+             else
+               diffLx=(lfn_curr(i,j)-lfn_curr(i-1,j))/dx
+               diffLy=(lfn_curr(i,j)-lfn_curr(i,j-1))/dy
+               diffRx=(lfn_curr(i+1,j)-lfn_curr(i,j))/dx
+               diffRy=(lfn_curr(i,j+1)-lfn_curr(i,j))/dy
+               diff2x=tend_ls_gpu_eno(diffLx,diffRx)
+               diff2y=tend_ls_gpu_eno(diffLy,diffRy)
+             endif
+          endif
+            grad=sqrt(diff2x*diff2x+diff2y*diff2y)
+            tend_r=lfn_s0(i,j)*(1.0-grad)
+            lfn_fin(i,j)=lfn_ini(i,j)+(dt_s*rk_coeff)*tend_r
+        enddo
+    enddo
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn_fin)
+        ELSE
+!$acc update device(lfn_fin)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVANCE_LS_REINIT)) THEN
+        CALL gpu_cc_done_r(1, lfn_fin, SIZE(lfn_fin,KIND=8), 'lfn_fin', &
+          LBOUND(lfn_fin), UBOUND(lfn_fin))
+        IF (gpu_cc_next(R_ADVANCE_LS_REINIT)) GOTO 99901
+      END IF
+      RETURN
+#endif
     do j=jfts,jfte 
         do i=ifts,ifte 
           if (i.lt.ifds+bdy_eno1 .OR. i.gt.ifde-bdy_eno1 .OR. j.lt.jfds+bdy_eno1 .OR. j.gt.jfde-bdy_eno1) then ! 
@@ -1848,6 +1920,21 @@ real::diffLx,diffLy,diffRx,diffRy,diff2x,diff2y,grad,tend_r
         enddo
     enddo
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn_fin)
+        ELSE
+!$acc update device(lfn_fin)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVANCE_LS_REINIT)) THEN
+        CALL gpu_cc_done_r(1, lfn_fin, SIZE(lfn_fin,KIND=8), 'lfn_fin', &
+          LBOUND(lfn_fin), UBOUND(lfn_fin))
+        IF (gpu_cc_next(R_ADVANCE_LS_REINIT)) GOTO 99901
+      END IF
+#endif
 end subroutine advance_ls_reinit
 
 !
