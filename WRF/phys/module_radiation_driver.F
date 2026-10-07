@@ -4546,6 +4546,7 @@ CONTAINS
 #ifdef WRF_GPU
 ! K-RAD-ECL: sw_eclipse == 0 path. One thread calls solar_eclipse so its
 ! whole-array zero does not race. solar_eclipse is !$acc routine seq.
+! island of R_RADIATION_DRIVER in radiation_driver
 !$acc parallel loop gang vector collapse(2) if(gpu_on(R_RADIATION_DRIVER)) default(none) &
 !$acc& present(xlong, xlat, obscur_loc, mask_loc) &
 !$acc& firstprivate(ims, ime, jms, jme, its, ite, jts, jte, julian, gmt, yr, xtime, radt, degrad, sw_eclipse) &

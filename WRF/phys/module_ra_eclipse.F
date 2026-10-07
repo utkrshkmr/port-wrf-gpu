@@ -31,6 +31,7 @@ subroutine solar_eclipse(ims,ime,jms,jme,its,ite,jts,jte,    &
                           julian,gmt,year,xtime,radt,        &
                           degrad,xlon,xlat,Obscur,mask,      &
                           elat_track,elon_track,sw_eclipse   )
+!$acc routine seq
 !-------------------------------------------------------------
   implicit none
 !
@@ -127,6 +128,20 @@ subroutine solar_eclipse(ims,ime,jms,jme,its,ite,jts,jte,    &
 !----------
 !--------------
 !
+#ifdef WRF_GPU
+  ! Device path is the sw_eclipse == 0 early exit only. The Bessel
+  ! elements are read from a file and stay on the host. radiation_driver
+  ! stops before this call when sw_eclipse is not 0.
+  MISSING = 1E30
+  if(sw_eclipse .eq. 0) then
+     Obscur(:,:) = 0.
+     mask(:,:)   = 0
+     elat_track  = MISSING
+     elon_track  = MISSING
+     return
+  endif
+  return
+#else
   MISSING = 1E30
 
 !--------------
@@ -330,6 +345,7 @@ subroutine solar_eclipse(ims,ime,jms,jme,its,ite,jts,jte,    &
      ! End loop over longitudes
   enddo
 ! End loop over longitudes
+#endif
 end subroutine
 !
 !----------------------------
