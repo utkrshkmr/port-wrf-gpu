@@ -36,7 +36,9 @@ INCLUDE = ["port/tests/*", "port/tools/*", "port/gates/*", "port/h100/*", "port/
 EXCLUDE = ["port/h100/env.sh", "port/agent/WORKBOOK.md", "port/agent/BLOCKERS.md", "port/agent/REFACTORS.md",
            "port/agent/KERNEL_REFS.md", "port/agent/ROUTES.md", "port/agent/TOOL_FIXES.md",
            # code-only parallel run: each work package writes its own status file
-           "port/agent/wp/status/*"]
+           "port/agent/wp/status/*",
+           # code-only run: the integrator's plan and run records
+           "port/agent/run/*"]
 # infrastructure: fixable through a logged tool fix (everything else in INCLUDE is locked):
 # all of port/h100 except the comparison script and the window table
 INFRA = ["port/h100/*", "port/container/*", "port/make_dev_case.py", "port/nml.py"]

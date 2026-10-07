@@ -30,7 +30,12 @@ and BUILD_SYSTEM.md: they are about running things.
 - **The integrator** (one session):
   1. works on `agent/code` (area `port-integrate`, [AREAS.md](../../AREAS.md)), which exists already at the handoff
      commit;
-  2. starts the work packages, as many in parallel as it can, each with its card (§2);
+  2. writes the exact plan of the run, `port/agent/run/PLAN.md`, before any worker starts (prompt A of PROMPTS.md):
+     - every package's items in commit order;
+     - the waves of worker slots;
+     - coordination and escalation;
+
+     then starts the work packages by that plan, as many in parallel as it can, each with its card (§2);
   3. merges finished work-package branches into `agent/code` with `git merge --no-ff` (no conflicts are expected:
      ownership is disjoint);
   4. keeps `WORKBOOK.md` "Current state" listing every work package with its branch and state;

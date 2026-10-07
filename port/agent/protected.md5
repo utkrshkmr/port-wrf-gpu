@@ -1,7 +1,7 @@
 fa3b7f9f3eb74f64a184923169d2d6ad  ../../AGENTS.md
-189b0de074b1a60ff3d905bb59f3f752  ../../AREAS.md
+0606c5a8d90c8cdfed522ca4d54d2c29  ../../AREAS.md
 746378ae7230b9a7d20f3de72faca156  ../../WRF/frame/module_repro_math.F
-d282a16fda807aff7c5aa3ba0035bb44  ../../areas.json
+bbf387185ac97735add721171722f3cd  ../../areas.json
 a79d17374188bdc07302adaaca296d7d  ../../book/AGENTS.md
 7691c3e7ab400e6ab9ecf9e04973818c  ../../cases/eaton_20250108/README.md
 e1ad27ad87953813607eb01794657684  ../../cases/eaton_20250108/manifest.md5
@@ -10,7 +10,7 @@ d34b46246e96db224f8ae2a36121c33d  ../../docs/AGENTS.md
 36c1bbdc9591e7cf23020b7469cb42a7  ../../perf/AGENTS.md
 f0aaf17e773f9f08854c16f46ace9d02  BUILD_SYSTEM.md
 9b327e156940e7fab7f82b7bf80e46bc  CHEATSHEET.md
-56f1dfbbdbbf6ac35c9aa67ecf5d36aa  CODE_ONLY.md
+8168e7c2b97fc2bb19ae55e7012a7fec  CODE_ONLY.md
 35c86738f33ef62aad184c40a67c38a7  CODING_STANDARD.md
 1589d43d031e2714bbdf3a9aaccd9c40  DEBUGGING.md
 6b1e3c6e8e56d77ae4cf67d25b406477  ENV_H100.md
@@ -23,7 +23,7 @@ af0eabb1483140b9fcd5bb8cac492402  PHASE4.md
 8008e0477d9616a1edf2340cac9d646b  PHASE6.md
 46770855dd595337f461ff497fbb341c  PHASE7.md
 0b499652920e0b4bd22a5b3feffb79ef  PITFALLS.md
-6073d1baf2d101a0a9204c41ccb4bcf0  PROMPTS.md
+950ddea8c70244bb3250bb2718c684e1  PROMPTS.md
 e09d9368109c4444cfd0fe4f0c463332  README.md
 2afd878040c76f79058beed561d8e185  WORKFLOW.md
 5eb931c49136e2493f22ae360afbc9f2  WORKPACKAGES.md
@@ -208,7 +208,7 @@ e4c78d686140bec7e52ac5f552e92428  ../tools/check_build_flags.py
 6c3cc479db8193c7272f677ecc3bc3ab  ../tools/kernel_off.py
 59f85c972d7e033ef5ca9c64e155d777  ../tools/locate.py
 0913d327fd874b4452b02b774c740e1a  ../tools/nsys_copies.py
-365bef146e1b281a81685d45e85f8bd3  ../tools/protect.py
+121013dd472d5c71347d632f4c33563a  ../tools/protect.py
 1f71b586fad2dd37f4e0a7c42bda994e  ../tools/ref.py
 2c16b85106f26be33e8f067faa236660  ../tools/workbook.py
 74a6a1551a1c8f581d06863c69b7a302  ../tools/wp_def.py

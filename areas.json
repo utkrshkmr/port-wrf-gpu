@@ -35,7 +35,8 @@
       "entry": "port/agent/PROMPTS.md",
       "branch": "agent/code",
       "who": "the code-only integrator (prompt A of port/agent/PROMPTS.md)",
-      "owns": ["WRF/*", "port/agent/wp/status/*", "port/agent/arith_exceptions.d/*", "port/agent/WORKBOOK.md"],
+      "owns": ["WRF/*", "port/agent/wp/status/*", "port/agent/arith_exceptions.d/*", "port/agent/WORKBOOK.md",
+               "port/agent/run/*"],
       "never": []
     },
     {
