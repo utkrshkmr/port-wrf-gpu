@@ -1292,6 +1292,7 @@ subroutine prop_ls_rk3(id,               &
     USE module_comm_dm , ONLY : halo_fire_lfn_1_sub, halo_fire_lfn_2_sub, halo_fire_lfn_0_sub
 #endif
 USE module_domain , only: domain
+USE module_gpu_work, ONLY : work_p4_ls_tend
 
 implicit none
 
@@ -1366,7 +1367,7 @@ real,intent(in)::dx,dy,ts,dt
 real,intent(out)::tbound
 type(fire_params),intent(in)::fp
 
-real,dimension(ifms:ifme,jfms:jfme):: tend
+REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: tend
 ! scalars
 real::grad2,rr,tbound2,tbound3
 
@@ -1386,6 +1387,8 @@ real, parameter:: zero=0.,one=1.,eps=epsilon(zero),tol=100*eps, &
 intrinsic max,min,sqrt,nint,epsilon,tiny,huge
 
 !*** executable
+
+tend(ifms:ifme,jfms:jfme) => work_p4_ls_tend(1:INT(ifme-ifms+1,8)*INT(jfme-jfms+1,8))
 
 !$OMP CRITICAL(FIRE_CORE_CRIT)
 write(msg,'(a8,i5,a6,i5,3(a1,i5))')'prop_ls:',id,' tile ',ifts,':',ifte,',',jfts,':',jfte

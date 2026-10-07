@@ -24,3 +24,13 @@
 !
 ! Names start with work_p4_ls_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+
+! prop_ls_rk3 tend: fire memory is ni*sr_x by nj*sr_y (get_ijk_from_subgrid).
+! sr_x and sr_y are fixed at 4, so this 2D fire array is n2d*16 elements.
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p4_ls_tend(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p4_ls_tend, n2d*16_8, "work_p4_ls_tend")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p4_ls_tend, "work_p4_ls_tend", nwork, nbad)
+#endif
