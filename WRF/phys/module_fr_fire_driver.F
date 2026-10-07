@@ -66,6 +66,10 @@ halo_fire_phb_sub, halo_fire_z0_sub, halo_fire_lfn_sub, halo_fire_mfg_sub, &
 halo_fire_mag_sub
 #endif
     USE module_gpu_work, ONLY : gpu_work_ensure, work_p4_model_lfn_out
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_FIRE_MODEL
+#ifdef WRF_GPU
+    USE module_wrf_error, ONLY : wrf_error_fatal
+#endif
 
     implicit none
 !*** arguments
@@ -96,10 +100,58 @@ halo_fire_mag_sub
     real:: moisture_time
     logical:: run_advance_moisture,run_fuel_moisture, moisture_initializing
     real::    dt_moisture
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
 
 
 !*** executable
+
+#ifdef WRF_GPU
+if (config_flags%fmoist_run) call wrf_error_fatal('fire_driver_em: fuel moisture run not ported to the GPU')
+if (config_flags%fmoist_interp) call wrf_error_fatal('fire_driver_em: fuel moisture interpolation not ported to the GPU')
+if (config_flags%fmoist_only) call wrf_error_fatal('fire_driver_em: moisture only not ported to the GPU')
+if (config_flags%tracer_opt .eq. 3) call wrf_error_fatal('fire_driver_em: fire tracer emissions not ported to the GPU')
+! Round trip. This driver does not hold the device: ifun 1 and 2 writers
+! have no route, and fire_model must own its own island.
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+          IF (PRESENT(rho)) THEN
+!$acc update device(rho)
+          END IF
+          IF (PRESENT(z_at_w)) THEN
+!$acc update device(z_at_w)
+          END IF
+          IF (PRESENT(dz8w)) THEN
+!$acc update device(dz8w)
+          END IF
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+          IF (PRESENT(rho)) THEN
+!$acc update self(rho)
+          END IF
+          IF (PRESENT(z_at_w)) THEN
+!$acc update self(z_at_w)
+          END IF
+          IF (PRESENT(dz8w)) THEN
+!$acc update self(dz8w)
+          END IF
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+          CALL gpu_upd_host_all(grid)
+        ELSE
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+      gpu_isl = .FALSE.
+#endif
 
 ! populate our structures from wrf
 
@@ -375,6 +427,14 @@ halo_fire_mag_sub
     if(tsteps>0)call crash('fire_driver_em: test run of uncoupled fire model completed')
 
 #ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+          CALL gpu_upd_host_all(grid)
+        ELSE
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
 !$acc exit data detach(fp%vx, fp%vy, fp%zsf, fp%dzdxf, fp%dzdyf, fp%bbb, &
 !$acc& fp%betafl, fp%phiwc, fp%r_0, fp%fgip, fp%ischap, fp%iboros, fp%fmc_g)
 !$acc exit data delete(fp)
