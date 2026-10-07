@@ -1293,6 +1293,7 @@ subroutine prop_ls_rk3(id,               &
 #endif
 USE module_domain , only: domain
 USE module_gpu_work, ONLY : work_p4_ls_tend
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_PROP_LS_RK3
 
 implicit none
 
@@ -1368,6 +1369,9 @@ real,intent(out)::tbound
 type(fire_params),intent(in)::fp
 
 REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: tend
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 ! scalars
 real::grad2,rr,tbound2,tbound3
 
@@ -1390,6 +1394,20 @@ intrinsic max,min,sqrt,nint,epsilon,tiny,huge
 
 tend(ifms:ifme,jfms:jfme) => work_p4_ls_tend(1:INT(ifme-ifms+1,8)*INT(jfme-jfms+1,8))
 
+#ifdef WRF_GPU
+      gpu_isl = gpu_island(R_PROP_LS_RK3)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(lfn_in, lfn_0, lfn_1, lfn_2, lfn_out, tign, ros)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(lfn_in, lfn_0, lfn_1, lfn_2, lfn_out, tign, ros)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+
 !$OMP CRITICAL(FIRE_CORE_CRIT)
 write(msg,'(a8,i5,a6,i5,3(a1,i5))')'prop_ls:',id,' tile ',ifts,':',ifte,',',jfts,':',jfte
 !$OMP END CRITICAL(FIRE_CORE_CRIT)
@@ -1399,6 +1417,9 @@ call message(msg)
 ! Runge-Kutta step 1 !
 !!!!!!!!!!!!!!!!!!!!!!
 
+! K-PLS-0: lfn_0 = lfn_in (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_PROP_LS_RK3)) default(none) &
+!$acc& present(lfn_0, lfn_in) firstprivate(jfts, jfte, ifts, ifte)
     do j=jfts,jfte
         do i=ifts,ifte
             lfn_0(i,j) = lfn_in(i,j)
@@ -1423,6 +1444,9 @@ call message(msg)
     fp                   &                       ! params
 )
 
+! K-PLS-1..3: RK stage 1 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_PROP_LS_RK3)) default(none) &
+!$acc& present(lfn_1, lfn_0, tend) firstprivate(jfts, jfte, ifts, ifte, dt)
     do j=jfts,jfte 
         do i=ifts,ifte 
             lfn_1(i,j) = lfn_0(i,j) + (dt/3.0)*tend(i,j) 
@@ -1450,6 +1474,9 @@ call message(msg)
     fp                   &
 )
 
+! K-PLS-1..3: RK stage 2 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_PROP_LS_RK3)) default(none) &
+!$acc& present(lfn_2, lfn_0, tend) firstprivate(jfts, jfte, ifts, ifte, dt)
     do j=jfts,jfte
         do i=ifts,ifte
             lfn_2(i,j) = lfn_0(i,j) + (dt/2.0)*tend(i,j)
@@ -1477,6 +1504,9 @@ call message(msg)
     fp                   &
 )
 
+! K-PLS-1..3: RK stage 3 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_PROP_LS_RK3)) default(none) &
+!$acc& present(lfn_out, lfn_2, lfn_0, tend) firstprivate(jfts, jfte, ifts, ifte, dt)
     do j=jfts,jfte
         do i=ifts,ifte
             lfn_out(i,j) = lfn_0(i,j) + dt*tend(i,j)
@@ -1504,6 +1534,19 @@ call message(msg)
 !$OMP END CRITICAL(FIRE_CORE_CRIT)
         call message(msg)
     endif
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn_in, lfn_0, lfn_1, lfn_2, lfn_out, tign, ros)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(lfn_in, lfn_0, lfn_1, lfn_2, lfn_out, tign, ros)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
     
 end subroutine prop_ls_rk3
 
