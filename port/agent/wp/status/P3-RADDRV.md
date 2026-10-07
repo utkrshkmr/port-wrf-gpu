@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p3_raddrv
-- Last commit:
+- Last commit: (hoist, this commit; task 1 is 01f918788f7056be4037148e7e33e90c962462eb)
 
 ## Items
 
@@ -20,8 +20,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-OZP | todo | |  |
 | K-RAD-LWPOST | todo | |  |
 | K-RAD-SWPOST | todo | |  |
-| task 1: shared refactor (separate commit): radiation_driver's automatic arrays... | coded | | REAL arrays via gpu_work_alloc_r. INTEGER cldfra1_flag and mask_loc allocated in the include (no gpu_work_alloc_i). ozmixt sized n2d*59, aerodt n2d*72. arith_guard CPU-view diffs expected. |
-| task 2: shared refactor (separate commit), the hoist of row 8.5:hoist (plan.md... | todo | | |
+| task 1: shared refactor (separate commit): radiation_driver's automatic arrays... | coded | 01f918788f7056be4037148e7e33e90c962462eb | REAL arrays via gpu_work_alloc_r. INTEGER cldfra1_flag and mask_loc allocated in the include (no gpu_work_alloc_i). ozmixt sized n2d*59, aerodt n2d*72. arith_guard CPU-view diffs expected. |
+| task 2: shared refactor (separate commit), the hoist of row 8.5:hoist (plan.md... | coded | this commit | Removed the per-call RRTMG_LWINIT in the RRTMG_LWSCHEME case, and dropped rrtmg_lwinit from the USE list. module_physics_init still calls it once. arith_guard CPU-view diffs expected. |
 
 ## Scope requests
 
@@ -34,3 +34,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 ## Log
 
 - Shared refactor: radiation_driver P1.7 automatics are POINTER, CONTIGUOUS remaps onto work_p3_raddrv_* . coszr, OZFLG, and the 1D column temps stay automatic (not in the P1.7 list).
+- Hoist 8.5: the per-call CALL RRTMG_LWINIT in radiation_driver is gone. NLAYERS stays the value set at init.
