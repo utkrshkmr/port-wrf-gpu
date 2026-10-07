@@ -1,3 +1,198 @@
 \chapter{The WRF system end to end}\label{ch:system}
 
-This chapter is being written.
+WRF is not one program but a chain of them. Raw data from a global model and static data about the Earth's surface
+go in at one end; a forecast comes out at the other. This chapter follows the chain once, so that later chapters can
+assume where each input comes from. Only one program of the chain, \code{wrf.exe}, runs on the GPU in this project;
+the others run once per forecast and cost little.
+
+\section{The programs and their files}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  prog/.style={draw, rounded corners, fill=blue!6, minimum width=2.3cm, minimum height=0.8cm, font=\small},
+  file/.style={draw, fill=black!4, minimum width=2.1cm, minimum height=0.6cm, font=\footnotesize},
+  >=Stealth, node distance=0.55cm and 0.7cm]
+  \node[file] (static) {static data};
+  \node[prog, below=of static] (geogrid) {geogrid.exe};
+  \node[file, below=of geogrid] (geo) {geo\_em.d0N.nc};
+  \node[file, right=2.2cm of static] (grib) {GRIB analyses};
+  \node[prog, below=of grib] (ungrib) {ungrib.exe};
+  \node[file, below=of ungrib] (inter) {FILE:date};
+  \node[prog, below=1.2cm of $(geo)!0.5!(inter)$] (metgrid) {metgrid.exe};
+  \node[file, below=of metgrid] (met) {met\_em.d0N.date.nc};
+  \node[prog, below=of met] (real) {real.exe};
+  \node[file, below left=0.6cm and -0.4cm of real] (input) {wrfinput\_d0N};
+  \node[file, below right=0.6cm and -0.4cm of real] (bdy) {wrfbdy\_d01};
+  \node[prog, below=1.6cm of real, fill=green!8] (wrf) {wrf.exe};
+  \node[file, below left=0.6cm and -0.4cm of wrf] (out) {wrfout\_d0N\_date};
+  \node[file, below right=0.6cm and -0.4cm of wrf] (rst) {wrfrst\_d0N\_date};
+  \node[prog, right=1.4cm of wrf] (post) {post-processing};
+  \draw[->] (static) -- (geogrid); \draw[->] (geogrid) -- (geo);
+  \draw[->] (grib) -- (ungrib); \draw[->] (ungrib) -- (inter);
+  \draw[->] (geo) -- (metgrid); \draw[->] (inter) -- (metgrid);
+  \draw[->] (metgrid) -- (met); \draw[->] (met) -- (real);
+  \draw[->] (real) -- (input); \draw[->] (real) -- (bdy);
+  \draw[->] (input) -- (wrf); \draw[->] (bdy) -- (wrf);
+  \draw[->] (wrf) -- (out); \draw[->] (wrf) -- (rst);
+  \draw[->] (out) -| (post);
+\end{tikzpicture}
+\caption{The programs of a real-data WRF forecast and the files between them. The WRF Preprocessing System (WPS)
+is the upper half; \code{real.exe} and \code{wrf.exe} belong to WRF. An idealized run replaces everything above
+\code{wrf.exe} by \code{ideal.exe}.}
+\label{fig:system}
+\end{figure}
+
+\Cref{fig:system} shows the chain of a real-data forecast. The WRF Preprocessing System (WPS, directory \code{WPS/})
+has three programs, controlled by one namelist, \code{namelist.wps}. WRF (directory \code{WRF/}) has the
+initialization programs \code{real.exe} and \code{ideal.exe}, the model \code{wrf.exe}, and a few helpers. They are
+controlled by \code{namelist.input}.
+
+\section{geogrid: the domains and the static data}
+
+\code{geogrid.exe} (\code{WPS/geogrid/src/geogrid.F}) defines the model domains on a map projection and
+interpolates static data onto them.
+
+\paragraph{Domains and projections.} The user gives:
+\begin{itemize}
+  \item the projection (\code{map_proj}: \code{lambert}, \code{polar}, \code{mercator} or \code{lat-lon}), its
+    reference latitude and longitude, and its true latitudes;
+  \item the grid spacing of the outer domain;
+  \item for each nest, its parent, its position in the parent and its refinement ratio.
+\end{itemize}
+The projection fixes the map-scale factors $m_x$ and $m_y$ (the ratio of grid distance to distance on the Earth)
+that appear throughout the equations of \cref{ch:eq}. The map utilities of \code{module_map_utils.F} convert between
+grid indices and latitude and longitude.
+
+\paragraph{Static fields.} For each field, the table \code{GEOGRID.TBL} names the source data set, its type
+(continuous or categorical) and an interpolation method. For example, terrain height comes from GMTED2010 at
+30~arc-seconds. On a grid coarser than the data it is averaged over the grid cell (\code{average_gcell}); on a finer
+one it is interpolated from the four nearest points (\code{four_pt}). The fields include:
+\begin{itemize}
+  \item terrain height and its slopes;
+  \item land use as category fractions, with a dominant category (21 MODIS categories in this book's case);
+  \item soil categories of the top and bottom layers;
+  \item monthly climatologies of albedo, green fraction and leaf area index;
+  \item the deep soil temperature;
+  \item orographic statistics for gravity-wave drag.
+\end{itemize}
+
+\paragraph{Fire-grid fields.} A fire run needs data on the fire grid, which is finer than the atmospheric grid by the
+refinement ratios \code{subgrid_ratio_x} and \code{subgrid_ratio_y} (\code{namelist.wps.fire}). The table
+\code{GEOGRID.TBL.FIRE} marks those fields with \code{subgrid=yes}:
+\begin{itemize}
+  \item the fuel category \code{NFUEL_CAT}, categorical, taken from LANDFIRE fuel maps;
+  \item the high-resolution terrain and its slopes, from which WRF-Fire computes the slope effect on spread
+    (\cref{ch:firebasics}).
+\end{itemize}
+
+The result is one file \code{geo_em.d0N.nc} per domain.
+
+\section{ungrib: decoding the analyses}
+
+\code{ungrib.exe} reads analyses and forecasts of a global or regional model in GRIB edition 1 or 2.
+\begin{itemize}
+  \item A \emph{Vtable} (\code{WPS/ungrib/Variable_Tables/}) maps the source's GRIB codes to WPS names and units.
+  \item ungrib writes the fields, unchanged on their source grid, in a simple intermediate format: one file
+    \code{FILE:YYYY-MM-DD_HH} per time, at the interval \code{interval_seconds} (three hours in this book's case).
+\end{itemize}
+
+\section{metgrid: horizontal interpolation}
+
+\code{metgrid.exe} interpolates the intermediate fields horizontally onto each domain's grid, at the staggered
+positions WRF needs (\cref{ch:adv}): mass points for scalars, u-points for $u$ and v-points for $v$.
+\begin{itemize}
+  \item Winds are rotated from the source grid's orientation to the model grid's.
+  \item Masked fields, such as soil temperature and moisture, are interpolated from valid points only: land from
+    land, water from water.
+\end{itemize}
+The output, one file \code{met_em.d0N.date.nc} per domain and time, holds the meteorological fields on their original
+pressure or model levels, together with the static fields of geogrid.
+
+\section{real.exe: from met\_em to initial and boundary conditions}
+
+\code{real.exe} (\code{WRF/main/real_em.F}, with the physics in \src{dyn_em/module_initialize_real.F}{init_domain_rk})
+turns the met\_em data into the model's state:
+\begin{enumerate}
+  \item it computes the hybrid vertical coordinate and the model's base state;
+  \item it interpolates every field vertically to the model levels;
+  \item it computes the dry surface pressure and balances the column hydrostatically;
+  \item it initializes the soil;
+  \item it writes the initial state of every domain (\code{wrfinput_d0N}) and the lateral boundary conditions of the
+    outer domain (\code{wrfbdy_d01}).
+\end{enumerate}
+\Cref{ch:icbc} describes these steps.
+
+\section{ideal.exe: idealized cases}
+
+For idealized experiments, \code{ideal.exe} replaces the whole chain above \code{wrf.exe}. Each case in
+\code{WRF/test/} has its own initialization module.
+\begin{itemize}
+  \item The fire case \code{em_fire} (\src{dyn_em/module_initialize_fire.F}{init_domain_rk}) builds a domain from a
+    sounding file and an analytic or file-based terrain, with a fuel map and an ignition.
+  \item The port uses it as its smoke case S-3M (\cref{ch:case}): it runs in minutes on one core, needs no external
+    data, and goes through the same dynamics, physics and fire code as the real case.
+\end{itemize}
+
+\section{wrf.exe: the forecast}
+
+\code{wrf.exe} (\code{WRF/main/wrf.F}) integrates all domains forward in time (\cref{ch:arch}). It reads the initial
+states and, for the outer domain, the boundary file. It writes:
+\begin{itemize}
+  \item history files \code{wrfout_d0N_date} at the interval \code{history_interval};
+  \item restart files \code{wrfrst_d0N_date}, from which a run can continue (\cref{ch:iobuild}).
+\end{itemize}
+Parts~II--IV of this book describe what it computes; Part~VI describes how it is moved to the GPU.
+
+\section{Helpers}
+
+\begin{description}
+  \item[\code{ndown.exe}] (\code{WRF/main/ndown_em.F}) runs a nest offline: it interpolates the output of a parent run
+    into initial and boundary files for a finer domain. This is one-way nesting in two separate runs.
+  \item[\code{tc.exe}] (\code{WRF/main/tc_em.F}) removes and re-inserts a tropical cyclone vortex in the initial
+    state.
+\end{description}
+
+\section{After the forecast}
+
+Post-processing reads the history files:
+\begin{itemize}
+  \item the Unified Post Processor (UPP) derives products on pressure levels and standard diagnostics;
+  \item Python packages such as wrf-python, and scripts in NCL, compute diagnostics and plots.
+\end{itemize}
+For fire runs, the history files hold the fire variables on the fire grid:
+\begin{itemize}
+  \item ignition time \code{TIGN_G};
+  \item burned fraction \code{FIRE_AREA};
+  \item remaining fuel \code{FUEL_FRAC};
+  \item heat fluxes and rate of spread.
+\end{itemize}
+The perimeter at any time is the contour where the ignition time equals that time (\cref{ch:fire}).
+
+\section{The relatives}
+
+The WRF source tree also builds systems that share its code but are not used here:
+\begin{description}
+  \item[WRFDA] (\code{WRF/var/}): variational data assimilation, which produces an initial state from observations
+    and a first guess.
+  \item[WRF-Chem] (\code{WRF/chem/}): chemistry and aerosols, carried as additional four-dimensional tracer arrays
+    with their processes.
+  \item[WRF-Hydro] (\code{WRF/hydro/}): surface and channel hydrology coupled to the land model.
+\end{description}
+Several physics schemes are shared with NCAR's MPAS model. Their code lives in \code{WRF/phys/physics_mmm/} (for
+example \code{mp_wsm6.F90}, \code{bl_ysu.F90}, \code{sf_sfclayrev.F90}), and WRF calls it through thin wrappers
+(\cref{ch:phys}).
+
+\section{What this means for the GPU port}
+
+\begin{itemize}
+  \item WPS, \code{real.exe} and \code{ideal.exe} run once per forecast and take minutes. They stay on the CPU.
+  \item \code{wrf.exe} runs for hours:
+    \begin{itemize}
+      \item everything it executes per time step moves to the GPU;
+      \item its initialization, I/O formatting and the host part of nest interpolation stay on the CPU;
+      \item data crosses between the two only at the points listed in \cref{ch:port}.
+    \end{itemize}
+  \item The inputs of a forecast are fixed files. The port checks their checksums before every run
+    (\code{port/manifest.py}), so a comparison never mixes two versions of the same input.
+\end{itemize}

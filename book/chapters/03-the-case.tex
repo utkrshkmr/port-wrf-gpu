@@ -1,13 +1,15 @@
 \chapter{The forecast case}\label{ch:case}
 
 A model like WRF is a large set of options; a forecast uses a small subset of them. The port, and most of this book,
-is defined by one case: a coupled weather and fire simulation of the Eaton Fire, which started in the foothills above Altadena,
-California, on the evening of 7~January~2025 local time. The case's files are in \code{cases/eaton_20250108/}. The ignition used
-in the case is at 34.18604~N, 118.09325~W, at 02:18~UTC on 8~January~2025.
+is defined by one case: a coupled weather and fire simulation of the Eaton Fire, which started in the foothills above
+Altadena, California, on the evening of 7~January~2025 local time. The case's files are in
+\code{cases/eaton_20250108/}. The ignition used in the case is at 34.18604~N, 118.09325~W, at 02:18~UTC on
+8~January~2025.
 
 \section{Domains and time steps}
 
-Two domains with one-way nesting (\code{feedback = 0}). The ratio is 9 in both space and time.
+Two domains with one-way nesting (\code{feedback = 0}, \code{smooth_option = 0}). The ratio is 9 in both space and
+time.
 
 \begin{center}
 \begin{tabular}{lrrrrr}
@@ -21,24 +23,52 @@ d02 & $811\times811\times60$ & 100 m & 1/3 s & 183{,}600 & $3244\times3244$ (25 
 \end{center}
 
 Each large time step has three Runge--Kutta stages, with 1, 2 and 4 acoustic sub-steps
-(\code{time_step_sound = 0} gives four per step): seven acoustic sub-steps in all (\cref{ch:time}).
+(\code{time_step_sound = 0} gives four per step): seven acoustic sub-steps in all (\cref{ch:time}). Radiation is
+called every minute (\code{radt = 1}), so every 20 steps of d01 and every 180 steps of d02.
+
+\section{Inputs}
+
+\code{real.exe} of WRF~4.6.0 made the three input files, with the MODIS land use of 21 categories
+(\code{MODIFIED_IGBP_MODIS_NOAH}):
+\begin{center}
+\begin{tabular}{lrl}
+\toprule
+File & Size & Content \\
+\midrule
+\code{wrfinput_d01} & 289 MB & initial state of d01 \\
+\code{wrfinput_d02} & 876 MB & initial state of d02, with the fire-grid fuel categories (LANDFIRE) and terrain \\
+\code{wrfbdy_d01} & 122 MB & lateral boundary conditions of d01, every 3 h, 00:00--21:00 UTC \\
+\bottomrule
+\end{tabular}
+\end{center}
+Their md5 checksums, and those of the eight lookup tables the run reads, are in \code{cases/eaton_20250108/manifest.md5}:
+\begin{itemize}
+  \item the Noah tables \code{LANDUSE.TBL}, \code{VEGPARM.TBL}, \code{SOILPARM.TBL}, \code{GENPARM.TBL};
+  \item \code{RRTMG_LW_DATA};
+  \item the ozone climatology files \code{ozone.formatted}, \code{ozone_lat.formatted}, \code{ozone_plev.formatted};
+  \item the greenhouse-gas table \code{CAMtr_volume_mixing_ratio}.
+\end{itemize}
+A copy of an input with a different checksum is a different input, and is never mixed into a comparison.
+
+There is no \code{namelist.fire}. WRF-Fire therefore uses its built-in 53-category fuel table and writes it out as
+\code{namelist.fire.output}.
 
 \section{Options}
 
 \paragraph{Dynamics.}
 \begin{itemize}
   \item Non-hydrostatic, with the hybrid vertical coordinate (\code{hybrid_opt = 2}) and moist potential
-    temperature (\code{use_theta_m = 1}).
+    temperature (\code{use_theta_m = 1}); the hypsometric option \code{hypsometric_opt = 2}.
   \item Advection: fifth order in the horizontal, third order in the vertical; positive-definite for moisture and
-    TKE.
+    TKE (\code{moist_adv_opt = 1}, \code{tke_adv_opt = 1}).
   \item Turbulence:
     \begin{itemize}
-      \item d01: two-dimensional Smagorinsky horizontal diffusion with the YSU boundary layer
-        (\code{km_opt = 4});
-      \item d02: a three-dimensional TKE large-eddy simulation (\code{km_opt = 2}).
+      \item d01: two-dimensional Smagorinsky horizontal diffusion with the YSU boundary layer (\code{km_opt = 4});
+      \item d02: a three-dimensional TKE large-eddy simulation (\code{km_opt = 2}), with sub-grid stress output
+        (\code{m_opt = 1}).
     \end{itemize}
   \item Damping: Rayleigh damping of $w$ at the top (\code{damp_opt = 3}) and vertical-velocity damping
-    (\code{w_damping = 1}).
+    (\code{w_damping = 1}); off-centering \code{epssm} of 0.5 on d01 and 0.8 on d02.
 \end{itemize}
 
 \paragraph{Physics.}
@@ -47,10 +77,11 @@ Each large time step has three Runge--Kutta stages, with 1, 2 and 4 acoustic sub
   \item Radiation (\cref{ch:rad}), called every minute:
     \begin{itemize}
       \item RRTMG longwave, in single precision in this build;
-      \item Dudhia shortwave.
+      \item Dudhia shortwave;
+      \item the ozone climatology (\code{o3input = 2}) and greenhouse gases from a table (\code{ghg_input = 1}).
     \end{itemize}
-  \item The revised MM5 surface layer and the Noah land-surface model (\cref{ch:sfc}).
-  \item YSU boundary layer on d01 only (\cref{ch:pbl}).
+  \item The revised MM5 surface layer (\cref{ch:sfc}) and the Noah land-surface model (\cref{ch:lsm}).
+  \item YSU boundary layer on d01 only (\cref{ch:pbl}); none on d02, which resolves the boundary layer.
   \item No cumulus, shallow-convection, urban or lake schemes.
 \end{itemize}
 
@@ -58,11 +89,58 @@ Each large time step has three Runge--Kutta stages, with 1, 2 and 4 acoustic sub
 \begin{itemize}
   \item WRF-Fire (\code{ifire = 2}), refinement 4 in each direction.
   \item Hybrid WENO5/ENO1 level-set advection (\code{fire_upwinding = 9}), with re-initialization.
-  \item Wind interpolated to 1~m with a logarithmic profile.
-  \item Heat and moisture fluxes fed back into the atmosphere.
-  \item The built-in 53-category fuel table and a uniform fuel moisture of 8\,\%.
-  \item One circular ignition of radius 100~m.
+  \item Wind interpolated to 1~m with a logarithmic profile (\code{fire_lsm_zcoupling}).
+  \item Heat and moisture fluxes fed back into the atmosphere (\code{fire_atm_feedback = 1}).
+  \item The built-in fuel table and a uniform fuel moisture of 8\,\%.
+  \item One circular ignition of radius 100~m, between 8280~s and 9080~s of model time.
 \end{itemize}
+
+\paragraph{Output.} History of d02 every 15~minutes (69 frames in 17~h); no history of d01; restarts every hour for
+both domains.
+
+\section{The reference runs}
+
+The original run was made on the CCR cluster with the stock WRF build. The port compares against a different
+reference, CPU-REF:
+\begin{itemize}
+  \item the same source built with flags that make the CPU arithmetic reproducible, and with a portable library of
+    elementary functions (\cref{ch:repro});
+  \item run on CCR CPU nodes, in the same container image the GPU runs use.
+\end{itemize}
+CPU-REF's 17-hour run, its traces and its hourly restarts are archived with checksums. How far CPU-REF moves the
+fire against the original run is measured once and recorded (\tbr); it is not a criterion, because no GPU can
+reproduce another compiler's math library bit for bit.
+
+\section{Development cases and windows}
+
+A full d02 step costs minutes while most of the model still runs on one CPU core, so development uses smaller cases.
+\begin{description}
+  \item[S-3M] The WRF \code{em_fire} idealized case with the Eaton physics, three minutes of model time. It runs in
+    minutes on one CPU core and needs no external data. It is the case of the CPU-only verification
+    (\code{port/gates/cpu_verify.sh}).
+  \item[eaton\_small] The real case with a $181\times181\times60$ nest centered on the ignition, and its own CPU-REF
+    references.
+\end{description}
+
+Tests run in \emph{windows}: short runs that start from a restart file and compare a GPU run with a CPU-REF run that
+started from the same file. The windows are defined in \code{port/h100/windows.txt}:
+\begin{center}
+\begin{tabular}{llrl}
+\toprule
+Window & Start & Length & Purpose \\
+\midrule
+W-T0 & 00:00 & 9 s & first d01 steps, nest opening \\
+W-20 & 02:20 & 9 s & the everyday check of one routine \\
+W-100 & 02:20 & 36 s & sub-phase gates \\
+W-RAD & 02:20 & 240 s & four radiation calls per domain \\
+W-TKE & 02:20 & 336 s & turbulence and sub-grid stresses \\
+W-FORCE & 02:20 & 60 s & nest forcing \\
+W-IGN & 02:00 & 35 min & the whole ignition phase \\
+W-FIRE & 02:20 & 40 min & free spread \\
+W-1H & 02:00 & 1 h & long-window check \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \section{What the case means for the port}
 
@@ -71,16 +149,10 @@ The options fix the code paths:
   \item every routine the case executes in a time step must run on the GPU;
   \item every routine it does not execute may stay as it is.
 \end{itemize}
+A startup check in the GPU build (\code{gpu_check_config}) refuses a namelist outside the supported envelope. Dates,
+sizes, the nest position and the ignition may change; the scheme choices may not. The full list of options, with the
+reasons for each, is in \code{plan.md} section~2. \Cref{app:namelist} reproduces the namelist.
 
-A startup check in the GPU build refuses a namelist outside the supported envelope. Dates, sizes, the nest position
-and the ignition may change; the scheme choices may not. The full list of options, with the reasons for each, is in
-\code{plan.md} section~2. \Cref{app:namelist} reproduces the namelist with comments.
-
-\begin{portnote}
-For development, two smaller cases are used:
-\begin{itemize}
-  \item \emph{S-3M}, the WRF \code{em_fire} idealized case with the Eaton physics, runs in minutes on one CPU core.
-    It is the case of the CPU-only verification.
-  \item \emph{eaton\_small} is the real case with a $181\times181$ nest.
-\end{itemize}
-\end{portnote}
+\paragraph{Memory.} The full case needs about 58--62~GB of device memory: the state of both domains, a scratch pool,
+work arrays, the radiation batch, and the local memory of the column physics (\code{plan.md} section~3). It fits an
+80~GB GPU, not a 40~GB one; \cref{ch:mgpu} describes how two 40~GB A100s can share it.

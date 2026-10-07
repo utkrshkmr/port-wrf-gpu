@@ -1,3 +1,163 @@
 \chapter{Initial and boundary conditions}\label{ch:icbc}
 
-This chapter is being written.
+\code{real.exe} turns the horizontally interpolated analyses of metgrid into a state that the model's equations
+accept. That state must:
+\begin{itemize}
+  \item use the model's vertical coordinate;
+  \item be in discrete hydrostatic balance with the model's own vertical operators;
+  \item hold the dry air mass, not the total, as its column mass.
+\end{itemize}
+This chapter follows \src{dyn_em/module_initialize_real.F}{init_domain_rk} and the boundary assembly of
+\src{main/real_em.F}{assemble_output}. The notation is that of \cref{ch:eq}; a bar marks the base state, a prime the
+perturbation from it.
+
+\section{The base state}
+
+WRF writes most variables as a time-independent base state plus a perturbation. The base state is a hydrostatically
+balanced atmosphere at rest that depends only on terrain height. Keeping it separate reduces truncation errors in the
+pressure gradient over steep terrain.
+
+The base-state temperature is a function of pressure alone. With the constants $p_{00}$ (\SI{1e5}{Pa}), $T_{00}$
+(the sea-level temperature), $A$ (the lapse in temperature per $e$-fold of pressure), the isothermal floor
+$T_{\mathrm{iso}}$, and a stratospheric profile above $p_{\mathrm{strat}}$:
+\begin{equation}
+  \bar T(\bar p) =
+  \begin{cases}
+    \max\bigl(T_{\mathrm{iso}},\; T_{00} + A \ln(\bar p/p_{00})\bigr), & \bar p \ge p_{\mathrm{strat}},\\
+    T_{\mathrm{iso}} + A_{\mathrm{strat}} \ln(\bar p/p_{\mathrm{strat}}), & \bar p < p_{\mathrm{strat}}.
+  \end{cases}
+  \label{eq:base-T}
+\end{equation}
+Integrating the hydrostatic equation $\mathrm{d}\phi = -R_d \bar T\, \mathrm{d}\ln \bar p$ from sea level, with
+$\bar T = T_{00} + A\ln(\bar p/p_{00})$, gives a quadratic in $\ln(\bar p/p_{00})$. Its root at the terrain height
+$z_s$ is the base-state surface pressure
+\begin{equation}
+  \bar p_s = p_{00}\exp\!\left(-\frac{T_{00}}{A} + \sqrt{\left(\frac{T_{00}}{A}\right)^{2} - \frac{2 g z_s}{A R_d}}\right),
+  \label{eq:base-ps}
+\end{equation}
+as coded in \src{dyn_em/module_initialize_real.F}{init_domain_rk}. The base dry column mass is
+$\bar\mu_d = \bar p_s - p_t$, where $p_t$ is the pressure at the model top.
+
+On every half level $k$, the base pressure follows from the hybrid coordinate of \cref{ch:eq}:
+\begin{equation}
+  \bar p_k = c_{3h,k}\,(\bar p_s - p_t) + c_{4h,k} + p_t ,
+\end{equation}
+and the base inverse density from the equation of state,
+\begin{equation}
+  \bar\alpha_k = \frac{R_d}{p_{1000}}\;\bar\theta_k \left(\frac{\bar p_k}{p_{1000}}\right)^{-c_v/c_p},
+  \qquad \bar\theta_k = \bar T(\bar p_k)\left(\frac{p_{00}}{\bar p_k}\right)^{R_d/c_p}.
+\end{equation}
+
+\section{Hydrostatic balance in the model's own discretization}
+
+The geopotential $\phi = gz$ lives on full levels (the faces between half levels), and the model updates it with its
+own discrete operators. If the initial $\phi$ were taken directly from the analysis, the first model steps would see
+a spurious vertical pressure-gradient force and launch acoustic and gravity waves. \code{real.exe} therefore
+integrates the geopotential upward with the same discrete relation the model uses (\cref{ch:eq},
+\cref{eq:hydro-diag}).
+
+For the base state, with the default \code{hypsometric_opt = 2}, the integration uses the logarithm of the full-level
+base pressures $\bar p_{f,k}$:
+\begin{equation}
+  \bar\phi_{k} = \bar\phi_{k-1} + \bar\alpha_{k-1}\,\bar p_{k-1}\,\ln\frac{\bar p_{f,k-1}}{\bar p_{f,k}},
+  \qquad \bar\phi_1 = g z_s .
+  \label{eq:phb-hyps2}
+\end{equation}
+With \code{hypsometric_opt = 1} it is the plain finite difference
+$\bar\phi_{k} = \bar\phi_{k-1} - \Delta\eta_{k-1}\,(c_{1h}\bar\mu_d + c_{2h})\,\bar\alpha_{k-1}$.
+
+The perturbation geopotential satisfies the perturbation form of the same relation:
+\begin{equation}
+  \phi'_{k} = \phi'_{k-1} - \Delta\eta_{k-1}\Bigl[\bigl(c_{1h}(\bar\mu_d+\mu'_d)+c_{2h}\bigr)\alpha'_{k-1}
+             + c_{1h}\,\mu'_d\,\bar\alpha_{k-1}\Bigr],
+  \label{eq:php-pert}
+\end{equation}
+which the code evaluates column by column, from the surface up.
+
+\begin{algorithm}[ht]
+\caption{Building the dry hydrostatic column in \code{init_domain_rk} (one horizontal point).}
+\label{alg:column}
+\begin{algorithmic}[1]
+\Require terrain height $z_s$, dry surface pressure $p_{ds}$, interpolated $\theta$ and $q_v$ on half levels
+\State $\bar p_s \gets$ \cref{eq:base-ps}; \quad $\bar\mu_d \gets \bar p_s - p_t$
+\For{$k = 1, \dots, n_z - 1$}
+  \State $\bar p_k \gets c_{3h,k}(\bar p_s - p_t) + c_{4h,k} + p_t$; \quad $\bar T \gets$ \cref{eq:base-T}
+  \State $\bar\theta_k$, $\bar\alpha_k$ from $\bar T$ and $\bar p_k$
+\EndFor
+\State $\bar\phi_1 \gets g z_s$
+\For{$k = 2, \dots, n_z$} \Comment{upward, in this order}
+  \State $\bar\phi_k \gets$ \cref{eq:phb-hyps2}
+\EndFor
+\State $\mu'_d \gets (p_{ds} - p_t) - \bar\mu_d$
+\For{$k = 1, \dots, n_z - 1$}
+  \State $p_k \gets c_{3h,k}(\bar\mu_d + \mu'_d) + c_{4h,k} + p_t$ \Comment{dry hydrostatic pressure}
+  \State $\alpha_k \gets$ equation of state with $\theta_k$, $q_{v,k}$ and $p_k$; \quad $\alpha'_k \gets \alpha_k - \bar\alpha_k$
+\EndFor
+\State $\phi'_1 \gets 0$
+\For{$k = 2, \dots, n_z$}
+  \State $\phi'_k \gets$ \cref{eq:php-pert}
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\section{Dry and total pressure}
+
+The ARW equations use the mass of dry air as the column mass (\cref{ch:eq}). The analyses give the total surface
+pressure, which includes the weight of water vapor. \code{real.exe} computes the dry surface pressure by integrating
+the moisture of the interpolated column and subtracting its weight. Its routines \code{integ_moist},
+\code{p_dts} and \code{p_dhs} in \code{module_initialize_real.F} do this. The perturbation column mass is the
+difference between the dry column mass and the base:
+\begin{equation}
+  \mu'_d = (p_{ds} - p_t) - \bar\mu_d .
+\end{equation}
+With moist potential temperature (\code{use_theta_m = 1}), the prognostic temperature variable is
+$\theta_m = \theta\,(1 + (R_v/R_d)\,q_v)$, and the initial state stores $\theta_m - T_0$ with $T_0 = 300$~K.
+
+\section{Vertical interpolation}
+
+metgrid leaves each field on its source levels, usually isobaric surfaces plus the surface. \code{real.exe}
+interpolates each column to the model's half levels (and $w$ and $\phi$ to full levels) with
+\src{dyn_em/module_initialize_real.F}{vert_interp}. Namelist options of the \code{&domains} group control it:
+\begin{itemize}
+  \item the vertical variable of the interpolation: pressure or its logarithm (\code{interp_type});
+  \item the order of the Lagrange polynomial (\code{lagrange_order});
+  \item extrapolation below the lowest source level and the temperature lapse used there (\code{extrap_type},
+    \code{t_extrap_type});
+  \item whether the surface value is used as a source level, and how many model levels near the ground are forced
+    to use it (\code{use_surface}, \code{force_sfc_in_vinterp}).
+\end{itemize}
+The model levels themselves come from \src{dyn_em/module_initialize_real.F}{compute_eta}: from user-given $\eta$
+values, or automatically from a stretching rule with a bottom layer thickness and a maximum layer thickness.
+
+\section{Soil and surface}
+
+The land model needs the soil temperature and moisture on its own layers: four Noah layers, 0--10, 10--40, 40--100
+and 100--200~cm, in this case. \code{real.exe} interpolates them in the vertical from the source model's soil layers.
+It also checks that land and water masks agree between the static data (geogrid) and the analyses, and fills
+inconsistent points from neighbours. It sets the skin and sea-surface temperatures, snow, and the vegetation
+fraction for the start date from the monthly climatologies of geogrid.
+
+\section{The lateral boundary file}
+
+For the outer domain, \code{real.exe} repeats the work for every analysis time $t_n$, $n = 0, 1, \dots$, at the
+interval $\Delta t_b$ (\code{interval_seconds}). It then writes the boundary file \code{wrfbdy_d01}. For each
+prognostic variable it stores two things on the four sides of the domain (\code{_bxs}, \code{_bxe}, \code{_bys},
+\code{_bye}), over a strip of \code{spec_bdy_width} points (five by default):
+\begin{itemize}
+  \item the value at $t_n$, \emph{coupled} with the column mass and the map factor as the model's prognostic variables
+    are (for example $\mu_d u/m_y$): \src{dyn_em/module_big_step_utilities_em.F}{couple}, then \code{stuff_bdy};
+  \item its tendency $(\psi_{n+1} - \psi_n)/\Delta t_b$, in the arrays \code{_btxs} \dots: \code{stuff_bdytend}
+    in \code{share/module_bc.F}.
+\end{itemize}
+During the forecast, the model evaluates the boundary value at time $t \in [t_n, t_{n+1}]$ linearly,
+\begin{equation}
+  \psi_b(t) = \psi_b(t_n) + (t - t_n)\,\left.\pd{\psi}{t}\right|_b ,
+\end{equation}
+and uses it in the specified and relaxation zones (\cref{ch:bdy}). Nested domains get their boundary values from
+their parent during the run, not from a file.
+
+\begin{portnote}
+None of this runs on the GPU: \code{real.exe} is a CPU program. The GPU run reads the same \code{wrfinput} and
+\code{wrfbdy} files as the CPU reference, and the port checks their checksums before every run. The boundary arrays
+are uploaded to the device each time \code{wrf.exe} reads a new boundary time (sync point S5 in \cref{ch:port}).
+\end{portnote}
