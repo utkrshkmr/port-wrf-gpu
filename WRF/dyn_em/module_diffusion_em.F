@@ -4851,6 +4851,12 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+#ifdef WRF_GPU
+   USE module_gpu_work, ONLY : work_p2_g3_titau3
+#endif
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_VERTICAL_DIFFUSION_2
+   USE module_gpu_callcheck
+
    IMPLICIT NONE
 
    TYPE(grid_config_rec_type), INTENT(IN   ) :: config_flags
@@ -4883,7 +4889,12 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
    INTEGER :: i_start, i_end, j_start, j_end
    INTEGER :: is_ext,ie_ext,js_ext,je_ext
 
+#ifdef WRF_GPU
+   LOGICAL :: gpu_isl
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: titau3
+#else
    REAL , DIMENSION( its-1:ite+1, kts:kte, jts-1:jte+1)        :: titau3
+#endif
 
    REAL , DIMENSION( its:ite, jts:jte)                         ::  zzavg
 
@@ -4891,6 +4902,25 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
 
 ! End declarations.
 !-----------------------------------------------------------------------
+
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_save_r(1, tendency, SIZE(tendency,KIND=8))
+        CALL gpu_cc_save_r(2, nba_mij, SIZE(nba_mij,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_VERTICAL_DIFFUSION_2)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(tendency, defor23, xkmv, nba_mij, dnw, rdzw, fnm, fnp, rho)
+        ELSE
+!$acc update self(tendency, defor23, xkmv, nba_mij, dnw, rdzw, fnm, fnp, rho)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+   titau3(its-1:ite+1, kts:kte, jts-1:jte+1) => &
+        work_p2_g3_titau3(1:(ite-its+3)*(kte-kts+1)*(jte-jts+3))
+#endif
 
    ktf=MIN(kte,kde-1)
 
@@ -4923,6 +4953,11 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
                          ims, ime, jms, jme, kms, kme,    &
                          its, ite, jts, jte, kts, kte     )
 
+! K-VDV: interior vertical stress divergence (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(tendency, titau3, dnw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end) &
+!$acc& private(rdzv)
    DO j = j_start, j_end
    DO k = kts+1,ktf
    DO i = i_start, i_end
@@ -4937,6 +4972,22 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
 ! ******** MODIF...
 !  we will pick up the surface drag (titau3(i,kts,j)) later
 !
+#ifdef WRF_GPU
+! K-VDV: surface stress divergence (Template A, 2D). k=kts is invariant.
+       k = kts
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(tendency, titau3, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, k) &
+!$acc& private(rdzv)
+       DO j = j_start, j_end
+       DO i = i_start, i_end
+
+        rdzv = - g / dnw(k)
+        tendency(i,k,j)=tendency(i,k,j)-rdzv*(titau3(i,k+1,j))
+
+       ENDDO
+       ENDDO
+#else
        DO j = j_start, j_end
        k=kts
        DO i = i_start, i_end
@@ -4946,7 +4997,26 @@ SUBROUTINE vertical_diffusion_v_2( tendency, config_flags,                &
 
        ENDDO
        ENDDO
+#endif
 ! ******** MODIF...
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency, nba_mij)
+        ELSE
+!$acc update device(tendency, nba_mij)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        CALL gpu_cc_done_r(2, nba_mij, SIZE(nba_mij,KIND=8), 'nba_mij', &
+          LBOUND(nba_mij), UBOUND(nba_mij))
+        IF (gpu_cc_next(R_VERTICAL_DIFFUSION_2)) GOTO 99901
+      END IF
+#endif
 
 END SUBROUTINE vertical_diffusion_v_2
 
