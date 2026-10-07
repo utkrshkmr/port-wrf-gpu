@@ -17,7 +17,7 @@ and BUILD_SYSTEM.md: they are about running things.
 | Rule 4 (one routine per commit, tests named) | One routine (or one Phase 1 task) per commit; the body says `Not compiled or tested (code-only).` and names no test. |
 | Rule 5 (static.sh, T-AB, T-TRACE) | Run the Python checks of §3 if you can; you never mark anything tested or done. Your states are `coded`, `n/a`, `blocked` (§6). |
 | Rule 6 (workbook) | Only the integrator edits `WORKBOOK.md`. A work package writes only its status file `port/agent/wp/status/<ID>.md`. |
-| Rule 7 (branches) | Integration branch `agent/code`; one branch per work package, `agent/wp/<id>` (the card names it). Never use or push `agent/phase-1` (an abandoned run). |
+| Rule 7 (branches) | Integration branch `agent/code`; one branch per work package, `agent/wp/<id>` (the card names it). All local in the integrator's clone: nobody in the run pushes; the owner pushes when the run is finished. |
 | Rule 10 (three attempts with tests) | You cannot test: when you cannot decide how to port something after a careful re-read, write the question into your status file, mark the item `blocked`, and continue with the next one. |
 | Rule 11 (context) | Unchanged: never open a whole large file; read routines by their line ranges from the card. |
 
@@ -39,16 +39,18 @@ and BUILD_SYSTEM.md: they are about running things.
   3. merges finished work-package branches into `agent/code` with `git merge --no-ff` (no conflicts are expected:
      ownership is disjoint);
   4. keeps `WORKBOOK.md` "Current state" listing every work package with its branch and state;
-  5. pushes `agent/code` after every merge;
+  5. commits after every merge, and never pushes: the owner pushes when the run is finished;
   6. reports when all 36 are merged (§5).
 - **A work package** (one worker session each):
   - works in its own git worktree, on its own branch (area `port-wp`). The branch exists already at the same
     handoff commit as `agent/code`:
-    `git fetch origin agent/wp/<id> && git worktree add ../wp_<id> -B agent/wp/<id> origin/agent/wp/<id>`;
+    `git worktree add ../wp_<id> -B agent/wp/<id> origin/agent/wp/<id>`, a worktree of the integrator's clone;
   - never merges another branch into its branch, and never edits a file it does not own;
-  - pushes its branch after every commit.
-- Rules for everyone: never force-push, never rebase pushed history, never push to `main` or to the handoff branch
-  `claude/wrf-gpu-port-cpu-7doq8n`.
+  - commits on its local branch after every item, and never pushes.
+- Rules for everyone:
+  - **Push nothing.** All work stays local in the integrator's clone and its worktrees. The project owner pushes
+    `agent/code` and every `agent/wp/<id>` when the run is finished.
+  - Never force-push, never rebase, never touch `main` or the handoff branch `claude/wrf-gpu-port-cpu-7doq8n`.
 
 ## 2. The loop of a work package
 
@@ -66,9 +68,9 @@ and BUILD_SYSTEM.md: they are about running things.
       (`CALL wrf_error_fatal('<routine>: <option> not ported to the GPU')`);
    6. go through the self-review of §4, line by line;
    7. commit: `WP <ID>: port <routine> (<kernel ids>)` with a body saying what you did, the template, anything
-      uncertain, and `Not compiled or tested (code-only).` Update your status file in the same commit; push.
+      uncertain, and `Not compiled or tested (code-only).` Update your status file in the same commit (do not push).
 3. Shared refactors named on your card come **first**, each alone in one commit (§8).
-4. When every item is `coded`, `n/a` or `blocked`: set your status `State: coded`, commit, push, tell the integrator.
+4. When every item is `coded`, `n/a` or `blocked`: set your status `State: coded`, commit, tell the integrator.
 
 ## 3. What you may run (only if your environment has python3 and git)
 
@@ -123,10 +125,10 @@ Do it for every kernel; most porting mistakes are in this list.
 ## 5. Done
 
 - **A work package** is done when every item of its card is `coded`, `n/a` (with the reason) or `blocked` (with the
-  question), its status file says `State: coded`, and its branch is pushed.
+  question), its status file says `State: coded`, and everything is committed on its local branch.
 - **The run** is done when the integrator has merged all 36 branches into `agent/code`, runs `static.sh` if it can,
   updates `WORKBOOK.md` (Current state: every work package with its state; a log entry "CODE-ONLY run 1 complete"),
-  pushes, and reports:
+  commits, and reports (the owner then pushes all branches):
   - the branch and commit;
   - the work packages with blocked items and their questions;
   - the scope requests.

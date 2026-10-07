@@ -24,7 +24,8 @@
       "entry": "port/agent/CODE_ONLY.md",
       "branch": "agent/wp/<id>",
       "who": "a code-only worker (prompt B of port/agent/PROMPTS.md)",
-      "owns": ["WRF/*", "port/agent/wp/status/{ID}.md", "port/agent/arith_exceptions.d/{ID}.txt"],
+      "owns": ["WRF/*", "port/agent/wp/status/{ID}.md", "port/agent/arith_exceptions.d/{ID}.txt",
+               "port/tools/gen_check_table.py"],
       "never": [],
       "routine_scope": true
     },

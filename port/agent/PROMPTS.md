@@ -18,12 +18,17 @@ Nobody in this run compiles or tests anything: the project owner's reviewer does
 
 SETUP
   git clone https://github.com/utkrshkmr/port-wrf-gpu.git && cd port-wrf-gpu && git switch agent/code
+  (already cloned: git fetch origin && git switch agent/code && git merge --ff-only origin/agent/code)
   git rev-parse HEAD        # the handoff commit: write it down; every work-package branch starts from it
+NO PUSHING. Everything stays local in this one clone:
+- every commit, yours and the workers', stays local;
+- every worker works in a git worktree of this clone;
+- the project owner pushes agent/code and every agent/wp/<id> when the run is finished.
+So never run git push, and keep this clone on a disk that survives the whole run.
 You are in area port-integrate (AREAS.md): you write only port/agent/run/* and port/agent/WORKBOOK.md, and merge
-the workers' branches. Never push to main or to the handoff branch claude/wrf-gpu-port-cpu-7doq8n; never
-force-push; never edit a file a work package owns.
+the workers' branches. Never edit a file a work package owns.
 
-PART 1 - BUILD THE PLAN (no worker starts before the plan is pushed)
+PART 1 - BUILD THE PLAN (no worker starts before the plan is committed)
 1. Read AGENTS.md (the rules), port/agent/CODE_ONLY.md, port/agent/WORKPACKAGES.md, port/agent/INTERFACES.md,
    port/agent/run/README.md, then each of the 36 cards port/agent/wp/<ID>.md. Read the cards only, not the WRF
    sources: a card lists what the package owns, its items, the CPU line ranges, its islands and notes.
@@ -66,28 +71,34 @@ PART 1 - BUILD THE PLAN (no worker starts before the plan is pushed)
    - Current state: phase "code-only run 1", the plan file, and one line per package with its branch and state.
      Keep every key that python3 port/tools/workbook.py check expects.
    - Log: one entry of at most 25 lines, "### <date> CODE-ONLY run 1 planned", pointing to PLAN.md.
-   Commit "Plan the code-only run of Phases 1-3", push agent/code.
+   Commit "Plan the code-only run of Phases 1-3" on agent/code. Do not push.
 
 PART 2 - RUN THE PLAN
 6. Launch the workers of wave 1, one per slot. Give each prompt B of port/agent/PROMPTS.md with <ID>, <id> and the
    handoff commit filled in, plus one line "Your plan row: <its row of PLAN.md>". Each worker works in its own git
-   worktree on agent/wp/<id> and pushes after every commit.
+   worktree of this clone, on its local branch agent/wp/<id>:
+     git worktree add ../wp_<id> -B agent/wp/<id> origin/agent/wp/<id>
 7. When a worker reports its package coded (or coded with blocked items):
    a. If you can run Python:
-        python3 port/tools/check_area_scope.py port-wp --wp <ID> --base <handoff commit> --head origin/agent/wp/<id>
+        python3 port/tools/check_area_scope.py port-wp --wp <ID> --base <handoff commit> --head agent/wp/<id>
       A FAIL goes back to that worker.
-   b. git merge --no-ff origin/agent/wp/<id> into agent/code.
+   b. git merge --no-ff agent/wp/<id> into agent/code.
       - No conflicts are expected: ownership is disjoint.
       - If a conflict touches the same lines, stop that merge and ask the worker.
-   c. Update the package's state in PLAN.md and in the workbook's Current state; push agent/code.
+   c. Update the package's state in PLAN.md and in the workbook's Current state; commit.
    d. Give the free slot the next package of the plan.
-   e. A worker whose session ends before its package is done continues in a fresh session with prompt C.
+   e. A worker whose session ends before its package is done continues in a fresh session with prompt C, in the
+      same worktree.
 8. When all 36 are merged:
    - run bash port/gates/static.sh if you can;
    - write a log entry "CODE-ONLY run 1 complete", listing the blocked items with their questions and the scope
-     requests;
-   - push agent/code;
-   - report the branch, the last commit and that list.
+     requests; commit.
+   - Report:
+     - the last commit of agent/code;
+     - git log --oneline -1 of every agent/wp/<id>;
+     - the blocked items and scope requests.
+   - The owner pushes with this command, from this clone:
+       git push origin agent/code $(git for-each-ref --format='%(refname:short)' refs/heads/agent/wp/)
    Do not start Phase 4.
 ````
 
@@ -96,10 +107,10 @@ PART 2 - RUN THE PLAN
 ````text
 You are a worker of a code-only run of the GPU port of WRF (https://github.com/utkrshkmr/port-wrf-gpu). Your work
 package is <ID>; you are in area port-wp (AREAS.md). You write code only; you cannot compile or test it, and nobody
-expects you to.
-1. Your branch agent/wp/<id> exists already, at the handoff commit. In the clone of the integrator (or a fresh
-   clone of https://github.com/utkrshkmr/port-wrf-gpu.git):
-     git fetch origin agent/wp/<id>
+expects you to. NO PUSHING: you commit on your local branch only; the project owner pushes when the run is
+finished.
+1. Your branch agent/wp/<id> starts at the handoff commit <handoff commit>. In the integrator's clone (unless the
+   integrator created it for you):
      git worktree add ../wp_<id> -B agent/wp/<id> origin/agent/wp/<id>
      cd ../wp_<id>
 2. Read AGENTS.md (the rules), port/agent/CODE_ONLY.md, port/agent/INTERFACES.md, port/agent/CODING_STANDARD.md,
@@ -108,24 +119,40 @@ expects you to.
    items in its order; the card decides what each item is.
 3. Work through your card as CODE_ONLY.md section 2 says: shared refactors first (one commit each), then one routine
    per commit, each with its island and the self-review of CODE_ONLY.md section 4; update
-   port/agent/wp/status/<ID>.md in every commit; push agent/wp/<id> after every commit.
+   port/agent/wp/status/<ID>.md in every commit. Do not push.
 4. Change nothing you do not own (the card's "You own"); never merge another branch into yours. If you can run
    Python, run python3 port/tools/check_area_scope.py port-wp --wp <ID> --worktree before each commit (it also
    runs check_wp_scope.py).
-5. When every item is coded, n/a or blocked: State: coded in your status file, commit, push, and report to the
-   integrator in five lines (commits, blocked items, scope requests).
+5. When every item is coded, n/a or blocked: State: coded in your status file, commit, and report to the integrator
+   in five lines (commits, blocked items, scope requests).
 ````
 
 ### C. Resume (integrator or worker, a fresh context)
 
 ````text
-Resume the code-only run. Read AGENTS.md and port/agent/CODE_ONLY.md. Integrator: read port/agent/run/PLAN.md and
-the Current state of port/agent/WORKBOOK.md, check each work-package branch
-(git log --oneline agent/code..origin/agent/wp/<id>) and continue from step 6/7 of prompt A. Worker <ID>: cd to your worktree ../wp_<id>, read your card and port/agent/wp/status/<ID>.md,
-check git status and git log -3, and continue from the first item that is not coded. Same rules as before.
+Resume the code-only run, in the same clone as before. Nothing is pushed: never run git push. Read AGENTS.md and
+port/agent/CODE_ONLY.md.
+- Integrator: read port/agent/run/PLAN.md and the Current state of port/agent/WORKBOOK.md, check each
+  work-package branch (git log --oneline agent/code..agent/wp/<id>), and continue from step 6/7 of prompt A.
+- Worker <ID>: cd to your worktree ../wp_<id>, read your card and port/agent/wp/status/<ID>.md, check git status and
+  git log -3, and continue from the first item that is not coded.
+Same rules as before.
 ````
 
 ### D. Fix round (after the reviewer's findings)
+
+````text
+The reviewer verified the code-only run and wrote the findings into port/agent/REVIEW_<n>.md on branch
+<review branch>, one section per work package. Work in the same clone as before; nothing is pushed by you: the
+project owner pushes when the round is finished.
+- Integrator: git fetch origin <review branch> && git merge origin/<review branch> into agent/code. Then start one
+  worker per work package that has findings, with prompt B and this addition: "Read your section with
+  git show agent/code:port/agent/REVIEW_<n>.md (do not merge agent/code into your branch). Fix every finding on your
+  existing branch agent/wp/<id>, one commit per finding, and mark each finding fixed in your status file."
+- Then merge and report as in prompt A step 8.
+````
+
+## D. Fix round (after the reviewer's findings)
 
 ````text
 The reviewer verified the code-only run and wrote the findings into port/agent/REVIEW_<n>.md on branch
