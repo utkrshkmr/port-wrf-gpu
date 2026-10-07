@@ -1,3 +1,86 @@
 \chapter{Coriolis, curvature and map projections}\label{ch:cor}
 
-This chapter is being written.
+WRF integrates on a plane that a map projection lays over the curved, rotating Earth. Three kinds of terms account for
+this:
+\begin{itemize}
+  \item the map-scale factors, which appear in every derivative (\cref{ch:eq});
+  \item the Coriolis terms of the rotating frame;
+  \item the curvature terms of the sphere.
+\end{itemize}
+This chapter states the last two as \src{dyn_em/module_big_step_utilities_em.F}{coriolis} and
+\src{dyn_em/module_big_step_utilities_em.F}{curvature} compute them.
+
+\section{Map-scale factors}
+
+A map projection maps the sphere onto a plane where the grid is regular. The map-scale factor $m$ is the ratio of a
+distance on the grid to the corresponding distance on the Earth. WRF keeps two factors, $m_x$ and $m_y$, which are
+equal for the conformal projections (Lambert conformal, polar stereographic, Mercator). Each factor is stored at
+mass, $u$ and $v$ points: \code{msftx}, \code{msfty}, \code{msfux}, \code{msfuy}, \code{msfvx}, \code{msfvy}. Over the
+Eaton domains, which span a few hundred kilometres, $m$ differs from 1 by less than one percent. It still enters every
+flux and every tendency, so it must enter them on the GPU exactly as on the CPU.
+
+\section{Coriolis}
+
+With the Coriolis parameter $f = 2\Omega_E\sin\varphi$, its horizontal companion $e = 2\Omega_E\cos\varphi$
+($\varphi$ the latitude, $\Omega_E$ the Earth's rotation rate), and the angle $\alpha_r$ between the grid's $y$ axis
+and the meridians (\code{sina}, \code{cosa}), the Coriolis terms added to the flux tendencies are
+\begin{align}
+  F_{U,\mathrm{cor}} &= \frac{m_x}{m_y}\,f\,V \;-\; e\,\cos\alpha_r\,W, \notag\\
+  F_{V,\mathrm{cor}} &= -\frac{m_y}{m_x}\,f\,U \;+\; \frac{m_y}{m_x}\,e\,\sin\alpha_r\,W, \label{eq:coriolis}\\
+  F_{W,\mathrm{cor}} &= e\,\Bigl(\cos\alpha_r\,U - \frac{m_x}{m_y}\,\sin\alpha_r\,V\Bigr). \notag
+\end{align}
+Because $U$, $V$ and $W$ live at different points of the staggered grid, each term needs an average of the other
+components. For the $U$ equation at a $u$ point, the code writes
+\begin{lstlisting}
+ru_tend(i,k,j) = ru_tend(i,k,j) + (msfux(i,j)/msfuy(i,j))*0.5*(f(i,j)+f(i-1,j))  &
+     *0.25*(rv(i-1,k,j+1)+rv(i,k,j+1)+rv(i-1,k,j)+rv(i,k,j))                     &
+     - 0.5*(e(i,j)+e(i-1,j))*0.5*(cosa(i,j)+cosa(i-1,j))                          &
+     *0.25*(rw(i-1,k+1,j)+rw(i-1,k,j)+rw(i,k+1,j)+rw(i,k,j))
+\end{lstlisting}
+$f$ and $e$ are averaged to the $u$ point by two-point means, $V$ by a four-point mean of the neighbouring $v$
+points, and $W$ by a four-point mean over the two adjacent columns and the two levels bounding the half level. For $W$
+at a full level, the half-level values of $U$ and $V$ are interpolated vertically with the weights \code{fzm} and
+\code{fzp}.
+
+\begin{portnote}
+In the source, the averages are written as \code{0.25*(a+b+c+d)} and \code{0.5*(a+b)}: the sums are formed left to
+right, and only then multiplied. A port must keep exactly that form. \code{0.25*a+0.25*b+...} or a reordered sum would
+round differently. The GPU kernels K-COR-U, -V, -W copy the statements verbatim, and the tool \code{arith_guard}
+checks that no expression was rewritten (\cref{ch:repro}).
+\end{portnote}
+
+\section{Curvature}
+
+On a sphere of radius $r_e$ (\code{reradius} $= 1/r_e$), advection of momentum along curved coordinate lines produces
+apparent forces. In WRF's form they are
+\begin{align}
+  F_{U,\mathrm{curv}} &= \frac{m_x}{m_y}\,(v\times\nabla m)\,V \;-\; \frac{u\,W}{r_e} + \dots, \notag\\
+  F_{V,\mathrm{curv}} &= -\frac{m_y}{m_x}\,(v\times\nabla m)\,U \;-\; \frac{v\,W}{r_e} + \dots,\\
+  F_{W,\mathrm{curv}} &= \frac{u\,U + (m_x/m_y)\,v\,V}{r_e}, \notag
+\end{align}
+where
+\begin{equation}
+  (v\times\nabla m) = u\,\frac{\partial m}{\partial y} - v\,\frac{\partial m}{\partial x}
+\end{equation}
+is evaluated at mass points (\code{vxgm} in the code). On a regular latitude--longitude grid an equivalent form in
+$\tan\varphi$ is used instead. \code{curvature} computes \code{vxgm} first, then copies its edge values outward so the
+averages at the domain edges have neighbours, and only then forms the three tendencies.
+
+\begin{portnote}
+\code{curvature} is a small example of an order constraint that a GPU port must respect:
+\begin{enumerate}
+  \item the interior of \code{vxgm};
+  \item its edge copies, first in $x$, then in $y$;
+  \item the three tendencies, which read the copied edges.
+\end{enumerate}
+These are separate kernels launched in that order (K-CURV-1 \dots{} K-CURV-6). Fusing steps 1 and 3 would let a thread
+read an edge value before another thread had written it.
+\end{portnote}
+
+\section{Sizes of the terms}
+
+At the latitude of the case (34\textdegree{}N), $f \approx 8.2\times10^{-5}$~s$^{-1}$, so the Coriolis acceleration of
+a 10~m/s wind is below $10^{-3}$~m/s$^2$. Over the case's 17 hours the Coriolis terms still turn the large-scale flow
+substantially, but on the time scale of the fire's convective column they are small. The curvature terms are smaller
+still on a regional domain. Both are nevertheless computed every RK stage, and both must be bitwise identical on the
+GPU, because their effect on the last bits propagates like any other.

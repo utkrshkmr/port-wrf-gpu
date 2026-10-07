@@ -1,22 +1,137 @@
-\chapter{Turbulence and diffusion}\label{ch:turb}
+\chapter{Turbulence, diffusion and damping}\label{ch:turb}
 
-Sub-grid turbulence in physical space (\code{diff_opt = 2}): two-dimensional Smagorinsky on d01, the 1.5-order TKE closure on d02.
-
-\begin{outline}[(card B-07)]
-\textbf{Sections.}
+Motions smaller than the grid spacing transport momentum, heat and moisture. WRF represents them by eddy
+diffusivities that act on the resolved fields. Which closure applies depends on the resolution:
 \begin{itemize}
-    \item \textbf{Deformation and divergence.} \code{cal_deform_and_div}, the metric terms of \code{compute_diff_metrics}.
-    \item \textbf{Brunt--V\"ais\"al\"a frequency.} \code{calculate_N2}, moist and dry.
-    \item \textbf{Eddy viscosities.} \code{smag2d_km} (d01); \code{tke_km} with the length scale \code{calc_l_scale} (d02).
-    \item \textbf{The TKE equation.} Shear, buoyancy and dissipation terms.
-    \item \textbf{Stress tensor and diffusion.} \code{cal_titau_*}, horizontal and vertical diffusion of momentum and scalars; the LES stress output \code{nba_mij}.
+  \item on d01 (900~m), the boundary layer is parameterized by YSU (\cref{ch:pbl}), and horizontal mixing uses a
+    two-dimensional Smagorinsky closure;
+  \item on d02 (100~m), a three-dimensional large-eddy closure with a prognostic turbulent kinetic energy (TKE)
+    resolves the large eddies of the boundary layer.
 \end{itemize}
-\textbf{Sources.} \citet{skamarock2019}.
+This chapter describes both closures, the stress and flux computations they share, and the damping layers that keep
+the model stable. The routines are in \code{dyn_em/module_diffusion_em.F}; \code{first_rk_step_part2} calls them in
+RK stage 1.
 
-\textbf{Code.}
+\section{Options}
+
+\begin{description}
+  \item[\code{diff_opt}] How diffusion is computed. Option 2, used here, evaluates the full stress tensor in physical
+    space, with the terrain metric terms. Option 1 diffuses along coordinate surfaces.
+  \item[\code{km_opt}] How the eddy coefficients are computed:
+    \begin{itemize}
+      \item 2: a 1.5-order closure with prognostic TKE (d02);
+      \item 4: horizontal two-dimensional Smagorinsky, vertical mixing from the PBL scheme (d01);
+      \item 3: three-dimensional Smagorinsky; 5: a scale-aware variant.
+    \end{itemize}
+\end{description}
+
+\section{The deformation tensor}
+
+Both closures use the deformation (strain-rate) tensor $D_{ij} = \partial_j u_i + \partial_i u_j$. Its components are
+computed on their natural staggered positions by \src{dyn_em/module_diffusion_em.F}{cal_deform_and_div}:
 \begin{itemize}
-    \item \code{dyn_em/module_diffusion_em.F}: \code{cal_deform_and_div}, \code{calculate_N2}, \code{smag2d_km}, \code{tke_km}, \code{tke_shear}, \code{tke_buoyancy}, \code{tke_dissip}, \code{horizontal_diffusion_2}, \code{vertical_diffusion_2}
-    \item \code{dyn_em/module_first_rk_step_part2.F}: \code{first_rk_step_part2}
+  \item the diagonal $D_{11}$, $D_{22}$, $D_{33}$ at mass points;
+  \item $D_{12}$ at vorticity points;
+  \item $D_{13}$, $D_{23}$ at $u$-$w$ and $v$-$w$ edges.
 \end{itemize}
-\textbf{The port.} Work packages P2-G1, P2-G2, P2-G3: about 100 pointwise kernels, kept in source order.
-\end{outline}
+With terrain, horizontal derivatives on a coordinate surface are corrected by the slope of the surface:
+\begin{equation}
+  \left.\pd{\psi}{x}\right|_z = \left.\pd{\psi}{x}\right|_\eta - \frac{z_x}{z_\eta}\,\pd{\psi}{\eta},
+\end{equation}
+where $z_x$ and $z_\eta$ are the metric terms computed once per stage by
+\src{dyn_em/module_diffusion_em.F}{compute_diff_metrics}. That routine also computes the heights of the levels and
+their inverse spacings.
+
+\section{Two-dimensional Smagorinsky (d01)}
+
+The horizontal eddy viscosity is
+\begin{equation}
+  K_h = (C_s\,l)^2\sqrt{\tfrac14(D_{11} - D_{22})^2 + D_{12}^2}, \qquad l = \sqrt{\Delta x\,\Delta y},
+\end{equation}
+with $C_s = 0.25$ (\code{c_s}), in \src{dyn_em/module_diffusion_em.F}{smag2d_km}. Over steep terrain $K_h$ is reduced
+by the local slope factor $\alpha = \max(\sqrt{z_x^2 + z_y^2}, 1)$: divided by $\alpha^2$ where the deformation is
+large and by $\alpha$ elsewhere. The heat diffusivity is $K_h/\mathrm{Pr}$ with $\mathrm{Pr} = 1/3$
+(\code{prandtl}). Vertical mixing is left to the PBL scheme.
+
+\section{The 1.5-order TKE closure (d02)}
+
+The subgrid kinetic energy $e$ has its own prognostic equation:
+\begin{equation}
+  \partial_t(\mu_d e) + \text{advection} = \mu_d\,(P_s + P_b - \epsilon) + \text{diffusion},
+\end{equation}
+with shear production $P_s$, buoyancy production $P_b$ and dissipation $\epsilon$:
+\begin{equation}
+  P_s = K_h(D_{11}^2 + D_{22}^2 + D_{12}^2) + K_v(D_{33}^2 + D_{13}^2 + D_{23}^2) \;(\text{schematically}),\qquad
+  P_b = -K_{hv}\,N^2, \qquad
+  \epsilon = C\,\frac{e^{3/2}}{l}.
+\end{equation}
+The routines \src{dyn_em/module_diffusion_em.F}{tke_shear}, \code{tke_buoyancy} and \code{tke_dissip} evaluate them.
+\code{calculate_N2} computes the Brunt--V\"ais\"al\"a frequency squared, including the moist form in saturated
+air.
+
+\paragraph{Length scales and coefficients.} In the anisotropic form used here (\code{mix_isotropic = 0}),
+\src{dyn_em/module_diffusion_em.F}{tke_km} sets:
+\begin{align}
+  l_h &= \sqrt{\Delta x\,\Delta y}, \qquad
+  l_v = \begin{cases} \min\bigl(\Delta z,\; 0.76\,\sqrt{e}/N\bigr) & N^2 > 0,\\ \Delta z & \text{otherwise},\end{cases}\\
+  K_{mh} &= c_k\,\sqrt{e}\;l_h, \qquad K_{mv} = c_k\,\sqrt{e}\;l_v, \qquad c_k = 0.15,\\
+  K_{hh} &= K_{mh}/\mathrm{Pr}, \qquad K_{hv} = K_{mv}\,\bigl(1 + 2\,l_v/\Delta z\bigr),
+\end{align}
+with a lower bound proportional to $l^2$ and an upper bound \code{mix_upper_bound}$\cdot l^2/\Delta t$ for
+stability. For the dissipation, \code{calc_l_scale} uses the isotropic scale
+$\Delta s = (\Delta x\,\Delta y\,\Delta z)^{1/3}$, reduced in stable air:
+\begin{equation}
+  l = \min\Bigl(\Delta s,\ \max\bigl(0.76\,\sqrt{e}/N,\ 0.001\,\Delta s\bigr)\Bigr) \quad (N^2 > 10^{-6}),
+\end{equation}
+and the coefficient of $\epsilon$ is
+\begin{equation}
+  C = c_{e1} + c_{e2}\,\frac{l}{\Delta s}, \qquad c_{e1} = \frac{c_k}{0.10}\,0.19, \qquad c_{e2} = \max(0, 0.93 - c_{e1}),
+\end{equation}
+with $C = 3.9$ at the lowest and highest levels. The cube root and the power $e^{3/2}$ are evaluated with the
+reproducible \code{rp_pow} (\cref{ch:repro}).
+
+\section{Fluxes and tendencies}
+
+With the eddy coefficients, the stresses are
+\begin{equation}
+  \tau_{ij} = -\mu_d\,K\,D_{ij},
+\end{equation}
+computed by \code{cal_titau_11_22_33}, \code{cal_titau_12_21}, \code{cal_titau_13_31} and \code{cal_titau_23_32}.
+Their divergence gives the momentum tendencies:
+\begin{itemize}
+  \item horizontal: \code{horizontal_diffusion_u_2}, \code{_v_2}, \code{_w_2};
+  \item vertical: \code{vertical_diffusion_u_2}, \code{_v_2}, \code{_w_2}.
+\end{itemize}
+Scalars (θ, moisture, TKE) diffuse with the heat diffusivities: \code{horizontal_diffusion_s} and
+\code{vertical_diffusion_s}.
+\begin{itemize}
+  \item At the surface, the vertical fluxes are not diffusive: they come from the surface layer scheme
+    (\cref{ch:sfc}), as stresses $u_*^2$ and fluxes of heat and moisture.
+  \item With \code{m_opt = 1}, the stresses are also kept for output (\code{nba_mij}).
+\end{itemize}
+
+\begin{portnote}
+\code{cal_deform_and_div} and the horizontal diffusion routines are long sequences of short loop nests over the whole
+domain: dozens of nests, each reading and writing whole 3D fields. On the GPU each nest is one kernel, in source
+order (59 launches for \code{cal_deform_and_div} alone in the port, \cref{ch:subsys}), so this part of the step is
+dominated by memory traffic and launches. It is a prime candidate for fusion and tiling (\cref{ch:fusion,ch:tiling}).
+\end{portnote}
+
+\section{Damping}
+
+\paragraph{Rayleigh damping of $w$ at the top} (\code{damp_opt = 3}). In the top \code{zdamp} metres (5000~m by
+default), $w$ is relaxed toward zero inside the implicit acoustic solve, in \code{advance_w}. The weight is
+\begin{equation}
+  d(z) = \Delta\tau\,\gamma_r\,\sin^2\!\left(\frac{\pi}{2}\,\frac{z - z_b}{z_{\mathrm{damp}}}\right) \quad (z > z_b),
+  \qquad W \gets \frac{W - d\,\mu_f\,W^{\mathrm{old}}}{1 + d},
+\end{equation}
+where $z_b$ is the bottom of the layer and $\gamma_r$ is \code{dampcoef} (0.2~s$^{-1}$). The square of the sine is
+written as two calls of \code{rp_sin} multiplied, as in the source. Damping absorbs gravity waves that would reflect
+from the rigid lid.
+
+\paragraph{Vertical-velocity damping} (\code{w_damping = 1}). Where the vertical Courant number exceeds a threshold
+(\code{w_crit_cfl}), \src{dyn_em/module_big_step_utilities_em.F}{w_damp} adds a damping tendency to $W$. This
+prevents instability in strong updrafts, such as those over an intense fire. The routine also reports the maximum
+Courant numbers; the port computes them with exact maximum reductions.
+
+\paragraph{Divergence damping and the external-mode filter} act in the acoustic steps (\cref{ch:time}).

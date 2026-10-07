@@ -1,24 +1,134 @@
 \chapter{Lateral boundaries and nesting}\label{ch:bdy}
 
-How the outer domain is driven by boundary files, how the nest is driven by the outer domain, and the physical boundary conditions.
-
-\begin{outline}[(card B-06)]
-\textbf{Sections.}
+A limited-area model needs information from outside its domain. WRF's outer domain takes it from the boundary file
+of \cref{ch:icbc}; each nest takes it from its parent during the run. This chapter describes:
 \begin{itemize}
-    \item \textbf{Specified and relaxation zones.} \code{spec_zone}, \code{relax_zone}; the boundary arrays and their tendencies; \code{relax_bdytend_core}, \code{spec_bdytend}, \code{spec_bdyupdate}.
-    \item \textbf{One-way nesting.} \code{med_force_domain}: coupling, interpolation from the parent (\code{bdy_interp}), uncoupling; why couple-then-uncouple is not the identity in floating point.
-    \item \textbf{Physical boundaries.} \code{set_physical_bc2d}, \code{set_physical_bc3d}; flow-dependent boundaries for scalars.
-    \item \textbf{Time interpolation.} Boundary tendencies in time; the 3-hourly boundary file.
+  \item the specified and relaxation zones of the outer domain;
+  \item the other lateral boundary types;
+  \item how a nest is forced by its parent, and how it can feed back.
 \end{itemize}
-\textbf{Sources.} \citet{skamarock2019}.
 
-\textbf{Code.}
+\section{Specified and relaxation zones}
+
+The outer $w_b$ rows and columns of the domain (\code{spec_bdy_width}, 5 by default) form the boundary zone,
+divided into two parts:
 \begin{itemize}
-    \item \code{share/module_bc.F}: \code{relax_bdytend_core}, \code{spec_bdytend}, \code{spec_bdyupdate}, \code{flow_dep_bdy}, \code{set_physical_bc2d}, \code{set_physical_bc3d}
-    \item \code{dyn_em/module_bc_em.F}: \code{relax_bdy_dry}, \code{spec_bdy_dry}, \code{spec_bdy_final}
-    \item \code{share/mediation_force_domain.F}: \code{med_force_domain}
-    \item \code{dyn_em/couple_or_uncouple_em.F}: \code{couple_or_uncouple_em}
-    \item \code{share/interp_fcn.F}: \code{bdy_interp}
+  \item the \emph{specified zone}, the outermost \code{spec_zone} points (1 by default);
+  \item the \emph{relaxation zone}, the next \code{relax_zone - 1} points (\code{relax_zone} = 4 by default, so three
+    points).
 \end{itemize}
-\textbf{The port.} Boundary updates are one kernel per strip (Template G). Nest forcing stays on the host until Phase 5, which moves only the data the host interpolation reads.
-\end{outline}
+
+\paragraph{Specified zone.} There the prognostic variables follow the boundary data exactly. The slow tendency is
+replaced by the time derivative of the boundary values
+(\src{share/module_bc.F}{spec_bdytend}). In every acoustic sub-step the zone is updated with that derivative
+(\src{share/module_bc.F}{spec_bdyupdate}), so it is never computed from the model's own equations.
+
+\paragraph{Relaxation zone.} There the model is nudged toward the boundary data. With $\psi_{LS}$ the boundary value
+at the current time, $\psi_{LS} = \psi_b(t_n) + (t - t_n)\,\partial_t\psi_b$ (the code's
+\code{field_bdy + dtbc*field_bdy_tend}), and $n$ the distance in grid points from the edge, the tendency gets
+\begin{equation}
+  \left.\pd{\psi}{t}\right|_n \mathrel{+}= F_1(n)\,(\psi_{LS} - \psi) - F_2(n)\,\Delta^2(\psi_{LS} - \psi),
+  \label{eq:relax}
+\end{equation}
+where $\Delta^2$ is the five-point Laplacian
+$\Delta^2 f = f_{i-1,j} + f_{i+1,j} + f_{i,j-1} + f_{i,j+1} - 4 f_{i,j}$. The weights decrease linearly from the
+edge inward, as set in \code{dyn_em/module_bc_em.F}:
+\begin{equation}
+  F_1(n) = \frac{0.1}{\Delta t}\,\frac{n_s + n_r - n}{n_r - 1}, \qquad
+  F_2(n) = \frac{1}{50\,\Delta t}\,\frac{n_s + n_r - n}{n_r - 1},
+\end{equation}
+with $n_s$ = \code{spec_zone} and $n_r$ = \code{relax_zone}. An optional exponential decay (\code{spec_exp})
+multiplies both. The relaxation is applied to the mass-coupled variables: \code{mass_weight} couples them first, and
+\src{share/module_bc.F}{relax_bdytend_core} evaluates \cref{eq:relax} strip by strip (south, north, west, east).
+
+\begin{algorithm}[ht]
+\caption{The southern strip of \code{relax_bdytend_core} for one field.}
+\label{alg:relax}
+\begin{algorithmic}[1]
+\For{$j$ from the inner edge of the specified zone to the inner edge of the relaxation zone}
+  \State $n \gets j - j_{\mathrm{bs}}$ \Comment{distance from the edge}
+  \For{$k$, then $i$ inside the strip}
+    \State $f_0 \gets \psi_{LS}(i,j) - \psi(i,j)$; \quad $f_1, f_2, f_3, f_4$ the same at $i\mp1$, $j\mp1$
+    \State $T(i,k,j) \gets T(i,k,j) + F_1(n)\,f_0 - F_2(n)\,(f_1 + f_2 + f_3 + f_4 - 4 f_0)$
+  \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+The four strips of \cref{alg:relax} overlap at the corners, and each strip runs over its own index ranges. The GPU
+version keeps one kernel per strip, in the original order (Template G, kernels K-RLX-YS, -YE, -XS, -XE). Merging the
+strips into one launch is a later, bit-neutral optimization (\cref{ch:fusion}).
+\end{portnote}
+
+\section{Other boundary types}
+
+\begin{description}
+  \item[Open] (\code{open_xs}, \dots) Radiation conditions let waves leave the domain: normal momentum is extrapolated
+    from inside and advected out, and inflow uses zero-gradient values. The idealized fire case (S-3M) uses them.
+  \item[Periodic] (\code{periodic_x}, \code{periodic_y}) The halo of one side is filled from the other.
+  \item[Symmetric] (\code{symmetric_xs}, \dots) Mirror conditions.
+  \item[Nested] As specified, with values from the parent.
+\end{description}
+Physical boundary conditions in the code are applied by
+\src{share/module_bc.F}{set_physical_bc3d} and \code{set_physical_bc2d}. On a single rank they fill the halo cells of
+the domain edges. Their $x$ part must run before their $y$ part, because the $y$ copies read the corners that the $x$
+copies wrote.
+
+\section{Nesting}
+
+A nest is a finer grid inside a parent. It runs \code{parent_time_step_ratio} steps (9 in the case) for each parent
+step. The recursive driver \src{frame/module_integrate.F}{integrate} does, for each parent step:
+\begin{enumerate}
+  \item one step of the parent (\code{solve_interface});
+  \item for each nest:
+    \begin{itemize}
+      \item force its boundaries from the parent (\code{med_nest_force});
+      \item integrate it over the parent's step (a recursive call of \code{integrate});
+      \item with two-way nesting, feed its solution back into the parent (\code{med_nest_feedback}).
+    \end{itemize}
+\end{enumerate}
+The case runs one-way (\code{feedback = 0}), so the feedback step is skipped.
+
+\subsection{Forcing a nest}
+
+\src{share/mediation_force_domain.F}{med_force_domain} gives a nest its boundary values for the coming parent step.
+\begin{algorithm}[ht]
+\caption{Forcing one nest for one parent step (\code{med_force_domain}).}
+\label{alg:force}
+\begin{algorithmic}[1]
+\State allocate an \emph{intermediate} domain: the part of the parent that covers the nest, on the parent's grid
+\State couple the parent's and the nest's prognostic fields with their column mass and map factors (\code{couple_or_uncouple_em}, couple)
+\State copy the parent's fields that the nest needs into the intermediate domain (\code{interp_domain_em_part1}); on several ranks this is a redistribution
+\State interpolate from the intermediate domain to the nest's boundary zone; compute the nest's boundary values and their tendencies over the parent step (\code{force_domain_em_part2}, \code{bdy_interp})
+\State uncouple both domains again
+\State free the intermediate domain
+\end{algorithmic}
+\end{algorithm}
+
+The interpolation is selected by \code{interp_method_type}: bilinear, or the default \code{sint}, a smoothed
+interpolation that conserves averages. The fields to interpolate, and how, are declared in the Registry with the
+\code{f} (force) and \code{d} (down) flags (\cref{ch:arch}). Among them is \code{o3rad}, the ozone climatology of the
+radiation, which the nest takes in full from the parent.
+
+\paragraph{Couple, then uncouple.} Coupling multiplies a field by $\mu_d/m$; uncoupling multiplies by the stored
+reciprocal. In floating point $x\cdot a\cdot(1/a) \ne x$ in general, so a couple--uncouple pair changes the last bits
+of the nest's and parent's state at every parent step. The CPU reference does this, so the GPU must do it too, in the
+same order, on the device (\cref{ch:subsys}).
+
+\subsection{Feedback and smoothing}
+
+With \code{feedback = 1}, after the nest has caught up, its solution is averaged onto the parent points it covers
+(\code{med_nest_feedback}). The result is optionally smoothed (\code{smooth_option}). This makes the parent see the
+nest's finer structures; it also makes the two domains depend on each other at every parent step.
+
+\begin{portnote}
+For the GPU, nest forcing is a data-movement problem more than a compute problem:
+\begin{itemize}
+  \item the interpolation runs on the host;
+  \item the parent's fields that the host interpolation reads must be copied from the device;
+  \item the nest's boundary arrays and \code{o3rad}, which it writes, must be copied back.
+\end{itemize}
+The port first copies both domains' whole state around the call (a correct but slow bridge). It then replaces this
+with exact lists of fields and rows: a j-slab of the parent and strips of the nest (\cref{ch:subsys}).
+\end{portnote}
