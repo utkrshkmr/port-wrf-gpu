@@ -4024,6 +4024,8 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+   USE module_gpu_work, ONLY : work_p2_g3_var_mix
+
    IMPLICIT NONE
 
    TYPE(grid_config_rec_type), INTENT(IN   ) :: config_flags
@@ -4099,7 +4101,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
 ! LOCAL VAR
 
-   REAL , DIMENSION( ims:ime, kms:kme, jms:jme)  ::    var_mix
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: var_mix
 
    INTEGER :: im, i,j,k
    INTEGER :: i_start, i_end, j_start, j_end
@@ -4126,6 +4128,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
    i_end   = MIN(ite,ide-1)
    j_start = jts
    j_end   = MIN(jte,jde-1)
+
+   var_mix(ims:ime, kms:kme, jms:jme) => &
+        work_p2_g3_var_mix(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
 !
 !-----------------------------------------------------------------------
 
