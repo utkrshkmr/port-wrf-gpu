@@ -27,8 +27,17 @@
 
 #if GPU_WORK_SECTION == 1
    REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g3_var_mix(:)
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g3_titau3(:)
+#endif
 #elif GPU_WORK_SECTION == 2
    CALL gpu_work_alloc_r(work_p2_g3_var_mix, n3d, "work_p2_g3_var_mix")
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_g3_titau3, INT(ni+2,8)*INT(nk,8)*INT(nj+2,8), "work_p2_g3_titau3")
+#endif
 #elif GPU_WORK_SECTION == 3
    CALL gpu_work_check_r(work_p2_g3_var_mix, "work_p2_g3_var_mix", nwork, nbad)
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_g3_titau3, "work_p2_g3_titau3", nwork, nbad)
+#endif
 #endif
