@@ -25,7 +25,25 @@ MODULE module_gpu_tables
 END MODULE module_gpu_tables
 
 SUBROUTINE gpu_update_tables()
-   ! TODO(P1-TAB): under #ifdef WRF_GPU, USE the five modules and CALL their upload routines
+   ! Host upload of every table module (INTERFACES.md I-4). The five routines
+   ! are PUBLIC in those modules and exist only under WRF_GPU (P3-WSM6,
+   ! P3-SFCLAY, P3-NOAH, P3-SW, P3-RRTMG). This routine does not declare the
+   ! tables. frame/ and main/ call it with no USE.
+#ifdef WRF_GPU
+   USE mp_wsm6, ONLY : wsm6_gpu_upload
+   USE sf_sfclayrev, ONLY : sfclayrev_gpu_upload
+   USE module_sf_noahlsm, ONLY : noahlsm_gpu_upload
+   USE module_ra_sw, ONLY : ra_sw_gpu_upload
+   USE module_ra_rrtmg_lw, ONLY : rrtmg_lw_gpu_upload
+#endif
+   IMPLICIT NONE
+#ifdef WRF_GPU
+   CALL wsm6_gpu_upload()
+   CALL sfclayrev_gpu_upload()
+   CALL noahlsm_gpu_upload()
+   CALL ra_sw_gpu_upload()
+   CALL rrtmg_lw_gpu_upload()
+#endif
 END SUBROUTINE gpu_update_tables
 
 SUBROUTINE gpu_selftest_tab()
