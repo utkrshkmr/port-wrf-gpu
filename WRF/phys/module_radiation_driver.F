@@ -325,7 +325,7 @@ CONTAINS
         work_p3_raddrv_coszen_loc, work_p3_raddrv_hrang_loc, &
         work_p3_raddrv_obscur_loc, work_p3_raddrv_cldfra1_flag, &
         work_p3_raddrv_mask_loc
-   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_RADIATION_DRIVER, R_CALC_COSZEN
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_RADIATION_DRIVER, R_CALC_COSZEN, R_CAL_CLDFRA1
    USE module_gpu_callcheck
 
    !  This driver calls subroutines for the radiation parameterizations.
@@ -8810,6 +8810,9 @@ CONTAINS
 !  REAL thresh
    INTEGER:: i,j,k
    REAL    :: RHUM, tc, esw, esi, weight, qvsw, qvsi, qvs_weight, QIMID, QWMID, QCLD, DENOM, ARG, SUBSAT
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
    REAL    ,PARAMETER :: ALPHA0=100., GAMMA=0.49, QCLDMIN=1.E-12,    &
                                         PEXP=0.25, RHGRID=1.0
@@ -8863,6 +8866,91 @@ CONTAINS
 
 !---------------------------------------------------------------------
 
+#ifdef WRF_GPU
+      IF (.NOT. (PRESENT(F_QI) .AND. PRESENT(F_QC) .AND. PRESENT(F_QS))) THEN
+         CALL wrf_error_fatal('cal_cldfra1: F_QI F_QC or F_QS absent not ported to the GPU')
+      END IF
+      IF (.NOT. (F_QI .AND. F_QC .AND. F_QS)) THEN
+         CALL wrf_error_fatal('cal_cldfra1: F_QI F_QC or F_QS false not ported to the GPU')
+      END IF
+      IF (mp_physics .EQ. FER_MP_HIRES .OR. mp_physics .EQ. FER_MP_HIRES_ADVECT) THEN
+         CALL wrf_error_fatal('cal_cldfra1: FER_MP_HIRES not ported to the GPU')
+      END IF
+#endif
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_CAL_CLDFRA1)) THEN
+        CALL gpu_cc_save_r(1, cldfra, SIZE(cldfra,KIND=8))
+        CALL gpu_cc_save_i0(2, mp_physics)
+        CALL gpu_cc_save_i(3, cldfra1_flag, SIZE(cldfra1_flag,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CAL_CLDFRA1)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
+          IF (PRESENT(f_ice_phy)) THEN
+!$acc update device(f_ice_phy)
+          END IF
+          IF (PRESENT(f_rain_phy)) THEN
+!$acc update device(f_rain_phy)
+          END IF
+        ELSE
+!$acc update self(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag)
+          IF (PRESENT(f_ice_phy)) THEN
+!$acc update self(f_ice_phy)
+          END IF
+          IF (PRESENT(f_rain_phy)) THEN
+!$acc update self(f_rain_phy)
+          END IF
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+#ifdef WRF_GPU
+! K-RAD-CF1. WSM6 path: F_QI, F_QC, and F_QS present and true.
+! Other flag combinations and FER_MP_HIRES stop before the island.
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_CLDFRA1)) default(none) &
+!$acc& present(cldfra, qv, qc, qi, qs, t_phy, p_phy, cldfra1_flag) &
+!$acc& firstprivate(jts, jte, kts, kte, its, ite, f_qi, f_qc, f_qs) &
+!$acc& private(rhum, tc, esw, esi, weight, qvsw, qvsi, qvs_weight, qcld, denom, arg, subsat)
+    DO j = jts,jte
+    DO k = kts,kte
+    DO i = its,ite
+      tc         = t_phy(i,k,j) - SVPT0
+      esw     = 1000.0 * SVP1 * rp_exp( SVP2  * tc / ( t_phy(i,k,j) - SVP3  ) )
+      esi     = 1000.0 * SVP1 * rp_exp( SVPI2 * tc / ( t_phy(i,k,j) - SVPI3 ) )
+      QVSW = EP_2 * esw / ( p_phy(i,k,j) - esw )
+      QVSI = EP_2 * esi / ( p_phy(i,k,j) - esi )
+         IF ( F_QI .and. F_QC .and. F_QS) THEN
+            QCLD = QI(i,k,j)+QC(i,k,j)+QS(i,k,j)
+            IF (QCLD .LT. QCLDMIN) THEN
+               weight = 0.
+            ELSE
+               weight = (QI(i,k,j)+QS(i,k,j)) / QCLD
+            ENDIF
+         ENDIF
+      QVS_WEIGHT = (1-weight)*QVSW + weight*QVSI
+      RHUM=QV(i,k,j)/QVS_WEIGHT
+      cldfra1_flag(i,k,j) = 0
+      IF (QCLD .LT. QCLDMIN) THEN
+        CLDFRA(i,k,j)=0.
+        cldfra1_flag(i,k,j) = 1
+      ELSEIF(RHUM.GE.RHGRID)THEN
+        CLDFRA(i,k,j)=1.
+        cldfra1_flag(i,k,j) = 2
+      ELSE
+         cldfra1_flag(i,k,j) = 3
+        SUBSAT=MAX(1.E-10,RHGRID*QVS_WEIGHT-QV(i,k,j))
+        DENOM=rp_pow((SUBSAT), GAMMA)
+        ARG=MAX(-6.9, -ALPHA0*QCLD/DENOM)
+        RHUM=MAX(1.E-10, RHUM)
+        CLDFRA(i,k,j)=rp_pow((RHUM/RHGRID), PEXP)*(1.-rp_exp(ARG))
+        IF (CLDFRA(i,k,j) .LT. .01) CLDFRA(i,k,j)=0.
+     ENDIF
+    ENDDO
+    ENDDO
+    ENDDO
+#else
     DO j = jts,jte
     DO k = kts,kte
     DO i = its,ite
@@ -8990,6 +9078,25 @@ CONTAINS
     ENDDO          !--- End DO i
     ENDDO          !--- End DO k
     ENDDO          !--- End DO j
+#endif
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(cldfra, cldfra1_flag)
+        ELSE
+!$acc update device(cldfra, cldfra1_flag)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CAL_CLDFRA1)) THEN
+        CALL gpu_cc_done_r(1, cldfra, SIZE(cldfra,KIND=8), 'cldfra', &
+          LBOUND(cldfra), UBOUND(cldfra))
+        CALL gpu_cc_done_i0(2, mp_physics, 'mp_physics')
+        CALL gpu_cc_done_i(3, cldfra1_flag, SIZE(cldfra1_flag,KIND=8), 'cldfra1_flag', &
+          LBOUND(cldfra1_flag), UBOUND(cldfra1_flag))
+        IF (gpu_cc_next(R_CAL_CLDFRA1)) GOTO 99901
+      END IF
+#endif
 
    END SUBROUTINE cal_cldfra1
 
