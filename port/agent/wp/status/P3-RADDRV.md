@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p3_raddrv
-- Last commit: solar_eclipse routine seq (this commit). radiation_driver 19267e0f8bc371a90489442fb1bd336a23c03921. Hoist 973358a4d4e2e3e90f0209365a6f614c9700db0e. Task 1 01f918788f7056be4037148e7e33e90c962462eb.
+- Last commit: calc_coszen (this commit). solar_eclipse 78dcf646decaa5bb5a0f4284df635a7aceab7eba. radiation_driver 19267e0f8bc371a90489442fb1bd336a23c03921.
 
 ## Items
 
@@ -13,14 +13,14 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-RAD-ACC | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A inside the RRTMG LW accumulation select. |
 | K-RAD-CLDT | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template C, k loop seq downward. CPU loop kept under #else. |
 | K-RAD-ECL | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A. One thread calls solar_eclipse. routine seq is the solar_eclipse commit. |
-| K-RAD-COSZ | todo | |  |
+| K-RAD-COSZ | coded | this commit | Template A, collapse(2). Island pasted. Host scalars da, eot, xt24 stay outside the kernel. |
 | K-RAD-CF0 | todo | | Zero nest is in the radiation_driver commit. cal_cldfra1 (K-RAD-CF1) still open. |
 | K-RAD-Z | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Two template A nests: 2D fluxes/GLAT/GLON, then 3D heating and CEMISS. |
 | K-OZT | todo | |  |
 | K-OZP | todo | |  |
 | K-RAD-LWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A. PRESENT(OLR) hoisted to the host. |
 | K-RAD-SWPOST | coded | 19267e0f8bc371a90489442fb1bd336a23c03921 | Template A: SW heating, SWDOWN, direct/diffuse split, diffuse_frac. |
-| solar_eclipse | coded | this commit | !$acc routine seq. Device body is the sw_eclipse == 0 zero. CPU body kept under #else. |
+| solar_eclipse | coded | 78dcf646decaa5bb5a0f4284df635a7aceab7eba | !$acc routine seq. Device body is the sw_eclipse == 0 zero. CPU body kept under #else. |
 | task 1: shared refactor (separate commit): radiation_driver's automatic arrays... | coded | 01f918788f7056be4037148e7e33e90c962462eb | REAL arrays via gpu_work_alloc_r. INTEGER cldfra1_flag and mask_loc allocated in the include (no gpu_work_alloc_i). ozmixt sized n2d*59, aerodt n2d*72. arith_guard CPU-view diffs expected. |
 | task 2: shared refactor (separate commit), the hoist of row 8.5:hoist (plan.md... | coded | 973358a4d4e2e3e90f0209365a6f614c9700db0e | Removed the per-call RRTMG_LWINIT in the RRTMG_LWSCHEME case, and dropped rrtmg_lwinit from the USE list. module_physics_init still calls it once. arith_guard CPU-view diffs expected. |
 
@@ -38,3 +38,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Hoist 8.5: the per-call CALL RRTMG_LWINIT in radiation_driver is gone. NLAYERS stays the value set at init.
 - radiation_driver: island pasted, case-path kernels under OpenACC, other schemes stop with wrf_error_fatal before the entry island. Also kernels for qc/qi save and restore, qc_temp, and BL clouds (icloud_bl default 1). kernel_lint 20 kernels, 0 errors, W2 on solar_eclipse until the seq commit. arith_guard GPU-view clean; CPU-view diffs are the shared refactors.
 - solar_eclipse: !$acc routine seq. Under WRF_GPU the body is the sw_eclipse == 0 zero and return. The file-read path stays in the CPU view. kernel_lint W2 cleared. arith_guard PASS.
+- calc_coszen: K-RAD-COSZ template A. Island and call check pasted. kernel_lint 21 kernels, 0 errors. arith_guard GPU-view clean.

@@ -325,7 +325,7 @@ CONTAINS
         work_p3_raddrv_coszen_loc, work_p3_raddrv_hrang_loc, &
         work_p3_raddrv_obscur_loc, work_p3_raddrv_cldfra1_flag, &
         work_p3_raddrv_mask_loc
-   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_RADIATION_DRIVER
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_RADIATION_DRIVER, R_CALC_COSZEN
    USE module_gpu_callcheck
 
    !  This driver calls subroutines for the radiation parameterizations.
@@ -8490,11 +8490,35 @@ CONTAINS
 
        integer :: i,j
        real    :: da,eot,xt24,tloctm,xxlat
+#ifdef WRF_GPU
+       LOGICAL :: gpu_isl
+#endif
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_CALC_COSZEN)) THEN
+        CALL gpu_cc_save_r(1, coszen, SIZE(coszen,KIND=8))
+        CALL gpu_cc_save_r(2, hrang, SIZE(hrang,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CALC_COSZEN)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(xlon, xlat, coszen, hrang)
+        ELSE
+!$acc update self(xlon, xlat, coszen, hrang)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
        da=6.2831853071795862*(julian-1)/365.
        eot=(0.000075+0.001868*rp_cos(da)-0.032077*rp_sin(da) &
             -0.014615*rp_cos(2*da)-0.04089*rp_sin(2*da))*(229.18)
        xt24=rp_mod(xtime,1440.)+eot
+! K-RAD-COSZ
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALC_COSZEN)) default(none) &
+!$acc& present(xlon, xlat, coszen, hrang) &
+!$acc& firstprivate(jts, jte, its, ite, gmt, xt24, degrad, declin) &
+!$acc& private(tloctm, xxlat)
        do j=jts,jte
           do i=its,ite
              tloctm=gmt+xt24/60.+xlon(i,j)/15.
@@ -8505,6 +8529,23 @@ CONTAINS
              coszen(i, j) = min (max (coszen(i, j), -1.0), 1.0)
           enddo
        enddo
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(coszen, hrang)
+        ELSE
+!$acc update device(coszen, hrang)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CALC_COSZEN)) THEN
+        CALL gpu_cc_done_r(1, coszen, SIZE(coszen,KIND=8), 'coszen', &
+          LBOUND(coszen), UBOUND(coszen))
+        CALL gpu_cc_done_r(2, hrang, SIZE(hrang,KIND=8), 'hrang', &
+          LBOUND(hrang), UBOUND(hrang))
+        IF (gpu_cc_next(R_CALC_COSZEN)) GOTO 99901
+      END IF
+#endif
    END SUBROUTINE calc_coszen
 
    subroutine update_swinterp_parameters(ims,ime,jms,jme,its,ite,jts,jte, &
