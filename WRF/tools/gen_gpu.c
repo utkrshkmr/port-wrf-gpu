@@ -10,10 +10,11 @@
      gpu_pack_force_strips.inc     nest FORCE_DOWN bdy_interp strip packs
      gpu_upd_dev_force_full.inc    host -> device of other FORCE_DOWN fields (o3rad)
 
-   The three original lists are unchanged. The Phase 5 lists are emitted by
-   gen_gpu_force (P5.2): by address through module_gpu_map, never a grid
-   component in an OpenACC clause. A j-slab is the contiguous section
-   grid%x(:,:,js:je) or (:,js:je), or one index of each dimension after j.
+   The three original lists keep their walk. gpu_upd_host_all.inc omits imask_*
+   (P5.3: host-only between steps; S3/S4 download them no longer). The Phase 5
+   lists are emitted by gen_gpu_force (P5.2): by address through module_gpu_map,
+   never a grid component in an OpenACC clause. A j-slab is the contiguous
+   section grid%x(:,:,js:je) or (:,js:je), or one index of each dimension after j.
 
    Each update is a call of the by-address mapping routines of
    WRF/frame/module_gpu_map.F (gpu_map_call below, also used by gen_allocs.c
@@ -48,6 +49,7 @@
 static int gen_gpu1 ( char * dirname , char * fn , char * dir , int which ) ;
 static int gen_gpu2 ( FILE * fp , char * structname , char * structname2 , node_t * node , char * dir , int which ) ;
 static int gen_gpu_force ( char * dirname ) ;
+static int gpu_host_only_between_steps ( char * name ) ;
 
 /* One call of the by-address mapping routines (WRF/frame/module_gpu_map.F)
    for the field structname//fname//suffix of node p.  guard: a Fortran
@@ -101,6 +103,21 @@ gen_gpu1 ( char * dirname , char * fn , char * dir , int which )
   return(0) ;
 }
 
+/* P5.3 step 1. imask_* is written only by host forcing and is never computed
+   on the device. Leave it out of the device-to-host whole-state list, which
+   gpu_upd_host_stream includes for S3/S4. The host-to-device list still
+   carries it. The test is the final component after %, so a derived-type
+   path is not matched by a prefix on the parent. */
+static int
+gpu_host_only_between_steps ( char * name )
+{
+  char * leaf ;
+  if ( name == NULL ) return 0 ;
+  leaf = strrchr( name , '%' ) ;
+  leaf = ( leaf == NULL ) ? name : leaf + 1 ;
+  return strncmp( leaf , "imask_" , 6 ) == 0 ;
+}
+
 static int
 gen_gpu2 ( FILE * fp , char * structname , char * structname2 , node_t * node , char * dir , int which )
 {
@@ -142,6 +159,9 @@ gen_gpu2 ( FILE * fp , char * structname , char * structname2 , node_t * node , 
             gpu_map_call( fp , "" , structname , fname , "" , p , dir ) ;
           }
         } else if ( which == GPU_UPD_ALL ) {
+          /* S3/S4: do not let a stale device imask overwrite the host value */
+          if ( !strcmp( dir , "GPU_UPD_FROM" ) && gpu_host_only_between_steps( fname2 ) )
+            continue ;
           fprintf(fp,"IF (in_use_for_config(grid%%id,'%s')) THEN\n", fname2 ) ;
           gpu_map_call( fp , "" , structname , fname , "" , p , dir ) ;
           fprintf(fp,"ENDIF\n") ;
@@ -161,7 +181,8 @@ gen_gpu2 ( FILE * fp , char * structname , char * structname2 , node_t * node , 
   return(0) ;
 }
 
-/* ---- P5.2 nest-forcing lists (do not change gen_gpu1 / gen_gpu2) ---- */
+/* ---- P5.2 nest-forcing lists (gen_gpu_force does not rewrite the three
+   original lists; the imask exclusion above is the only change to gen_gpu2) ---- */
 
 static int
 gpu_open_inc ( char * dirname , char * fn , char * path , FILE ** fp )
