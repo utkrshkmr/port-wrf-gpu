@@ -24,3 +24,13 @@
 !
 ! Names start with work_p2_b2_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+
+#ifdef WRF_GPU
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_b2_fqy3(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p2_b2_fqy3, n3d, "work_p2_b2_fqy3")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p2_b2_fqy3, "work_p2_b2_fqy3", nwork, nbad)
+#endif
+#endif

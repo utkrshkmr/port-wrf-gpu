@@ -1540,6 +1540,11 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
                         ims, ime, jms, jme, kms, kme,  &
                         its, ite, jts, jte, kts, kte  )
 
+#ifdef WRF_GPU
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_ADVECT_V
+   USE module_gpu_callcheck
+   USE module_gpu_work, ONLY : work_p2_b2_fqy3
+#endif
    IMPLICIT NONE
    
    ! Input data
@@ -1599,6 +1604,14 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
    INTEGER :: jp1, jp0, jtmp
 
+#ifdef WRF_GPU
+#include "gpu_col.h"
+   LOGICAL :: gpu_isl
+   LOGICAL :: polar
+   REAL :: vflux_col(WRF_KMAX+1)
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: fqy3
+#endif
+
 
 ! definition of flux operators, 3rd, 4th, 5th or 6th order
 
@@ -1625,6 +1638,358 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
    LOGICAL :: specified
 
+#ifdef WRF_GPU
+! h5/v3 only.  Periodic, symmetric and polar boundaries are not ported.
+! Open boundaries are: the smoke case takes them.
+      specified = .false.
+      if(config_flags%specified .or. config_flags%nested) specified = .true.
+      ktf=MIN(kte,kde-1)
+      horz_order = config_flags%h_mom_adv_order
+      vert_order = config_flags%v_mom_adv_order
+      IF (horz_order /= 5 .OR. vert_order /= 3) &
+           CALL wrf_error_fatal('advect_v: order not ported to the GPU')
+      IF (config_flags%periodic_x .OR. config_flags%periodic_y .OR. &
+          config_flags%symmetric_xs .OR. config_flags%symmetric_xe .OR. &
+          config_flags%symmetric_ys .OR. config_flags%symmetric_ye .OR. &
+          config_flags%polar) &
+           CALL wrf_error_fatal('advect_v: boundary option not ported to the GPU')
+! Entry island (gen_island.py).  The generator names the flux4 statement
+! function as the first executable; the island is the first real executable.
+99901 CONTINUE
+      IF (gpu_cc_start(R_ADVECT_V)) THEN
+        CALL gpu_cc_save_r(1, tendency, SIZE(tendency,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_ADVECT_V)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(v, v_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, msfvy, &
+!$acc&   msftx, msfty, fzm, fzp, rdzw)
+        ELSE
+!$acc update self(v, v_old, tendency, ru, rv, rom, c1, c2, mut, msfux, msfuy, msfvx, msfvy, msftx, &
+!$acc&   msfty, fzm, fzp, rdzw)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+      fqy3(ims:ime,kms:kme,jms:jme) => work_p2_b2_fqy3(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+      polar = config_flags%polar
+
+! 5th-order horizontal bounds, copied from the horz_order == 5 branch.
+   degrade_xs = .true.
+   degrade_xe = .true.
+   degrade_ys = .true.
+   degrade_ye = .true.
+
+   IF( config_flags%periodic_x   .or. &
+       config_flags%symmetric_xs .or. &
+       (its > ids+3)                ) degrade_xs = .false.
+   IF( config_flags%periodic_x   .or. &
+       config_flags%symmetric_xe .or. &
+       (ite < ide-3)                ) degrade_xe = .false.
+   IF( config_flags%periodic_y   .or. &
+       config_flags%symmetric_ys .or. &
+       (jts > jds+3)                ) degrade_ys = .false.
+   IF( config_flags%periodic_y   .or. &
+       config_flags%symmetric_ye .or. &
+       (jte < jde-3)                ) degrade_ye = .false.
+
+      i_start = its
+      i_end   = MIN(ite,ide-1)
+      j_start = jts
+      j_end   = jte
+
+      j_start_f = j_start
+      j_end_f   = j_end+1
+
+      IF(degrade_ys) then
+        j_start = MAX(jts,jds+1)
+        j_start_f = jds+3
+      ENDIF
+
+      IF(degrade_ye) then
+        j_end = MIN(jte,jde-1)
+        j_end_f = jde-2
+      ENDIF
+
+! K-ADVV-Y1: y face fluxes into fqy3 (Template B)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(fqy3, v, rv) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, j_start_f, j_end_f, jds, jde, kts, ktf, time_step, specified) &
+!$acc& private(vel, vb)
+      DO j = j_start, j_end+1
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         IF( (j >= j_start_f ) .and. (j <= j_end_f) ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+            fqy3( i, k, j ) = vel*advect_v_gpu_flux5(               &
+                    v(i,k,j-3), v(i,k,j-2), v(i,k,j-1),       &
+                    v(i,k,j  ), v(i,k,j+1), v(i,k,j+2),  vel, time_step )
+         ELSE IF ( j == jds+1 ) THEN
+            vb = v(i,k,j-1)
+            IF (specified .AND. v(i,k,j) .LT. 0.) vb = v(i,k,j)
+            fqy3(i, k, j) = 0.25*(rv(i,k,j)+rv(i,k,j-1))  &
+                             *(v(i,k,j)+vb)
+         ELSE IF  ( j == jds+2 ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+            fqy3( i, k, j ) = vel*advect_v_gpu_flux3(      &
+                 v(i,k,j-2),v(i,k,j-1),v(i,k,j),v(i,k,j+1),vel, time_step )
+         ELSE IF ( j == jde ) THEN
+            vb = v(i,k,j)
+            IF (specified .AND. v(i,k,j-1) .GT. 0.) vb = v(i,k,j-1)
+            fqy3(i, k, j) = 0.25*(rv(i,k,j)+rv(i,k,j-1))    &
+                             *(vb+v(i,k,j-1))
+         ELSE IF ( j == jde-1 ) THEN
+            vel = 0.5*(rv(i,k,j)+rv(i,k,j-1))
+            fqy3( i, k, j ) = vel*advect_v_gpu_flux3(     &
+                 v(i,k,j-2),v(i,k,j-1),v(i,k,j),v(i,k,j+1),vel, time_step )
+         END IF
+      ENDDO
+      ENDDO
+      ENDDO
+
+! K-ADVV-Y2: y flux divergence (Template B).  Polar zeros stay in the same test.
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, fqy3, msfvy) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdy, jds, jde, polar) &
+!$acc& private(mrdy)
+      DO j = j_start, j_end+1
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         IF ( polar .AND. (j == jds+1) ) THEN
+            tendency(i,k,j-1) = 0.
+         ELSE IF( polar .AND. (j == jde+1) ) THEN
+            tendency(i,k,j-1) = 0.
+         ELSE IF(j > j_start) THEN
+            mrdy=msfvy(i,j-1)*rdy
+            tendency(i,k,j-1) = tendency(i,k,j-1) - mrdy*(fqy3(i,k,j)-fqy3(i,k,j-1))
+         ENDIF
+      ENDDO
+      ENDDO
+      ENDDO
+
+      i_start = its
+      i_end   = MIN(ite,ide-1)
+
+      j_start = jts
+      j_end   = jte
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+
+      i_start_f = i_start
+      i_end_f   = i_end+1
+
+      IF(degrade_xs) then
+        i_start = MAX(ids+1,its)
+        i_start_f = MIN(i_start+2,ids+3)
+      ENDIF
+
+      IF(degrade_xe) then
+        i_end = MIN(ide-2,ite)
+        i_end_f = ide-3
+      ENDIF
+
+! K-ADVV-X: x face fluxes.  Separate IFs, source order, so a later branch overwrites.
+! fqy3 is reused after Y2.  The xs edge keeps the source i_end+1 expression.
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(fqy3, ru, v) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, i_start_f, i_end_f, kts, ktf, ids, ide, degrade_xs, degrade_xe, time_step) &
+!$acc& private(vel)
+      DO j = j_start, j_end
+      DO k = kts, ktf
+      DO i = i_start, i_end+1
+         IF (i >= i_start_f .AND. i <= i_end_f) THEN
+            vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+            fqy3( i, k, j ) = vel*advect_v_gpu_flux5( v(i-3,k,j), v(i-2,k,j),  &
+                                         v(i-1,k,j), v(i  ,k,j),  &
+                                         v(i+1,k,j), v(i+2,k,j),  &
+                                         vel, time_step          )
+         END IF
+         IF( degrade_xs .AND. i >= i_start .AND. i <= i_start_f-1 ) THEN
+            IF(i == ids+1) THEN
+               fqy3(i,k,j) = 0.25*(ru(i,k,j)+ru(i,k,j-1)) &
+                                *(v(i,k,j)+v(i-1,k,j))
+            ENDIF
+            IF(i == ids+2) THEN
+               vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+               fqy3( i,k,j ) = vel*advect_v_gpu_flux3( v(i-2,k,j), v(i-1,k,j),  &
+                                          v(i  ,k,j), v(i+1,k,j),  &
+                                          vel, time_step          )
+            ENDIF
+         ENDIF
+         IF( degrade_xe .AND. i >= i_end_f+1 .AND. i <= i_end+1 ) THEN
+            IF( i == ide-1 ) THEN
+               fqy3(i,k,j) = 0.25*(ru(i_end+1,k,j)+ru(i_end+1,k,j-1))      &
+                                  *(v(i_end+1,k,j)+v(i_end,k,j))
+            ENDIF
+            IF( i == ide-2 ) THEN
+               vel = 0.5*(ru(i,k,j)+ru(i,k,j-1))
+               fqy3( i,k,j ) = vel*advect_v_gpu_flux3( v(i-2,k,j), v(i-1,k,j),  &
+                                          v(i  ,k,j), v(i+1,k,j),  &
+                                          vel, time_step          )
+            ENDIF
+         ENDIF
+      ENDDO
+      ENDDO
+      ENDDO
+
+! K-ADVV-X: x flux divergence
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, fqy3, msfvy) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, ktf, rdx) &
+!$acc& private(mrdx)
+      DO j = j_start, j_end
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         mrdx=msfvy(i,j)*rdx
+         tendency(i,k,j) = tendency(i,k,j) - mrdx*(fqy3(i+1,k,j)-fqy3(i,k,j))
+      ENDDO
+      ENDDO
+      ENDDO
+
+      IF ( (config_flags%open_ys) .and. jts == jds ) THEN
+        i_start = its
+        i_end   = MIN(ite,ide-1)
+! advect_v open_ys radiation (smoke case; no separate kernel row)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, rv, v_old, mut, c1, c2) &
+!$acc& firstprivate(i_start, i_end, kts, ktf, jts, rdy) &
+!$acc& private(vb)
+        DO i = i_start, i_end
+        DO k = kts, ktf
+          vb = MIN(rv(i,k,jts)-cb*(c1(k)*mut(i,jts)+c2(k)), 0.)
+          tendency(i,k,jts) = tendency(i,k,jts)                    &
+                      - rdy*vb*(v_old(i,k,jts+1) - v_old(i,k,jts))
+        ENDDO
+        ENDDO
+      ENDIF
+
+      IF ( (config_flags%open_ye) .and. jte == jde ) THEN
+        i_start = its
+        i_end   = MIN(ite,ide-1)
+! advect_v open_ye radiation (smoke case; no separate kernel row)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, rv, v_old, mut, c1, c2) &
+!$acc& firstprivate(i_start, i_end, kts, ktf, jte, rdy) &
+!$acc& private(vb)
+        DO i = i_start, i_end
+        DO k = kts, ktf
+          vb = MAX(rv(i,k,jte)+cb*(c1(k)*mut(i,jte-1)+c2(k)), 0.)
+          tendency(i,k,jte) = tendency(i,k,jte)                    &
+                      - rdy*vb*(v_old(i,k,jte) - v_old(i,k,jte-1))
+        ENDDO
+        ENDDO
+      ENDIF
+
+      j_start = jts
+      j_end   = MIN(jte,jde)
+
+      jmin    = jds
+      jmax    = jde-1
+
+      IF (config_flags%open_ys) THEN
+          j_start = MAX(jds+1, jts)
+          jmin = jds
+      ENDIF
+      IF (config_flags%open_ye) THEN
+          j_end = MIN(jte,jde-1)
+          jmax = jde-1
+      ENDIF
+
+   IF( (config_flags%open_xs) .and. (its == ids)) THEN
+! advect_v open_xs radiation (smoke case; no separate kernel row)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, msfvy, ru, v_old, v) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, jmin, jmax, its, rdx) &
+!$acc& private(mrdx, jp, jm, uw, ub, dup, dum)
+      DO j = j_start, j_end
+      DO k = kts, ktf
+         mrdx=msfvy(its,j)*rdx
+         jp = MIN( jmax, j   )
+         jm = MAX( jmin, j-1 )
+          uw = 0.5*(ru(its,k,jp)+ru(its,k,jm))
+          ub = MIN( uw, 0. )
+          dup =  ru(its+1,k,jp)-ru(its,k,jp)
+          dum =  ru(its+1,k,jm)-ru(its,k,jm)
+          tendency(its,k,j)=tendency(its,k,j)-mrdx*(               &
+                            ub*(v_old(its+1,k,j)-v_old(its,k,j))   &
+                           +0.5*v(its,k,j)*(dup+dum))
+      ENDDO
+      ENDDO
+   ENDIF
+
+   IF( (config_flags%open_xe) .and. (ite == ide) ) THEN
+! advect_v open_xe radiation (smoke case; no separate kernel row)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, msfvy, ru, v_old, v) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, jmin, jmax, ite, rdx) &
+!$acc& private(mrdx, jp, jm, uw, ub, dup, dum)
+      DO j = j_start, j_end
+      DO k = kts, ktf
+         mrdx=msfvy(ite-1,j)*rdx
+         jp = MIN( jmax, j   )
+         jm = MAX( jmin, j-1 )
+          uw = 0.5*(ru(ite,k,jp)+ru(ite,k,jm))
+          ub = MAX( uw, 0. )
+          dup = ru(ite,k,jp)-ru(ite-1,k,jp)
+          dum = ru(ite,k,jm)-ru(ite-1,k,jm)
+          tendency(ite-1,k,j)=tendency(ite-1,k,j)-mrdx*(              &
+                            ub*(v_old(ite-1,k,j)-v_old(ite-2,k,j))    &
+                           +0.5*v(ite-1,k,j)*(dup+dum))
+      ENDDO
+      ENDDO
+   ENDIF
+
+    i_start = its
+    i_end   = MIN(ite,ide-1)
+    j_start = jts
+    j_end   = jte
+
+    IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
+    IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+
+! K-ADVV-Z: vertical flux, one column per (j,i).  vflux(kts) and vflux(kte) are set inside.
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_ADVECT_V)) default(none) &
+!$acc& present(tendency, v, rom, fzm, fzp, msfvy, msfvx, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kts, kte, ktf, time_step) &
+!$acc& private(vflux_col, vel, k)
+      DO j = j_start, j_end
+      DO i = i_start, i_end
+         vflux_col(kts) = 0.
+         vflux_col(kte) = 0.
+!$acc loop seq
+         DO k=kts+2,ktf-1
+           vel=0.5*(rom(i,k,j)+rom(i,k,j-1))
+           vflux_col(k) = vel*advect_v_gpu_flux3(               &
+                   v(i,k-2,j), v(i,k-1,j),       &
+                   v(i,k  ,j), v(i,k+1,j), -vel, time_step )
+         ENDDO
+         k=kts+1
+         vflux_col(k)=0.5*(rom(i,k,j)+rom(i,k,j-1))  &
+                                 *(fzm(k)*v(i,k,j)+fzp(k)*v(i,k-1,j))
+         k=ktf
+         vflux_col(k)=0.5*(rom(i,k,j)+rom(i,k,j-1)) &
+                                 *(fzm(k)*v(i,k,j)+fzp(k)*v(i,k-1,j))
+!$acc loop seq
+         DO k=kts,ktf
+            tendency(i,k,j)=tendency(i,k,j)-(msfvy(i,j)/msfvx(i,j))*rdzw(k)*(vflux_col(k+1)-vflux_col(k))
+         ENDDO
+      ENDDO
+      ENDDO
+
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_ADVECT_V)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_ADVECT_V)) GOTO 99901
+      END IF
+      RETURN
+#endif
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
@@ -3023,6 +3388,43 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
    ENDIF vert_order_test
 
 END SUBROUTINE advect_v
+#ifdef WRF_GPU
+! Statement functions of advect_v as module functions (t_tmpl_b.F90, TMPL_NO_STMTFN).
+! F-STMTFN is unrecorded; this form compiles when device code rejects statement functions.
+PURE REAL FUNCTION advect_v_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   advect_v_gpu_flux4 = ( 7.*(q_i + q_im1) - (q_ip1 + q_im2) )/12.0
+END FUNCTION advect_v_gpu_flux4
+
+PURE REAL FUNCTION advect_v_gpu_flux3(q_im2, q_im1, q_i, q_ip1, ua, time_step)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im2, q_im1, q_i, q_ip1, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_v_gpu_flux3 = advect_v_gpu_flux4(q_im2, q_im1, q_i, q_ip1, ua) +                &
+           sign(1,time_step)*sign(1.,ua)*((q_ip1 - q_im2)-3.*(q_i-q_im1))/12.0
+END FUNCTION advect_v_gpu_flux3
+
+PURE REAL FUNCTION advect_v_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   advect_v_gpu_flux6 = ( 37.*(q_i+q_im1) - 8.*(q_ip1+q_im2)   &
+                     +(q_ip2+q_im3) )/60.0
+END FUNCTION advect_v_gpu_flux6
+
+PURE REAL FUNCTION advect_v_gpu_flux5(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua, time_step)
+!$acc routine seq
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua
+   INTEGER, INTENT(IN) :: time_step
+   advect_v_gpu_flux5 = advect_v_gpu_flux6(q_im3, q_im2, q_im1, q_i, q_ip1, q_ip2, ua)    &
+            -sign(1,time_step)*sign(1.,ua)*(                    &
+              (q_ip2-q_im3)-5.*(q_ip1-q_im2)+10.*(q_i-q_im1) )/60.0
+END FUNCTION advect_v_gpu_flux5
+#endif
 
 !-------------------------------------------------------------------
 
