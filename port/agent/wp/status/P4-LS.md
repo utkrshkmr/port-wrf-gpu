@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: coded
 - Branch: agent/wp/p4_ls
-- Last commit: (this commit) WP P4-LS: port advance_ls_reinit
+- Last commit: 7fcc901 WP P4-LS: port advance_ls_reinit
 
 ## Items
 
@@ -18,7 +18,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-TIGN-G | coded | c7784bc | Two integer any-reductions; host repeats the original crash loops if any point is burning in the guard. |
 | K-FLAME | coded | b868984 | Template A. rp_pow(..., 0.46) unchanged. |
 | K-RI-0 | coded | 56421a4 | Template A. lfn_s0 and lfn_s3 in one loop. |
-| K-ALR | coded | (this commit) | One kernel per call; reinit_ls_rk3 calls it three times. Case 4 and the edge ENO1 branch. |
+| K-ALR | coded | 7fcc901 | One kernel per call; reinit_ls_rk3 calls it three times. Case 4 and the edge ENO1 branch. |
 | K-RI-F | coded | 56421a4 | Template A. min(lfn_s3, lfn_in) after the host RK iteration loop. |
 | task 1: shared refactor (separate commit): prop_ls_rk3's automatic array tend ... | coded | 272220f | tend is a contiguous pointer onto work_p4_ls_tend. arith_guard CPU-view change is expected (CODE_ONLY.md §8). |
 | task 2: shared refactor (separate commit, PHASE4.md P4.0 item 4): delete the u... | coded | 585f4d7 | Deleted unused automatic tend_1, tend_2, tend_3. They were never referenced. |
