@@ -11,7 +11,8 @@ MODULE module_sf_noahdrv
       &                         SALP_DATA, REFDK_DATA, REFKDT_DATA, FRZK_DATA, ZBOT_DATA, CZIL_DATA,        &
       &                         SMLOW_DATA, SMHIGH_DATA, LVCOEF_DATA, NSLOPE, &
       &                         FRH2O,ZTOPVTBL,ZBOTVTBL, &
-      &                         LCZ_1,LCZ_2,LCZ_3,LCZ_4,LCZ_5,LCZ_6,LCZ_7,LCZ_8,LCZ_9,LCZ_10,LCZ_11
+      &                         LCZ_1,LCZ_2,LCZ_3,LCZ_4,LCZ_5,LCZ_6,LCZ_7,LCZ_8,LCZ_9,LCZ_10,LCZ_11, &
+      &                         noahlsm_lutype_code, noahlsm_sltype_code
   USE module_sf_urban,    only: urban, oasis, IRI_SCHEME
   USE module_sf_noahlsm_glacial_only, only: sflx_glacial
   USE module_sf_bep,      only: bep
@@ -1105,7 +1106,7 @@ CONTAINS
 #endif
        CALL SFLX (I,J,FFROZP, ISURBAN, DT,ZLVL,NSOIL,SLDPTH,       &    !C
                  LOCAL,                                            &    !L
-                 LUTYPE, SLTYPE,                                   &    !CL
+                 noahlsm_lutype_code(LUTYPE), noahlsm_sltype_code(SLTYPE), &    !CL
                  LWDN,SOLDN,SOLNET,SFCPRS,PRCP,SFCTMP,Q2K,DUMMY,   &    !F
                  DUMMY,DUMMY, DUMMY,                               &    !F PRCPRAIN not used
                  TH2,Q2SAT,DQSDT2,                                 &    !I
@@ -3564,7 +3565,7 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       
              CALL SFLX (I,J,FFROZP, ISURBAN, DT,ZLVL,NSOIL,SLDPTH,       &    !C
                        LOCAL,                                            &    !L
-                       LUTYPE, SLTYPE,                                   &    !CL
+                       noahlsm_lutype_code(LUTYPE), noahlsm_sltype_code(SLTYPE), &    !CL
                        LWDN,SOLDN,SOLNET,SFCPRS,PRCP,SFCTMP,Q2K,DUMMY,   &    !F
                        DUMMY,DUMMY, DUMMY,                               &    !F PRCPRAIN not used
                        TH2,Q2SAT,DQSDT2,                                 &    !I
@@ -4487,7 +4488,7 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       
              CALL SFLX (I,J,FFROZP, ISURBAN, DT,ZLVL,NSOIL,SLDPTH,       &    !C
                        LOCAL,                                            &    !L
-                       LUTYPE, SLTYPE,                                   &    !CL
+                       noahlsm_lutype_code(LUTYPE), noahlsm_sltype_code(SLTYPE), &    !CL
                        LWDN,SOLDN,SOLNET,SFCPRS,PRCP,SFCTMP,Q2K,DUMMY,   &    !F
                        DUMMY,DUMMY, DUMMY,                               &    !F PRCPRAIN not used
                        TH2,Q2SAT,DQSDT2,                                 &    !I

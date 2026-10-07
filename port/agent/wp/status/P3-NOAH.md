@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p3_noah
-- Last commit:
+- Last commit: c568dc4
 
 ## Items
 
@@ -13,8 +13,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-LSM | todo | | wrapper plus the SFLX tree |
 | K-SEAICE | todo | |  |
 | K-SFCDIAG | todo | |  |
-| 1 shared refactor: iloc/jloc as arguments | coded | | threadprivate module copies removed; IILOC/JJLOC stay as the arguments |
-| 2 shared refactor: LUTYPE/SLTYPE as integer codes | todo | |  |
+| 1 shared refactor: iloc/jloc as arguments | coded | c568dc4 | threadprivate module copies removed; IILOC/JJLOC stay as the arguments |
+| 2 shared refactor: LUTYPE/SLTYPE as integer codes | coded | | SFLX/REDPRM take integer codes; module LUTYPE/SLTYPE stay CHARACTER for table I/O |
 | 3 P1.4 tables (49): declare create, noahlsm_gpu_upload, noahlsm_gpu_tabcheck | todo | |  |
 | 4 port lsm (K-LSM) | todo | |  |
 | 5 port SFLX (K-LSM) | todo | |  |
@@ -57,7 +57,9 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 ## Questions and blockers
 
 - iloc/jloc: the module copies in SFLX, SFLX_GLACIAL and SFLX_SEAICE were assigned and never read. They are removed. IILOC and JJLOC remain the dummy arguments the driver already passes (I, J). No callee signature changed.
+- LUTYPE/SLTYPE: the module variables stay CHARACTER(256) because SOIL_VEG_GEN_PARM reads and broadcasts them as strings. SFLX and REDPRM arguments LLANDUSE and LSOIL were CHARACTER and never read; they are now integers from noahlsm_lutype_code / noahlsm_sltype_code. Unknown names map to 0. That cannot change results, because the old arguments were unused. The A4 soil read still cannot tell STAS from STAS-RUC; the soil tables themselves carry that difference.
 
 ## Log
 
 - Shared refactor: dropped write-only threadprivate iloc/jloc in module_sf_noahlsm, module_sf_noahlsm_glacial_only and module_sf_noah_seaice. arith_guard CPU-view diffs are expected (CODE_ONLY.md §8). Not compiled.
+- Shared refactor: SFLX and REDPRM take integer land-use and soil dataset codes. Host table I/O is unchanged. arith_guard CPU-view diffs are expected. Not compiled.

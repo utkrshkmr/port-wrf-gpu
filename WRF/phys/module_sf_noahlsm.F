@@ -299,7 +299,7 @@ CONTAINS
       INTEGER, INTENT(IN) :: IILOC, JJLOC
       LOGICAL, INTENT(IN)::  LOCAL
       LOGICAL            ::  FRZGRA, SNOWNG
-      CHARACTER (LEN=256), INTENT(IN)::  LLANDUSE, LSOIL
+      INTEGER, INTENT(IN)::  LLANDUSE, LSOIL
 
 ! ----------------------------------------------------------------------
 ! 1. CONFIGURATION INFORMATION (C):
@@ -2397,7 +2397,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
       INTEGER, PARAMETER     :: MAX_SLOPETYP=30,MAX_SOILTYP=30,MAX_VEGTYP=30
       LOGICAL                :: LOCAL
-      CHARACTER (LEN=256), INTENT(IN)::  LLANDUSE, LSOIL
+      INTEGER, INTENT(IN)::  LLANDUSE, LSOIL
 
 ! Veg parameters
       INTEGER, INTENT(IN)    :: VEGTYP
@@ -4753,5 +4753,43 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 ! ----------------------------------------------------------------------
   END SUBROUTINE SFCDIF_off
 ! ----------------------------------------------------------------------
+
+      INTEGER FUNCTION noahlsm_lutype_code(name)
+! Host-only map of the VEGPARM.TBL dataset name onto an integer.
+! SFLX and REDPRM take the code; they do not read the character.
+      IMPLICIT NONE
+      CHARACTER(LEN=*), INTENT(IN) :: name
+      CHARACTER(LEN=256) :: key
+      key = ADJUSTL(name)
+      IF (TRIM(key) .EQ. 'USGS') THEN
+         noahlsm_lutype_code = 1
+      ELSE IF (TRIM(key) .EQ. 'MODIFIED_IGBP_MODIS_NOAH') THEN
+         noahlsm_lutype_code = 2
+      ELSE IF (TRIM(key) .EQ. 'NLCD40') THEN
+         noahlsm_lutype_code = 3
+      ELSE IF (TRIM(key) .EQ. 'USGS-RUC') THEN
+         noahlsm_lutype_code = 4
+      ELSE IF (TRIM(key) .EQ. 'MODI-RUC') THEN
+         noahlsm_lutype_code = 5
+      ELSE
+         noahlsm_lutype_code = 0
+      END IF
+      END FUNCTION noahlsm_lutype_code
+
+      INTEGER FUNCTION noahlsm_sltype_code(name)
+! Host-only map of the SOILPARM.TBL dataset name onto an integer.
+! The reader stores SLTYPE with A4, so STAS-RUC arrives as STAS.
+      IMPLICIT NONE
+      CHARACTER(LEN=*), INTENT(IN) :: name
+      CHARACTER(LEN=256) :: key
+      key = ADJUSTL(name)
+      IF (TRIM(key) .EQ. 'STAS') THEN
+         noahlsm_sltype_code = 1
+      ELSE IF (TRIM(key) .EQ. 'STAS-RUC') THEN
+         noahlsm_sltype_code = 2
+      ELSE
+         noahlsm_sltype_code = 0
+      END IF
+      END FUNCTION noahlsm_sltype_code
 
 END MODULE module_sf_noahlsm
