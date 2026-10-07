@@ -1490,6 +1490,12 @@ END SUBROUTINE cal_dampkm
                              ids, ide, jds, jde, kds, kde,       &
                              ims, ime, jms, jme, kms, kme,       &
                              its, ite, jts, jte, kts, kte        )
+#ifdef WRF_GPU
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_CALCULATE_N2
+    USE module_gpu_callcheck
+    USE module_gpu_work, ONLY : work_p2_g2_n2_tmp1, work_p2_g2_n2_qvs, &
+        work_p2_g2_n2_qctmp, work_p2_g2_n2_tmp1sfc, work_p2_g2_n2_tmp1top
+#endif
 
 !-----------------------------------------------------------------------
 ! Begin declarations.
@@ -1533,15 +1539,50 @@ END SUBROUTINE cal_dampkm
     :: coefa, thetaep1, thetaem1, qc_cr, es, tc, qlpqi, qsw, qsi,  &
        tmpdz, xlvqv, thetaesfc, thetasfc, qvtop, qvsfc, thetatop, thetaetop
 
+#ifndef WRF_GPU
     REAL, DIMENSION( its:ite, jts:jte )  &
     :: tmp1sfc, tmp1top
 
     REAL, DIMENSION( its:ite, kts:kte, jts:jte )  &
     :: tmp1, qvs, qctmp
+#else
+    REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: tmp1sfc, tmp1top
+    REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: tmp1, qvs, qctmp
+    INTEGER :: p_qc_l, p_qv_l
+    LOGICAL :: gpu_isl
+#endif
 
 ! End declarations.
 !-----------------------------------------------------------------------
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_CALCULATE_N2)) THEN
+        CALL gpu_cc_save_r(1, bn2, SIZE(bn2,KIND=8))
+        CALL gpu_cc_save_r(2, moist, SIZE(moist,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CALCULATE_N2)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(bn2, moist, theta, t, p, p8w, t8w, dnw, dn, rdz, rdzw)
+        ELSE
+!$acc update self(bn2, moist, theta, t, p, p8w, t8w, dnw, dn, rdz, rdzw)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+    tmp1(its:ite, kts:kte, jts:jte) => work_p2_g2_n2_tmp1( &
+         1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+    qvs(its:ite, kts:kte, jts:jte) => work_p2_g2_n2_qvs( &
+         1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+    qctmp(its:ite, kts:kte, jts:jte) => work_p2_g2_n2_qctmp( &
+         1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+    tmp1sfc(its:ite, jts:jte) => work_p2_g2_n2_tmp1sfc( &
+         1:(ite-its+1)*(jte-jts+1))
+    tmp1top(its:ite, jts:jte) => work_p2_g2_n2_tmp1top( &
+         1:(ite-its+1)*(jte-jts+1))
+    p_qc_l = P_QC
+    p_qv_l = P_QV
+#endif
     qc_cr   = 0.00001  ! in Kg/Kg
 
     ktf     = MIN( kte, kde-1 )
@@ -1565,14 +1606,24 @@ END SUBROUTINE cal_dampkm
       IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
 
     IF ( P_QC .GT. PARAM_FIRST_SCALAR) THEN
+! K-N2-1: qctmp from moist (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(qctmp, moist) firstprivate(j_start, j_end, kts, ktf, i_start, i_end, p_qc_l)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
+#ifdef WRF_GPU
+        qctmp(i,k,j) = moist(i,k,j,p_qc_l)
+#else
         qctmp(i,k,j) = moist(i,k,j,P_QC)
+#endif
       END DO
       END DO
       END DO
     ELSE
+! K-N2-1: qctmp zero (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(qctmp) firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -1582,6 +1633,9 @@ END SUBROUTINE cal_dampkm
       END DO
     END IF
 
+! K-N2-2: zero tmp1 (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(tmp1) firstprivate(jts, jte, kts, kte, its, ite)
     DO j = jts, jte
     DO k = kts, kte
     DO i = its, ite
@@ -1590,6 +1644,9 @@ END SUBROUTINE cal_dampkm
     END DO
     END DO
 
+! K-N2-2: zero tmp1sfc and tmp1top (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(tmp1sfc, tmp1top) firstprivate(jts, jte, its, ite)
     DO j = jts,jte
     DO i = its,ite
       tmp1sfc(i,j) = 0.0
@@ -1599,6 +1656,9 @@ END SUBROUTINE cal_dampkm
 
     DO ispe = PARAM_FIRST_SCALAR, n_moist
       IF ( ispe .EQ. P_QV .OR. ispe .EQ. P_QC .OR. ispe .EQ. P_QI) THEN
+! K-N2-3: species accumulation into tmp1 (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(tmp1, moist) firstprivate(j_start, j_end, kts, ktf, i_start, i_end, ispe)
         DO j = j_start, j_end
         DO k = kts, ktf
         DO i = i_start, i_end
@@ -1607,6 +1667,10 @@ END SUBROUTINE cal_dampkm
         END DO
         END DO
 
+! K-N2-3: species accumulation into surface and top (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(tmp1sfc, tmp1top, moist, dnw, dn) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, ispe, cf1, cf2, cf3, ktes1, ktes2)
         DO j = j_start, j_end
         DO i = i_start, i_end
           tmp1sfc(i,j) = tmp1sfc(i,j) +  &
@@ -1624,6 +1688,10 @@ END SUBROUTINE cal_dampkm
 
 ! Calculate saturation mixing ratio.
 
+! K-N2-4: saturation mixing ratio qvs (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(qvs, t, p) private(tc, es) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -1634,12 +1702,25 @@ END SUBROUTINE cal_dampkm
     END DO
     END DO
 
+! K-N2-5: BN2 interior (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(bn2, rdz, moist, qvs, qctmp, t, theta, tmp1) &
+!$acc& private(tmpdz, xlvqv, coefa, thetaep1, thetaem1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, qc_cr, p_qv_l)
     DO j = j_start, j_end
     DO k = kts+1, ktf-1
     DO i = i_start, i_end
       tmpdz = 1.0 / rdz(i,k,j) + 1.0 / rdz(i,k+1,j)
+#ifdef WRF_GPU
+      IF ( moist(i,k,j,p_qv_l) .GE. qvs(i,k,j) .OR. qctmp(i,k,j) .GE. qc_cr) THEN
+#else
       IF ( moist(i,k,j,P_QV) .GE. qvs(i,k,j) .OR. qctmp(i,k,j) .GE. qc_cr) THEN
+#endif
+#ifdef WRF_GPU
+        xlvqv      = XLV * moist(i,k,j,p_qv_l)
+#else
         xlvqv      = XLV * moist(i,k,j,P_QV)
+#endif
         coefa      = ( 1.0 + xlvqv / R_d / t(i,k,j) ) / &
                      ( 1.0 + XLV * xlvqv / Cp / R_v / t(i,k,j) / t(i,k,j) ) /  &
                      theta(i,k,j)
@@ -1650,26 +1731,47 @@ END SUBROUTINE cal_dampkm
         BN2(i,k,j) = g * ( coefa * ( thetaep1 - thetaem1 ) / tmpdz -  &
                      ( tmp1(i,k+1,j) - tmp1(i,k-1,j) ) / tmpdz )
       ELSE
+#ifdef WRF_GPU
+        BN2(i,k,j) = g * ( (theta(i,k+1,j) - theta(i,k-1,j) ) /  &
+                     theta(i,k,j) / tmpdz +  &
+                     1.61 * ( moist(i,k+1,j,p_qv_l) - moist(i,k-1,j,p_qv_l) ) / &
+                     tmpdz -   &
+                     ( tmp1(i,k+1,j) - tmp1(i,k-1,j) ) / tmpdz )
+#else
         BN2(i,k,j) = g * ( (theta(i,k+1,j) - theta(i,k-1,j) ) /  &
                      theta(i,k,j) / tmpdz +  &
                      1.61 * ( moist(i,k+1,j,P_QV) - moist(i,k-1,j,P_QV) ) / &
                      tmpdz -   &
                      ( tmp1(i,k+1,j) - tmp1(i,k-1,j) ) / tmpdz )
+#endif
       ENDIF
     END DO
     END DO
     END DO
 
     k = kts
+! K-N2-6: BN2 surface (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(bn2, rdz, rdzw, t8w, p8w, theta, t, qvs, moist, qctmp, tmp1, tmp1sfc) &
+!$acc& private(tmpdz, thetasfc, qvsfc, xlvqv, coefa, thetaep1, thetaesfc) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, k, kts, cf1, cf2, cf3, qc_cr, p_qv_l)
     DO j = j_start, j_end
     DO i = i_start, i_end
       tmpdz     = 1.0 / rdz(i,k+1,j) + 0.5 / rdzw(i,k,j)
       thetasfc  = T8w(i,kts,j) / rp_pow(( p8w(i,k,j) / p1000mb ), ( R_d / Cp ))
+#ifdef WRF_GPU
+      IF ( moist(i,k,j,p_qv_l) .GE. qvs(i,k,j) .OR. qctmp(i,k,j) .GE. qc_cr) THEN
+#else
       IF ( moist(i,k,j,P_QV) .GE. qvs(i,k,j) .OR. qctmp(i,k,j) .GE. qc_cr) THEN
+#endif
         qvsfc     = cf1 * qvs(i,1,j) +  &
                     cf2 * qvs(i,2,j) +  &
                     cf3 * qvs(i,3,j)
+#ifdef WRF_GPU
+        xlvqv      = XLV * moist(i,k,j,p_qv_l)
+#else
         xlvqv      = XLV * moist(i,k,j,P_QV)
+#endif
         coefa      = ( 1.0 + xlvqv / R_d / t(i,k,j) ) /  &
                      ( 1.0 + XLV * xlvqv / Cp / R_v / t(i,k,j) / t(i,k,j) ) /  &
                      theta(i,k,j)
@@ -1680,9 +1782,15 @@ END SUBROUTINE cal_dampkm
         BN2(i,k,j) = g * ( coefa * ( thetaep1 - thetaesfc ) / tmpdz -  &
                      ( tmp1(i,k+1,j) - tmp1sfc(i,j) ) / tmpdz )
       ELSE
+#ifdef WRF_GPU
+        qvsfc     = cf1 * moist(i,1,j,p_qv_l) +  &
+                    cf2 * moist(i,2,j,p_qv_l) +  &
+                    cf3 * moist(i,3,j,p_qv_l)
+#else
         qvsfc     = cf1 * moist(i,1,j,P_QV) +  &
                     cf2 * moist(i,2,j,P_QV) +  &
                     cf3 * moist(i,3,j,P_QV)
+#endif
 !        BN2(i,k,j) = g * ( ( theta(i,k+1,j) - thetasfc ) /  &
 !                     theta(i,k,j) / tmpdz +  &
 !                     1.61 * ( moist(i,k+1,j,P_QV) - qvsfc ) /  &
@@ -1691,11 +1799,19 @@ END SUBROUTINE cal_dampkm
 !...... MARTA: change in computation of BN2 at the surface, WCS 040331
 
         tmpdz= 1./rdzw(i,k,j) ! controlare come calcola rdzw
+#ifdef WRF_GPU
+        BN2(i,k,j) = g * ( ( theta(i,k+1,j) - theta(i,k,j)) /  &
+                     theta(i,k,j) / tmpdz +  &
+                     1.61 * ( moist(i,k+1,j,p_qv_l) - qvsfc ) /  &
+                     tmpdz -  &
+                     ( tmp1(i,k+1,j) - tmp1sfc(i,j) ) / tmpdz  )
+#else
         BN2(i,k,j) = g * ( ( theta(i,k+1,j) - theta(i,k,j)) /  &
                      theta(i,k,j) / tmpdz +  &
                      1.61 * ( moist(i,k+1,j,P_QV) - qvsfc ) /  &
                      tmpdz -  &
                      ( tmp1(i,k+1,j) - tmp1sfc(i,j) ) / tmpdz  )
+#endif
 ! end of MARTA/WCS change
 
       ENDIF
@@ -1704,6 +1820,9 @@ END SUBROUTINE cal_dampkm
 
 
 !...... MARTA: change in computation of BN2 at the top, WCS 040331
+! K-N2-6: BN2 top copy (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALCULATE_N2)) default(none) &
+!$acc& present(bn2) firstprivate(j_start, j_end, i_start, i_end, ktf)
     DO j = j_start, j_end
     DO i = i_start, i_end
        BN2(i,ktf,j)=BN2(i,ktf-1,j)
@@ -1711,6 +1830,23 @@ END SUBROUTINE cal_dampkm
     END DO
 ! end of MARTA/WCS change
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(bn2, moist)
+        ELSE
+!$acc update device(bn2, moist)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CALCULATE_N2)) THEN
+        CALL gpu_cc_done_r(1, bn2, SIZE(bn2,KIND=8), 'bn2', &
+          LBOUND(bn2), UBOUND(bn2))
+        CALL gpu_cc_done_r(2, moist, SIZE(moist,KIND=8), 'moist', &
+          LBOUND(moist), UBOUND(moist))
+        IF (gpu_cc_next(R_CALCULATE_N2)) GOTO 99901
+      END IF
+#endif
     END SUBROUTINE calculate_N2
 
 !=======================================================================

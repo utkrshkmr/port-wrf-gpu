@@ -24,3 +24,31 @@
 !
 ! Names start with work_p2_g2_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+
+! calculate_N2 tile temporaries. GPU view only; the CPU routine keeps its
+! automatic arrays. 3D tiles use n3d; 2D tiles use n2d.
+#if GPU_WORK_SECTION == 1
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_n2_tmp1(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_n2_qvs(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_n2_qctmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_n2_tmp1sfc(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_n2_tmp1top(:)
+#endif
+#elif GPU_WORK_SECTION == 2
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_g2_n2_tmp1, n3d, "work_p2_g2_n2_tmp1")
+   CALL gpu_work_alloc_r(work_p2_g2_n2_qvs, n3d, "work_p2_g2_n2_qvs")
+   CALL gpu_work_alloc_r(work_p2_g2_n2_qctmp, n3d, "work_p2_g2_n2_qctmp")
+   CALL gpu_work_alloc_r(work_p2_g2_n2_tmp1sfc, n2d, "work_p2_g2_n2_tmp1sfc")
+   CALL gpu_work_alloc_r(work_p2_g2_n2_tmp1top, n2d, "work_p2_g2_n2_tmp1top")
+#endif
+#elif GPU_WORK_SECTION == 3
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_g2_n2_tmp1, "work_p2_g2_n2_tmp1", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g2_n2_qvs, "work_p2_g2_n2_qvs", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g2_n2_qctmp, "work_p2_g2_n2_qctmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g2_n2_tmp1sfc, "work_p2_g2_n2_tmp1sfc", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g2_n2_tmp1top, "work_p2_g2_n2_tmp1top", nwork, nbad)
+#endif
+#endif
