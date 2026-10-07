@@ -1824,6 +1824,8 @@ subroutine tign_update(ifts,ifte,jfts,jfte, &              ! tile dims
                        ts,dt,               &              ! scalars in
                        lfn_in,lfn_out,tign  &              ! arrays inout          
                       )
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_TIGN_UPDATE
+USE module_gpu_callcheck
 
 implicit none
 
@@ -1835,7 +1837,28 @@ real::time_now
 integer::i,j,k,kk
 intrinsic epsilon
 character(len=128)::msg
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+      INTEGER :: ierr
+#endif
 !*** executable
+
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_TIGN_UPDATE)) THEN
+        CALL gpu_cc_save_r(1, tign, SIZE(tign,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_TIGN_UPDATE)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(lfn_in, lfn_out, tign)
+        ELSE
+!$acc update self(lfn_in, lfn_out, tign)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+
 
 ! compute ignition time by interpolation
 ! the node was not burning at start but it is burning at end
@@ -1849,6 +1872,9 @@ character(len=128)::msg
     
 time_now=ts+dt
 time_now = time_now + abs(time_now)*epsilon(time_now)*2.
+! K-TIGN-1: ignition time at newly burning nodes (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TIGN_UPDATE)) default(none) &
+!$acc& present(lfn_in, lfn_out, tign) firstprivate(jfts, jfte, ifts, ifte, ts, dt, time_now)
 do j=jfts,jfte
     do i=ifts,ifte
         ! interpolate the cross-over time
@@ -1859,6 +1885,34 @@ do j=jfts,jfte
         if(lfn_out(i,j)>0.)tign(i,j)=time_now
     enddo
 enddo
+#ifdef WRF_GPU
+      ierr = 0
+! K-TIGN-G: j-boundary guard, integer any-reduction
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TIGN_UPDATE)) default(none) &
+!$acc& present(lfn_out) firstprivate(jfts, jfte, ifts, ifte, boundary_guard, jfde) &
+!$acc& reduction(max:ierr)
+do j=jfts,jfte
+  do i=ifts,ifte
+    if ((j.le.boundary_guard .or. j.gt.(jfde-boundary_guard)) .and. lfn_out(i,j).lt.0.) then
+      ierr = 1
+    endif
+  enddo
+enddo
+! K-TIGN-G: i-boundary guard, integer any-reduction
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TIGN_UPDATE)) default(none) &
+!$acc& present(lfn_out) firstprivate(ifts, ifte, jfts, jfte, boundary_guard, ifde) &
+!$acc& reduction(max:ierr)
+do i=ifts,ifte
+  do j=jfts,jfte
+    if ((i.le.boundary_guard .or. i.gt.(ifde-boundary_guard)) .and. lfn_out(i,j).lt.0.) then
+      ierr = 1
+    endif
+  enddo
+enddo
+      IF (ierr .ne. 0) THEN
+        IF (.NOT. gpu_world_host) THEN
+!$acc update self(lfn_out)
+        END IF
 ! stop simulation if fire is within boundary_guard grid points from the domain boundaries 
 do j=jfts,jfte
   if (j.le.boundary_guard .or. j.gt.(jfde-boundary_guard)) then
@@ -1887,9 +1941,55 @@ do i=ifts,ifte
   endif
 enddo
     
+      END IF
+#else
+! stop simulation if fire is within boundary_guard grid points from the domain boundaries 
+do j=jfts,jfte
+  if (j.le.boundary_guard .or. j.gt.(jfde-boundary_guard)) then
+    do i=ifts,ifte
+      if (lfn_out(i,j).lt.0.) then 
+        WRITE(msg,*)'j-boundary reached'
+        CALL wrf_debug(0,msg)
+        WRITE(msg,*)'i,j,lfn_out=',i,j,lfn_out(i,j)
+        CALL wrf_debug(0,msg)
+        call crash('wrf: SUCCESS COMPLETE WRF. Fire has reached domain boundary.')
+      endif
+    enddo
+  endif
+enddo
+do i=ifts,ifte
+  if (i.le.boundary_guard .or. i.gt.(ifde-boundary_guard)) then
+    do j=jfts,jfte
+      if (lfn_out(i,j).lt.0.) then 
+        WRITE(msg,*)'i-boundary reached'
+        CALL wrf_debug(0,msg)
+        WRITE(msg,*)'i,j,lfn_out=',i,j,lfn_out(i,j)
+        CALL wrf_debug(0,msg)
+        call crash('wrf: SUCCESS COMPLETE WRF. Fire has reached domain boundary.')
+      endif
+    enddo
+  endif
+enddo
+    
+#endif
 call print_2d_stats(ifts,ifte,jfts,jfte,ifms,ifme,jfms,jfme, &
                lfn_out,'prop_ls: lfn out')
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tign)
+        ELSE
+!$acc update device(tign)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_TIGN_UPDATE)) THEN
+        CALL gpu_cc_done_r(1, tign, SIZE(tign,KIND=8), 'tign', &
+          LBOUND(tign), UBOUND(tign))
+        IF (gpu_cc_next(R_TIGN_UPDATE)) GOTO 99901
+      END IF
+#endif
 end subroutine tign_update
 
 !
