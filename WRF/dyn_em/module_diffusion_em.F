@@ -52,6 +52,13 @@
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_CAL_DEFORM_AND_DIV
+    USE module_gpu_callcheck
+#ifdef WRF_GPU
+    USE module_gpu_work, ONLY : work_p2_g1_mm, work_p2_g1_zzavg, work_p2_g1_zeta_zd12, &
+                                 work_p2_g1_tmp1, work_p2_g1_hat, work_p2_g1_hatavg
+#endif
+
     IMPLICIT NONE
 
     TYPE( grid_config_rec_type ), INTENT( IN )  &
@@ -91,11 +98,17 @@
     REAL  &
     :: tmp, tmpzx, tmpzy, tmpzeta_z, cft1, cft2
 
+#ifdef WRF_GPU
+    LOGICAL :: gpu_isl, gpu_polar
+    REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: mm, zzavg, zeta_zd12
+    REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: tmp1, hat, hatavg
+#else
     REAL, DIMENSION( its:ite, jts:jte )  &
     :: mm, zzavg, zeta_zd12
 
     REAL, DIMENSION( its-2:ite+2, kts:kte, jts-2:jte+2 )  &
     :: tmp1, hat, hatavg
+#endif
 
 ! End declarations.
 !-----------------------------------------------------------------------
@@ -111,11 +124,43 @@
 ! In the following section, calculate 3-d divergence and the first three
 ! (defor11, defor22, defor33) of six deformation terms.
 
+#ifdef WRF_GPU
+    IF ( config_flags%sfs_opt .GT. 0 ) THEN
+      CALL wrf_error_fatal("cal_deform_and_div: sfs_opt not ported to the GPU")
+    END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_CAL_DEFORM_AND_DIV)) THEN
+        CALL gpu_cc_save_r(1, div, SIZE(div,KIND=8))
+        CALL gpu_cc_save_r(2, defor11, SIZE(defor11,KIND=8))
+        CALL gpu_cc_save_r(3, defor22, SIZE(defor22,KIND=8))
+        CALL gpu_cc_save_r(4, defor33, SIZE(defor33,KIND=8))
+        CALL gpu_cc_save_r(5, defor12, SIZE(defor12,KIND=8))
+        CALL gpu_cc_save_r(6, defor13, SIZE(defor13,KIND=8))
+        CALL gpu_cc_save_r(7, defor23, SIZE(defor23,KIND=8))
+        CALL gpu_cc_save_r(8, nba_rij, SIZE(nba_rij,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CAL_DEFORM_AND_DIV)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij, &
+!$acc&   u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, fnm, fnp, &
+!$acc&   zx, zy)
+        ELSE
+!$acc update self(u, v, w, div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij, &
+!$acc&   u_base, v_base, msfux, msfuy, msfvx, msfvy, msftx, msfty, dn, dnw, rdz, rdzw, fnm, fnp, &
+!$acc&   zx, zy)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+
     ktes1   = kte-1
     ktes2   = kte-2
 
+#ifndef WRF_GPU
     cft2    = - 0.5 * dnw(ktes1) / dn(ktes1)
     cft1    = 1.0 - cft2
+#endif
 
     ktf     = MIN( kte, kde-1 )
 
@@ -124,8 +169,24 @@
     j_start = jts
     j_end   = MIN( jte, jde-1 )
 
+#ifdef WRF_GPU
+    mm(its:ite, jts:jte) => work_p2_g1_mm(1:(ite-its+1)*(jte-jts+1))
+    zzavg(its:ite, jts:jte) => work_p2_g1_zzavg(1:(ite-its+1)*(jte-jts+1))
+    zeta_zd12(its:ite, jts:jte) => work_p2_g1_zeta_zd12(1:(ite-its+1)*(jte-jts+1))
+    tmp1(its-2:ite+2, kts:kte, jts-2:jte+2) => &
+      work_p2_g1_tmp1(1:(ite-its+5)*(kte-kts+1)*(jte-jts+5))
+    hat(its-2:ite+2, kts:kte, jts-2:jte+2) => &
+      work_p2_g1_hat(1:(ite-its+5)*(kte-kts+1)*(jte-jts+5))
+    hatavg(its-2:ite+2, kts:kte, jts-2:jte+2) => &
+      work_p2_g1_hatavg(1:(ite-its+5)*(kte-kts+1)*(jte-jts+5))
+#endif
+
 ! Square the map scale factor.
 
+! K-DEF-01: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(mm, msftx, msfty) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end)
     DO j = j_start, j_end
     DO i = i_start, i_end
       mm(i,j) = msftx(i,j) * msfty(i,j)
@@ -137,6 +198,10 @@
 
 ! Apply a coordinate transformation to zonal velocity, u.
 
+! K-DEF-02: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, u, msfuy) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end+1
@@ -147,6 +212,10 @@
 
 ! Average in x and z.
 
+! K-DEF-03: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, fnm, hat, fnp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j=j_start,j_end
     DO k=kts+1,ktf
     DO i=i_start,i_end
@@ -159,8 +228,17 @@
 
 ! Extrapolate to top and bottom of domain (to w levels).
 
+! K-DEF-04: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat, dn, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, cf1, cf2, cf3, kte, ktes1, ktes2) &
+!$acc& private(cft1, cft2)
     DO j = j_start, j_end
     DO i = i_start, i_end
+#ifdef WRF_GPU
+      cft2    = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1    = 1.0 - cft2
+#endif
       hatavg(i,1,j)   =  0.5 * (  &
                          cf1 * hat(i  ,1,j) +  &
                          cf2 * hat(i  ,2,j) +  &
@@ -180,6 +258,10 @@
     ! => tmp1 = m^2 * (partial du^/dX + partial dpsi/dx * partial du^/dpsi)
     ! tmpzx = averaged value of dpsi/dx (=zx)
 
+! K-DEF-05: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(zx, tmp1, hatavg, rdzw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end) private(tmpzx)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -192,6 +274,10 @@
     END DO
     END DO
 
+! K-DEF-06: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, mm, hat) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdx)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -210,6 +296,10 @@
 ! Eqn 13a: D11=defor11= 2 m^2 * (partial du^/dX + partial dpsi/dx * partial du^/dpsi)
 !                     = 2*tmp1
 
+! K-DEF-07: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor11, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -224,6 +314,10 @@
 !-----------------------------------------------------------------------
 ! Calculate zonal divergence (du/dx) and add it to the divergence array.
 
+! K-DEF-08: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(div, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -240,6 +334,25 @@
 
 ! Apply a coordinate transformation to meridional velocity, v.
 
+#ifdef WRF_GPU
+    gpu_polar = config_flags%polar
+! K-DEF-09: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, v, msfvx) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, gpu_polar, jds, jde)
+    DO j = j_start, j_end+1
+    DO k = kts, ktf
+    DO i = i_start, i_end
+      IF ((gpu_polar) .AND. ((j == jds) .OR. (j == jde))) THEN
+         hat(i,k,j) = 0.
+      ELSE
+      hat(i,k,j) = v(i,k,j) / msfvx(i,j)
+      ENDIF
+    END DO
+    END DO
+    END DO
+#endif
+#ifndef WRF_GPU
     DO j = j_start, j_end+1
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -254,9 +367,14 @@
     END DO
     END DO
     END DO
+#endif
 
 ! Account for the slope in y of eta surfaces.
 
+! K-DEF-10: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, fnm, hat, fnp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j=j_start,j_end
     DO k=kts+1,ktf
     DO i=i_start,i_end
@@ -269,8 +387,17 @@
 
 ! Extrapolate to top and bottom of domain (to w levels).
 
+! K-DEF-11: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat, dn, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, cf1, cf2, cf3, kte, ktes1, ktes2) &
+!$acc& private(cft1, cft2)
     DO j = j_start, j_end
     DO i = i_start, i_end
+#ifdef WRF_GPU
+      cft2    = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1    = 1.0 - cft2
+#endif
       hatavg(i,1,j)   =  0.5 * (  &
                          cf1 * hat(i,1,j  ) +  &
                          cf2 * hat(i,2,j  ) +  &
@@ -290,6 +417,10 @@
     ! => tmp1 = m^2 * (partial dv^/dY + partial dpsi/dy * partial dv^/dpsi)
     ! tmpzy = averaged value of dpsi/dy (=zy)
 
+! K-DEF-12: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(zy, tmp1, hatavg, rdzw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end) private(tmpzy)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -302,6 +433,10 @@
     END DO
     END DO
 
+! K-DEF-13: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, mm, hat) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdy)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -320,6 +455,10 @@
 ! Eqn 13b: D22=defor22= 2 m^2 * (partial dv^/dY + partial dpsi/dy * partial dv^/dpsi)
 !                     = 2*tmp1
 
+! K-DEF-14: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor22, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -335,6 +474,10 @@
 ! Calculate meridional divergence (dv/dy) and add it to the divergence
 ! array.
 
+! K-DEF-15: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(div, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -354,6 +497,10 @@
 
 ! Calculate dw/dz.
 
+! K-DEF-16: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, w, rdzw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -368,6 +515,10 @@
 !-----------------------------------------------------------------------
 ! Calculate defor33 (2*dw/dz).
 
+! K-DEF-17: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor33, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -383,6 +534,10 @@
 ! Calculate vertical divergence (dw/dz) and add it to the divergence
 ! array.
 
+! K-DEF-18: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(div, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -437,6 +592,10 @@
 ! dv/dx => need v map scale factor in y (which is defined at v points)
 ! averaged over i and i-1
 
+! K-DEF-19: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(mm, msfux, msfvy) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end)
     DO j = j_start, j_end
     DO i = i_start, i_end
       mm(i,j) = 0.25 * ( msfux(i,j-1) + msfux(i,j) ) * ( msfvy(i-1,j) + msfvy(i,j) )
@@ -445,6 +604,10 @@
 
 ! Apply a coordinate transformation to zonal velocity, u.
 
+! K-DEF-20: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, u, msfux) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j =j_start-1, j_end
     DO k =kts, ktf
     DO i =i_start, i_end
@@ -457,6 +620,10 @@
 
 ! Average in y and z.
 
+! K-DEF-21: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, fnm, hat, fnp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j=j_start,j_end
     DO k=kts+1,ktf
     DO i=i_start,i_end
@@ -469,8 +636,17 @@
 
 ! Extrapolate to top and bottom of domain (to w levels).
 
+! K-DEF-22: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat, dn, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, cf1, cf2, cf3, kte, ktes1, ktes2) &
+!$acc& private(cft1, cft2)
     DO j = j_start, j_end
     DO i = i_start, i_end
+#ifdef WRF_GPU
+      cft2    = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1    = 1.0 - cft2
+#endif
       hatavg(i,1,j)   =  0.5 * (  &
                          cf1 * hat(i,1,j-1) +  &
                          cf2 * hat(i,2,j-1) +  &
@@ -486,6 +662,10 @@
 
     ! tmpzy = averaged value of dpsi/dy (=zy) on vorticity grid
     ! tmp1  = partial dpsi/dy * partial du^/dpsi
+! K-DEF-23: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(zy, tmp1, hatavg, rdzw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end) private(tmpzy)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -513,6 +693,10 @@
 ! Still need to add v^ terms:
 !   m^2 * (partial dv^/dX + partial dpsi/dx * partial dv^/dpsi)
 
+! K-DEF-24: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12, mm, hat, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdy)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -530,6 +714,10 @@
 
 ! Apply a coordinate transformation to meridional velocity, v.
 
+! K-DEF-25: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, v, msfvy) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start-1, i_end
@@ -540,6 +728,10 @@
 
 ! Account for the slope in x of eta surfaces.
 
+! K-DEF-26: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, fnm, hat, fnp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -552,8 +744,17 @@
 
 ! Extrapolate to top and bottom of domain (to w levels).
 
+! K-DEF-27: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat, dn, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, cf1, cf2, cf3, kte, ktes1, ktes2) &
+!$acc& private(cft1, cft2)
     DO j = j_start, j_end
     DO i = i_start, i_end
+#ifdef WRF_GPU
+      cft2    = - 0.5 * dnw(ktes1) / dn(ktes1)
+      cft1    = 1.0 - cft2
+#endif
        hatavg(i,1,j)   =  0.5 * (  &
                           cf1 * hat(i-1,1,j) +  &
                           cf2 * hat(i-1,2,j) +  &
@@ -575,6 +776,10 @@
     !
     ! tmpzx = averaged value of dpsi/dx (=zx) on vorticity grid
     ! tmp1  = partial dpsi/dx * partial dv^/dpsi
+! K-DEF-28: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(zx, tmp1, hatavg, rdzw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end) private(tmpzx)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -674,6 +879,10 @@
 
   ELSE ! NOT NBA--------------------------------------------------------
 
+! K-DEF-29: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12, mm, hat, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdx)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -691,6 +900,10 @@
 ! Update the boundary for defor12 (might need to change later).
 
     IF ( .NOT. config_flags%periodic_x .AND. i_start .EQ. ids+1 ) THEN
+! K-DEF-30: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12) &
+!$acc& firstprivate(jts, jte, kts, kte, ids)
       DO j = jts, jte
       DO k = kts, kte
         defor12(ids,k,j) = defor12(ids+1,k,j)
@@ -699,6 +912,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_y .AND. j_start .EQ. jds+1) THEN
+! K-DEF-31: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12) &
+!$acc& firstprivate(kts, kte, its, ite, jds)
       DO k = kts, kte
       DO i = its, ite
         defor12(i,k,jds) = defor12(i,k,jds+1)
@@ -707,6 +924,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_x .AND. i_end .EQ. ide-1) THEN
+! K-DEF-32: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12) &
+!$acc& firstprivate(jts, jte, kts, kte, ide)
       DO j = jts, jte
       DO k = kts, kte
         defor12(ide,k,j) = defor12(ide-1,k,j)
@@ -715,6 +936,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_y .AND. j_end .EQ. jde-1) THEN
+! K-DEF-33: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor12) &
+!$acc& firstprivate(kts, kte, its, ite, jde)
       DO k = kts, kte
       DO i = its, ite
         defor12(i,k,jde) = defor12(i,k,jde-1)
@@ -752,6 +977,10 @@
 
 ! Square the mapscale factor.
 
+! K-DEF-34: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(mm, msfux, msfuy) &
+!$acc& firstprivate(jts, jte, its, ite)
     DO j = jts, jte
     DO i = its, ite
       mm(i,j) = msfux(i,j) * msfuy(i,j)
@@ -761,6 +990,10 @@
 ! Apply a coordinate transformation to vertical velocity, w.  This is for both
 ! defor13 and defor23.
 
+! K-DEF-35: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msfty) &
+!$acc& firstprivate(j_start, j_end, kts, kte, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, kte
     DO i = i_start, i_end
@@ -770,6 +1003,10 @@
     END DO
 
     i = i_start-1
+! K-DEF-36: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msfty) &
+!$acc& firstprivate(j_start, jte, jde, kts, kte, i)
     DO j = j_start, MIN( jte, jde-1 )
     DO k = kts, kte
       hat(i,k,j) = w(i,k,j) / msfty(i,j)
@@ -777,6 +1014,10 @@
     END DO
 
     j = j_start-1
+! K-DEF-37: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msfty) &
+!$acc& firstprivate(kts, kte, i_start, ite, ide, j)
     DO k = kts, kte
     DO i = i_start, MIN( ite, ide-1 )
       hat(i,k,j) = w(i,k,j) / msfty(i,j)
@@ -785,6 +1026,10 @@
 
 ! QUESTION: What is this for?
 
+! K-DEF-38: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -799,6 +1044,10 @@
 
 ! Calculate dw/dx.
 
+! K-DEF-39: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, hatavg, zx, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -815,6 +1064,10 @@
 ! Add the first term (dw/dx) to defor13 (dw/dx+du/dz) at vorticity
 ! points.
 
+! K-DEF-40: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, mm, hat, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdx)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -824,6 +1077,10 @@
     END DO
     END DO
 
+! K-DEF-41: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, kts, ktf)
     DO j = j_start, j_end
     DO i = i_start, i_end
       defor13(i,kts,j  ) = 0.0
@@ -839,6 +1096,10 @@
 
     IF ( config_flags%mix_full_fields ) THEN
 
+! K-DEF-42: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, u, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts+1, ktf
       DO i = i_start, i_end
@@ -850,6 +1111,10 @@
 
     ELSE
 
+! K-DEF-43: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, u, u_base, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts+1, ktf
       DO i = i_start, i_end
@@ -897,6 +1162,10 @@
 
   ELSE ! NOT NBA--------------------------------------------------------
 
+! K-DEF-44: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -928,6 +1197,10 @@
 
 ! Square mapscale factor.
 
+! K-DEF-45: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(mm, msfvx, msfvy) &
+!$acc& firstprivate(jts, jte, its, ite)
     DO j = jts, jte
     DO i = its, ite
       mm(i,j) = msfvx(i,j) * msfvy(i,j)
@@ -936,6 +1209,10 @@
 
 ! Apply a coordinate transformation to vertical velocity, w.  Added by CW 7/19/07
 
+! K-DEF-46: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msftx) &
+!$acc& firstprivate(j_start, j_end, kts, kte, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, kte
     DO i = i_start, i_end
@@ -945,6 +1222,10 @@
     END DO
 
     i = i_start-1
+! K-DEF-47: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msftx) &
+!$acc& firstprivate(j_start, jte, jde, kts, kte, i)
     DO j = j_start, MIN( jte, jde-1 )
     DO k = kts, kte
       hat(i,k,j) = w(i,k,j) / msftx(i,j)
@@ -952,6 +1233,10 @@
     END DO
 
     j = j_start-1
+! K-DEF-48: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hat, w, msftx) &
+!$acc& firstprivate(kts, kte, i_start, ite, ide, j)
     DO k = kts, kte
     DO i = i_start, MIN( ite, ide-1 )
       hat(i,k,j) = w(i,k,j) / msftx(i,j)
@@ -960,6 +1245,10 @@
 
 ! QUESTION: What is this for?
 
+! K-DEF-49: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(hatavg, hat) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -974,6 +1263,10 @@
 
 ! Calculate dw/dy and store in tmp1.
 
+! K-DEF-50: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, hatavg, zy, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -990,6 +1283,10 @@
 ! Add the first term (dw/dy) to defor23 (dw/dy+dv/dz) at vorticity
 ! points.
 
+! K-DEF-51: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor23, mm, hat, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, rdy)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -999,6 +1296,10 @@
     END DO
     END DO
 
+! K-DEF-52: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor23) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, kts, ktf)
     DO j = j_start, j_end
     DO i = i_start, i_end
       defor23(i,kts,j  ) = 0.0
@@ -1014,6 +1315,10 @@
 
     IF ( config_flags%mix_full_fields ) THEN
 
+! K-DEF-53: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, v, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts+1, ktf
       DO i = i_start, i_end
@@ -1025,6 +1330,10 @@
 
     ELSE
 
+! K-DEF-54: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(tmp1, v, v_base, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts+1, ktf
       DO i = i_start, i_end
@@ -1128,6 +1437,10 @@
 
 ! Add tmp1 to defor23.
 
+! K-DEF-55: Template A
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor23, tmp1) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
     DO j = j_start, j_end
     DO k = kts+1, ktf
     DO i = i_start, i_end
@@ -1144,6 +1457,10 @@
 ! later).
 
     IF ( .NOT. config_flags%periodic_x .AND. i_start .EQ. ids+1) THEN
+! K-DEF-56: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, defor23) &
+!$acc& firstprivate(jts, jte, kts, kte, ids)
       DO j = jts, jte
       DO k = kts, kte
         defor13(ids,k,j) = defor13(ids+1,k,j)
@@ -1153,6 +1470,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_y .AND. j_start .EQ. jds+1) THEN
+! K-DEF-57: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, defor23) &
+!$acc& firstprivate(kts, kte, its, ite, jds)
       DO k = kts, kte
       DO i = its, ite
         defor13(i,k,jds) = defor13(i,k,jds+1)
@@ -1162,6 +1483,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_x .AND. i_end .EQ. ide-1) THEN
+! K-DEF-58: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, defor23) &
+!$acc& firstprivate(jts, jte, kts, kte, ide)
       DO j = jts, jte
       DO k = kts, kte
         defor13(ide,k,j) = defor13(ide-1,k,j)
@@ -1171,6 +1496,10 @@
     END IF
 
     IF ( .NOT. config_flags%periodic_y .AND. j_end .EQ. jde-1) THEN
+! K-DEF-59: Template A
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CAL_DEFORM_AND_DIV)) default(none) &
+!$acc& present(defor13, defor23) &
+!$acc& firstprivate(kts, kte, its, ite, jde)
       DO k = kts, kte
       DO i = its, ite
         defor13(i,k,jde) = defor13(i,k,jde-1)
@@ -1187,6 +1516,36 @@
 ! The second three (defor12, defor13, defor23) of six deformation terms
 ! are now calculated at vorticity points.
 !=======================================================================
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
+        ELSE
+!$acc update device(div, defor11, defor22, defor33, defor12, defor13, defor23, nba_rij)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CAL_DEFORM_AND_DIV)) THEN
+        CALL gpu_cc_done_r(1, div, SIZE(div,KIND=8), 'div', &
+          LBOUND(div), UBOUND(div))
+        CALL gpu_cc_done_r(2, defor11, SIZE(defor11,KIND=8), 'defor11', &
+          LBOUND(defor11), UBOUND(defor11))
+        CALL gpu_cc_done_r(3, defor22, SIZE(defor22,KIND=8), 'defor22', &
+          LBOUND(defor22), UBOUND(defor22))
+        CALL gpu_cc_done_r(4, defor33, SIZE(defor33,KIND=8), 'defor33', &
+          LBOUND(defor33), UBOUND(defor33))
+        CALL gpu_cc_done_r(5, defor12, SIZE(defor12,KIND=8), 'defor12', &
+          LBOUND(defor12), UBOUND(defor12))
+        CALL gpu_cc_done_r(6, defor13, SIZE(defor13,KIND=8), 'defor13', &
+          LBOUND(defor13), UBOUND(defor13))
+        CALL gpu_cc_done_r(7, defor23, SIZE(defor23,KIND=8), 'defor23', &
+          LBOUND(defor23), UBOUND(defor23))
+        CALL gpu_cc_done_r(8, nba_rij, SIZE(nba_rij,KIND=8), 'nba_rij', &
+          LBOUND(nba_rij), UBOUND(nba_rij))
+        IF (gpu_cc_next(R_CAL_DEFORM_AND_DIV)) GOTO 99901
+      END IF
+#endif
 
     END SUBROUTINE cal_deform_and_div
 

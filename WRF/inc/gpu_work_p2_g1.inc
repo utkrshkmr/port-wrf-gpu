@@ -24,3 +24,32 @@
 !
 ! Names start with work_p2_g1_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+
+#if GPU_WORK_SECTION == 1
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_mm(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_zzavg(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_zeta_zd12(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_tmp1(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_hat(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g1_hatavg(:)
+#endif
+#elif GPU_WORK_SECTION == 2
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_g1_mm, n2d, "work_p2_g1_mm")
+   CALL gpu_work_alloc_r(work_p2_g1_zzavg, n2d, "work_p2_g1_zzavg")
+   CALL gpu_work_alloc_r(work_p2_g1_zeta_zd12, n2d, "work_p2_g1_zeta_zd12")
+   CALL gpu_work_alloc_r(work_p2_g1_tmp1, INT(ni+4,8)*INT(nk,8)*INT(nj+4,8), "work_p2_g1_tmp1")
+   CALL gpu_work_alloc_r(work_p2_g1_hat, INT(ni+4,8)*INT(nk,8)*INT(nj+4,8), "work_p2_g1_hat")
+   CALL gpu_work_alloc_r(work_p2_g1_hatavg, INT(ni+4,8)*INT(nk,8)*INT(nj+4,8), "work_p2_g1_hatavg")
+#endif
+#elif GPU_WORK_SECTION == 3
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_g1_mm, "work_p2_g1_mm", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g1_zzavg, "work_p2_g1_zzavg", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g1_zeta_zd12, "work_p2_g1_zeta_zd12", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g1_tmp1, "work_p2_g1_tmp1", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g1_hat, "work_p2_g1_hat", nwork, nbad)
+   CALL gpu_work_check_r(work_p2_g1_hatavg, "work_p2_g1_hatavg", nwork, nbad)
+#endif
+#endif
