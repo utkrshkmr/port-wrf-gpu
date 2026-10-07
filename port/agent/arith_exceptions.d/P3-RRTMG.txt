@@ -1,2 +1,17 @@
 # arith_guard exceptions of P3-RRTMG (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/phys/module_ra_rrtmg_lw.F|rrtmg_lw_gpu_reallane=iand(int(transfer(x,0),8),4294967295_8)|integer bit-lane checksum of a real table, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|bits=transfer(x,0_8)|integer bit-lane checksum, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|rrtmg_lw_gpu_reallane=iand(bits,4294967295_8)+iand(ishft(bits,-32),4294967295_8)|integer bit-lane checksum of a real table, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|rrtmg_lw_gpu_intlane=iand(int(k,8),4294967295_8)|integer bit-lane checksum of an integer table, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|bits=transfer(k,0_8)|integer bit-lane checksum, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|rrtmg_lw_gpu_intlane=iand(bits,4294967295_8)+iand(ishft(bits,-32),4294967295_8)|integer bit-lane checksum of an integer table, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|bad=trim(bad)//" "//trim(name)|tabcheck name list, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|lo1=lbound(a,1)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|hi1=ubound(a,1)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|lo2=lbound(a,2)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|hi2=ubound(a,2)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|lo3=lbound(a,3)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|hi3=ubound(a,3)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|lo4=lbound(a,4)|tabcheck array bound, not model arithmetic
+WRF/phys/module_ra_rrtmg_lw.F|hi4=ubound(a,4)|tabcheck array bound, not model arithmetic

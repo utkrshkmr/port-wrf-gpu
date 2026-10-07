@@ -189,6 +189,9 @@
       real(kind=rb) :: absliq0
       real(kind=rb) , dimension(58,16) :: absliq1
 
+#ifdef WRF_GPU
+!$acc declare create(abscld1, absice0, absice1, absice2, absice3, absliq0, absliq1)
+#endif
       end module rrlw_cld
 
       module rrlw_con
@@ -231,6 +234,10 @@
       real(kind=rb) :: radcn1, radcn2
       real(kind=rb) :: sbcnst, secdy
 
+#ifdef WRF_GPU
+!$acc declare create(fluxfac, heatfac, oneminus, pi, grav, planck, boltz, clight, avogad, alosmt, &
+!$acc& gascon, radcn1, radcn2, sbcnst, secdy)
+#endif
       end module rrlw_con
 
       module rrlw_kg01
@@ -302,6 +309,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, kao_mn2, kbo_mn2, selfrefo, forrefo, fracrefa, &
+!$acc& fracrefb, ka_s, kb_s, ka_mn2, kb_mn2, selfref, forref)
+#endif
       end module rrlw_kg01
 
       module rrlw_kg02
@@ -371,6 +382,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, fracrefa, fracrefb, ka_s, &
+!$acc& kb_s, selfref, forref, refparam)
+#endif
       end module rrlw_kg02
 
       module rrlw_kg03
@@ -445,6 +460,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, kao_mn2o, kbo_mn2o, selfrefo, forrefo, fracrefa, &
+!$acc& fracrefb, ka_s, kb_s, ka_mn2o, kb_mn2o, selfref, forref)
+#endif
       end module rrlw_kg03
 
       module rrlw_kg04
@@ -510,6 +529,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, fracrefa, fracrefb, ka_s, &
+!$acc& kb_s, selfref, forref)
+#endif
       end module rrlw_kg04
 
       module rrlw_kg05
@@ -586,6 +609,10 @@
       
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, kao_mo3, selfrefo, forrefo, ccl4o, fracrefa, &
+!$acc& fracrefb, ka_s, kb_s, ka_mo3, selfref, forref, ccl4)
+#endif
       end module rrlw_kg05
 
       module rrlw_kg06
@@ -661,6 +688,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, kao, kao_mco2, selfrefo, forrefo, cfc11adjo, cfc12o, fracrefa, ka_s, &
+!$acc& ka_mco2, selfref, forref, cfc11adj, cfc12)
+#endif
       end module rrlw_kg06
 
       module rrlw_kg07
@@ -738,6 +769,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefbo, fracrefao, kao, kbo, kao_mco2, kbo_mco2, selfrefo, forrefo, fracrefb, &
+!$acc& fracrefa, ka_s, kb_s, ka_mco2, kb_mco2, selfref, forref)
+#endif
       end module rrlw_kg07
 
       module rrlw_kg08
@@ -838,6 +873,11 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, cfc12o, cfc22adjo, kao, kao_mco2, kao_mn2o, kao_mo3, kbo, &
+!$acc& kbo_mco2, kbo_mn2o, selfrefo, forrefo, fracrefa, fracrefb, cfc12, cfc22adj, ka_s, &
+!$acc& kb_s, ka_mco2, ka_mn2o, ka_mo3, kb_mco2, kb_mn2o, selfref, forref)
+#endif
       end module rrlw_kg08
 
       module rrlw_kg09
@@ -917,6 +957,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefbo, fracrefao, kao, kbo, kao_mn2o, kbo_mn2o, selfrefo, forrefo, fracrefb, &
+!$acc& fracrefa, ka_s, kb_s, ka_mn2o, kb_mn2o, selfref, forref)
+#endif
       end module rrlw_kg09
 
       module rrlw_kg10
@@ -989,6 +1033,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, fracrefa, fracrefb, ka_s, &
+!$acc& kb_s, selfref, forref)
+#endif
       end module rrlw_kg10
 
       module rrlw_kg11
@@ -1069,6 +1117,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, kao_mo2, kbo_mo2, selfrefo, forrefo, fracrefa, &
+!$acc& fracrefb, ka_s, kb_s, ka_mo2, kb_mo2, selfref, forref)
+#endif
       end module rrlw_kg11
 
       module rrlw_kg12
@@ -1130,6 +1182,9 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, kao, selfrefo, forrefo, fracrefa, ka_s, selfref, forref)
+#endif
       end module rrlw_kg12
 
       module rrlw_kg13
@@ -1207,6 +1262,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefbo, fracrefao, kao, kao_mco2, kao_mco, kbo_mo3, selfrefo, forrefo, &
+!$acc& fracrefb, fracrefa, ka_s, ka_mco2, ka_mco, kb_mo3, selfref, forref)
+#endif
       end module rrlw_kg13
 
       module rrlw_kg14
@@ -1279,6 +1338,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, fracrefa, fracrefb, ka_s, &
+!$acc& kb_s, selfref, forref)
+#endif
       end module rrlw_kg14
 
       module rrlw_kg15
@@ -1345,6 +1408,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefao, kao, kao_mn2, selfrefo, forrefo, fracrefa, ka_s, ka_mn2, selfref, &
+!$acc& forref)
+#endif
       end module rrlw_kg15
 
       module rrlw_kg16
@@ -1415,6 +1482,10 @@
 
       ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
+#ifdef WRF_GPU
+!$acc declare create(fracrefbo, fracrefao, kao, kbo, selfrefo, forrefo, fracrefb, fracrefa, ka_s, &
+!$acc& kb_s, selfref, forref)
+#endif
       end module rrlw_kg16
 
 
@@ -1447,6 +1518,9 @@
       real(kind=rb) , dimension(59) :: tref
       real(kind=rb) :: chi_mls(7,59)
 
+#ifdef WRF_GPU
+!$acc declare create(pref, preflog, tref, chi_mls)
+#endif
       end module rrlw_ref
 
       module rrlw_tbl
@@ -1493,6 +1567,9 @@
       real(kind=rb), parameter :: pade = 0.278_rb
       real(kind=rb) :: bpade
 
+#ifdef WRF_GPU
+!$acc declare create(tau_tbl, exp_tbl, tfn_tbl, bpade)
+#endif
       end module rrlw_tbl
 
       module rrlw_vsn
@@ -1623,6 +1700,10 @@
       integer(kind=im) :: nxmol
       integer(kind=im) :: ixindx(maxinpx)
 
+#ifdef WRF_GPU
+!$acc declare create(ng, nspa, nspb, wavenum1, wavenum2, delwave, totplnk, totplk16, ngc, ngs, ngn, &
+!$acc& ngb, ngm, wt, rwgt, nxmol, ixindx)
+#endif
       end module rrlw_wvn
 
 !     path:      $Source: /cvsroot/NWP/WRFV3/phys/module_ra_rrtmg_lw.F,v $
@@ -3082,6 +3163,9 @@ contains
                0.414_rb,  0.00_rb,  0.00_rb,  0.00_rb, &
                 0.00_rb,  0.00_rb,  0.00_rb,  0.00_rb /
 
+#ifdef WRF_GPU
+!$acc declare create(wtdiff, rec_6, a0, a1, a2)
+#endif
       contains
 
 !-----------------------------------------------------------------------------
@@ -11571,6 +11655,9 @@ use mcica_subcol_gen_lw, only: mcica_subcol_lw
     integer , save    :: nlayers    
     real, PARAMETER :: deltap = 4.  ! Pressure interval for buffer layer in mb
     
+#ifdef WRF_GPU
+!$acc declare create(retab, nlayers)
+#endif
 CONTAINS
 
 !------------------------------------------------------------------
@@ -14636,4 +14723,839 @@ IMPLICIT NONE
   end subroutine reicalc
 !------------------------------------------------------------------
 
+! RRTMG LW module tables on the device (INTERFACES.md I-4).
+#ifdef WRF_GPU
+
+      integer(kind=8) function rrtmg_lw_gpu_reallane(x, nb)
+!$acc routine seq
+      implicit none
+      real, intent(in) :: x
+      integer, intent(in) :: nb
+      integer(kind=8) :: bits
+      if (nb == 32) then
+         rrtmg_lw_gpu_reallane = iand(int(transfer(x, 0), 8), 4294967295_8)
+      else
+         bits = transfer(x, 0_8)
+         rrtmg_lw_gpu_reallane = iand(bits, 4294967295_8) + &
+              iand(ishft(bits, -32), 4294967295_8)
+      end if
+      end function rrtmg_lw_gpu_reallane
+
+      integer(kind=8) function rrtmg_lw_gpu_intlane(k, nb)
+!$acc routine seq
+      implicit none
+      integer, intent(in) :: k
+      integer, intent(in) :: nb
+      integer(kind=8) :: bits
+      if (nb == 32) then
+         rrtmg_lw_gpu_intlane = iand(int(k, 8), 4294967295_8)
+      else
+         bits = transfer(k, 0_8)
+         rrtmg_lw_gpu_intlane = iand(bits, 4294967295_8) + &
+              iand(ishft(bits, -32), 4294967295_8)
+      end if
+      end function rrtmg_lw_gpu_intlane
+
+      subroutine rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      implicit none
+      integer(kind=8), intent(in) :: host, dev
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nlen, nuse, nnam
+      n = n + 1
+      if (host == dev) return
+      nbad = nbad + 1
+      nlen = len(bad)
+      nuse = len_trim(bad)
+      nnam = len_trim(name)
+      if (nuse == 0) then
+         if (nnam <= nlen) bad = trim(name)
+      else if (nuse + 1 + nnam <= nlen) then
+         bad = trim(bad) // " " // trim(name)
+      end if
+      end subroutine rrtmg_lw_gpu_chkrec
+
+      subroutine rrtmg_lw_gpu_chk_i0(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      integer, intent(in) :: a
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1
+      integer(kind=8) :: host, dev
+      nb = storage_size(a)
+      host = 0_8
+      host = rrtmg_lw_gpu_intlane(a, nb)
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(nb) reduction(+:dev)
+      do i1 = 1, 1
+         dev = dev + rrtmg_lw_gpu_intlane(a, nb)
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_i0
+
+      subroutine rrtmg_lw_gpu_chk_i1(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      integer, intent(in) :: a(:)
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1, lo1, hi1
+      integer(kind=8) :: host, dev
+      lo1 = lbound(a,1)
+      hi1 = ubound(a,1)
+      nb = storage_size(a)
+      host = 0_8
+      do i1 = lo1, hi1
+         host = host + rrtmg_lw_gpu_intlane(a(i1), nb)
+      end do
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(lo1, hi1, nb) reduction(+:dev)
+      do i1 = lo1, hi1
+         dev = dev + rrtmg_lw_gpu_intlane(a(i1), nb)
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_i1
+
+      subroutine rrtmg_lw_gpu_chk_r0(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      real, intent(in) :: a
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1
+      integer(kind=8) :: host, dev
+      nb = storage_size(a)
+      host = 0_8
+      host = rrtmg_lw_gpu_reallane(a, nb)
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(nb) reduction(+:dev)
+      do i1 = 1, 1
+         dev = dev + rrtmg_lw_gpu_reallane(a, nb)
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_r0
+
+      subroutine rrtmg_lw_gpu_chk_r1(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      real, intent(in) :: a(:)
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1, lo1, hi1
+      integer(kind=8) :: host, dev
+      lo1 = lbound(a,1)
+      hi1 = ubound(a,1)
+      nb = storage_size(a)
+      host = 0_8
+      do i1 = lo1, hi1
+         host = host + rrtmg_lw_gpu_reallane(a(i1), nb)
+      end do
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(1) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(lo1, hi1, nb) reduction(+:dev)
+      do i1 = lo1, hi1
+         dev = dev + rrtmg_lw_gpu_reallane(a(i1), nb)
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_r1
+
+      subroutine rrtmg_lw_gpu_chk_r2(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      real, intent(in) :: a(:,:)
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1, lo1, hi1, i2, lo2, hi2
+      integer(kind=8) :: host, dev
+      lo1 = lbound(a,1)
+      hi1 = ubound(a,1)
+      lo2 = lbound(a,2)
+      hi2 = ubound(a,2)
+      nb = storage_size(a)
+      host = 0_8
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         host = host + rrtmg_lw_gpu_reallane(a(i1,i2), nb)
+      end do
+      end do
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(lo1, lo2, hi1, hi2, nb) reduction(+:dev)
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         dev = dev + rrtmg_lw_gpu_reallane(a(i1,i2), nb)
+      end do
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_r2
+
+      subroutine rrtmg_lw_gpu_chk_r3(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      real, intent(in) :: a(:,:,:)
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1, lo1, hi1, i2, lo2, hi2, i3, lo3, hi3
+      integer(kind=8) :: host, dev
+      lo1 = lbound(a,1)
+      hi1 = ubound(a,1)
+      lo2 = lbound(a,2)
+      hi2 = ubound(a,2)
+      lo3 = lbound(a,3)
+      hi3 = ubound(a,3)
+      nb = storage_size(a)
+      host = 0_8
+      do i3 = lo3, hi3
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         host = host + rrtmg_lw_gpu_reallane(a(i1,i2,i3), nb)
+      end do
+      end do
+      end do
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(lo1, lo2, lo3, hi1, hi2, hi3, nb) reduction(+:dev)
+      do i3 = lo3, hi3
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         dev = dev + rrtmg_lw_gpu_reallane(a(i1,i2,i3), nb)
+      end do
+      end do
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_r3
+
+      subroutine rrtmg_lw_gpu_chk_r4(a, name, n, nbad, bad)
+      use module_gpu_route, only : gpu_on, R_RRTMG_LWRAD
+      implicit none
+      real, intent(in) :: a(:,:,:,:)
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      integer :: nb, i1, lo1, hi1, i2, lo2, hi2, i3, lo3, hi3, i4, lo4, hi4
+      integer(kind=8) :: host, dev
+      lo1 = lbound(a,1)
+      hi1 = ubound(a,1)
+      lo2 = lbound(a,2)
+      hi2 = ubound(a,2)
+      lo3 = lbound(a,3)
+      hi3 = ubound(a,3)
+      lo4 = lbound(a,4)
+      hi4 = ubound(a,4)
+      nb = storage_size(a)
+      host = 0_8
+      do i4 = lo4, hi4
+      do i3 = lo3, hi3
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         host = host + rrtmg_lw_gpu_reallane(a(i1,i2,i3,i4), nb)
+      end do
+      end do
+      end do
+      end do
+      dev = 0_8
+! island of R_RRTMG_LWRAD in RRTMG_LWRAD
+!$acc parallel loop gang vector collapse(4) if(gpu_on(R_RRTMG_LWRAD)) default(none) &
+!$acc& present(a) firstprivate(lo1, lo2, lo3, lo4, hi1, hi2, hi3, hi4, nb) reduction(+:dev)
+      do i4 = lo4, hi4
+      do i3 = lo3, hi3
+      do i2 = lo2, hi2
+      do i1 = lo1, hi1
+         dev = dev + rrtmg_lw_gpu_reallane(a(i1,i2,i3,i4), nb)
+      end do
+      end do
+      end do
+      end do
+      call rrtmg_lw_gpu_chkrec(host, dev, name, n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_chk_r4
+
+      subroutine rrtmg_lw_gpu_upload()
+      use rrlw_kg01, only : kg01_fracrefao => fracrefao, kg01_fracrefbo => fracrefbo, &
+            kg01_kao => kao, kg01_kbo => kbo, kg01_kao_mn2 => kao_mn2, &
+            kg01_kbo_mn2 => kbo_mn2, kg01_selfrefo => selfrefo, kg01_forrefo => forrefo, &
+            kg01_fracrefa => fracrefa, kg01_fracrefb => fracrefb, kg01_ka_s => ka_s, &
+            kg01_kb_s => kb_s, kg01_ka_mn2 => ka_mn2, kg01_kb_mn2 => kb_mn2, &
+            kg01_selfref => selfref, kg01_forref => forref
+      use rrlw_kg02, only : kg02_fracrefao => fracrefao, kg02_fracrefbo => fracrefbo, &
+            kg02_kao => kao, kg02_kbo => kbo, kg02_selfrefo => selfrefo, &
+            kg02_forrefo => forrefo, kg02_fracrefa => fracrefa, kg02_fracrefb => fracrefb, &
+            kg02_ka_s => ka_s, kg02_kb_s => kb_s, kg02_selfref => selfref, &
+            kg02_forref => forref, kg02_refparam => refparam
+      use rrlw_kg03, only : kg03_fracrefao => fracrefao, kg03_fracrefbo => fracrefbo, &
+            kg03_kao => kao, kg03_kbo => kbo, kg03_kao_mn2o => kao_mn2o, &
+            kg03_kbo_mn2o => kbo_mn2o, kg03_selfrefo => selfrefo, kg03_forrefo => forrefo, &
+            kg03_fracrefa => fracrefa, kg03_fracrefb => fracrefb, kg03_ka_s => ka_s, &
+            kg03_kb_s => kb_s, kg03_ka_mn2o => ka_mn2o, kg03_kb_mn2o => kb_mn2o, &
+            kg03_selfref => selfref, kg03_forref => forref
+      use rrlw_kg04, only : kg04_fracrefao => fracrefao, kg04_fracrefbo => fracrefbo, &
+            kg04_kao => kao, kg04_kbo => kbo, kg04_selfrefo => selfrefo, &
+            kg04_forrefo => forrefo, kg04_fracrefa => fracrefa, kg04_fracrefb => fracrefb, &
+            kg04_ka_s => ka_s, kg04_kb_s => kb_s, kg04_selfref => selfref, &
+            kg04_forref => forref
+      use rrlw_kg05, only : kg05_fracrefao => fracrefao, kg05_fracrefbo => fracrefbo, &
+            kg05_kao => kao, kg05_kbo => kbo, kg05_kao_mo3 => kao_mo3, &
+            kg05_selfrefo => selfrefo, kg05_forrefo => forrefo, kg05_ccl4o => ccl4o, &
+            kg05_fracrefa => fracrefa, kg05_fracrefb => fracrefb, kg05_ka_s => ka_s, &
+            kg05_kb_s => kb_s, kg05_ka_mo3 => ka_mo3, kg05_selfref => selfref, &
+            kg05_forref => forref, kg05_ccl4 => ccl4
+      use rrlw_kg06, only : kg06_fracrefao => fracrefao, kg06_kao => kao, &
+            kg06_kao_mco2 => kao_mco2, kg06_selfrefo => selfrefo, kg06_forrefo => forrefo, &
+            kg06_cfc11adjo => cfc11adjo, kg06_cfc12o => cfc12o, kg06_fracrefa => fracrefa, &
+            kg06_ka_s => ka_s, kg06_ka_mco2 => ka_mco2, kg06_selfref => selfref, &
+            kg06_forref => forref, kg06_cfc11adj => cfc11adj, kg06_cfc12 => cfc12
+      use rrlw_kg07, only : kg07_fracrefbo => fracrefbo, kg07_fracrefao => fracrefao, &
+            kg07_kao => kao, kg07_kbo => kbo, kg07_kao_mco2 => kao_mco2, &
+            kg07_kbo_mco2 => kbo_mco2, kg07_selfrefo => selfrefo, kg07_forrefo => forrefo, &
+            kg07_fracrefb => fracrefb, kg07_fracrefa => fracrefa, kg07_ka_s => ka_s, &
+            kg07_kb_s => kb_s, kg07_ka_mco2 => ka_mco2, kg07_kb_mco2 => kb_mco2, &
+            kg07_selfref => selfref, kg07_forref => forref
+      use rrlw_kg08, only : kg08_fracrefao => fracrefao, kg08_fracrefbo => fracrefbo, &
+            kg08_cfc12o => cfc12o, kg08_cfc22adjo => cfc22adjo, kg08_kao => kao, &
+            kg08_kao_mco2 => kao_mco2, kg08_kao_mn2o => kao_mn2o, kg08_kao_mo3 => kao_mo3, &
+            kg08_kbo => kbo, kg08_kbo_mco2 => kbo_mco2, kg08_kbo_mn2o => kbo_mn2o, &
+            kg08_selfrefo => selfrefo, kg08_forrefo => forrefo, kg08_fracrefa => fracrefa, &
+            kg08_fracrefb => fracrefb, kg08_cfc12 => cfc12, kg08_cfc22adj => cfc22adj, &
+            kg08_ka_s => ka_s, kg08_kb_s => kb_s, kg08_ka_mco2 => ka_mco2, &
+            kg08_ka_mn2o => ka_mn2o, kg08_ka_mo3 => ka_mo3, kg08_kb_mco2 => kb_mco2, &
+            kg08_kb_mn2o => kb_mn2o, kg08_selfref => selfref, kg08_forref => forref
+      use rrlw_kg09, only : kg09_fracrefbo => fracrefbo, kg09_fracrefao => fracrefao, &
+            kg09_kao => kao, kg09_kbo => kbo, kg09_kao_mn2o => kao_mn2o, &
+            kg09_kbo_mn2o => kbo_mn2o, kg09_selfrefo => selfrefo, kg09_forrefo => forrefo, &
+            kg09_fracrefb => fracrefb, kg09_fracrefa => fracrefa, kg09_ka_s => ka_s, &
+            kg09_kb_s => kb_s, kg09_ka_mn2o => ka_mn2o, kg09_kb_mn2o => kb_mn2o, &
+            kg09_selfref => selfref, kg09_forref => forref
+      use rrlw_kg10, only : kg10_fracrefao => fracrefao, kg10_fracrefbo => fracrefbo, &
+            kg10_kao => kao, kg10_kbo => kbo, kg10_selfrefo => selfrefo, &
+            kg10_forrefo => forrefo, kg10_fracrefa => fracrefa, kg10_fracrefb => fracrefb, &
+            kg10_ka_s => ka_s, kg10_kb_s => kb_s, kg10_selfref => selfref, &
+            kg10_forref => forref
+      use rrlw_kg11, only : kg11_fracrefao => fracrefao, kg11_fracrefbo => fracrefbo, &
+            kg11_kao => kao, kg11_kbo => kbo, kg11_kao_mo2 => kao_mo2, &
+            kg11_kbo_mo2 => kbo_mo2, kg11_selfrefo => selfrefo, kg11_forrefo => forrefo, &
+            kg11_fracrefa => fracrefa, kg11_fracrefb => fracrefb, kg11_ka_s => ka_s, &
+            kg11_kb_s => kb_s, kg11_ka_mo2 => ka_mo2, kg11_kb_mo2 => kb_mo2, &
+            kg11_selfref => selfref, kg11_forref => forref
+      use rrlw_kg12, only : kg12_fracrefao => fracrefao, kg12_kao => kao, &
+            kg12_selfrefo => selfrefo, kg12_forrefo => forrefo, kg12_fracrefa => fracrefa, &
+            kg12_ka_s => ka_s, kg12_selfref => selfref, kg12_forref => forref
+      use rrlw_kg13, only : kg13_fracrefbo => fracrefbo, kg13_fracrefao => fracrefao, &
+            kg13_kao => kao, kg13_kao_mco2 => kao_mco2, kg13_kao_mco => kao_mco, &
+            kg13_kbo_mo3 => kbo_mo3, kg13_selfrefo => selfrefo, kg13_forrefo => forrefo, &
+            kg13_fracrefb => fracrefb, kg13_fracrefa => fracrefa, kg13_ka_s => ka_s, &
+            kg13_ka_mco2 => ka_mco2, kg13_ka_mco => ka_mco, kg13_kb_mo3 => kb_mo3, &
+            kg13_selfref => selfref, kg13_forref => forref
+      use rrlw_kg14, only : kg14_fracrefao => fracrefao, kg14_fracrefbo => fracrefbo, &
+            kg14_kao => kao, kg14_kbo => kbo, kg14_selfrefo => selfrefo, &
+            kg14_forrefo => forrefo, kg14_fracrefa => fracrefa, kg14_fracrefb => fracrefb, &
+            kg14_ka_s => ka_s, kg14_kb_s => kb_s, kg14_selfref => selfref, &
+            kg14_forref => forref
+      use rrlw_kg15, only : kg15_fracrefao => fracrefao, kg15_kao => kao, &
+            kg15_kao_mn2 => kao_mn2, kg15_selfrefo => selfrefo, kg15_forrefo => forrefo, &
+            kg15_fracrefa => fracrefa, kg15_ka_s => ka_s, kg15_ka_mn2 => ka_mn2, &
+            kg15_selfref => selfref, kg15_forref => forref
+      use rrlw_kg16, only : kg16_fracrefbo => fracrefbo, kg16_fracrefao => fracrefao, &
+            kg16_kao => kao, kg16_kbo => kbo, kg16_selfrefo => selfrefo, &
+            kg16_forrefo => forrefo, kg16_fracrefb => fracrefb, kg16_fracrefa => fracrefa, &
+            kg16_ka_s => ka_s, kg16_kb_s => kb_s, kg16_selfref => selfref, &
+            kg16_forref => forref
+      use rrlw_cld, only : cld_abscld1 => abscld1, cld_absice0 => absice0, &
+            cld_absice1 => absice1, cld_absice2 => absice2, cld_absice3 => absice3, &
+            cld_absliq0 => absliq0, cld_absliq1 => absliq1
+      use rrlw_con, only : con_fluxfac => fluxfac, con_heatfac => heatfac, &
+            con_oneminus => oneminus, con_pi => pi, con_grav => grav, con_planck => planck, &
+            con_boltz => boltz, con_clight => clight, con_avogad => avogad, &
+            con_alosmt => alosmt, con_gascon => gascon, con_radcn1 => radcn1, &
+            con_radcn2 => radcn2, con_sbcnst => sbcnst, con_secdy => secdy
+      use rrlw_ref, only : ref_pref => pref, ref_preflog => preflog, ref_tref => tref, &
+            ref_chi_mls => chi_mls
+      use rrlw_tbl, only : tbl_tau_tbl => tau_tbl, tbl_exp_tbl => exp_tbl, &
+            tbl_tfn_tbl => tfn_tbl, tbl_bpade => bpade
+      use rrlw_wvn, only : wvn_ng => ng, wvn_nspa => nspa, wvn_nspb => nspb, &
+            wvn_wavenum1 => wavenum1, wvn_wavenum2 => wavenum2, wvn_delwave => delwave, &
+            wvn_totplnk => totplnk, wvn_totplk16 => totplk16, wvn_ngc => ngc, &
+            wvn_ngs => ngs, wvn_ngn => ngn, wvn_ngb => ngb, wvn_ngm => ngm, wvn_wt => wt, &
+            wvn_rwgt => rwgt, wvn_nxmol => nxmol, wvn_ixindx => ixindx
+      use rrtmg_lw_rtrnmc, only : rt_wtdiff => wtdiff, rt_rec_6 => rec_6, rt_a0 => a0, &
+            rt_a1 => a1, rt_a2 => a2
+      implicit none
+!$acc update device(kg01_fracrefao, kg01_fracrefbo, kg01_kao, kg01_kbo, kg01_kao_mn2, &
+!$acc& kg01_kbo_mn2, kg01_selfrefo, kg01_forrefo, kg01_fracrefa, kg01_fracrefb, &
+!$acc& kg01_ka_s, kg01_kb_s, kg01_ka_mn2, kg01_kb_mn2, kg01_selfref, kg01_forref)
+!$acc update device(kg02_fracrefao, kg02_fracrefbo, kg02_kao, kg02_kbo, kg02_selfrefo, &
+!$acc& kg02_forrefo, kg02_fracrefa, kg02_fracrefb, kg02_ka_s, kg02_kb_s, kg02_selfref, &
+!$acc& kg02_forref, kg02_refparam)
+!$acc update device(kg03_fracrefao, kg03_fracrefbo, kg03_kao, kg03_kbo, kg03_kao_mn2o, &
+!$acc& kg03_kbo_mn2o, kg03_selfrefo, kg03_forrefo, kg03_fracrefa, kg03_fracrefb, &
+!$acc& kg03_ka_s, kg03_kb_s, kg03_ka_mn2o, kg03_kb_mn2o, kg03_selfref, kg03_forref)
+!$acc update device(kg04_fracrefao, kg04_fracrefbo, kg04_kao, kg04_kbo, kg04_selfrefo, &
+!$acc& kg04_forrefo, kg04_fracrefa, kg04_fracrefb, kg04_ka_s, kg04_kb_s, kg04_selfref, &
+!$acc& kg04_forref)
+!$acc update device(kg05_fracrefao, kg05_fracrefbo, kg05_kao, kg05_kbo, kg05_kao_mo3, &
+!$acc& kg05_selfrefo, kg05_forrefo, kg05_ccl4o, kg05_fracrefa, kg05_fracrefb, kg05_ka_s, &
+!$acc& kg05_kb_s, kg05_ka_mo3, kg05_selfref, kg05_forref, kg05_ccl4)
+!$acc update device(kg06_fracrefao, kg06_kao, kg06_kao_mco2, kg06_selfrefo, kg06_forrefo, &
+!$acc& kg06_cfc11adjo, kg06_cfc12o, kg06_fracrefa, kg06_ka_s, kg06_ka_mco2, kg06_selfref, &
+!$acc& kg06_forref, kg06_cfc11adj, kg06_cfc12)
+!$acc update device(kg07_fracrefbo, kg07_fracrefao, kg07_kao, kg07_kbo, kg07_kao_mco2, &
+!$acc& kg07_kbo_mco2, kg07_selfrefo, kg07_forrefo, kg07_fracrefb, kg07_fracrefa, &
+!$acc& kg07_ka_s, kg07_kb_s, kg07_ka_mco2, kg07_kb_mco2, kg07_selfref, kg07_forref)
+!$acc update device(kg08_fracrefao, kg08_fracrefbo, kg08_cfc12o, kg08_cfc22adjo, &
+!$acc& kg08_kao, kg08_kao_mco2, kg08_kao_mn2o, kg08_kao_mo3, kg08_kbo, kg08_kbo_mco2, &
+!$acc& kg08_kbo_mn2o, kg08_selfrefo, kg08_forrefo, kg08_fracrefa, kg08_fracrefb, &
+!$acc& kg08_cfc12, kg08_cfc22adj, kg08_ka_s, kg08_kb_s, kg08_ka_mco2, kg08_ka_mn2o, &
+!$acc& kg08_ka_mo3, kg08_kb_mco2, kg08_kb_mn2o, kg08_selfref, kg08_forref)
+!$acc update device(kg09_fracrefbo, kg09_fracrefao, kg09_kao, kg09_kbo, kg09_kao_mn2o, &
+!$acc& kg09_kbo_mn2o, kg09_selfrefo, kg09_forrefo, kg09_fracrefb, kg09_fracrefa, &
+!$acc& kg09_ka_s, kg09_kb_s, kg09_ka_mn2o, kg09_kb_mn2o, kg09_selfref, kg09_forref)
+!$acc update device(kg10_fracrefao, kg10_fracrefbo, kg10_kao, kg10_kbo, kg10_selfrefo, &
+!$acc& kg10_forrefo, kg10_fracrefa, kg10_fracrefb, kg10_ka_s, kg10_kb_s, kg10_selfref, &
+!$acc& kg10_forref)
+!$acc update device(kg11_fracrefao, kg11_fracrefbo, kg11_kao, kg11_kbo, kg11_kao_mo2, &
+!$acc& kg11_kbo_mo2, kg11_selfrefo, kg11_forrefo, kg11_fracrefa, kg11_fracrefb, &
+!$acc& kg11_ka_s, kg11_kb_s, kg11_ka_mo2, kg11_kb_mo2, kg11_selfref, kg11_forref)
+!$acc update device(kg12_fracrefao, kg12_kao, kg12_selfrefo, kg12_forrefo, kg12_fracrefa, &
+!$acc& kg12_ka_s, kg12_selfref, kg12_forref)
+!$acc update device(kg13_fracrefbo, kg13_fracrefao, kg13_kao, kg13_kao_mco2, &
+!$acc& kg13_kao_mco, kg13_kbo_mo3, kg13_selfrefo, kg13_forrefo, kg13_fracrefb, &
+!$acc& kg13_fracrefa, kg13_ka_s, kg13_ka_mco2, kg13_ka_mco, kg13_kb_mo3, kg13_selfref, &
+!$acc& kg13_forref)
+!$acc update device(kg14_fracrefao, kg14_fracrefbo, kg14_kao, kg14_kbo, kg14_selfrefo, &
+!$acc& kg14_forrefo, kg14_fracrefa, kg14_fracrefb, kg14_ka_s, kg14_kb_s, kg14_selfref, &
+!$acc& kg14_forref)
+!$acc update device(kg15_fracrefao, kg15_kao, kg15_kao_mn2, kg15_selfrefo, kg15_forrefo, &
+!$acc& kg15_fracrefa, kg15_ka_s, kg15_ka_mn2, kg15_selfref, kg15_forref)
+!$acc update device(kg16_fracrefbo, kg16_fracrefao, kg16_kao, kg16_kbo, kg16_selfrefo, &
+!$acc& kg16_forrefo, kg16_fracrefb, kg16_fracrefa, kg16_ka_s, kg16_kb_s, kg16_selfref, &
+!$acc& kg16_forref)
+!$acc update device(cld_abscld1, cld_absice0, cld_absice1, cld_absice2, cld_absice3, &
+!$acc& cld_absliq0, cld_absliq1)
+!$acc update device(con_fluxfac, con_heatfac, con_oneminus, con_pi, con_grav, con_planck, &
+!$acc& con_boltz, con_clight, con_avogad, con_alosmt, con_gascon, con_radcn1, con_radcn2, &
+!$acc& con_sbcnst, con_secdy)
+!$acc update device(ref_pref, ref_preflog, ref_tref, ref_chi_mls)
+!$acc update device(tbl_tau_tbl, tbl_exp_tbl, tbl_tfn_tbl, tbl_bpade)
+!$acc update device(wvn_ng, wvn_nspa, wvn_nspb, wvn_wavenum1, wvn_wavenum2, wvn_delwave, &
+!$acc& wvn_totplnk, wvn_totplk16, wvn_ngc, wvn_ngs, wvn_ngn, wvn_ngb, wvn_ngm, wvn_wt, &
+!$acc& wvn_rwgt, wvn_nxmol, wvn_ixindx)
+!$acc update device(rt_wtdiff, rt_rec_6, rt_a0, rt_a1, rt_a2)
+!$acc update device(retab, nlayers)
+      end subroutine rrtmg_lw_gpu_upload
+
+      subroutine rrtmg_lw_gpu_tabcheck(n, nbad, bad)
+      use rrlw_kg01, only : kg01_fracrefao => fracrefao, kg01_fracrefbo => fracrefbo, &
+            kg01_kao => kao, kg01_kbo => kbo, kg01_kao_mn2 => kao_mn2, &
+            kg01_kbo_mn2 => kbo_mn2, kg01_selfrefo => selfrefo, kg01_forrefo => forrefo, &
+            kg01_fracrefa => fracrefa, kg01_fracrefb => fracrefb, kg01_ka_s => ka_s, &
+            kg01_kb_s => kb_s, kg01_ka_mn2 => ka_mn2, kg01_kb_mn2 => kb_mn2, &
+            kg01_selfref => selfref, kg01_forref => forref
+      use rrlw_kg02, only : kg02_fracrefao => fracrefao, kg02_fracrefbo => fracrefbo, &
+            kg02_kao => kao, kg02_kbo => kbo, kg02_selfrefo => selfrefo, &
+            kg02_forrefo => forrefo, kg02_fracrefa => fracrefa, kg02_fracrefb => fracrefb, &
+            kg02_ka_s => ka_s, kg02_kb_s => kb_s, kg02_selfref => selfref, &
+            kg02_forref => forref, kg02_refparam => refparam
+      use rrlw_kg03, only : kg03_fracrefao => fracrefao, kg03_fracrefbo => fracrefbo, &
+            kg03_kao => kao, kg03_kbo => kbo, kg03_kao_mn2o => kao_mn2o, &
+            kg03_kbo_mn2o => kbo_mn2o, kg03_selfrefo => selfrefo, kg03_forrefo => forrefo, &
+            kg03_fracrefa => fracrefa, kg03_fracrefb => fracrefb, kg03_ka_s => ka_s, &
+            kg03_kb_s => kb_s, kg03_ka_mn2o => ka_mn2o, kg03_kb_mn2o => kb_mn2o, &
+            kg03_selfref => selfref, kg03_forref => forref
+      use rrlw_kg04, only : kg04_fracrefao => fracrefao, kg04_fracrefbo => fracrefbo, &
+            kg04_kao => kao, kg04_kbo => kbo, kg04_selfrefo => selfrefo, &
+            kg04_forrefo => forrefo, kg04_fracrefa => fracrefa, kg04_fracrefb => fracrefb, &
+            kg04_ka_s => ka_s, kg04_kb_s => kb_s, kg04_selfref => selfref, &
+            kg04_forref => forref
+      use rrlw_kg05, only : kg05_fracrefao => fracrefao, kg05_fracrefbo => fracrefbo, &
+            kg05_kao => kao, kg05_kbo => kbo, kg05_kao_mo3 => kao_mo3, &
+            kg05_selfrefo => selfrefo, kg05_forrefo => forrefo, kg05_ccl4o => ccl4o, &
+            kg05_fracrefa => fracrefa, kg05_fracrefb => fracrefb, kg05_ka_s => ka_s, &
+            kg05_kb_s => kb_s, kg05_ka_mo3 => ka_mo3, kg05_selfref => selfref, &
+            kg05_forref => forref, kg05_ccl4 => ccl4
+      use rrlw_kg06, only : kg06_fracrefao => fracrefao, kg06_kao => kao, &
+            kg06_kao_mco2 => kao_mco2, kg06_selfrefo => selfrefo, kg06_forrefo => forrefo, &
+            kg06_cfc11adjo => cfc11adjo, kg06_cfc12o => cfc12o, kg06_fracrefa => fracrefa, &
+            kg06_ka_s => ka_s, kg06_ka_mco2 => ka_mco2, kg06_selfref => selfref, &
+            kg06_forref => forref, kg06_cfc11adj => cfc11adj, kg06_cfc12 => cfc12
+      use rrlw_kg07, only : kg07_fracrefbo => fracrefbo, kg07_fracrefao => fracrefao, &
+            kg07_kao => kao, kg07_kbo => kbo, kg07_kao_mco2 => kao_mco2, &
+            kg07_kbo_mco2 => kbo_mco2, kg07_selfrefo => selfrefo, kg07_forrefo => forrefo, &
+            kg07_fracrefb => fracrefb, kg07_fracrefa => fracrefa, kg07_ka_s => ka_s, &
+            kg07_kb_s => kb_s, kg07_ka_mco2 => ka_mco2, kg07_kb_mco2 => kb_mco2, &
+            kg07_selfref => selfref, kg07_forref => forref
+      use rrlw_kg08, only : kg08_fracrefao => fracrefao, kg08_fracrefbo => fracrefbo, &
+            kg08_cfc12o => cfc12o, kg08_cfc22adjo => cfc22adjo, kg08_kao => kao, &
+            kg08_kao_mco2 => kao_mco2, kg08_kao_mn2o => kao_mn2o, kg08_kao_mo3 => kao_mo3, &
+            kg08_kbo => kbo, kg08_kbo_mco2 => kbo_mco2, kg08_kbo_mn2o => kbo_mn2o, &
+            kg08_selfrefo => selfrefo, kg08_forrefo => forrefo, kg08_fracrefa => fracrefa, &
+            kg08_fracrefb => fracrefb, kg08_cfc12 => cfc12, kg08_cfc22adj => cfc22adj, &
+            kg08_ka_s => ka_s, kg08_kb_s => kb_s, kg08_ka_mco2 => ka_mco2, &
+            kg08_ka_mn2o => ka_mn2o, kg08_ka_mo3 => ka_mo3, kg08_kb_mco2 => kb_mco2, &
+            kg08_kb_mn2o => kb_mn2o, kg08_selfref => selfref, kg08_forref => forref
+      use rrlw_kg09, only : kg09_fracrefbo => fracrefbo, kg09_fracrefao => fracrefao, &
+            kg09_kao => kao, kg09_kbo => kbo, kg09_kao_mn2o => kao_mn2o, &
+            kg09_kbo_mn2o => kbo_mn2o, kg09_selfrefo => selfrefo, kg09_forrefo => forrefo, &
+            kg09_fracrefb => fracrefb, kg09_fracrefa => fracrefa, kg09_ka_s => ka_s, &
+            kg09_kb_s => kb_s, kg09_ka_mn2o => ka_mn2o, kg09_kb_mn2o => kb_mn2o, &
+            kg09_selfref => selfref, kg09_forref => forref
+      use rrlw_kg10, only : kg10_fracrefao => fracrefao, kg10_fracrefbo => fracrefbo, &
+            kg10_kao => kao, kg10_kbo => kbo, kg10_selfrefo => selfrefo, &
+            kg10_forrefo => forrefo, kg10_fracrefa => fracrefa, kg10_fracrefb => fracrefb, &
+            kg10_ka_s => ka_s, kg10_kb_s => kb_s, kg10_selfref => selfref, &
+            kg10_forref => forref
+      use rrlw_kg11, only : kg11_fracrefao => fracrefao, kg11_fracrefbo => fracrefbo, &
+            kg11_kao => kao, kg11_kbo => kbo, kg11_kao_mo2 => kao_mo2, &
+            kg11_kbo_mo2 => kbo_mo2, kg11_selfrefo => selfrefo, kg11_forrefo => forrefo, &
+            kg11_fracrefa => fracrefa, kg11_fracrefb => fracrefb, kg11_ka_s => ka_s, &
+            kg11_kb_s => kb_s, kg11_ka_mo2 => ka_mo2, kg11_kb_mo2 => kb_mo2, &
+            kg11_selfref => selfref, kg11_forref => forref
+      use rrlw_kg12, only : kg12_fracrefao => fracrefao, kg12_kao => kao, &
+            kg12_selfrefo => selfrefo, kg12_forrefo => forrefo, kg12_fracrefa => fracrefa, &
+            kg12_ka_s => ka_s, kg12_selfref => selfref, kg12_forref => forref
+      use rrlw_kg13, only : kg13_fracrefbo => fracrefbo, kg13_fracrefao => fracrefao, &
+            kg13_kao => kao, kg13_kao_mco2 => kao_mco2, kg13_kao_mco => kao_mco, &
+            kg13_kbo_mo3 => kbo_mo3, kg13_selfrefo => selfrefo, kg13_forrefo => forrefo, &
+            kg13_fracrefb => fracrefb, kg13_fracrefa => fracrefa, kg13_ka_s => ka_s, &
+            kg13_ka_mco2 => ka_mco2, kg13_ka_mco => ka_mco, kg13_kb_mo3 => kb_mo3, &
+            kg13_selfref => selfref, kg13_forref => forref
+      use rrlw_kg14, only : kg14_fracrefao => fracrefao, kg14_fracrefbo => fracrefbo, &
+            kg14_kao => kao, kg14_kbo => kbo, kg14_selfrefo => selfrefo, &
+            kg14_forrefo => forrefo, kg14_fracrefa => fracrefa, kg14_fracrefb => fracrefb, &
+            kg14_ka_s => ka_s, kg14_kb_s => kb_s, kg14_selfref => selfref, &
+            kg14_forref => forref
+      use rrlw_kg15, only : kg15_fracrefao => fracrefao, kg15_kao => kao, &
+            kg15_kao_mn2 => kao_mn2, kg15_selfrefo => selfrefo, kg15_forrefo => forrefo, &
+            kg15_fracrefa => fracrefa, kg15_ka_s => ka_s, kg15_ka_mn2 => ka_mn2, &
+            kg15_selfref => selfref, kg15_forref => forref
+      use rrlw_kg16, only : kg16_fracrefbo => fracrefbo, kg16_fracrefao => fracrefao, &
+            kg16_kao => kao, kg16_kbo => kbo, kg16_selfrefo => selfrefo, &
+            kg16_forrefo => forrefo, kg16_fracrefb => fracrefb, kg16_fracrefa => fracrefa, &
+            kg16_ka_s => ka_s, kg16_kb_s => kb_s, kg16_selfref => selfref, &
+            kg16_forref => forref
+      use rrlw_cld, only : cld_abscld1 => abscld1, cld_absice0 => absice0, &
+            cld_absice1 => absice1, cld_absice2 => absice2, cld_absice3 => absice3, &
+            cld_absliq0 => absliq0, cld_absliq1 => absliq1
+      use rrlw_con, only : con_fluxfac => fluxfac, con_heatfac => heatfac, &
+            con_oneminus => oneminus, con_pi => pi, con_grav => grav, con_planck => planck, &
+            con_boltz => boltz, con_clight => clight, con_avogad => avogad, &
+            con_alosmt => alosmt, con_gascon => gascon, con_radcn1 => radcn1, &
+            con_radcn2 => radcn2, con_sbcnst => sbcnst, con_secdy => secdy
+      use rrlw_ref, only : ref_pref => pref, ref_preflog => preflog, ref_tref => tref, &
+            ref_chi_mls => chi_mls
+      use rrlw_tbl, only : tbl_tau_tbl => tau_tbl, tbl_exp_tbl => exp_tbl, &
+            tbl_tfn_tbl => tfn_tbl, tbl_bpade => bpade
+      use rrlw_wvn, only : wvn_ng => ng, wvn_nspa => nspa, wvn_nspb => nspb, &
+            wvn_wavenum1 => wavenum1, wvn_wavenum2 => wavenum2, wvn_delwave => delwave, &
+            wvn_totplnk => totplnk, wvn_totplk16 => totplk16, wvn_ngc => ngc, &
+            wvn_ngs => ngs, wvn_ngn => ngn, wvn_ngb => ngb, wvn_ngm => ngm, wvn_wt => wt, &
+            wvn_rwgt => rwgt, wvn_nxmol => nxmol, wvn_ixindx => ixindx
+      use rrtmg_lw_rtrnmc, only : rt_wtdiff => wtdiff, rt_rec_6 => rec_6, rt_a0 => a0, &
+            rt_a1 => a1, rt_a2 => a2
+      implicit none
+      integer, intent(out) :: n, nbad
+      character(len=*), intent(inout) :: bad
+      n = 0
+      nbad = 0
+      call rrtmg_lw_gpu_chk_r1(kg01_fracrefao, "kg01_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg01_fracrefbo, "kg01_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg01_kao, "kg01_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg01_kbo, "kg01_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_kao_mn2, "kg01_kao_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_kbo_mn2, "kg01_kbo_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_selfrefo, "kg01_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_forrefo, "kg01_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg01_fracrefa, "kg01_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg01_fracrefb, "kg01_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg01_ka_s, "kg01_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg01_kb_s, "kg01_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_ka_mn2, "kg01_ka_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_kb_mn2, "kg01_kb_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_selfref, "kg01_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg01_forref, "kg01_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_fracrefao, "kg02_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_fracrefbo, "kg02_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg02_kao, "kg02_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg02_kbo, "kg02_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg02_selfrefo, "kg02_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg02_forrefo, "kg02_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_fracrefa, "kg02_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_fracrefb, "kg02_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_ka_s, "kg02_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_kb_s, "kg02_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg02_selfref, "kg02_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg02_forref, "kg02_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg02_refparam, "kg02_refparam", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_fracrefao, "kg03_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_fracrefbo, "kg03_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg03_kao, "kg03_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg03_kbo, "kg03_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg03_kao_mn2o, "kg03_kao_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg03_kbo_mn2o, "kg03_kbo_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_selfrefo, "kg03_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_forrefo, "kg03_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_fracrefa, "kg03_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_fracrefb, "kg03_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg03_ka_s, "kg03_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg03_kb_s, "kg03_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg03_ka_mn2o, "kg03_ka_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg03_kb_mn2o, "kg03_kb_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_selfref, "kg03_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg03_forref, "kg03_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_fracrefao, "kg04_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_fracrefbo, "kg04_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg04_kao, "kg04_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg04_kbo, "kg04_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_selfrefo, "kg04_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_forrefo, "kg04_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_fracrefa, "kg04_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_fracrefb, "kg04_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg04_ka_s, "kg04_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg04_kb_s, "kg04_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_selfref, "kg04_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg04_forref, "kg04_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_fracrefao, "kg05_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_fracrefbo, "kg05_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg05_kao, "kg05_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg05_kbo, "kg05_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg05_kao_mo3, "kg05_kao_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_selfrefo, "kg05_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_forrefo, "kg05_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg05_ccl4o, "kg05_ccl4o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_fracrefa, "kg05_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_fracrefb, "kg05_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg05_ka_s, "kg05_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg05_kb_s, "kg05_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg05_ka_mo3, "kg05_ka_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_selfref, "kg05_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg05_forref, "kg05_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg05_ccl4, "kg05_ccl4", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_fracrefao, "kg06_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg06_kao, "kg06_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_kao_mco2, "kg06_kao_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_selfrefo, "kg06_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_forrefo, "kg06_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_cfc11adjo, "kg06_cfc11adjo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_cfc12o, "kg06_cfc12o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_fracrefa, "kg06_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_ka_s, "kg06_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_ka_mco2, "kg06_ka_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_selfref, "kg06_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg06_forref, "kg06_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_cfc11adj, "kg06_cfc11adj", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg06_cfc12, "kg06_cfc12", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg07_fracrefbo, "kg07_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_fracrefao, "kg07_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg07_kao, "kg07_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg07_kbo, "kg07_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg07_kao_mco2, "kg07_kao_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_kbo_mco2, "kg07_kbo_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_selfrefo, "kg07_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_forrefo, "kg07_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg07_fracrefb, "kg07_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_fracrefa, "kg07_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg07_ka_s, "kg07_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg07_kb_s, "kg07_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg07_ka_mco2, "kg07_ka_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_kb_mco2, "kg07_kb_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_selfref, "kg07_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg07_forref, "kg07_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_fracrefao, "kg08_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_fracrefbo, "kg08_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_cfc12o, "kg08_cfc12o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_cfc22adjo, "kg08_cfc22adjo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg08_kao, "kg08_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kao_mco2, "kg08_kao_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kao_mn2o, "kg08_kao_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kao_mo3, "kg08_kao_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg08_kbo, "kg08_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kbo_mco2, "kg08_kbo_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kbo_mn2o, "kg08_kbo_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_selfrefo, "kg08_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_forrefo, "kg08_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_fracrefa, "kg08_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_fracrefb, "kg08_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_cfc12, "kg08_cfc12", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_cfc22adj, "kg08_cfc22adj", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_ka_s, "kg08_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg08_kb_s, "kg08_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_ka_mco2, "kg08_ka_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_ka_mn2o, "kg08_ka_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_ka_mo3, "kg08_ka_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kb_mco2, "kg08_kb_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_kb_mn2o, "kg08_kb_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_selfref, "kg08_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg08_forref, "kg08_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg09_fracrefbo, "kg09_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_fracrefao, "kg09_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg09_kao, "kg09_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg09_kbo, "kg09_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg09_kao_mn2o, "kg09_kao_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_kbo_mn2o, "kg09_kbo_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_selfrefo, "kg09_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_forrefo, "kg09_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg09_fracrefb, "kg09_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_fracrefa, "kg09_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg09_ka_s, "kg09_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg09_kb_s, "kg09_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg09_ka_mn2o, "kg09_ka_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_kb_mn2o, "kg09_kb_mn2o", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_selfref, "kg09_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg09_forref, "kg09_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_fracrefao, "kg10_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_fracrefbo, "kg10_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg10_kao, "kg10_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg10_kbo, "kg10_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg10_selfrefo, "kg10_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg10_forrefo, "kg10_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_fracrefa, "kg10_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_fracrefb, "kg10_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_ka_s, "kg10_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg10_kb_s, "kg10_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg10_selfref, "kg10_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg10_forref, "kg10_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_fracrefao, "kg11_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_fracrefbo, "kg11_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg11_kao, "kg11_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg11_kbo, "kg11_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_kao_mo2, "kg11_kao_mo2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_kbo_mo2, "kg11_kbo_mo2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_selfrefo, "kg11_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_forrefo, "kg11_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_fracrefa, "kg11_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_fracrefb, "kg11_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_ka_s, "kg11_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg11_kb_s, "kg11_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_ka_mo2, "kg11_ka_mo2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_kb_mo2, "kg11_kb_mo2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_selfref, "kg11_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg11_forref, "kg11_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_fracrefao, "kg12_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg12_kao, "kg12_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_selfrefo, "kg12_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_forrefo, "kg12_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_fracrefa, "kg12_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg12_ka_s, "kg12_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_selfref, "kg12_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg12_forref, "kg12_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg13_fracrefbo, "kg13_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_fracrefao, "kg13_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg13_kao, "kg13_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg13_kao_mco2, "kg13_kao_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg13_kao_mco, "kg13_kao_mco", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_kbo_mo3, "kg13_kbo_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_selfrefo, "kg13_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_forrefo, "kg13_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg13_fracrefb, "kg13_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_fracrefa, "kg13_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg13_ka_s, "kg13_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg13_ka_mco2, "kg13_ka_mco2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg13_ka_mco, "kg13_ka_mco", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_kb_mo3, "kg13_kb_mo3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_selfref, "kg13_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg13_forref, "kg13_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_fracrefao, "kg14_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_fracrefbo, "kg14_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg14_kao, "kg14_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg14_kbo, "kg14_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg14_selfrefo, "kg14_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg14_forrefo, "kg14_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_fracrefa, "kg14_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_fracrefb, "kg14_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_ka_s, "kg14_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg14_kb_s, "kg14_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg14_selfref, "kg14_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg14_forref, "kg14_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_fracrefao, "kg15_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg15_kao, "kg15_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg15_kao_mn2, "kg15_kao_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_selfrefo, "kg15_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_forrefo, "kg15_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_fracrefa, "kg15_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg15_ka_s, "kg15_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg15_ka_mn2, "kg15_ka_mn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_selfref, "kg15_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg15_forref, "kg15_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg16_fracrefbo, "kg16_fracrefbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_fracrefao, "kg16_fracrefao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r4(kg16_kao, "kg16_kao", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r3(kg16_kbo, "kg16_kbo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_selfrefo, "kg16_selfrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_forrefo, "kg16_forrefo", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg16_fracrefb, "kg16_fracrefb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_fracrefa, "kg16_fracrefa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg16_ka_s, "kg16_ka_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(kg16_kb_s, "kg16_kb_s", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_selfref, "kg16_selfref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(kg16_forref, "kg16_forref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(cld_abscld1, "cld_abscld1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(cld_absice0, "cld_absice0", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(cld_absice1, "cld_absice1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(cld_absice2, "cld_absice2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(cld_absice3, "cld_absice3", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(cld_absliq0, "cld_absliq0", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(cld_absliq1, "cld_absliq1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_fluxfac, "con_fluxfac", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_heatfac, "con_heatfac", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_oneminus, "con_oneminus", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_pi, "con_pi", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_grav, "con_grav", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_planck, "con_planck", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_boltz, "con_boltz", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_clight, "con_clight", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_avogad, "con_avogad", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_alosmt, "con_alosmt", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_gascon, "con_gascon", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_radcn1, "con_radcn1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_radcn2, "con_radcn2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_sbcnst, "con_sbcnst", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(con_secdy, "con_secdy", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(ref_pref, "ref_pref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(ref_preflog, "ref_preflog", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(ref_tref, "ref_tref", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(ref_chi_mls, "ref_chi_mls", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(tbl_tau_tbl, "tbl_tau_tbl", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(tbl_exp_tbl, "tbl_exp_tbl", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(tbl_tfn_tbl, "tbl_tfn_tbl", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(tbl_bpade, "tbl_bpade", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ng, "wvn_ng", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_nspa, "wvn_nspa", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_nspb, "wvn_nspb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_wavenum1, "wvn_wavenum1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_wavenum2, "wvn_wavenum2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_delwave, "wvn_delwave", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r2(wvn_totplnk, "wvn_totplnk", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_totplk16, "wvn_totplk16", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ngc, "wvn_ngc", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ngs, "wvn_ngs", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ngn, "wvn_ngn", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ngb, "wvn_ngb", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ngm, "wvn_ngm", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_wt, "wvn_wt", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(wvn_rwgt, "wvn_rwgt", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i0(wvn_nxmol, "wvn_nxmol", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i1(wvn_ixindx, "wvn_ixindx", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(rt_wtdiff, "rt_wtdiff", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r0(rt_rec_6, "rt_rec_6", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(rt_a0, "rt_a0", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(rt_a1, "rt_a1", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(rt_a2, "rt_a2", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_r1(retab, "retab", n, nbad, bad)
+      call rrtmg_lw_gpu_chk_i0(nlayers, "nlayers", n, nbad, bad)
+      end subroutine rrtmg_lw_gpu_tabcheck
+#endif
 END MODULE module_ra_rrtmg_lw
