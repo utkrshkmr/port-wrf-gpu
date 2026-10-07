@@ -2074,6 +2074,11 @@ SUBROUTINE smag2d_km( config_flags,xkmh,xkmv,xkhh,xkhv,                        &
                     ids,ide, jds,jde, kds,kde,                                 &
                     ims,ime, jms,jme, kms,kme,                                 &
                     its,ite, jts,jte, kts,kte                                  )
+#ifdef WRF_GPU
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_SMAG2D_KM
+   USE module_gpu_callcheck
+   USE module_gpu_work, ONLY : work_p2_g2_smag_def2
+#endif
 
 !-----------------------------------------------------------------------
 ! Begin declarations.
@@ -2109,11 +2114,38 @@ SUBROUTINE smag2d_km( config_flags,xkmh,xkmv,xkhh,xkhv,                        &
    REAL    :: deltas, tmp, pr, mlen_h, c_s
    REAL    :: dxm, dym, tmpzx, tmpzy, alpha, def_limit
 
+#ifndef WRF_GPU
    REAL, DIMENSION( its:ite , kts:kte , jts:jte )                 ::     def2
+#else
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: def2
+   INTEGER :: diff_opt_l
+   LOGICAL :: gpu_isl
+#endif
 
 ! End declarations.
 !-----------------------------------------------------------------------
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_SMAG2D_KM)) THEN
+        CALL gpu_cc_save_r(1, xkmh, SIZE(xkmh,KIND=8))
+        CALL gpu_cc_save_r(2, xkmv, SIZE(xkmv,KIND=8))
+        CALL gpu_cc_save_r(3, xkhh, SIZE(xkhh,KIND=8))
+        CALL gpu_cc_save_r(4, xkhv, SIZE(xkhv,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_SMAG2D_KM)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, zy)
+        ELSE
+!$acc update self(xkmh, xkmv, xkhh, xkhv, defor11, defor22, defor12, rdzw, msftx, msfty, zx, zy)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+   def2(its:ite, kts:kte, jts:jte) => work_p2_g2_smag_def2( &
+        1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+   diff_opt_l = config_flags%diff_opt
+#endif
    ktf = min(kte,kde-1)
 
    i_start = its
@@ -2135,6 +2167,10 @@ SUBROUTINE smag2d_km( config_flags,xkmh,xkmv,xkhh,xkhv,                        &
    pr=prandtl
    c_s = config_flags%c_s
 
+! K-SMAG: deformation def2 (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_SMAG2D_KM)) default(none) &
+!$acc& present(def2, defor11, defor22, defor12) private(tmp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
    do j=j_start,j_end
    do k=kts,ktf
    do i=i_start,i_end
@@ -2146,6 +2182,44 @@ SUBROUTINE smag2d_km( config_flags,xkmh,xkmv,xkhh,xkhv,                        &
    enddo
    enddo
 !
+#ifdef WRF_GPU
+! K-SMAG: eddy viscosity (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_SMAG2D_KM)) default(none) &
+!$acc& present(xkmh, xkmv, xkhh, xkhv, def2, msftx, msfty, zx, zy, rdzw) &
+!$acc& private(mlen_h, tmp, dxm, dym, tmpzx, tmpzy, alpha, def_limit) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, dx, dy, c_s, pr, diff_opt_l)
+      DO j = j_start, j_end
+      DO k = kts, ktf
+      DO i = i_start, i_end
+         mlen_h=sqrt(dx/msftx(i,j) * dy/msfty(i,j))
+         tmp=sqrt(def2(i,k,j))
+!        xkmh(i,k,j)=max(c_s*c_s*mlen_h*mlen_h*tmp, 1.0E-6*mlen_h*mlen_h )
+         xkmh(i,k,j)=c_s*c_s*mlen_h*mlen_h*tmp
+         xkmh(i,k,j)=min(xkmh(i,k,j), 10.*mlen_h )
+         xkmv(i,k,j)=xkmh(i,k,j)               ! v4.2 and later, this is used for hor. diff. of w
+         xkhh(i,k,j)=xkmh(i,k,j)/pr
+         xkhv(i,k,j)=0.
+         IF(diff_opt_l .EQ. 2)THEN
+! jd: reduce diffusion coefficient by slope factor (modified by JB August 2014)
+            dxm=dx/msftx(i,j)
+            dym=dy/msfty(i,j)
+            tmpzx = (0.25*( abs(zx(i,k,j))+ abs(zx(i+1,k,j  )) + abs(zx(i,k+1,j))+ abs(zx(i+1,k+1,j  )))*rdzw(i,k,j)*dxm)
+            tmpzy = (0.25*( abs(zy(i,k,j))+ abs(zy(i  ,k,j+1)) + abs(zy(i,k+1,j))+ abs(zy(i  ,k+1,j+1)))*rdzw(i,k,j)*dym)
+            alpha = max(sqrt(tmpzx*tmpzx+tmpzy*tmpzy),1.0)
+! If deformation is large, further reduce the diffusion coefficient
+            def_limit = max(10./mlen_h,1.e-3)
+           if ( tmp .gt. def_limit ) then
+             xkmh(i,k,j)=xkmh(i,k,j)/(alpha*alpha)
+           else
+             xkmh(i,k,j)=xkmh(i,k,j)/(alpha)
+           endif
+           xkhh(i,k,j)=xkmh(i,k,j)/pr
+           xkmv(i,k,j)=xkmh(i,k,j)               ! v4.2 and later, this is used for hor. diff. of w
+         ENDIF
+      ENDDO
+      ENDDO
+      ENDDO
+#else
       DO j = j_start, j_end
       DO k = kts, ktf
       DO i = i_start, i_end
@@ -2177,7 +2251,29 @@ SUBROUTINE smag2d_km( config_flags,xkmh,xkmv,xkhh,xkhv,                        &
       ENDDO
       ENDDO
       ENDDO
+#endif
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(xkmh, xkmv, xkhh, xkhv)
+        ELSE
+!$acc update device(xkmh, xkmv, xkhh, xkhv)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_SMAG2D_KM)) THEN
+        CALL gpu_cc_done_r(1, xkmh, SIZE(xkmh,KIND=8), 'xkmh', &
+          LBOUND(xkmh), UBOUND(xkmh))
+        CALL gpu_cc_done_r(2, xkmv, SIZE(xkmv,KIND=8), 'xkmv', &
+          LBOUND(xkmv), UBOUND(xkmv))
+        CALL gpu_cc_done_r(3, xkhh, SIZE(xkhh,KIND=8), 'xkhh', &
+          LBOUND(xkhh), UBOUND(xkhh))
+        CALL gpu_cc_done_r(4, xkhv, SIZE(xkhv,KIND=8), 'xkhv', &
+          LBOUND(xkhv), UBOUND(xkhv))
+        IF (gpu_cc_next(R_SMAG2D_KM)) GOTO 99901
+      END IF
+#endif
 END SUBROUTINE smag2d_km
 
 !=======================================================================

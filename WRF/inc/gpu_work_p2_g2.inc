@@ -52,3 +52,18 @@
    CALL gpu_work_check_r(work_p2_g2_n2_tmp1top, "work_p2_g2_n2_tmp1top", nwork, nbad)
 #endif
 #endif
+
+! smag2d_km deformation tile. GPU view only.
+#if GPU_WORK_SECTION == 1
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_g2_smag_def2(:)
+#endif
+#elif GPU_WORK_SECTION == 2
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_g2_smag_def2, n3d, "work_p2_g2_smag_def2")
+#endif
+#elif GPU_WORK_SECTION == 3
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_g2_smag_def2, "work_p2_g2_smag_def2", nwork, nbad)
+#endif
+#endif
