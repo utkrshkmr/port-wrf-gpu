@@ -86,6 +86,10 @@ USE module_domain , only: domain
 #endif
 USE module_configure, only: grid_config_rec_type
 USE module_gpu_work, ONLY : gpu_work_ensure, work_p4_model_fuel_frac_burnt, work_p4_model_fuel_frac_end
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_FIRE_MODEL
+#ifdef WRF_GPU
+USE module_wrf_error, ONLY : wrf_error_fatal
+#endif
 
 implicit none
 
@@ -168,8 +172,33 @@ integer:: stat_lev=1
     ! PAJ:
   real :: start_time_ig, end_time_ig
   real, parameter :: EPSILON = 0.00001
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
 !*** executable
+
+#ifdef WRF_GPU
+if (fire_is_real_perim) call wrf_error_fatal('fire_model: observed perimeter not ported to the GPU')
+if (fire_const_time > 0.) call wrf_error_fatal('fire_model: constant heat not ported to the GPU')
+if (fire_print_msg .ge. 1) call wrf_error_fatal('fire_model: stat messages not ported to the GPU')
+if (run_fuel_moisture) call wrf_error_fatal('fire_model: fuel moisture not ported to the GPU')
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ignited_tile, coord_xf, coord_yf, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, &
+!$acc&   lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, &
+!$acc&   burnt_area_dt, grnhfx, grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(ignited_tile, coord_xf, coord_yf, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, &
+!$acc&   lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, &
+!$acc&   burnt_area_dt, grnhfx, grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
 call gpu_work_ensure(ims_hu, ime_hu, jms_hu, jme_hu, kms_hu, kme_hu)
 fuel_frac_burnt(ifts:ifte,jfts:jfte) => work_p4_model_fuel_frac_burnt(1:(ifte-ifts+1)*(jfte-jfts+1))
@@ -207,6 +236,10 @@ elseif(ifun.eq.2)then
 !       compute the gradients once for all
         err=0.
         maxgrad=0.
+! ifun 2 gradient check, message only (reduction max)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_FIRE_MODEL)) default(none) &
+!$acc& present(fp) firstprivate(jfts, jfte, ifts, ifte, fdx, fdy) &
+!$acc& private(erri, errj, grad) reduction(max:err, maxgrad)
         do j=jfts,jfte
             do i=ifts,ifte
                 erri = fp%dzdxf(i,j) - (fp%zsf(i+1,j)-fp%zsf(i-1,j))/(2.*fdx)
@@ -221,6 +254,24 @@ elseif(ifun.eq.2)then
 !$OMP END CRITICAL(FIRE_MODEL_CRIT)
         call message(msg)
 
+#ifdef WRF_GPU
+! set_nfuel_cat, set_fire_params and init_no_fire have no route. Run them
+! on the host copy, then upload again.
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(ignited_tile, lfn, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, burnt_area_dt, grnhfx, &
+!$acc&   grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(ignited_tile, lfn, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, burnt_area_dt, grnhfx, &
+!$acc&   grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
         if(.not.restart)call set_nfuel_cat( &
             ifms,ifme,jfms,jfme, &
             ifts,ifte,jfts,jfte, &
@@ -250,6 +301,23 @@ elseif(ifun.eq.2)then
             need_lfn_update=.true. ! because we have set lfn 
 
         endif
+#ifdef WRF_GPU
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ignited_tile, coord_xf, coord_yf, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, &
+!$acc&   lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, &
+!$acc&   burnt_area_dt, grnhfx, grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(ignited_tile, coord_xf, coord_yf, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, &
+!$acc&   lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, &
+!$acc&   burnt_area_dt, grnhfx, grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
 elseif(ifun.eq.3)then   ! ignition if so specified
 
@@ -370,6 +438,9 @@ elseif (ifun.eq.5) then ! copy the result of timestep back to input
 
     if (.not. freeze_fire) then
 
+! K-FM5: copy lfn_out into lfn (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_FIRE_MODEL)) default(none) &
+!$acc& present(lfn, lfn_out) firstprivate(jfts, jfte, ifts, ifte)
        do j=jfts,jfte
            do i=ifts,ifte
                lfn(i,j)=lfn_out(i,j)
@@ -415,10 +486,12 @@ elseif (ifun.eq.5) then ! copy the result of timestep back to input
             ignited_tile(ignitions_done)=ignited
                 
 !            need_lfn_update=.true. ! if ignition, lfn changed
-#ifdef DEBUG_OUT    
+#ifdef DEBUG_OUT
+#ifndef WRF_GPU
             call write_array_m(ifts,ifte,jfts,jfte,ifms,ifme,jfms,jfme,lfn,'lfn_ig',id)
             call write_array_m(ifts,ifte,jfts,jfte,ifms,ifme,jfms,jfme,coord_xf,'coord_xf_ig',id)
             call write_array_m(ifts,ifte,jfts,jfte,ifms,ifme,jfms,jfme,coord_yf,'coord_yf_ig',id)
+#endif
 #endif
 !        endif
         
@@ -448,6 +521,10 @@ elseif (ifun.eq.6) then ! timestep postprocessing
                    ifts,ifte,jfts,jfte, &
                    fuel_frac_end,'model: fuel_frac end')
     
+! K-FM6: fuel fraction burnt this step (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_FIRE_MODEL)) default(none) &
+!$acc& present(fuel_frac_burnt, fuel_frac, fuel_frac_end, burnt_area_dt) &
+!$acc& firstprivate(jfts, jfte, ifts, ifte)
     do j=jfts,jfte
         do i=ifts,ifte
             fuel_frac_burnt(i,j)=fuel_frac(i,j)-fuel_frac_end(i,j) ! fuel lost this timestep
@@ -547,6 +624,23 @@ else
 !$OMP END CRITICAL(FIRE_MODEL_CRIT)
     call crash(msg)
 endif
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(ignited_tile, lfn, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, burnt_area_dt, grnhfx, &
+!$acc&   grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(ignited_tile, lfn, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, lfn_out, tign, fuel_frac, fire_area, burnt_area_dt, grnhfx, &
+!$acc&   grnqfx, ros, nfuel_cat, fuel_time)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
 
 end subroutine fire_model
 
