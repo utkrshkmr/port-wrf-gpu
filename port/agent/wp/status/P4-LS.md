@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_ls
-- Last commit: (this commit) WP P4-LS: port calc_flame_length
+- Last commit: (this commit) WP P4-LS: port reinit_ls_rk3
 
 ## Items
 
@@ -16,10 +16,10 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-ROS | coded | 4ffbddb | !$acc routine seq. No island and no call check. fp% references unchanged. |
 | K-TIGN-1 | coded | c7784bc | Template A on the ignition-time loop. |
 | K-TIGN-G | coded | c7784bc | Two integer any-reductions; host repeats the original crash loops if any point is burning in the guard. |
-| K-FLAME | coded | (this commit) | Template A. rp_pow(..., 0.46) unchanged. |
-| K-RI-0 | todo | |  |
+| K-FLAME | coded | b868984 | Template A. rp_pow(..., 0.46) unchanged. |
+| K-RI-0 | coded | (this commit) | Template A. lfn_s0 and lfn_s3 in one loop. |
 | K-ALR | todo | |  |
-| K-RI-F | todo | |  |
+| K-RI-F | coded | (this commit) | Template A. min(lfn_s3, lfn_in) after the host RK iteration loop. |
 | task 1: shared refactor (separate commit): prop_ls_rk3's automatic array tend ... | coded | 272220f | tend is a contiguous pointer onto work_p4_ls_tend. arith_guard CPU-view change is expected (CODE_ONLY.md §8). |
 | task 2: shared refactor (separate commit, PHASE4.md P4.0 item 4): delete the u... | coded | 585f4d7 | Deleted unused automatic tend_1, tend_2, tend_3. They were never referenced. |
 | task 3: tend_ls: one kernel per point (WENO5/ENO1, plan.md 9.1 K-TLS) calling ... | coded | 9cb0383 | Calls fire_ros. Other upwinding and upwind_split values fatal before the island. |
@@ -44,3 +44,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Ported `fire_ros` (K-ROS): `!$acc routine seq`, called from `tend_ls`. No island, no call check, signatures and `fp%` references unchanged. The `ros_max` cap is copied verbatim. Not compiled or tested (code-only).
 - Ported `tign_update` (K-TIGN-1, K-TIGN-G): Template A on the ignition loop. Guard strips are integer any-reductions; a set flag reruns the original host loops, which crash with the original message. Not compiled or tested (code-only).
 - Ported `calc_flame_length` (K-FLAME): Template A on the 2D loop. `rp_pow` call unchanged. Not compiled or tested (code-only).
+- Ported `reinit_ls_rk3` (K-RI-0, K-RI-F): Template A on the opening and closing loops. The iteration loop stays on the host and calls `advance_ls_reinit` and `continue_at_boundary`. Not compiled or tested (code-only).

@@ -1576,6 +1576,7 @@ subroutine reinit_ls_rk3(id,                       &
 #endif
 USE module_domain , only: domain
 USE module_configure, only: grid_config_rec_type
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_REINIT_LS_RK3
 
 implicit none
 
@@ -1610,13 +1611,33 @@ character(len=128)::msg
 integer::itso,iteo,jtso,jteo
 real::threshold_HLl,threshold_HLu
 integer,parameter::bdy_eno1=10
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 !*** executable
+
+#ifdef WRF_GPU
+      gpu_isl = gpu_island(R_REINIT_LS_RK3)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(lfn_in, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, lfn_out, tign)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(lfn_in, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, lfn_out, tign)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
 threshold_HLl=-fire_lsm_band_ngp*dx 
 threshold_HLu=fire_lsm_band_ngp*dx
 
 ! Define S0 based on current lfn values
 
+! K-RI-0: signed distance and lfn_s3 copy (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_REINIT_LS_RK3)) default(none) &
+!$acc& present(lfn_s0, lfn_2, lfn_s3) firstprivate(jfts, jfte, ifts, ifte, dx)
     do j=jfts,jfte 
         do i=ifts,ifte 
             lfn_s0(i,j) = lfn_2(i,j)/sqrt(lfn_2(i,j)**2+dx**2) 
@@ -1703,6 +1724,9 @@ do nts=1,fire_lsm_reinit_iter ! iterate to solve to steady state (1 iter each ti
 
 enddo ! end iterations for steady state solution of reinitialization PDE
 
+! K-RI-F: lfn_out = min(lfn_s3, lfn_in) (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_REINIT_LS_RK3)) default(none) &
+!$acc& present(lfn_out, lfn_s3, lfn_in) firstprivate(jfts, jfte, ifts, ifte)
     do j=jfts,jfte 
         do i=ifts,ifte 
           lfn_out(i,j)=lfn_s3(i,j) ! assing to lfn_out the reinitialized level-set function
@@ -1710,6 +1734,18 @@ enddo ! end iterations for steady state solution of reinitialization PDE
         enddo
     enddo
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn_in, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, lfn_out, tign)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(lfn_in, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, lfn_out, tign)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
 end subroutine reinit_ls_rk3
 
 !
