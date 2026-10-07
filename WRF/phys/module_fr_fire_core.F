@@ -1940,6 +1940,8 @@ subroutine tend_ls( id, &
     tend, ros,          &              ! arrays out
     fp                  &
 )
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_TEND_LS
+USE module_gpu_callcheck
 
 implicit none
 ! purpose
@@ -1964,6 +1966,9 @@ real:: te,diffLx,diffLy,diffRx,diffRy, &
    speed,tanphi
 integer::i,j,itso,iteo,jtso,jteo
 character(len=128)msg
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
 ! constants
 real, parameter:: eps=epsilon(0.0)
@@ -1984,6 +1989,28 @@ intrinsic max,min,sqrt,nint,tiny,huge
 
 !*** executable
 
+#ifdef WRF_GPU
+      IF (fire_upwinding .ne. 9 .or. fire_upwind_split .ne. 0) THEN
+        CALL wrf_error_fatal('tend_ls: fire_upwinding/fire_upwind_split not ported to the GPU')
+      END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_TEND_LS)) THEN
+        CALL gpu_cc_save_r(1, lfn, SIZE(lfn,KIND=8))
+        CALL gpu_cc_save_r0(2, tbound)
+        CALL gpu_cc_save_r(3, tend, SIZE(tend,KIND=8))
+        CALL gpu_cc_save_r(4, ros, SIZE(ros,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_TEND_LS)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(lfn, tend, ros)
+        ELSE
+!$acc update self(lfn, tend, ros)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+
 threshold_HLl=-fire_lsm_band_ngp*dx 
 threshold_HLu=fire_lsm_band_ngp*dx
 threshold_AV=fire_viscosity_ngp*dx
@@ -1997,6 +2024,93 @@ threshold_AV=fire_viscosity_ngp*dx
     lfn)                                               ! field 
 
     tbound=0    
+#ifdef WRF_GPU
+! K-TLS: one thread per point, WENO5/ENO1 (Template A)
+! island of R_FIRE_ROS in tend_ls
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_TEND_LS)) default(none) &
+!$acc& present(lfn, tend, ros, fp) &
+!$acc& firstprivate(jts, jte, its, ite, ids, ide, jds, jde, dx, dy, &
+!$acc& threshold_HLu, threshold_AV, fire_slope_factor, fire_grows_only, &
+!$acc& fire_viscosity_bg, fire_viscosity, fire_viscosity_band) &
+!$acc& private(te, diffLx, diffLy, diffRx, diffRy, diffCx, diffCy, diff2x, diff2y, &
+!$acc& grad, rr, ros_base, ros_wind, ros_slope, scale, nvx, nvy, speed, &
+!$acc& a_valor, signo_x, signo_y, fire_viscosity_var) &
+!$acc& reduction(max:tbound)
+    do j=jts,jte
+        do i=its,ite
+            diffRx = (lfn(i+1,j)-lfn(i,j))/dx
+            diffLx = (lfn(i,j)-lfn(i-1,j))/dx
+            diffRy = (lfn(i,j+1)-lfn(i,j))/dy
+            diffLy = (lfn(i,j)-lfn(i,j-1))/dy
+            diffCx = diffLx+diffRx
+            diffCy = diffLy+diffRy
+
+            if (i.lt.ids+bdy_eno1 .OR. i.gt.ide-bdy_eno1 .OR. j.lt.jds+bdy_eno1 .OR. j.gt.jde-bdy_eno1) then
+              diff2x=tend_ls_gpu_eno(diffLx,diffRx)
+              diff2y=tend_ls_gpu_eno(diffLy,diffRy)
+              grad=sqrt(diff2x*diff2x + diff2y*diff2y)
+            else
+                  if (abs(lfn(i,j)).lt.threshold_HLu) then
+                    a_valor=tend_ls_gpu_4th(dx,lfn(i,j),lfn(i-1,j),lfn(i-2,j),lfn(i+1,j),lfn(i+2,j))*fp%vx(i,j)+ &
+                            tend_ls_gpu_4th(dy,lfn(i,j),lfn(i,j-1),lfn(i,j-2),lfn(i,j+1),lfn(i,j+2))*fp%vy(i,j)
+                    signo_x=a_valor*tend_ls_gpu_4th(dx,lfn(i,j),lfn(i-1,j),lfn(i-2,j),lfn(i+1,j),lfn(i+2,j))
+                    signo_y=a_valor*tend_ls_gpu_4th(dy,lfn(i,j),lfn(i,j-1),lfn(i,j-2),lfn(i,j+1),lfn(i,j+2))
+                    diff2x=tend_ls_gpu_weno5(dx,lfn(i,j),lfn(i-1,j),lfn(i-2,j),lfn(i-3,j),lfn(i+1,j),lfn(i+2,j),lfn(i+3,j),signo_x)
+                    diff2y=tend_ls_gpu_weno5(dy,lfn(i,j),lfn(i,j-1),lfn(i,j-2),lfn(i,j-3),lfn(i,j+1),lfn(i,j+2),lfn(i,j+3),signo_y)
+                    grad=sqrt(diff2x*diff2x + diff2y*diff2y)
+                  else
+                    diff2x=tend_ls_gpu_eno(diffLx,diffRx)
+                    diff2y=tend_ls_gpu_eno(diffLy,diffRy)
+                    grad=sqrt(diff2x*diff2x + diff2y*diff2y)
+                  endif
+            endif
+            scale=sqrt(grad**2+eps)
+            nvx=diff2x/scale
+            nvy=diff2y/scale
+            speed =  fp%vx(i,j)*nvx + fp%vy(i,j)*nvy
+            call fire_ros(ros_base,ros_wind,ros_slope, &
+            nvx,nvy,i,j,fp)
+            rr=ros_base + ros_wind + fire_slope_factor*ros_slope
+            if(fire_grows_only.gt.0)rr=max(rr,0.)
+            if(i.ge.its.and.i.le.ite.and.j.ge.jts.and.j.le.jte)ros(i,j)=rr
+            te = -rr*grad
+            if (grad > 0.) then
+                 tbound = max(tbound,rr*(abs(diff2x)/dx+abs(diff2y)/dy)/grad)
+            endif
+            if (abs(lfn(i,j)).lt.threshold_AV .AND. (i.gt.ids+bdy_eno1 .and. i.lt.ide-bdy_eno1) .AND. (j.gt.jds+bdy_eno1 .and. j.lt.jde-bdy_eno1)) then
+              fire_viscosity_var=fire_viscosity_bg
+            elseif (abs(lfn(i,j)).ge.threshold_AV .AND. abs(lfn(i,j)).lt.threshold_AV*(1.0+fire_viscosity_band) .AND. (i.gt.ids+10 .and. i.lt.ide-10) .AND. (j.gt.jds+10 .and. j.lt.jde-10)) then
+              fire_viscosity_var=min(fire_viscosity_bg+(fire_viscosity-fire_viscosity_bg)*(abs(lfn(i,j))-threshold_AV)/(fire_viscosity_band*threshold_AV),fire_viscosity)
+            else
+              fire_viscosity_var=fire_viscosity
+            endif
+            te=te + fire_viscosity_var*abs(rr)*((diffRx-diffLx)+(diffRy-diffLy))
+            tend(i,j)=te
+        enddo
+    enddo
+    call print_2d_stats(its,ite,jts,jte,ims,ime,jms,jme, &
+                   tend,'tend_ls: tend out')
+    tbound = 1/(tbound+tol)
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn, tend, ros)
+        ELSE
+!$acc update device(lfn, tend, ros)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_TEND_LS)) THEN
+        CALL gpu_cc_done_r(1, lfn, SIZE(lfn,KIND=8), 'lfn', &
+          LBOUND(lfn), UBOUND(lfn))
+        CALL gpu_cc_done_r0(2, tbound, 'tbound')
+        CALL gpu_cc_done_r(3, tend, SIZE(tend,KIND=8), 'tend', &
+          LBOUND(tend), UBOUND(tend))
+        CALL gpu_cc_done_r(4, ros, SIZE(ros,KIND=8), 'ros', &
+          LBOUND(ros), UBOUND(ros))
+        IF (gpu_cc_next(R_TEND_LS)) GOTO 99901
+      END IF
+      RETURN
+#endif
     do j=jts,jte
         do i=its,ite
             ! one sided differences
@@ -2167,7 +2281,141 @@ threshold_AV=fire_viscosity_ngp*dx
     ! the final CFL bound
     tbound = 1/(tbound+tol)
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(lfn, tend, ros)
+        ELSE
+!$acc update device(lfn, tend, ros)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_TEND_LS)) THEN
+        CALL gpu_cc_done_r(1, lfn, SIZE(lfn,KIND=8), 'lfn', &
+          LBOUND(lfn), UBOUND(lfn))
+        CALL gpu_cc_done_r0(2, tbound, 'tbound')
+        CALL gpu_cc_done_r(3, tend, SIZE(tend,KIND=8), 'tend', &
+          LBOUND(tend), UBOUND(tend))
+        CALL gpu_cc_done_r(4, ros, SIZE(ros,KIND=8), 'ros', &
+          LBOUND(ros), UBOUND(ros))
+        IF (gpu_cc_next(R_TEND_LS)) GOTO 99901
+      END IF
+#endif
 end subroutine tend_ls
+#ifdef WRF_GPU
+! Device copies of select_eno, select_4th and select_weno5.
+! The originals are outside this work package, so they cannot
+! receive a routine seq directive. Arithmetic is unchanged.
+real function tend_ls_gpu_eno(diffLx,diffRx)
+!$acc routine seq
+implicit none
+real, intent(in):: diffLx, diffRx
+real diff2x
+
+! 1st order ENO scheme
+
+if    (.not.diffLx>0 .and. .not.diffRx>0)then
+    diff2x=diffRx
+elseif(.not.diffLx<0 .and. .not.diffRx<0)then
+    diff2x=diffLx
+elseif(.not.diffLx<0 .and. .not.diffRx>0)then
+    if(.not. abs(diffRx) < abs(diffLx))then
+        diff2x=diffRx
+    else
+        diff2x=diffLx
+    endif
+else
+    diff2x=0.
+endif
+
+tend_ls_gpu_eno=diff2x
+end function select_eno
+
+real function tend_ls_gpu_4th(dx,lfn_i,lfn_im1,lfn_im2,lfn_ip1,lfn_ip2)
+!$acc routine seq
+implicit none
+real, intent(in):: lfn_i,lfn_im1,lfn_im2,lfn_ip1,lfn_ip2
+real, intent(in):: dx
+real:: diff2x_p,diff2x_m 
+
+! 4th-order advection scheme in the x,y-direction (DME)
+
+diff2x_p=0.
+diff2x_m=0.
+diff2x_p=(7.0*lfn_ip1+7.0*lfn_i-lfn_ip2-lfn_im1)/(12.*dx)
+diff2x_m=(7.0*lfn_i+7.0*lfn_im1-lfn_ip1-lfn_im2)/(12.*dx)
+tend_ls_gpu_4th=diff2x_p-diff2x_m
+end function select_4th
+
+real function tend_ls_gpu_weno5(dx,lfn_it,lfn_im1t,lfn_im2t,lfn_im3t,lfn_ip1t,lfn_ip2t,lfn_ip3t,uf)
+!$acc routine seq
+implicit none
+real, intent(in):: lfn_it,lfn_im1t,lfn_im2t,lfn_im3t,lfn_ip1t,lfn_ip2t,lfn_ip3t,uf
+real:: lfn_i,lfn_im1,lfn_im2,lfn_im3,lfn_ip1,lfn_ip2,lfn_ip3
+real, intent(in):: dx
+real:: flux_p,flux_m 
+real, parameter:: gamma1=1./10.,gamma2=3./5.,gamma3=3./10.,tol=1e-6
+real:: w1,w2,w3,w1t,w2t,w3t,beta1,beta2,beta3 
+real:: fh_1,fh_2,fh_3
+
+! 5th-order advection WENO scheme in the x,y-direction (DME)
+
+flux_p=0.
+flux_m=0.
+
+if (uf .ge. 0.0 ) then
+  lfn_i=lfn_it
+  lfn_im1=lfn_im1t
+  lfn_im2=lfn_im2t
+  lfn_im3=lfn_im3t
+  lfn_ip1=lfn_ip1t
+  lfn_ip2=lfn_ip2t
+else
+  lfn_i=lfn_it
+  lfn_im1=lfn_ip1t
+  lfn_im2=lfn_ip2t
+  lfn_im3=lfn_ip3t
+  lfn_ip1=lfn_im1t
+  lfn_ip2=lfn_im2t
+endif
+
+! numerical flux at i,j+1/2 face
+fh_1=(2.0*lfn_im2-7.0*lfn_im1+11.0*lfn_i)/6.0
+fh_2=(-1.0*lfn_im1+5.0*lfn_i+2.0*lfn_ip1)/6.0
+fh_3=(2.0*lfn_i+5.0*lfn_ip1-1.0*lfn_ip2)/6.0
+beta1=(13.0/12.0)*(lfn_im2-2.0*lfn_im1+lfn_i)**2+0.25*(lfn_im2-4.0*lfn_im1+3.0*lfn_i)**2
+beta2=(13.0/12.0)*(lfn_im1-2.0*lfn_i+lfn_ip1)**2+0.25*(lfn_im1-lfn_ip1)**2
+beta3=(13.0/12.0)*(lfn_i-2.0*lfn_ip1+lfn_ip2)**2+0.25*(3.0*lfn_i-4.0*lfn_ip1+lfn_ip2)**2
+w1t=gamma1/(beta1+tol)**2
+w2t=gamma2/(beta2+tol)**2
+w3t=gamma3/(beta3+tol)**2
+w1=w1t/(w1t+w2t+w3t)
+w2=w2t/(w1t+w2t+w3t)
+w3=w3t/(w1t+w2t+w3t)
+flux_p=w1*fh_1+w2*fh_2+w3*fh_3
+! numerical flux at i,j-1/2 face
+fh_1=(2.0*lfn_im3-7.0*lfn_im2+11.0*lfn_im1)/6.0
+fh_2=(-1.0*lfn_im2+5.0*lfn_im1+2.0*lfn_i)/6.0
+fh_3=(2.0*lfn_im1+5.0*lfn_i-1.0*lfn_ip1)/6.0
+beta1=(13.0/12.0)*(lfn_im3-2.0*lfn_im2+lfn_im1)**2+0.25*(lfn_im3-4.0*lfn_im2+3.0*lfn_im1)**2
+beta2=(13.0/12.0)*(lfn_im2-2.0*lfn_im1+lfn_i)**2+0.25*(lfn_im2-lfn_i)**2
+beta3=(13.0/12.0)*(lfn_im1-2.0*lfn_i+lfn_ip1)**2+0.25*(3.0*lfn_im1-4.0*lfn_i+lfn_ip1)**2
+w1t=gamma1/(beta1+tol)**2
+w2t=gamma2/(beta2+tol)**2
+w3t=gamma3/(beta3+tol)**2
+w1=w1t/(w1t+w2t+w3t)
+w2=w2t/(w1t+w2t+w3t)
+w3=w3t/(w1t+w2t+w3t)
+flux_m=w1*fh_1+w2*fh_2+w3*fh_3
+
+if (uf .ge. 0.0 ) then
+  tend_ls_gpu_weno5=(flux_p-flux_m)/dx
+else
+  tend_ls_gpu_weno5=(flux_m-flux_p)/dx
+endif
+end function select_weno5
+
+#endif
 
 !
 !**************************
