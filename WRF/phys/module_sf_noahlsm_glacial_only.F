@@ -24,9 +24,6 @@ use module_wrf_error
   PRIVATE :: SNOWZ0
   PRIVATE :: SNOW_NEW
 
-  integer, private :: iloc, jloc
-!$omp threadprivate(iloc, jloc)
-
 CONTAINS
 
   SUBROUTINE SFLX_GLACIAL (IILOC,JJLOC,ISICE,FFROZP,DT,ZLVL,NSOIL,SLDPTH,     &    !C
@@ -203,8 +200,8 @@ CONTAINS
     REAL, PARAMETER :: R = 287.04
 
 ! ----------------------------------------------------------------------
-    iloc = iiloc
-    jloc = jjloc
+! IILOC and JJLOC are the column indices, passed in by the driver.
+! The threadprivate module copies were write-only and are removed.
 ! ----------------------------------------------------------------------
     ZSOIL (1) = - SLDPTH (1)
     DO KZ = 2,NSOIL

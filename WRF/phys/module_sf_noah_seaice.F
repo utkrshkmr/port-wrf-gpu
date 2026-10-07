@@ -22,10 +22,6 @@ use module_wrf_error
   PRIVATE SNOWZ0
   PRIVATE SNOW_NEW
 
-  INTEGER, PRIVATE :: ILOC
-  INTEGER, PRIVATE :: JLOC
-!$omp threadprivate(iloc, jloc)
-
   REAL, PARAMETER, PRIVATE :: TFREEZ = 273.15
 !
 CONTAINS
@@ -202,8 +198,9 @@ CONTAINS
       REAL, PARAMETER :: LSUBS = 2.83E+6
       REAL, PARAMETER :: R = 287.04
 
-      iloc = iiloc
-      jloc = jjloc
+! ----------------------------------------------------------------------
+! IILOC and JJLOC are the column indices, passed in by the driver.
+! The threadprivate module copies were write-only and are removed.
 ! ----------------------------------------------------------------------
 !   INITIALIZATION
 ! ----------------------------------------------------------------------

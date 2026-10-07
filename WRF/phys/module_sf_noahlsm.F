@@ -60,9 +60,6 @@ use module_wrf_error
         REAL ::  LVCOEF_DATA
 
         CHARACTER*256  :: err_message
-
-        integer, private :: iloc, jloc
-!$omp threadprivate(iloc, jloc)
 !
 CONTAINS
 !
@@ -392,8 +389,8 @@ CONTAINS
 ! ----------------------------------------------------------------------
 !   INITIALIZATION
 ! ----------------------------------------------------------------------
-      ILOC = IILOC
-      JLOC = JJLOC
+! IILOC and JJLOC are the column indices, passed in by the driver.
+! The threadprivate module copies were write-only and are removed.
 
       RUNOFF1 = 0.0
       RUNOFF2 = 0.0
