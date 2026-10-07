@@ -1,28 +1,177 @@
 \chapter{WRF-Fire}\label{ch:fire}
 
-The coupled fire model of WRF: from the winds of the atmosphere to the spread of the fire front and back to the atmosphere.
-
-\begin{outline}[(card B-12)]
-\textbf{Sections.}
+WRF-Fire \citep{coen2013,mandel2011} moves a fire front over the landscape at the rate of spread of
+\cref{ch:firebasics}, burns the fuel behind it, and feeds the heat and moisture into the atmosphere. In turn the
+atmosphere changes the wind that drives the front. This chapter describes its numerics as in the WRF~4.6.0 source:
 \begin{itemize}
-    \item \textbf{The fire grid.} Refinement, the memory and active regions, ghost cells.
-    \item \textbf{Winds for the fire.} Interpolation from the atmosphere to the fire grid with a logarithmic profile (\code{interpolate_atm2fire}).
-    \item \textbf{The level-set method.} The front as the zero contour of $\psi$; the equation $\partial_t\psi + R\,|\nabla\psi| = 0$; the upwind schemes (ENO1, WENO5) and the hybrid of \code{fire_upwinding = 9}; the RK3 integration; re-initialization.
-    \item \textbf{Rate of spread.} Rothermel's model and the fuel categories (\code{fire_ros}).
-    \item \textbf{Fuel consumption and heat release.} \code{fuel_left} with sub-cells; \code{heat_fluxes}.
-    \item \textbf{Feedback to the atmosphere.} \code{fire_tendency}: the vertical distribution of the fluxes.
-    \item \textbf{Ignition.} \code{ignite_fire}.
+  \item \code{phys/module_fr_fire_driver.F} and \code{module_fr_fire_driver_wrf.F}: the drivers;
+  \item \code{module_fr_fire_model.F}: the sequence of a fire step;
+  \item \code{module_fr_fire_core.F}: the level set, ignition and fuel;
+  \item \code{module_fr_fire_phys.F}: rate of spread and fluxes;
+  \item \code{module_fr_fire_atm.F}: the coupling to the atmosphere;
+  \item \code{module_fr_fire_util.F}: utilities.
 \end{itemize}
-\textbf{Sources.} \citet{coen2013,mandel2011,munozesparza2018,rothermel1972,anderson1982,scott2005,osher2003,jiang1996,sussman1994}.
 
-\textbf{Code.}
+\section{The fire grid}
+
+The fire lives on a grid finer than the atmosphere's by \code{sr_x}$\times$\code{sr_y} (4$\times$4 in the case), so
+each 100~m atmospheric cell holds 16 fire cells of 25~m. Fire variables are stored at the fire-grid nodes, with
+memory dimensions that include a halo. The domain's outermost fire rows and columns are \emph{ghost} cells: the
+fuel calculation reads them, so their values are part of the state (\cref{ch:subsys}). The case's d02 has
+$3244\times3244$ fire nodes, so a single fire field holds 10.5 million values. Several such fields are updated every
+d02 step.
+
+\section{From the atmosphere to the fire}
+
+The fire spreads with the wind near the ground, not at the first model level (about 10--20~m up). Before each fire
+step, \src{phys/module_fr_fire_driver.F}{interpolate_atm2fire} computes it:
+\begin{enumerate}
+  \item The heights of the model levels at $u$ and $v$ points are computed.
+  \item The wind at the fire wind height (\code{fire_wind_height}, 1~m in the case) is interpolated from the two
+    levels that bracket it. With \code{fire_lsm_zcoupling}, a logarithmic profile with the surface roughness
+    $z_0$ is used:
+    \begin{equation}
+      u(z) = u(z_k)\,\frac{\ln(z/z_0)}{\ln(z_k/z_0)} .
+    \end{equation}
+    The search for the bracketing level stops at the first level above the target height (an early exit, written with
+    \code{GOTO} in the source).
+  \item The values are extended to the domain edges (\src{phys/module_fr_fire_util.F}{continue_at_boundary}): first
+    along $j$ strips, then $i$ strips, then the corners.
+  \item The winds are interpolated bilinearly to the fire nodes (\src{phys/module_fr_fire_util.F}{interpolate_2d}).
+    Each coarse cell writes its $4\times4$ fine nodes.
+\end{enumerate}
+
+\section{The level-set equation}
+
+The fire front is the zero contour of a level-set function $\psi(x, y, t)$ (\code{lfn}): burning or burned where
+$\psi \le 0$, unburned where $\psi > 0$. The front moves in its normal direction at the rate of spread $R$, so
+\begin{equation}
+  \pd{\psi}{t} + R(x, y, \mathbf{n}, t)\,|\nabla\psi| = 0, \qquad \mathbf{n} = \frac{\nabla\psi}{|\nabla\psi|} .
+  \label{eq:levelset}
+\end{equation}
+$R$ depends on the direction through the wind and slope components normal to the front (\cref{alg:ros}).
+\src{phys/module_fr_fire_core.F}{tend_ls} computes the right-hand side $-R|\nabla\psi|$ at every node.
+
+\paragraph{Discretizing $|\nabla\psi|$.} The gradient must be upwinded: information flows from the burned side to the
+unburned side. WRF-Fire offers nine schemes (\code{fire_upwinding}). The case uses option 9, a hybrid:
 \begin{itemize}
-    \item \code{phys/module_fr_fire_driver.F}: \code{fire_driver_em}, \code{interpolate_atm2fire}
-    \item \code{phys/module_fr_fire_model.F}: \code{fire_model}
-    \item \code{phys/module_fr_fire_core.F}: \code{prop_ls_rk3}, \code{tend_ls}, \code{reinit_ls_rk3}, \code{advance_ls_reinit}, \code{ignite_fire}, \code{fuel_left}
-    \item \code{phys/module_fr_fire_phys.F}: \code{fire_ros}, \code{heat_fluxes}
-    \item \code{phys/module_fr_fire_atm.F}: \code{fire_tendency}
-    \item \code{phys/module_fr_fire_util.F}: \code{continue_at_boundary}, \code{interpolate_2d}, \code{sum_2d_cells}
+  \item a fifth-order WENO reconstruction of the one-sided derivatives \citep{jiang1996} within a band of
+    \code{fire_lsm_band_ngp} nodes (4) around the front, where accuracy matters (\code{select_weno5});
+  \item first-order ENO elsewhere and within 10 nodes of the domain edge (\code{select_eno}).
 \end{itemize}
-\textbf{The port.} Phase 4. The fire grid of the case has $3244\times3244$ cells; the level-set kernels are stencils of width 7 with data-dependent branches (WENO or ENO).
-\end{outline}
+The gradient magnitude is
+$|\nabla\psi| = \sqrt{(\delta_x\psi)^2 + (\delta_y\psi)^2}$ with the upwinded one-sided differences.
+
+\paragraph{Artificial viscosity.} To damp oscillations of the front, \code{tend_ls} adds a term proportional to
+\code{fire_viscosity} (0.4 in the case), the grid spacing and the second differences of $\psi$, within
+\code{fire_viscosity_ngp} nodes of the front.
+
+\paragraph{Time step bound.} \code{tend_ls} also returns the largest $R|\nabla\psi|/\Delta x$, a reduction over the
+grid. From it the driver checks that the fire time step is stable.
+
+\section{Time stepping}
+
+The level set is advanced with the same third-order Runge--Kutta scheme as the atmosphere
+(\src{phys/module_fr_fire_core.F}{prop_ls_rk3}):
+\begin{equation}
+  \psi_1 = \psi^n + \tfrac{\Delta t}{3}\,T(\psi^n), \qquad
+  \psi_2 = \psi^n + \tfrac{\Delta t}{2}\,T(\psi_1), \qquad
+  \psi^{n+1} = \psi^n + \Delta t\,T(\psi_2),
+\end{equation}
+where $T$ is the tendency of \cref{eq:levelset}. Each evaluation is preceded by \code{continue_at_boundary}. With
+\code{fire_grows_only = 1}, the new level set is $\min(\psi^{n+1}, \psi^n)$, so a burned area never shrinks.
+
+\paragraph{Ignition time.} Where $\psi$ changes sign during the step, the node ignites. Its ignition time is
+interpolated linearly in time (\src{phys/module_fr_fire_core.F}{tign_update}):
+\begin{equation}
+  t_i = t^n + \Delta t\,\frac{\psi^n}{\psi^n - \psi^{n+1}} .
+\end{equation}
+The ignition time \code{tign_g} is the main output of a fire simulation. Its contours are the fire perimeters.
+
+\section{Reinitialization}
+
+The level-set function drifts away from a signed distance function, and then its gradient becomes too steep or too
+flat near the front. With \code{fire_lsm_reinit}, WRF-Fire restores the distance property every step by solving, in
+pseudo-time $\tau$, the reinitialization equation of \citet{sussman1994}:
+\begin{equation}
+  \pd{\psi}{\tau} + S(\psi_0)\,\bigl(|\nabla\psi| - 1\bigr) = 0, \qquad
+  S(\psi_0) = \frac{\psi_0}{\sqrt{\psi_0^2 + \Delta x^2}} .
+\end{equation}
+The smoothed sign $S$ keeps the zero contour in place. The case does one RK3 iteration of it
+(\code{fire_lsm_reinit_iter = 1}) with hybrid WENO5/ENO1 differences
+(\src{phys/module_fr_fire_core.F}{reinit_ls_rk3}, \code{advance_ls_reinit}). The result is again limited by
+$\min(\cdot, \psi)$, so reinitialization cannot extinguish the fire.
+
+\section{Ignition}
+
+Ignitions are given in the namelist: position, radius, start and end time, and the rate at which the ignition circle
+grows. \src{phys/module_fr_fire_core.F}{ignite_fire} computes, for every node, the distance $d$ to the ignition point
+and a level set of the growing circle:
+\begin{equation}
+  \psi_{\mathrm{ign}} = d - r(t),
+\end{equation}
+and sets $\psi \gets \min(\psi, \psi_{\mathrm{ign}})$. Newly ignited nodes get their ignition time from the growth
+rate. The case ignites one circle of 100~m radius between 8280~s and 9080~s of model time.
+
+\section{Fuel consumption}
+
+\src{phys/module_fr_fire_core.F}{fuel_left} computes the fraction of the original fuel left in each fire cell. With
+\code{fire_fuel_left_method = 1}, each cell is divided into $2\times2$ sub-cells. In each sub-cell
+\code{fuel_left_cell_1} estimates:
+\begin{itemize}
+  \item the burned area fraction, from the level set at the sub-cell corners;
+  \item the average of $\exp(-(t - t_i)/T_f)$ over that area, from the ignition times at the corners.
+\end{itemize}
+The cell's value is the average over its four sub-cells, taken in the source's order. The difference between the
+fuel fraction at the start and the end of the step is the fuel burned during the step.
+
+\section{Heat release and coupling}
+
+\src{phys/module_fr_fire_phys.F}{heat_fluxes} turns the burned fuel into fluxes at the ground. With the dry mass burned
+$\Delta m = w_0 \times \text{(fraction burned in the step)}$ and the fuel moisture fraction
+$b = M_f/(1 + M_f)$:
+\begin{equation}
+  H_g = \frac{\Delta m}{\Delta t}\,(1 - b)\,h_c, \qquad
+  E_g = \bigl(b + 0.56\,(1 - b)\bigr)\,\frac{\Delta m}{\Delta t}\,L_v ,
+\end{equation}
+where $h_c$ is the heat of combustion (\code{cmbcnst}) and 0.56 the water produced per unit dry fuel burned.
+\code{sum_2d_cells} sums the fire-grid fluxes onto the atmospheric cells.
+\src{phys/module_fr_fire_atm.F}{fire_tendency} then distributes them in the vertical with an exponential decay over
+the extinction depth $\alpha_g$ (\code{fire_ext_grnd}):
+\begin{equation}
+  \left.\pd{\theta}{t}\right|_{k} \propto \frac{H_g}{\rho\,c_p}\,\frac{e^{-z_{k}/\alpha_g} - e^{-z_{k+1}/\alpha_g}}{\Delta z_k},
+\end{equation}
+and the same for moisture. These tendencies (\code{rthfrten}, \code{rqvfrten}) are added to the atmosphere's like any
+physics tendency (\cref{ch:phys}). The heat drives the fire's convective column, which draws air toward the front:
+the fire-atmosphere feedback.
+
+\begin{algorithm}[ht]
+\caption{One fire step on d02 (inside RK stage 1, \code{fire_driver_em_step} $\to$ \code{fire_model}).}
+\label{alg:fire-step}
+\begin{algorithmic}[1]
+\State wind at the fire wind height on the fire grid (\code{interpolate_atm2fire})
+\State ignition (\code{ignite_fire}) if within an ignition period
+\State level set: three RK stages of \code{tend_ls} with boundary continuation (\code{prop_ls_rk3})
+\State ignition times of newly burning nodes (\code{tign_update}); boundary guard; flame length
+\State reinitialization (\code{reinit_ls_rk3}), limited by the old level set
+\State fuel left and fuel burned (\code{fuel_left})
+\State heat and moisture fluxes (\code{heat_fluxes}); sums onto atmospheric cells (\code{sum_2d_cells})
+\State tendencies of $\theta$ and $q_v$ in the atmospheric columns (\code{fire_tendency})
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+The fire step is a sequence of two-dimensional stencils on a large grid, ideal for a GPU, with four complications.
+\begin{itemize}
+  \item \textbf{Branches.} The WENO/ENO choice, the ignition test and the fuel test depend on the position relative
+    to the front. Neighbouring threads take different branches (divergence, \cref{ch:warp}).
+  \item \textbf{Ghost cells.} The fuel calculation reads the ghost rows and columns. On the CPU they keep their values
+    from allocation, so the device copy must hold the same values (test T-FIRE-GHOST).
+  \item \textbf{Pointer components.} The fuel parameters are pointer components of a derived type (\texttt{fp\%r\_0},
+    \dots). The device needs that type copied, with its pointers attached to device memory.
+  \item \textbf{Sensitivity.} Bitwise equality of the level set is the whole point of the port. A single bit in
+    $\psi$ near zero decides whether a node ignites in this step or the next. The fire windows T-FIRE-IGN and
+    T-FIRE-WIN compare every fire array at every step, and the burned cells at each history time
+    (\cref{ch:subsys}).
+\end{itemize}
+\end{portnote}

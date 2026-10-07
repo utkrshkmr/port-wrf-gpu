@@ -39,6 +39,11 @@
 % A routine in a file: \src{dyn_em/module_small_step_em.F}{advance_w}
 \newcommand{\src}[2]{\texttt{\detokenize{#2}} (\texttt{\detokenize{#1}})}
 
+% Unique hyperlink anchors for algorithm line numbers (one set per algorithm)
+\makeatletter
+\renewcommand{\theHALG@line}{\thealgorithm.\arabic{ALG@line}}
+\makeatother
+
 % Algorithms are referred to as "Algorithm n.m"
 \crefname{algorithm}{Algorithm}{Algorithms}
 \Crefname{algorithm}{Algorithm}{Algorithms}

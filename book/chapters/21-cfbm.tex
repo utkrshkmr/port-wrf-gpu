@@ -1,20 +1,60 @@
 \chapter{CFBM: NCAR's Community Fire Behavior Model}\label{ch:cfbm}
 
-The standalone rewrite of WRF-Fire's spread model, in WRF~4.8.0 and in the UFS.
+WRF~4.8.0 adds a second fire model next to WRF-Fire: the Community Fire Behavior Model (CFBM), a modular, standalone
+rewrite of the same algorithms in modern Fortran. This chapter summarizes the survey in
+\code{roadmap/analysis/cfbm.md}, made at the commit WRF~4.8.0 pins as its \code{phys/fire_behavior} submodule. Its
+GPU port is Stage~3 of the project's roadmap, after WRF~4.8.0 itself.
 
-\begin{outline}[(card B-13)]
-\textbf{Sections.}
-\begin{itemize}
-    \item \textbf{Design.} Modules, the fire-state type, the standalone driver and the NUOPC cap.
-    \item \textbf{Algorithms.} What is inherited from WRF-Fire and what differs.
-    \item \textbf{Coupling to WRF.} \code{ifire = 1}; initialization, wind interpolation, feedback.
-    \item \textbf{On the GPU.} The port of CFBM (track C of the roadmap).
-\end{itemize}
-\textbf{Sources.} \code{roadmap/analysis/cfbm.md}; the CFBM documentation.
+\section{What it is}
 
-\textbf{Code.}
+CFBM has about 12{,}900 lines in 33 files under an Apache~2.0 license:
+\begin{center}
+\begin{tabular}{lrl}
+\toprule
+Directory & Lines & Content \\
+\midrule
+\code{physics/} & 3{,}669 & level set (\code{level_set_mod}), Rothermel spread rate (\code{ros_wrffire_mod}), fuel moisture, Anderson fuels \\
+\code{state/} & 1{,}544 & the fire state type, tiles, ignition lines \\
+\code{io/} & 3{,}000 & standalone I/O, and the coupling to WRF \\
+\code{share/} & 1{,}813 & constants and utilities \\
+\code{nuopc/} & 2{,}567 & a NUOPC/ESMF cap for coupling inside NOAA's Unified Forecast System \\
+\code{driver/} & 327 & the standalone driver \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In WRF~4.8.0:
 \begin{itemize}
-    \item \code{phys/fire_behavior (WRF 4.8.0)}: \code{physics/level_set_mod}, \code{ros_wrffire_mod}, \code{fire_driver_mod; io/wrf_mod}
+  \item it is selected by \code{ifire = 1}; \code{ifire = 2} remains the WRF-Fire of \cref{ch:fire};
+  \item its state is a derived type inside the domain, \texttt{grid\%fire\_state};
+  \item it is initialized in \code{start_em}, and advanced in \code{first_rk_step_part1} between
+    \code{Interp_wrfwinds_to_cfbm} and \code{Provide_atm_feedback}.
 \end{itemize}
-\textbf{The port.} Card C-02 maps every CFBM kernel to its WRF-Fire counterpart.
-\end{outline}
+
+\section{Same algorithms, different code}
+
+The physics is that of WRF-Fire's SFIRE lineage:
+\begin{itemize}
+  \item the level-set equation with upwinded gradients;
+  \item Rothermel's rate of spread with the same fuel parameters;
+  \item fuel consumption and heat release.
+\end{itemize}
+What differs is the software. CFBM keeps its state in one derived type and uses module procedures with short
+interfaces where WRF-Fire passes long argument lists. And it runs standalone, on a grid with prescribed winds,
+without WRF.
+
+\section{What it means for a GPU port}
+
+\begin{itemize}
+  \item The kernels map one to one onto those of WRF-Fire's port (Stage~4): the level-set stencils, the spread rate per
+    node, the fuel-fraction update, the flux sums.
+  \item The standalone driver lets the port be developed and tested without WRF, on a small grid, in seconds.
+  \item The bit-for-bit method is the same: the CPU build and the GPU build of the same CFBM source. Standalone first,
+    then inside WRF~4.8.0 with \code{ifire = 1}.
+  \item One deep state type is a cleaner target than WRF-Fire's mix of grid fields and pointer components. Its
+    components are made device-resident one by one, as for \code{grid} (\cref{ch:port}).
+  \item CFBM is under active development, so the GPU changes should go upstream as contributions to NCAR's
+    repository, not live in a fork.
+\end{itemize}
+The work is track C of the backlog: build and run standalone, a kernel inventory mapped onto WRF-Fire's port, the
+standalone GPU port with bitwise tests, integration in WRF~4.8.0, and the upstream contribution.

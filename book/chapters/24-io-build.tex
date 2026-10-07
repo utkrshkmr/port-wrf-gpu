@@ -1,3 +1,93 @@
 \chapter{I/O and the build}\label{ch:iobuild}
 
-This chapter is being written.
+This chapter covers two pieces of infrastructure that the port touches without porting:
+\begin{itemize}
+  \item how WRF reads and writes its files;
+  \item how the source becomes an executable.
+\end{itemize}
+
+\section{The I/O API and streams}
+
+WRF's I/O goes through an internal API (\code{frame/module_io.F}, \code{share/module_io_domain.F}) with
+interchangeable back ends; netCDF is the usual one (\code{external/io_netcdf/}). What is read or written is organized
+in \emph{streams}:
+\begin{itemize}
+  \item input (initial data);
+  \item boundary;
+  \item history;
+  \item restart;
+  \item up to two dozen auxiliary input and history streams.
+\end{itemize}
+A field belongs to a stream through the Registry flags of \cref{ch:arch}: \code{i0} for input stream 0, \code{r} for
+restart, \code{h} for history. At run time the user can add or remove fields from a stream with
+\code{iofields_filename}.
+
+The Registry generates the I/O calls: one block of code per field and stream, in include files produced by
+\code{tools/gen_wrf_io.c}. At run time the mediation layer decides when a stream is due: \code{med_before_solve_io}
+and \code{med_after_solve_io}, driven by the alarms of \code{history_interval} and \code{restart_interval}.
+
+\paragraph{Restarts.} A restart file holds every field the model needs to continue: prognostic variables, both time
+levels where needed, accumulated physics fields, the fire state. A restarted run is meant to continue as if it had not
+stopped. Whether it does so bit for bit is tested (T-RST). The port's test windows all start from restart files, so
+the CPU and GPU runs start from exactly the same state (\cref{ch:case}).
+
+\begin{portnote}
+On the GPU, the state lives in device memory, so a history or restart write must first copy the stream's fields to
+the host. The set of fields depends on the stream, and since \code{iofields_filename} can change it at run time, the
+port does not generate a fixed list. Instead, before a write it walks the domain's list of state variables, which
+records each field's streams, and copies those that belong to the stream being written (\cref{ch:port}).
+\end{portnote}
+
+\section{The build}
+
+\paragraph{configure.} \code{./configure} reads \code{arch/configure.defaults}, a list of \emph{stanzas}, one per
+compiler and platform, and asks the user for:
+\begin{itemize}
+  \item the stanza;
+  \item the parallel option (serial, smpar, dmpar, dm+sm);
+  \item the nesting option.
+\end{itemize}
+It writes \code{configure.wrf} with the compilers and flags:
+\begin{itemize}
+  \item \code{FCOPTIM}, the optimization flags;
+  \item \code{FCBASEOPTS}, the base flags;
+  \item \code{OMP}, the OpenMP flags;
+  \item \code{ARCH_LOCAL}, the preprocessor macros;
+  \item and so on.
+\end{itemize}
+
+\paragraph{compile.} \code{./compile em_real} runs \code{make} through the directories in a fixed order:
+\begin{enumerate}
+  \item the external libraries and the Registry program, which generates the include files and
+    \code{module_state_description};
+  \item \code{frame/}, \code{share/}, \code{phys/}, \code{dyn_em/};
+  \item \code{main/}, which links the executables.
+\end{enumerate}
+Source files are \code{.F} and go through the C preprocessor first. Dependencies between Fortran modules are declared
+by hand in \code{main/depend.common}, because make cannot see them.
+
+\paragraph{The port's build modes.} The port adds three stanzas (\cref{ch:repro}):
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Mode & Flags & Macros \\
+\midrule
+CPU-REF & \code{-O2 -Kieee -Mnofma -Mnoflushz -Mnodaz -Mvect=noassoc} & \code{REPRO_MATH}, \code{WRF_POOL} \\
+GPU-REPRO & CPU-REF $+$ \code{-acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz} & $+$ \code{WRF_GPU} \\
+GPU-DEBUG & GPU-REPRO $+$ \code{-g -traceback -gpu=lineinfo} & $+$ fine trace \\
+\bottomrule
+\end{tabular}
+\end{center}
+The GPU options sit in the \code{OMP} variable, which every Fortran compilation and the link use. The
+\code{-gpu=cc80,cc90} part builds one executable for both A100 (compute capability 8.0) and H100 (9.0).
+
+\begin{portnote}
+Three properties of the build matter for a port that adds files and changes generated code.
+\begin{itemize}
+  \item A new module needs its line in \code{depend.common}, or a parallel make may compile its users first.
+  \item make does not track include files: changing an included list without touching the file that includes it
+    leaves a stale object. The port's CPU check rebuilds from scratch for that reason (\cref{ch:subsys}).
+  \item The build removes comment lines containing an apostrophe before preprocessing. A directive line with an
+    apostrophe silently disappears, so the port's directives never contain one.
+\end{itemize}
+\end{portnote}

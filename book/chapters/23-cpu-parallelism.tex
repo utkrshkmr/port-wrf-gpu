@@ -1,3 +1,68 @@
 \chapter{Parallelism on CPUs}\label{ch:cpupar}
 
-This chapter is being written.
+WRF runs on CPU clusters with two levels of parallelism:
+\begin{itemize}
+  \item distributed memory, with MPI between processes;
+  \item shared memory, with OpenMP threads inside a process.
+\end{itemize}
+This chapter describes both, because:
+\begin{itemize}
+  \item the CPU reference of the port runs on many MPI processes;
+  \item the GPU version must give the same bits as one of them;
+  \item the multi-GPU version of \cref{ch:mgpu} reuses the MPI structure.
+\end{itemize}
+
+\section{Patches and halos}
+
+With MPI, the horizontal domain is split into a grid of \emph{patches}, \code{nproc_x} $\times$ \code{nproc_y}, one
+per process. Every column belongs to exactly one patch. The vertical is never split. Each process allocates its
+patch plus a \emph{halo}: a few rows and columns of its neighbours, wide enough for the widest stencil (five points
+for fifth-order advection).
+
+Before a computation that reads neighbours, the halo must hold the neighbours' current values. The exchanges are
+declared in the Registry:
+\begin{lstlisting}[language={}]
+halo  HALO_EM_A  dyn_em  8:ru,rv,rw,ww,php,alt,al,p,muu,muv,mut,rho
+\end{lstlisting}
+This declares an exchange named \code{HALO_EM_A} of these fields with an 8-point stencil. The Registry turns it into
+an include file that \code{solve_em} pulls in at the right place (\code{HALO_EM_A.inc}). The communication library is
+RSL\_LITE (\code{external/RSL_LITE/}): it packs the halo rows of every field into a buffer, exchanges buffers with the
+neighbours, and unpacks them.
+
+\section{Tiles and threads}
+
+Inside a patch, the work can be split again into \emph{tiles}, one per OpenMP thread (\code{numtiles}). The model
+layer computes on tiles (\cref{ch:arch}). The tile loop is in \code{solve_em} and the physics drivers:
+\begin{lstlisting}
+!$OMP PARALLEL DO PRIVATE ( ij )
+DO ij = 1 , grid%num_tiles
+   CALL rk_tendency ( ..., grid%i_start(ij), grid%i_end(ij), &
+                           grid%j_start(ij), grid%j_end(ij), ... )
+END DO
+\end{lstlisting}
+Tiles share memory, so no halo exchange is needed between them. A routine must not write outside its tile.
+
+\section{I/O quilting}
+
+Writing history files from many processes can stall the computation. With quilting (\code{nio_tasks_per_group}),
+extra MPI processes act as I/O servers: compute processes send their patches to them and continue, while the servers
+assemble and write the file.
+
+\section{Decomposition independence}
+
+For a model to be trustworthy, its result should not depend on how many processes compute it. WRF is designed so that
+it does not. Every point is computed by exactly one process with the same operations, and the halos supply the same
+neighbour values that one process would have. There are two exceptions:
+\begin{itemize}
+  \item global reductions, such as a maximum or a sum over the domain, whose order can depend on the decomposition;
+  \item loops whose bounds depend on the patch rather than the domain.
+\end{itemize}
+The port tests decomposition independence of the CPU reference before anything else (T-DEC: 1 vs 64 ranks, and 64 vs
+128 vs 144 ranks, bitwise). A GPU run is one process. It can only equal a 64-process CPU run if the CPU result does
+not depend on the number of processes.
+
+\begin{portnote}
+On one GPU there is one patch, with no MPI neighbours, and one tile. The halo exchanges become no-ops. The physical
+boundary routines fill the domain-edge halo cells as on a single CPU process. For several GPUs (\cref{ch:mgpu}), the
+same patch structure returns, with halos packed and exchanged directly from device memory.
+\end{portnote}

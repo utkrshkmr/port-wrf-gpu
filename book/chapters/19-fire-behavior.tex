@@ -1,3 +1,116 @@
 \chapter{Fire behavior}\label{ch:firebasics}
 
-This chapter is being written.
+A wildland fire spreads because burning fuel heats the unburned fuel ahead of it to ignition. How fast the front
+moves, its \emph{rate of spread}, depends on three things:
+\begin{itemize}
+  \item the fuel: its load, depth, particle size and moisture;
+  \item the wind;
+  \item the slope.
+\end{itemize}
+WRF-Fire uses the semi-empirical model of \citet{rothermel1972}, with fuel descriptions from \citet{anderson1982} and
+\citet{scott2005}. This chapter describes the model as WRF-Fire codes it in \code{phys/module_fr_fire_phys.F}; the
+numerics that move the front are in \cref{ch:fire}.
+
+\section{Fuel models}
+
+A fuel model is a set of numbers describing a type of vegetation as fuel:
+\begin{itemize}
+  \item the fuel load $w_0$;
+  \item the fuel bed depth $\delta$;
+  \item the surface-area-to-volume ratio of the particles $\sigma$ (\code{savr});
+  \item the moisture of extinction $M_x$, above which the fuel does not burn (\code{fuelmce});
+  \item the particle density, mineral content and heat content.
+\end{itemize}
+WRF-Fire's built-in table (\code{module_fr_fire_phys.F}, the defaults read through \code{namelist.fire}) has 53
+categories:
+\begin{itemize}
+  \item Anderson's 13 models;
+  \item a no-fuel category;
+  \item the 40 models of Scott and Burgan, which are mapped onto the table's indices.
+\end{itemize}
+The fire grid of the case takes its categories from LANDFIRE maps (\code{NFUEL_CAT}). The fuel moisture of the case
+is a uniform 8\,\% (\code{fuelmc_g = 0.08}).
+
+\section{Rothermel's rate of spread}
+
+Rothermel writes the rate of spread on flat ground without wind as the ratio of the heat received by the fuel ahead
+of the front to the heat needed to ignite it:
+\begin{equation}
+  R_0 = \frac{I_R\,\xi}{\rho_b\,\varepsilon\,Q_{ig}} .
+\end{equation}
+At initialization, \src{phys/module_fr_fire_phys.F}{set_fire_params} computes every factor per fire-grid cell from
+the fuel model of that cell. The factors are in English units, as in Rothermel's paper:
+\begin{align*}
+  \beta &= \frac{w_0}{\delta\,\rho_p} && \text{packing ratio (\code{betafl})}, \\
+  \beta_{\mathrm{op}} &= 3.348\,\sigma^{-0.8189} && \text{optimum packing ratio}, \\
+  \Gamma_{\max} &= \frac{\sigma^{1.5}}{495 + 0.0594\,\sigma^{1.5}}, \qquad
+  A = \frac{1}{4.774\,\sigma^{0.1} - 7.27} && \text{reaction velocities}, \\
+  \Gamma &= \Gamma_{\max}\left(\frac{\beta}{\beta_{\mathrm{op}}}\right)^{A}
+            \exp\!\Bigl(A\Bigl(1 - \frac{\beta}{\beta_{\mathrm{op}}}\Bigr)\Bigr), \\
+  \eta_M &= 1 - 2.59\,r_M + 5.11\,r_M^2 - 3.52\,r_M^3, \quad r_M = M_f/M_x && \text{moisture damping}, \\
+  \eta_s &= 0.174\,S_e^{-0.19} && \text{mineral damping}, \\
+  I_R &= \Gamma\,w_n\,h\,\eta_M\,\eta_s && \text{reaction intensity}, \\
+  \xi &= \frac{\exp\bigl((0.792 + 0.681\,\sigma^{0.5})(\beta + 0.1)\bigr)}{192 + 0.2595\,\sigma}
+       && \text{propagating flux ratio}, \\
+  \varepsilon &= \exp(-138/\sigma), \qquad Q_{ig} = 250 + 1116\,M_f && \text{heating number, heat of pre-ignition}.
+\end{align*}
+Here $w_n$ is the net fuel load (without minerals), $h$ the heat content and $\rho_b$ the bulk density.
+
+Wind and slope multiply the base rate:
+\begin{equation}
+  R = R_0\,(1 + \phi_w + \phi_s), \qquad
+  \phi_w = C\,U^{B}\left(\frac{\beta}{\beta_{\mathrm{op}}}\right)^{-E}, \qquad
+  \phi_s = 5.275\,\beta^{-0.3}\,\tan^2\varphi,
+\end{equation}
+with
+\begin{equation}
+  C = 7.47\exp\!\bigl(-0.133\,\sigma^{0.55}\bigr), \quad B = 0.02526\,\sigma^{0.54}, \quad
+  E = 0.715\exp\!\bigl(-3.59\times10^{-4}\sigma\bigr).
+\end{equation}
+In these formulas:
+\begin{itemize}
+  \item $U$ is the midflame wind speed in ft/min, the component normal to the fire front;
+  \item $\varphi$ is the slope angle in the direction normal to the front.
+\end{itemize}
+The cell-dependent parts are stored per cell ($R_0$ as \code{r_0}, $B$ as \code{bbb}, the factor in front of $U^B$ as
+\code{phiwc}). At every step only the powers of the current wind are evaluated.
+
+\section{The rate of spread at run time}
+
+\src{phys/module_fr_fire_phys.F}{fire_ros} evaluates the spread rate at a point of the front from the wind and slope
+normal to the front:
+\begin{algorithm}[ht]
+\caption{\code{fire_ros} for one point (Rothermel branch, \code{ibeh = 1}).}
+\label{alg:ros}
+\begin{algorithmic}[1]
+\State $U \gets \min(\max(u_n, 0), 30\ \text{m/s}) \times 196.85$ \Comment{to ft/min}
+\State $\phi_w \gets U^{B}\cdot$\code{phiwc}; \quad $\phi_s \gets 5.275\,\beta^{-0.3}\tan^2\varphi$ (if the slope is upward)
+\State $R_b \gets 0.00508\,R_0$ \Comment{ft/min to m/s}; \quad $R_w \gets R_b\,\phi_w$; \quad $R_s \gets R_b\,\phi_s$
+\State $R_w \gets R_w\cdot$\code{cor_wind}; \quad $R_s \gets R_s\cdot$\code{cor_slope}
+\State $x \gets R_b + R_w + R_s - R_{\max}$ \Comment{$R_{\max} = 6$ m/s}
+\If{$x > 0$}
+  \State $R_w \gets R_w - x\,R_w/(R_w + R_s)$
+  \State $R_s \gets R_s - x\,R_s/(R_w + R_s)$ \Comment{uses the already reduced $R_w$}
+\EndIf
+\State \Return $R_b + R_w + R_s$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+Line 8 of \cref{alg:ros} divides by $R_w + R_s$ with the $R_w$ already reduced on line 7, so the cap does not split
+the excess exactly in proportion. It is probably unintended, but it is what the CPU computes. A bit-for-bit port must
+keep it: the GPU version of \code{fire_ros} is the same statements, compiled as a device routine
+(\texttt{!\$acc routine seq}). The powers and exponentials use the reproducible library (\cref{ch:repro}).
+\end{portnote}
+
+\section{Heat release}
+
+Behind the front, fuel burns out over a characteristic time. Before ignition the remaining fuel fraction is
+$F(t) = 1$; after ignition at $t_i$ it is
+\begin{equation}
+  F(t) = \exp\!\left(-\frac{t - t_i}{T_f}\right),
+\end{equation}
+where $T_f$ is the fuel's \emph{weight}, the time for $1/e$ of the fuel to burn (\code{fgi}, \code{weight}). The heat
+released is the burned fuel times its heat content. A fixed fraction of it, as moisture of the fuel and of
+combustion, goes into the latent heat flux. \Cref{ch:fire} shows how $F$ is averaged over sub-cells and how the heat
+enters the atmosphere.
