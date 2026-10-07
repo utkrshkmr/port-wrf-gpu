@@ -356,6 +356,7 @@ CONTAINS
 
 
    USE module_model_constants
+   USE module_gpu_work, ONLY : work_p3_sfcdrv_u_phytmp, work_p3_sfcdrv_v_phytmp
 ! *** add new modules of schemes here
    USE module_irrigation
    USE module_sf_sfclay
@@ -1230,8 +1231,9 @@ CONTAINS
 
 !  LOCAL  VAR
 
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::v_phytmp
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::u_phytmp
+   ! P1.7: was automatic (ims:ime, kms:kme, jms:jme)
+   REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: v_phytmp
+   REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: u_phytmp
 
    REAL,       DIMENSION( ims:ime, jms:jme )          ::          &
                                                              QGH, &
@@ -1487,6 +1489,10 @@ CONTAINS
   endif
 
   if (sf_sfclay_physics .eq. 0) return
+
+   ! P1.7: remap the former 3D automatic arrays onto work arrays (both builds).
+   u_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_sfcdrv_u_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   v_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_sfcdrv_v_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
 
   if ( fractional_seaice == 0 ) then
      xice_threshold = 0.5

@@ -24,3 +24,16 @@
 !
 ! Names start with work_p3_sfcdrv_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+!
+! Shared refactor (plan.md P1.7): the large 3D automatic arrays of surface_driver.
+! Both builds. Shape (ims:ime, kms:kme, jms:jme) maps onto n3d.
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_u_phytmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_v_phytmp(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_u_phytmp, n3d, "work_p3_sfcdrv_u_phytmp")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_v_phytmp, n3d, "work_p3_sfcdrv_v_phytmp")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p3_sfcdrv_u_phytmp, "work_p3_sfcdrv_u_phytmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_v_phytmp, "work_p3_sfcdrv_v_phytmp", nwork, nbad)
+#endif
