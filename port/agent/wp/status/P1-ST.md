@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: coded
 - Branch: agent/wp/p1_st
-- Last commit: 3be67bd
+- Last commit: b31e5c8
 
 ## Items
 
@@ -12,7 +12,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 |---|---|---|---|
 | task 1: T-FIRE-GHOST gpu_selftest_fire_ghost(grid) | coded | 9a92bdd | device lfn/tign_g ghosts are 0.0; called from gpu_selftests when ifire > 0 |
 | task 2: gpu_selftests(grid) WRF_GPU_SELFTEST=1 dispatcher | coded | 3be67bd | calls map, tab, work, and fire ghost when ifire > 0; env read once |
-| task 3: gpu_selftest_map(grid) T-MAP | coded | | acc_is_present via head_statevars; empty list is FAIL |
+| task 3: gpu_selftest_map(grid) T-MAP | coded | b31e5c8 | acc_is_present via head_statevars; empty list is FAIL |
 
 ## Scope requests
 
@@ -28,4 +28,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - T-FIRE-GHOST (9a92bdd): `gpu_selftest_fire_ghost` plus `work_p1_st_fire_count` / `work_p1_st_ghost_pair`.
 - Dispatcher (3be67bd): `gpu_selftests` reads `WRF_GPU_SELFTEST` once (SAVE). When the value is `1` it calls `gpu_selftest_map`, `gpu_selftest_tab`, `gpu_selftest_work`, and `gpu_selftest_fire_ghost` if `ifire > 0`.
-- T-MAP: `gpu_selftest_map` walks `grid%head_statevars%next` and calls `acc_is_present` through `work_p1_st_field_present`. No hand-written field list.
+- T-MAP (b31e5c8): `gpu_selftest_map` walks `grid%head_statevars%next` and calls `acc_is_present` through `work_p1_st_field_present`. No hand-written field list.
