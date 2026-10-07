@@ -55,10 +55,64 @@ SUBROUTINE gpu_selftests(grid)
 END SUBROUTINE gpu_selftests
 
 SUBROUTINE gpu_selftest_map(grid)
+#ifdef WRF_GPU
+   USE module_domain, ONLY : domain, fieldlist
+#else
    USE module_domain, ONLY : domain
+#endif
    IMPLICIT NONE
    TYPE(domain), INTENT(INOUT) :: grid
-   ! TODO(P1-ST)
+#ifdef WRF_GPU
+   TYPE(fieldlist), POINTER :: p
+   INTEGER :: n, k, nnames
+   CHARACTER(LEN=80) :: one
+   CHARACTER(LEN=240) :: names
+   CHARACTER(LEN=320) :: msg
+   LOGICAL :: work_p1_st_field_present
+#endif
+
+   ! Domain ids are positive. This also names grid in the CPU view.
+   IF (grid%id < 0) RETURN
+
+#ifdef WRF_GPU
+   n = 0
+   k = 0
+   nnames = 0
+   names = ''
+   IF (ASSOCIATED(grid%head_statevars)) THEN
+      ! The head node is a sentinel (Ndim 0). Fields start at next.
+      p => grid%head_statevars%next
+      DO WHILE (ASSOCIATED(p))
+         IF (p%Ndim >= 1 .AND. (p%Type == 'r' .OR. p%Type == 'd' .OR. &
+             p%Type == 'i' .OR. p%Type == 'l')) THEN
+            n = n + 1
+            IF (.NOT. work_p1_st_field_present(p)) THEN
+               k = k + 1
+               one = TRIM(ADJUSTL(p%VarName))
+               IF (nnames < 8 .AND. LEN_TRIM(one) > 0) THEN
+                  IF (LEN_TRIM(names) + 2 + LEN_TRIM(one) <= LEN(names)) THEN
+                     IF (nnames == 0) THEN
+                        names = TRIM(one)
+                     ELSE
+                        names = TRIM(names) // ', ' // TRIM(one)
+                     END IF
+                     nnames = nnames + 1
+                  END IF
+               END IF
+            END IF
+         END IF
+         p => p%next
+      END DO
+   END IF
+   IF (n > 0 .AND. k == 0) THEN
+      WRITE (msg, '(A,I2.2,A,I0,A)') 'gpu_selftest: T-MAP PASS d', grid%id, ' ', n, ' fields present'
+   ELSE
+      WRITE (msg, '(A,I2.2,A,I0,A,I0,A)') 'gpu_selftest: T-MAP FAIL d', grid%id, &
+           ' ', k, ' of ', n, ' fields not present: '
+      msg = TRIM(msg) // TRIM(names)
+   END IF
+   CALL wrf_message(TRIM(msg))
+#endif
 END SUBROUTINE gpu_selftest_map
 
 ! Device copies of lfn and tign_g are 0.0 on the ghost rows and columns
@@ -169,3 +223,84 @@ INTEGER FUNCTION work_p1_st_ghost_pair(lfn, tign, ams, ame, bms, bme, i, j)
    END IF
    work_p1_st_ghost_pair = n
 END FUNCTION work_p1_st_ghost_pair
+
+! True when the fieldlist pointer for this rank is associated and present
+! on the device. Scalars are not passed here (Ndim >= 1). A rank the type
+! does not store (logical rank 3 and above) is not present.
+LOGICAL FUNCTION work_p1_st_field_present(p)
+   USE module_domain, ONLY : fieldlist
+#ifdef WRF_GPU
+   USE openacc
+#endif
+   IMPLICIT NONE
+   TYPE(fieldlist), INTENT(IN) :: p
+   LOGICAL :: here
+   here = .FALSE.
+   IF (p%Ndim < 1 .OR. p%Ndim > 7) THEN
+      work_p1_st_field_present = .FALSE.
+      RETURN
+   END IF
+#ifdef WRF_GPU
+   SELECT CASE (p%Type)
+   CASE ('r')
+      SELECT CASE (p%Ndim)
+      CASE (1)
+         IF (ASSOCIATED(p%rfield_1d)) here = acc_is_present(p%rfield_1d)
+      CASE (2)
+         IF (ASSOCIATED(p%rfield_2d)) here = acc_is_present(p%rfield_2d)
+      CASE (3)
+         IF (ASSOCIATED(p%rfield_3d)) here = acc_is_present(p%rfield_3d)
+      CASE (4)
+         IF (ASSOCIATED(p%rfield_4d)) here = acc_is_present(p%rfield_4d)
+      CASE (5)
+         IF (ASSOCIATED(p%rfield_5d)) here = acc_is_present(p%rfield_5d)
+      CASE (6)
+         IF (ASSOCIATED(p%rfield_6d)) here = acc_is_present(p%rfield_6d)
+      CASE (7)
+         IF (ASSOCIATED(p%rfield_7d)) here = acc_is_present(p%rfield_7d)
+      END SELECT
+   CASE ('d')
+      SELECT CASE (p%Ndim)
+      CASE (1)
+         IF (ASSOCIATED(p%dfield_1d)) here = acc_is_present(p%dfield_1d)
+      CASE (2)
+         IF (ASSOCIATED(p%dfield_2d)) here = acc_is_present(p%dfield_2d)
+      CASE (3)
+         IF (ASSOCIATED(p%dfield_3d)) here = acc_is_present(p%dfield_3d)
+      CASE (4)
+         IF (ASSOCIATED(p%dfield_4d)) here = acc_is_present(p%dfield_4d)
+      CASE (5)
+         IF (ASSOCIATED(p%dfield_5d)) here = acc_is_present(p%dfield_5d)
+      CASE (6)
+         IF (ASSOCIATED(p%dfield_6d)) here = acc_is_present(p%dfield_6d)
+      CASE (7)
+         IF (ASSOCIATED(p%dfield_7d)) here = acc_is_present(p%dfield_7d)
+      END SELECT
+   CASE ('i')
+      SELECT CASE (p%Ndim)
+      CASE (1)
+         IF (ASSOCIATED(p%ifield_1d)) here = acc_is_present(p%ifield_1d)
+      CASE (2)
+         IF (ASSOCIATED(p%ifield_2d)) here = acc_is_present(p%ifield_2d)
+      CASE (3)
+         IF (ASSOCIATED(p%ifield_3d)) here = acc_is_present(p%ifield_3d)
+      CASE (4)
+         IF (ASSOCIATED(p%ifield_4d)) here = acc_is_present(p%ifield_4d)
+      CASE (5)
+         IF (ASSOCIATED(p%ifield_5d)) here = acc_is_present(p%ifield_5d)
+      CASE (6)
+         IF (ASSOCIATED(p%ifield_6d)) here = acc_is_present(p%ifield_6d)
+      CASE (7)
+         IF (ASSOCIATED(p%ifield_7d)) here = acc_is_present(p%ifield_7d)
+      END SELECT
+   CASE ('l')
+      SELECT CASE (p%Ndim)
+      CASE (1)
+         IF (ASSOCIATED(p%lfield_1d)) here = acc_is_present(p%lfield_1d)
+      CASE (2)
+         IF (ASSOCIATED(p%lfield_2d)) here = acc_is_present(p%lfield_2d)
+      END SELECT
+   END SELECT
+#endif
+   work_p1_st_field_present = here
+END FUNCTION work_p1_st_field_present
