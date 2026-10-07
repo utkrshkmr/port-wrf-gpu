@@ -4,14 +4,14 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: coded
 - Branch: agent/wp/p1_tab
-- Last commit: b399785badddfc4154d371a7cc27ac3a4a28b53a
+- Last commit: b14e16793918c3576efa1555b663f83663e15dda
 
 ## Items
 
 | Item | State | Commit | Note |
 |---|---|---|---|
 | task 1: gpu_update_tables(): calls the upload routine of each table module (INTERFACES.md I-4) | coded | b399785badddfc4154d371a7cc27ac3a4a28b53a | USE and CALL wsm6_gpu_upload, sfclayrev_gpu_upload, noahlsm_gpu_upload, ra_sw_gpu_upload, rrtmg_lw_gpu_upload under WRF_GPU only |
-| task 2: gpu_selftest_tab(): calls each module_gpu_tabcheck, sums n and nbad, prints the T-TAB line | coded | (this commit) | one wrf_message line; n is the sum, not a hardcoded 120 |
+| task 2: gpu_selftest_tab(): calls each module_gpu_tabcheck, sums n and nbad, prints the T-TAB line | coded | b14e16793918c3576efa1555b663f83663e15dda | one wrf_message line; n is the sum, not a hardcoded 120 |
 
 ## Scope requests
 
