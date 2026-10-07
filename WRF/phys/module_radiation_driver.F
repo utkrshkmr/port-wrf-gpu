@@ -316,6 +316,15 @@ CONTAINS
 
 ! amontornes-bcodina 2015/09 solar eclipses
    USE module_ra_eclipse    , ONLY : solar_eclipse
+   USE module_gpu_work, ONLY : work_p3_raddrv_cemiss, work_p3_raddrv_glat, &
+        work_p3_raddrv_glon, work_p3_raddrv_ozmixt, work_p3_raddrv_aerodt, &
+        work_p3_raddrv_qc_temp, work_p3_raddrv_qi_save, work_p3_raddrv_qc_save, &
+        work_p3_raddrv_qs_save, work_p3_raddrv_qc_cu_weight, &
+        work_p3_raddrv_qi_cu_weight, work_p3_raddrv_qs_cu_weight, &
+        work_p3_raddrv_cldfra_cu, work_p3_raddrv_erbe_out, work_p3_raddrv_sflxd, &
+        work_p3_raddrv_coszen_loc, work_p3_raddrv_hrang_loc, &
+        work_p3_raddrv_obscur_loc, work_p3_raddrv_cldfra1_flag, &
+        work_p3_raddrv_mask_loc
 
    !  This driver calls subroutines for the radiation parameterizations.
    !
@@ -789,7 +798,7 @@ CONTAINS
 
 ! JJS 20090623  vvvvv
 ! Optional, only for Goddard LW and SW
-   REAL, DIMENSION(IMS:IME, JMS:JME, 1:8)       :: ERBE_out  !extra output for SDSU
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: ERBE_out  !extra output for SDSU
    REAL, DIMENSION(IMS:IME, JMS:JME), OPTIONAL, INTENT(INOUT) ::   & !BSINGH(PNNL)- Lahey compiler forced this specification to be intent-inout
                                                TLWDN, TLWUP,     &
                                                SLWDN, SLWUP,     &
@@ -803,7 +812,7 @@ CONTAINS
                         re_snow_gsfc, re_graupel_gsfc, re_hail_gsfc 
 ! NUWRF JJS 20140225  ^^^^^
 
-  real, dimension( ims:ime, jms:jme, 1:4 )  :: sflxd    !NUWRF SW only for LIS
+  REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: sflxd    !NUWRF SW only for LIS
 
 !   REAL, DIMENSION(IMS:IME, JMS:JME, 1:4)    :: flxd  !NUWRF extra radiation output for LIS (CLM)
        ! 1-surface downward UV+VIS beam radiation [W/m2]
@@ -951,12 +960,12 @@ CONTAINS
    REAL                           :: p_top_dummy
 
 ! LOCAL  VAR
-   INTEGER, DIMENSION( ims:ime, kms:kme, jms:jme ) ::    cldfra1_flag
-   REAL, DIMENSION( ims:ime, jms:jme ) ::             GLAT,GLON
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) ::    CEMISS
+   INTEGER, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: cldfra1_flag
+   REAL, DIMENSION(:,:), POINTER, CONTIGUOUS ::       GLAT, GLON
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS ::     CEMISS
    REAL, DIMENSION( ims:ime, jms:jme ) ::             coszr
-   REAL, DIMENSION( ims:ime, levsiz, jms:jme )  ::    ozmixt
-   REAL, DIMENSION( ims:ime, alevsiz, jms:jme, 1:no_src_types )  ::    aerodt
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS ::     ozmixt
+   REAL, DIMENSION(:,:,:,:), POINTER, CONTIGUOUS ::   aerodt
 
    REAL    ::    DECLIN,SOLCON,XXLAT,TLOCTM,XT24, CEN_LAT, cldfra_cup_mod
    INTEGER ::    i,j,k,its,ite,jts,jte,ij
@@ -969,13 +978,13 @@ CONTAINS
                                                           ITRMN
    REAL    ::    OBECL,SINOB,SXLONG,ARG,DECDEG,                  &
                  DJUL,RJUL,ECCFAC
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qc_temp
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qi_save,qc_save
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qs_save
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qc_temp
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qi_save, qc_save
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qs_save
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qc_cu_weight
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qi_cu_weight
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: qs_cu_weight
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qc_cu_weight
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qi_cu_weight
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: qs_cu_weight
 
    REAL    ::    gridkm, Wice,Wh2o
    REAL, DIMENSION(kms:kme):: t_1d, p_1d, Dz_1d, qv_1d, qc_1d, qi_1d, qs_1d, cf_1d
@@ -986,7 +995,7 @@ CONTAINS
 !ZCX
    REAL    ::    cldji,cldlji
 !ckay
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) ::    cldfra_cu
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS ::    cldfra_cu
 !------------------------------------------------------------------
 ! solar related variables are added to declaration
 !-------------------------------------------------
@@ -997,7 +1006,7 @@ CONTAINS
 
 ! jararias, 2013/08/10
    real :: ioh,kt,airmass,kd
-   real, dimension(ims:ime,jms:jme) :: coszen_loc,hrang_loc
+   REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: coszen_loc, hrang_loc
 ! jararias 2013/11 but modified on 2016/2/10
 !  the following three arrays may be dimensioned by (ims,ime,kms,kme,jms,jme,aerosol_vars)
    real, dimension(:,:,:,:), pointer :: tauaer_sw=>null(), ssaaer_sw=>null(), asyaer_sw=>null()
@@ -1007,8 +1016,8 @@ CONTAINS
    integer, dimension(ims:ime,jms:jme), optional, INTENT(OUT) :: mask
    real,                                optional, INTENT(OUT) :: elat_track, elon_track
 ! Local variables
-   INTEGER, DIMENSION( ims:ime, jms:jme ) :: mask_loc
-   REAL,    DIMENSION( ims:ime, jms:jme ) :: obscur_loc
+   INTEGER, DIMENSION(:,:), POINTER, CONTIGUOUS :: mask_loc
+   REAL, DIMENSION(:,:), POINTER, CONTIGUOUS ::     obscur_loc
    REAL                                   :: elat_loc, elon_loc
 
 ! Trude AOD variables
@@ -1026,9 +1035,36 @@ CONTAINS
 !   real, dimension(ims:ime, kms:kme, jms:jme) ::  hlw, hsw
 
    LOGICAL :: proceed_cmaq_sw
+   INTEGER(KIND=8) :: work_n2_l, work_n3_l, work_noz_l, work_naer_l
 
    logical, save :: firstime = .true.
    logical, save :: feedback_restart, direct_sw_feedback
+
+   ! P1.7: automatic arrays are pointers into work arrays (both builds).
+   work_n2_l = INT(ime - ims + 1, 8) * INT(jme - jms + 1, 8)
+   work_n3_l = work_n2_l * INT(kme - kms + 1, 8)
+   work_noz_l = work_n2_l * INT(levsiz, 8)
+   work_naer_l = work_n2_l * INT(alevsiz, 8) * INT(no_src_types, 8)
+   cldfra1_flag(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_cldfra1_flag(1:work_n3_l)
+   GLAT(ims:ime,jms:jme) => work_p3_raddrv_glat(1:work_n2_l)
+   GLON(ims:ime,jms:jme) => work_p3_raddrv_glon(1:work_n2_l)
+   CEMISS(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_cemiss(1:work_n3_l)
+   ozmixt(ims:ime,1:levsiz,jms:jme) => work_p3_raddrv_ozmixt(1:work_noz_l)
+   aerodt(ims:ime,1:alevsiz,jms:jme,1:no_src_types) => work_p3_raddrv_aerodt(1:work_naer_l)
+   qc_temp(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qc_temp(1:work_n3_l)
+   qi_save(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qi_save(1:work_n3_l)
+   qc_save(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qc_save(1:work_n3_l)
+   qs_save(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qs_save(1:work_n3_l)
+   qc_cu_weight(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qc_cu_weight(1:work_n3_l)
+   qi_cu_weight(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qi_cu_weight(1:work_n3_l)
+   qs_cu_weight(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_qs_cu_weight(1:work_n3_l)
+   cldfra_cu(ims:ime,kms:kme,jms:jme) => work_p3_raddrv_cldfra_cu(1:work_n3_l)
+   ERBE_out(ims:ime,jms:jme,1:8) => work_p3_raddrv_erbe_out(1:work_n2_l*INT(8,8))
+   sflxd(ims:ime,jms:jme,1:4) => work_p3_raddrv_sflxd(1:work_n2_l*INT(4,8))
+   coszen_loc(ims:ime,jms:jme) => work_p3_raddrv_coszen_loc(1:work_n2_l)
+   hrang_loc(ims:ime,jms:jme) => work_p3_raddrv_hrang_loc(1:work_n2_l)
+   mask_loc(ims:ime,jms:jme) => work_p3_raddrv_mask_loc(1:work_n2_l)
+   obscur_loc(ims:ime,jms:jme) => work_p3_raddrv_obscur_loc(1:work_n2_l)
 
 #if ( WRF_CMAQ == 1 )
    if (firstime) then
