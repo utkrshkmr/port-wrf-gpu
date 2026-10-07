@@ -1,21 +1,89 @@
 \chapter{Planetary boundary layer: YSU}\label{ch:pbl}
 
-The Yonsei University scheme, used on the outer domain.
+The planetary boundary layer (PBL) is the turbulent layer next to the ground, typically a few hundred metres deep at
+night and one to three kilometres on a sunny afternoon. At 900~m grid spacing (d01), its eddies are not resolved, so
+a scheme must mix heat, moisture and momentum vertically. The case uses the Yonsei University scheme, YSU
+\citep{hong2006ysu}, on d01 (\code{bl_pbl_physics = 1}). On d02 (100~m) there is no PBL scheme: the large-eddy closure
+of \cref{ch:turb} resolves the large eddies. The core is \src{phys/physics_mmm/bl_ysu.F90}{bl_ysu_run}, wrapped by
+\code{phys/module_bl_ysu.F} and called from \code{phys/module_pbl_driver.F}.
 
-\begin{outline}[(card B-11)]
-\textbf{Sections.}
-\begin{itemize}
-    \item \textbf{Non-local mixing.} The K-profile, the counter-gradient terms and entrainment at the top of the boundary layer.
-    \item \textbf{The boundary-layer height.} The bulk Richardson number (\code{get_pblh}).
-    \item \textbf{Implicit vertical diffusion.} The tridiagonal solvers \code{tridin_ysu} and \code{tridi2n}.
-\end{itemize}
-\textbf{Sources.} \citet{hong2006ysu}.
+\section{A non-local K profile}
 
-\textbf{Code.}
+Inside the mixed layer, YSU specifies the eddy diffusivity as a profile scaled by the boundary-layer height $h$ and a
+velocity scale $w_s$:
+\begin{equation}
+  K_m(z) = \kappa\,w_s\,z\left(1 - \frac{z}{h}\right)^{p}, \qquad p = 2 \ (\code{pfac}).
+\end{equation}
+The flux of a scalar $C$ then has a local part and a non-local, \emph{counter-gradient} part that carries heat
+upward even where the mean gradient is neutral or slightly stable:
+\begin{equation}
+  \overline{w'C'} = -K_c\left(\pd{C}{z} - \gamma_c\right) + \overline{(w'C')}_h\left(\frac{z}{h}\right)^3 .
+\end{equation}
 \begin{itemize}
-    \item \code{phys/physics_mmm/bl_ysu.F90}: \code{bl_ysu_run}, \code{get_pblh}, \code{tridin_ysu}, \code{tridi2n}
-    \item \code{phys/module_bl_ysu.F}: ysu
-    \item \code{phys/module_pbl_driver.F}: \code{pbl_driver}
+  \item $\gamma_c$ is proportional to the surface flux divided by $w_s h$, with the coefficient $b = 6.8$
+    (\code{bfac}).
+  \item The last term is the \emph{explicit entrainment} flux at the top of the layer, the distinctive feature of YSU:
+    the downward heat flux at $h$ is set as a fraction of the surface buoyancy flux, rather than left to the
+    diffusivity profile.
 \end{itemize}
-\textbf{The port.} YSU becomes one thread per column, as WSM6. The tridiagonal solves are sequential in the vertical inside each thread.
-\end{outline}
+The Prandtl number that turns $K_m$ into $K_h$ is bounded between 0.25 and 4 (\code{prmin}, \code{prmax}).
+
+\section{Boundary-layer height}
+
+$h$ is the lowest level where the bulk Richardson number, computed from the surface to that level,
+\begin{equation}
+  \mathrm{Ri}_B(z) = \frac{g\,(\theta_v(z) - \theta_s)\,z}{\theta_{va}\,\bigl(U(z)^2 + V(z)^2\bigr)},
+\end{equation}
+exceeds a critical value: 0 for unstable conditions (\code{brcr_ub}) and 0.25 for stable ones (\code{brcr_sb}). In
+unstable conditions, $\theta_s$ includes a thermal excess proportional to the surface heat flux. The search walks up
+the column level by level and interpolates between the two levels around the critical value.
+
+\section{Above the boundary layer}
+
+In the free atmosphere, YSU uses a local closure:
+\begin{equation}
+  K = l^2\,\left|\pd{\mathbf{V}}{z}\right|\,f(\mathrm{Ri}), \qquad \frac{1}{l} = \frac{1}{\kappa z} + \frac{1}{\lambda_0},
+  \quad \lambda_0 = 30\ \text{m} \ (\code{rlam}),
+\end{equation}
+with a stability function of the local gradient Richardson number, and lower bounds of $0.1$ and
+$0.01\ \text{m}^2\,\text{s}^{-1}$ for momentum and heat (\code{xkzminm}, \code{xkzminh}).
+
+\section{The implicit vertical diffusion}
+
+With the diffusivities known, the tendencies are computed by an implicit (backward) diffusion step, so that large $K$
+in thin layers does not limit the time step. Each scalar gives one tridiagonal system per column
+(\src{phys/physics_mmm/bl_ysu.F90}{tridin_ysu}). The two horizontal wind components are solved together with the
+surface stress (\code{tridi2n}). The scheme returns tendencies of $u$, $v$, $\theta$, $q_v$, $q_c$ and $q_i$
+(\code{RUBLTEN}, \dots), which the dynamics adds every step (\cref{ch:phys}).
+
+\begin{algorithm}[ht]
+\caption{One YSU column (simplified).}
+\label{alg:ysu}
+\begin{algorithmic}[1]
+\State virtual potential temperature, wind speed and heights of the column
+\State boundary-layer height from $\mathrm{Ri}_B$, first without and then with the thermal excess
+\State velocity scale $w_s$, counter-gradient terms, entrainment fluxes at $h$
+\State diffusivities: profile below $h$, local closure above
+\State implicit diffusion of scalars (\code{tridin_ysu}) and of momentum (\code{tridi2n})
+\State tendencies from the new minus the old profiles
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+\begin{itemize}
+  \item \textbf{Out-of-bounds read.} The wrapper copies thirteen arrays used only with the urban BEP model. When the
+    urban model is off, they are allocated with size one, so the copy reads out of bounds. The reference build guards
+    the copy with the urban flag. The values are never used, so the guard changes no result.
+  \item \textbf{Termination.} \code{get_pblh} contains a \code{DO WHILE} loop with no bound on its index. It terminates
+    for physical profiles, and the column harness T-YSU-COL checks that it does on real data.
+  \item \textbf{Structure.} Like WSM6, YSU becomes one GPU thread per column, with fixed-size temporaries (about fifty
+    two-dimensional and forty one-dimensional arrays) and its tridiagonal solvers as device routines.
+\end{itemize}
+\end{portnote}
+
+\section{Large-eddy simulation on d02}
+
+At 100~m, the largest eddies of a convective boundary layer (about the depth of the layer) are resolved by about ten
+to twenty grid points. Running a PBL scheme there would mix the same eddies twice. The case therefore switches it off
+on d02 (\code{bl_pbl_physics = 0}) and uses the three-dimensional TKE closure of \cref{ch:turb}. The surface fluxes
+of the surface layer and Noah enter as the lower boundary condition of the vertical diffusion.

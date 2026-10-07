@@ -1,22 +1,147 @@
 \chapter{Radiation: RRTMG longwave and Dudhia shortwave}\label{ch:rad}
 
-The two radiation schemes of the case and the radiation driver.
-
-\begin{outline}[(card B-09)]
-\textbf{Sections.}
+Radiation heats and cools the atmosphere and drives the surface energy balance. The case uses:
 \begin{itemize}
-    \item \textbf{RRTMG longwave.} The correlated-$k$ method: 16 bands, 140 $g$-points, the gas optical depths of \code{taumol}, the radiative transfer of \code{rtrnmc}.
-    \item \textbf{Clouds in RRTMG.} McICA sub-columns and their KISS random-number generator.
-    \item \textbf{Dudhia shortwave.} The single-band scheme: clear-air scattering and absorption, cloud albedo and absorption tables.
-    \item \textbf{The radiation driver.} The call frequency, cloud fraction, the ozone climatology and its interpolation, the solar zenith angle.
+  \item the longwave part of the Rapid Radiative Transfer Model for GCMs, RRTMG \citep{mlawer1997,iacono2008}:
+    \code{ra_lw_physics = 4}, \code{phys/module_ra_rrtmg_lw.F};
+  \item the shortwave scheme of \citet{dudhia1989}: \code{ra_sw_physics = 1}, \code{phys/module_ra_sw.F}.
 \end{itemize}
-\textbf{Sources.} \citet{mlawer1997,iacono2008,pincus2003,dudhia1989}.
+Both are called from \code{phys/module_radiation_driver.F} every \code{radt} minutes. Between calls, the heating
+rates are kept and applied every step.
 
-\textbf{Code.}
+\section{What the driver does}
+
+On every step, \src{phys/module_radiation_driver.F}{radiation_driver} accumulates the surface fluxes for output and
+computes the total cloud cover of each column ($1 - \prod_k(1 - c_k)$, in $k$ order). On radiation steps it also:
+\begin{enumerate}
+  \item computes the solar declination and the cosine of the zenith angle at every point (\code{radconst},
+    \code{calc_coszen}), and the eclipse obscuration (zero for this case);
+  \item diagnoses the cloud fraction (\code{cal_cldfra1}) from the cloud water and ice;
+  \item interpolates the ozone climatology in time (\code{ozn_time_int}) and in pressure (\code{ozn_p_int}), on the
+    outer domain;
+  \item calls RRTMG longwave, then Dudhia shortwave;
+  \item splits the downward shortwave into direct and diffuse parts, and stores the heating rates.
+\end{enumerate}
+
+\section{RRTMG longwave: the correlated-k method}
+
+A line-by-line calculation of thermal radiation would integrate over hundreds of thousands of absorption lines. The
+correlated-$k$ method replaces the integration over wavenumber within a band by an integration over the cumulative
+distribution $g$ of absorption coefficients. That distribution is smooth and can be sampled at a few points
+\citep{mlawer1997}. RRTMG LW uses 16 spectral bands (\code{nbndlw}) and 140 g-points in total (\code{ngptlw}). Each
+band has its own absorbers:
 \begin{itemize}
-    \item \code{phys/module_ra_rrtmg_lw.F}: \code{rrtmg_lwrad}, \code{rrtmg_lw}, \code{taumol}, \code{rtrnmc}, \code{mcica_subcol_lw}
-    \item \code{phys/module_ra_sw.F}: \code{swrad}, \code{swpara}
-    \item \code{phys/module_radiation_driver.F}: \code{radiation_driver}, \code{cal_cldfra1}, \code{ozn_time_int}, \code{ozn_p_int}, \code{calc_coszen}
+  \item water vapor, carbon dioxide and ozone;
+  \item the minor gases N$_2$O, CH$_4$, CFCs;
+  \item the water vapor continuum.
 \end{itemize}
-\textbf{The port.} RRTMG is the largest single routine tree of the port. Its tables become flat arrays on the device, and its columns run in batches with per-column work arrays.
-\end{outline}
+The absorption coefficients come from tables precomputed from line-by-line calculations. They are tabulated as a
+function of pressure, temperature and the binary-species parameter of the gas pair that dominates the band.
+
+\paragraph{The calculation for one column.} \src{phys/module_ra_rrtmg_lw.F}{rrtmg_lw} runs these steps:
+\begin{description}
+  \item[\code{inatm}] prepares the layer properties: pressures, temperatures, the column amounts of each gas and the
+    cloud properties. Above the model top it adds extra layers, from a standard profile, up to 0.1~hPa. For the case
+    the column has $n_L = 109$ layers, of which 50 are added.
+  \item[\code{cldprmc}] computes the cloud optical depths per g-point from the cloud water and ice paths and the
+    particle sizes.
+  \item[\code{setcoef}] computes, for every layer, the table indices and interpolation weights in pressure and
+    temperature, and the Planck function terms.
+  \item[\code{taumol}] calls \code{taugb1} \dots{} \code{taugb16}, one routine per band, which interpolate the
+    absorption coefficients for every layer and g-point: the optical depths $\tau_{g,k}$.
+  \item[\code{rtrnmc}] performs the radiative transfer: for each g-point, a downward then an upward sweep through the
+    layers with the two-stream source function and the diffusivity approximation, summed over g-points to the fluxes
+    and the heating rate.
+\end{description}
+
+The heating rate of layer $k$ is
+\begin{equation}
+  \left.\pd{T}{t}\right|_k = \frac{g}{c_p}\,\frac{F^{\mathrm{net}}_{k+1} - F^{\mathrm{net}}_{k}}{\Delta p_k},
+\end{equation}
+which the driver converts into a tendency of $\theta$.
+
+\paragraph{Cloud overlap: McICA.} Partial cloudiness in a column could be treated by overlap assumptions that
+multiply the work. RRTMG uses the Monte Carlo Independent Column Approximation \citep{pincus2003} instead:
+\begin{itemize}
+  \item each g-point sees one randomly generated cloudy or clear sub-column, consistent with the layer cloud fractions
+    and the overlap rule;
+  \item the random numbers come from the KISS generator (\code{kissvec}), seeded from the column's pressures, so the
+    same column always gets the same sub-columns.
+\end{itemize}
+\code{mcica_subcol_lw} and \code{generate_stochastic_clouds} implement this.
+
+\begin{algorithm}[ht]
+\caption{One RRTMG longwave column, \code{RRTMG_LWRAD} (simplified).}
+\label{alg:rrtmg}
+\begin{algorithmic}[1]
+\State column setup: layers from the model plus buffer layers above the top (\code{inatm}); gases from \code{read_CAMgases}
+\State McICA sub-columns: cloud yes/no per g-point and layer (\code{mcica_subcol_lw}, \code{kissvec})
+\State cloud optical depths per g-point (\code{cldprmc})
+\State table indices and Planck terms per layer (\code{setcoef})
+\For{band $b = 1, \dots, 16$}
+  \State gas optical depths for the band's g-points and all layers (\code{taugb}$b$)
+\EndFor
+\For{g-point $g = 1, \dots, 140$} \Comment{in band order}
+  \State downward sweep $k = n_L, \dots, 1$; upward sweep $k = 1, \dots, n_L$ (\code{rtrnmc})
+  \State add the g-point's fluxes to the band and total fluxes
+\EndFor
+\State heating rates and surface fluxes; copy back the model's layers
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Precision.} In this build RRTMG LW computes in single precision: \code{kind_rb = kind(1.0)}. The
+double-precision branches of the source are switched off by a preprocessor condition.
+
+\begin{portnote}
+RRTMG is the largest single item of the physics port.
+\begin{itemize}
+  \item \textbf{Tables.} Its absorption tables (about 0.75~MB) live in modules, partly as \code{EQUIVALENCE}d pairs of
+    arrays. The device cannot share storage that way, so the port flattens each pair into one array with explicit
+    index arithmetic. The storage order is the same and so are the values. This is a shared refactor, proven bitwise
+    on the CPU first.
+  \item \textbf{Initialization.} \code{rrtmg_lw_ini} rebuilt the same tables at every radiation call. It is moved to
+    the model's initialization, which is also bit-neutral.
+  \item \textbf{Memory.} A column needs about 2{,}500$\,n_L$ words of temporaries, about 1.1~MB at $n_L = 109$. The
+    GPU processes batches of columns (4096 by default) with one thread per column, and the temporaries become slices
+    of batch work arrays.
+  \item \textbf{Sums.} The fluxes are sums over g-points. A faster version that parallelizes over g-points must still
+    add the contributions in the original order, or it changes the bits (\cref{ch:colphys}).
+\end{itemize}
+\end{portnote}
+
+\section{Dudhia shortwave}
+
+The scheme of \citet{dudhia1989} integrates the downward solar flux from the top of the atmosphere to the ground in a
+single broad band, for each column independently (\src{phys/module_ra_sw.F}{SWPARA}). In each layer, the flux is
+reduced by:
+\begin{itemize}
+  \item clear-air scattering, proportional to the layer's pressure depth (\code{cssca}) and divided by the cosine of
+    the zenith angle $\mu_0$ (\code{XMU});
+  \item water-vapor absorption, from the absorption of the path $u$ above the layer:
+    \begin{equation}
+      A(u) = \frac{2.9\,u}{(1 + 141.5\,u)^{0.635} + 5.925\,u}, \qquad u \text{ the vapor path in g\,cm}^{-2} \text{ over } \mu_0;
+    \end{equation}
+  \item cloud reflection and absorption, from two small tables (\code{ALBTAB}, \code{ABSTAB}) indexed by the
+    logarithm of the liquid water path and by $\mu_0$, interpolated bilinearly.
+\end{itemize}
+The heating of each layer is the absorbed part of the flux; the ground receives what is left. Night columns
+($\mu_0 \le 0$) skip the integration.
+
+\begin{portnote}
+\begin{itemize}
+  \item The Dudhia scheme is a classic \emph{single column with an early exit}: in a batch of columns, the night ones
+    finish at once while the day ones run the full loop. On a GPU this leaves threads of a warp idle (divergence,
+    \cref{ch:warp}).
+  \item Its \code{DATA} tables become \code{PARAMETER} arrays, so the device has them as constants.
+  \item The power $0.635$ and the logarithm go through \code{rp_pow} and \code{rp_log10}.
+\end{itemize}
+\end{portnote}
+
+\section{Ozone and greenhouse gases}
+
+With \code{o3input = 2}, ozone comes from a climatology of monthly zonal means on 59 pressure levels. The driver
+interpolates it in time to the model date and in pressure to the model layers. The pressure interpolation in
+\code{ozn_p_int} searches, for each model level, the bracketing climatology levels. The CPU code shares the search
+across the points of a $j$ row; the GPU version searches per column and finds the same bracket, so the weights and
+results are identical (test T-OZN). Greenhouse-gas concentrations (CO$_2$, N$_2$O, CH$_4$, CFC-11, CFC-12) come from a
+table by year (\code{ghg_input = 1}, \code{read_CAMgases}).

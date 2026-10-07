@@ -1,25 +1,106 @@
-\chapter{Surface layer and land surface}\label{ch:sfc}
+\chapter{Surface layer}\label{ch:sfc}
 
-The revised MM5 surface layer and the Noah land-surface model.
-
-\begin{outline}[(card B-10)]
-\textbf{Sections.}
+The surface layer scheme computes the exchange coefficients between the ground and the lowest model level:
 \begin{itemize}
-    \item \textbf{Monin--Obukhov similarity.} The stability functions, their tables, and the iteration for $z/L$ (\code{zolri}).
-    \item \textbf{The revised surface layer.} The formulation of \citet{jimenez2012} as coded in \code{sf_sfclayrev_run}.
-    \item \textbf{Noah.} The four soil layers, the surface energy balance, evaporation and transpiration, soil heat and moisture, snow; the \code{SFLX} call tree.
-    \item \textbf{Sea ice and diagnostics.} \code{seaice_noah}, \code{SFCDIAGS}.
-    \item \textbf{The surface driver.} \code{surface_driver}.
+  \item the friction velocity $u_*$;
+  \item the fluxes of momentum, heat and moisture;
+  \item the diagnostic 2-m temperature and humidity and 10-m wind.
 \end{itemize}
-\textbf{Sources.} \citet{jimenez2012,chen2001}.
+The land-surface model (\cref{ch:lsm}) and the boundary layer or LES use them. The case uses the revised MM5 scheme
+of \citet{jimenez2012} (\code{sf_sfclay_physics = 1}). Its core, \src{phys/physics_mmm/sf_sfclayrev.F90}{sf_sfclayrev_run},
+is shared with MPAS and wrapped by \code{phys/module_sf_sfclayrev.F}.
 
-\textbf{Code.}
+\section{Monin--Obukhov similarity}
+
+Near the ground, the mean profiles of wind and potential temperature depend on height $z$ only through the stability
+parameter $\zeta = z/L$. The Obukhov length $L$ measures the height above which buoyancy matters as much as shear:
+\begin{equation}
+  \frac{\kappa z}{u_*}\pd{U}{z} = \phi_m(\zeta), \qquad
+  \frac{\kappa z}{\theta_*}\pd{\theta}{z} = \phi_h(\zeta),
+\end{equation}
+with the von K\'arm\'an constant $\kappa = 0.4$. Integrated from the roughness length $z_0$ to the first model level
+$z_a$:
+\begin{equation}
+  U(z_a) = \frac{u_*}{\kappa}\Bigl[\ln\frac{z_a + z_0}{z_0} - \psi_m\Bigl(\frac{z_a + z_0}{L}\Bigr) + \psi_m\Bigl(\frac{z_0}{L}\Bigr)\Bigr],
+\end{equation}
+and the same for $\theta$ with $\psi_h$ and the thermal roughness length.
+
+\section{The stability functions}
+
+The revised scheme uses functions that are valid over the full range of stability \citep{jimenez2012}. In the stable
+case ($\zeta > 0$), \src{phys/physics_mmm/sf_sfclayrev.F90}{psim_stable_full} and \code{psih_stable_full} are
+\begin{equation}
+  \psi_m = -6.1\,\ln\!\Bigl(\zeta + \bigl(1 + \zeta^{2.5}\bigr)^{1/2.5}\Bigr), \qquad
+  \psi_h = -5.3\,\ln\!\Bigl(\zeta + \bigl(1 + \zeta^{1.1}\bigr)^{1/1.1}\Bigr).
+\end{equation}
+In the unstable case, the function blends the Kansas-type form, with $x = (1 - 16\zeta)^{1/4}$,
+\begin{equation}
+  \psi_{m,K} = 2\ln\frac{1+x}{2} + \ln\frac{1+x^2}{2} - 2\arctan x + \frac{\pi}{2},
+\end{equation}
+with a free-convection form $\psi_{m,C}$ in $y = (1 - 10\zeta)^{0.33}$, weighted by $\zeta^2$:
+\begin{equation}
+  \psi_m = \frac{\psi_{m,K} + \zeta^2\,\psi_{m,C}}{1 + \zeta^2},
+\end{equation}
+and similarly for heat (\code{psim_unstable_full}, \code{psih_unstable_full}). For speed, both are tabulated at
+initialization on a grid of 1001 values of $\zeta$ (\code{psim_stab}, \code{psih_unstab}, \dots). The run-time
+functions \code{psim_stable} etc.\ look values up in these tables inside their range and call the full functions
+outside it.
+
+\section{From the bulk Richardson number to \texorpdfstring{$z/L$}{z/L}}
+
+What the model knows at the first level is the bulk Richardson number
+\begin{equation}
+  \mathrm{Ri}_B = \frac{g}{\theta_v}\,\frac{z_a\,(\theta_{va} - \theta_{vg})}{U_a^2},
+\end{equation}
+not $L$. The two are related implicitly through the stability functions. The scheme solves for $\zeta$ with the
+secant method in \src{phys/physics_mmm/sf_sfclayrev.F90}{zolri}:
+\begin{algorithm}[ht]
+\caption{\code{zolri}: $\zeta$ from $\mathrm{Ri}_B$ by the secant method.}
+\label{alg:zolri}
+\begin{algorithmic}[1]
+\State $(x_1, x_2) \gets (-5, 0)$ if $\mathrm{Ri}_B < 0$, else $(0, 5)$
+\State $f_1 \gets f(x_1)$, $f_2 \gets f(x_2)$, where $f(\zeta) = \mathrm{Ri}(\zeta) - \mathrm{Ri}_B$ (\code{zolri2})
+\State result $\gets x_1$
+\While{$|x_1 - x_2| > 0.01$ and fewer than 10 iterations}
+  \If{$f_1 = f_2$} \textbf{return} the current result \Comment{the case discussed below}
+  \EndIf
+  \If{$|f_2| < |f_1|$}
+    \State $x_1 \gets x_1 - f_1\,(x_2 - x_1)/(f_2 - f_1)$; $f_1 \gets f(x_1)$; result $\gets x_1$
+  \Else
+    \State $x_2 \gets x_2 - f_2\,(x_2 - x_1)/(f_2 - f_1)$; $f_2 \gets f(x_2)$; result $\gets x_2$
+  \EndIf
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+In the original code, if $f_1 = f_2$ on the very first pass, the function returned without assigning its result.
+That is undefined behaviour: the value is whatever happens to be in the result register, which can differ between
+CPU and GPU. The reproducible reference build defines it: the result is set to the current iterate before the loop
+(\cref{alg:zolri}, line 3). A counter (\code{sfclayrev_zolri_undef}) records how often the case occurs; the reference
+run of the case records zero (test T-ZOLRI), so the fix changes no result of the case.
+\end{portnote}
+
+\section{Fluxes}
+
+With $\zeta$ known, the scheme computes:
+\begin{align}
+  u_* &= \frac{\kappa\,U_a}{\ln\bigl((z_a + z_0)/z_0\bigr) - \psi_m}, \\
+  H &= \rho\,c_p\,C_h\,U_a\,(\theta_g - \theta_a), \qquad
+  E = \rho\,C_q\,U_a\,M\,(q_{s}(T_g) - q_a),
+\end{align}
+where $C_h$ and $C_q$ are the exchange coefficients for heat and moisture and $M$ is the moisture availability. Over
+land, the land-surface model replaces the fluxes with its own, using these coefficients (\cref{ch:lsm}). A
+convective velocity scale enters $U_a$ in unstable conditions, so the fluxes do not vanish in calm air. The scheme also
+interpolates the 2-m and 10-m diagnostics with the same similarity profiles.
+
+\begin{portnote}
+The surface layer is a per-point calculation: only the lowest model level is used. On the GPU it is one thread per
+$(i,j)$ point (kernel K-SFCLAY).
 \begin{itemize}
-    \item \code{phys/physics_mmm/sf_sfclayrev.F90}: \code{sf_sfclayrev_run}, \code{zolri}
-    \item \code{phys/module_sf_sfclayrev.F}: sfclayrev
-    \item \code{phys/module_sf_noahdrv.F}: lsm
-    \item \code{phys/module_sf_noahlsm.F}: SFLX and callees
-    \item \code{phys/module_surface_driver.F}: \code{surface_driver}
+  \item The tables of $\psi$ are uploaded to the device once.
+  \item \code{zolri}, \code{zolri2} and the stability functions are device routines.
+  \item Their logarithms, powers and arctangents use the reproducible library, so the iteration takes the same path,
+    with the same number of steps, on CPU and GPU.
 \end{itemize}
-\textbf{The port.} The undefined result of \code{zolri} in one branch is given a defined value in both builds; the reference run shows the branch is never taken in this case.
-\end{outline}
+\end{portnote}

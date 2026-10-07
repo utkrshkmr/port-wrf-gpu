@@ -1,3 +1,131 @@
 \chapter{Land surface: the Noah model}\label{ch:lsm}
 
-This chapter is being written.
+Over land, the surface fluxes of heat and moisture depend on the state of the soil, the vegetation and the snow. The
+case uses the Noah land-surface model \citep{chen2001,ek2003} (\code{sf_surface_physics = 2}). Noah predicts:
+\begin{itemize}
+  \item the soil temperature and moisture in four layers (0--10, 10--40, 40--100 and 100--200~cm);
+  \item canopy water;
+  \item snow water equivalent and snow depth;
+  \item the skin temperature.
+\end{itemize}
+Its physics is in \code{phys/module_sf_noahlsm.F}, called per point by the driver
+\src{phys/module_sf_noahdrv.F}{lsm}. Glaciers have a variant (\code{module_sf_noahlsm_glacial_only.F}) and sea ice has
+its own model (\code{module_sf_noah_seaice.F}).
+
+\section{The structure of one point}
+
+For each land point and step, the driver gathers the forcing and calls \src{phys/module_sf_noahlsm.F}{SFLX}. The
+forcing is:
+\begin{itemize}
+  \item from the lowest model level: wind, temperature, humidity, pressure;
+  \item from radiation: the downward short- and longwave fluxes;
+  \item from the microphysics: precipitation;
+  \item from the surface layer: the exchange coefficients.
+\end{itemize}
+SFLX calls a tree of routines:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Routine & Role \\
+\midrule
+\code{REDPRM} & parameters for the point's vegetation and soil type (from \code{VEGPARM.TBL}, \code{SOILPARM.TBL}, \code{GENPARM.TBL}) \\
+\code{CSNOW}, \code{SNOW_NEW}, \code{SNFRAC}, \code{SNOWZ0}, \code{ALCALC} & snow density and depth, snow cover fraction, roughness and albedo \\
+\code{TDFCND} & soil thermal conductivity from moisture and soil type \\
+\code{PENMAN} & potential evaporation \\
+\code{CANRES} & canopy resistance \\
+\code{NOPAC} / \code{SNOPAC} & the energy and water budget without or with snow \\
+\code{EVAPO}, \code{DEVAP}, \code{TRANSP} & total evaporation: bare soil, transpiration, canopy \\
+\code{SMFLX}, \code{SRT}, \code{SSTEP}, \code{WDFCND} & soil water: infiltration, runoff, diffusion, implicit step \\
+\code{SHFLX}, \code{HRT}, \code{HSTEP}, \code{TBND}, \code{TMPAVG} & soil heat: diffusion, implicit step \\
+\code{FRH2O}, \code{SNKSRC} & frozen soil water and the latent heat of freezing \\
+\code{ROSR12} & the tridiagonal solver used by both implicit steps \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Energy balance and potential evaporation}
+
+The surface energy balance
+\begin{equation}
+  (1 - \alpha)\,S\!\downarrow + \epsilon L\!\downarrow - \epsilon\sigma T_s^4 = H + \lambda E + G
+\end{equation}
+is linearized around the air temperature, in the manner of Penman. \code{PENMAN} computes the potential evaporation:
+the evaporation of a saturated surface with the available energy and the surface-layer exchange coefficient. Actual
+evaporation is the potential evaporation reduced by the soil moisture and the canopy resistance. The skin temperature
+then follows from the balance.
+
+\section{Canopy resistance}
+
+Transpiration is limited by the stomata. Noah uses a Jarvis-type resistance (\src{phys/module_sf_noahlsm.F}{CANRES}):
+\begin{equation}
+  R_c = \frac{R_{c,\min}}{\mathrm{LAI}\;F_1\,F_2\,F_3\,F_4},
+\end{equation}
+with four factors between 0 and 1:
+\begin{itemize}
+  \item solar radiation: $F_1 = (f + R_{c,\min}/R_{c,\max})/(1 + f)$, where $f$ grows with the incoming solar flux
+    (\code{RCS});
+  \item air temperature: $F_2 = 1 - 0.0016\,(T_{\mathrm{opt}} - T)^2$ (\code{RCT});
+  \item vapor deficit: $F_3 = 1/\bigl(1 + h_s\,(q_{\mathrm{sat}} - q)\bigr)$ (\code{RCQ});
+  \item soil moisture: $F_4$, a root-weighted sum of $(\theta - \theta_w)/(\theta_{\mathrm{ref}} - \theta_w)$ over the
+    root layers (\code{RCSOIL}).
+\end{itemize}
+Each factor has a small positive floor, so $R_c$ stays finite.
+
+\section{Soil heat and water}
+
+Soil temperature obeys the heat diffusion equation with a conductivity that depends on soil moisture:
+\begin{equation}
+  C(\theta)\,\pd{T}{t} = \pd{}{z}\Bigl(K_T(\theta)\,\pd{T}{z}\Bigr),
+\end{equation}
+with the ground heat flux at the top and a fixed deep temperature at 8~m. Soil moisture obeys the diffusive form of
+Richards' equation:
+\begin{equation}
+  \pd{\theta}{t} = \pd{}{z}\Bigl(D(\theta)\,\pd{\theta}{z}\Bigr) + \pd{K(\theta)}{z} + F_\theta,
+\end{equation}
+with infiltration at the top, gravitational drainage at the bottom and sinks from evaporation and root uptake.
+
+Both equations are discretized on the four layers and stepped implicitly in time. Each gives a tridiagonal system per
+point, solved by \code{ROSR12}. When the soil freezes, \code{FRH2O} computes how much of the water stays liquid,
+and the latent heat enters the heat equation.
+
+\section{Snow}
+
+With snow on the ground, \code{SNOPAC} replaces \code{NOPAC}:
+\begin{itemize}
+  \item the snowpack is a single layer that accumulates precipitation (\code{SNOW_NEW}, with a temperature-dependent
+    density) and compacts (\code{SNOWPACK});
+  \item it melts or sublimates from the surface energy balance;
+  \item a snow-cover fraction (\code{SNFRAC}) blends the albedo and fluxes of the snow-covered and bare parts.
+\end{itemize}
+
+\begin{algorithm}[ht]
+\caption{One Noah point step (\code{SFLX}, simplified).}
+\label{alg:noah}
+\begin{algorithmic}[1]
+\State parameters of the vegetation and soil type (\code{REDPRM})
+\State snow: new snow, density, cover fraction, albedo, roughness
+\State thermal conductivity of the top layer (\code{TDFCND})
+\State potential evaporation (\code{PENMAN}); canopy resistance (\code{CANRES})
+\If{no snow}
+  \State \code{NOPAC}: evaporation components; soil water implicit step; soil heat implicit step; skin temperature
+\Else
+  \State \code{SNOPAC}: snow energy balance, melt, compaction; then soil water and heat below the pack
+\EndIf
+\State runoff, fluxes, diagnostics
+\end{algorithmic}
+\end{algorithm}
+
+\begin{portnote}
+Noah is a per-point model with a deep call tree of about thirty routines. Three properties shape its GPU port.
+\begin{itemize}
+  \item \textbf{Module state.} The point's indices \code{iloc}, \code{jloc} are module variables, and the land-use
+    and soil types are passed around as character strings (\code{LUTYPE}, \code{SLTYPE}). The port makes the indices
+    arguments and the types integer codes. These are shared refactors, bit-neutral by construction.
+  \item \textbf{Implicitly saved locals.} \code{REAL :: SNUPGRD = 0.02} in \code{SNFRAC} is implicitly \code{SAVE}d in
+    Fortran. On a GPU, all threads would share it. It becomes a \code{PARAMETER}, which is the same value.
+  \item \textbf{Tables.} The vegetation, soil and general parameter tables (49 arrays and scalars) are uploaded to the
+    device once and checked by checksum (T-TAB).
+\end{itemize}
+Each point then runs \cref{alg:noah} in one GPU thread. A point harness (T-NOAH-PT) compares $10^5$ points from
+real states between host and device before the model-level tests (\cref{ch:subsys}).
+\end{portnote}

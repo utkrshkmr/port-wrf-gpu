@@ -1,3 +1,135 @@
 \chapter{The physics interface}\label{ch:phys}
 
-This chapter is being written.
+Physics schemes compute the effects of processes that the dynamics does not resolve:
+\begin{itemize}
+  \item radiation;
+  \item exchanges with the surface;
+  \item boundary-layer mixing;
+  \item condensation and precipitation;
+  \item convection;
+  \item fire.
+\end{itemize}
+They see the atmosphere as physical variables (temperature, pressure, density, height) on columns, and return tendencies
+or adjusted states. This chapter describes how WRF converts between the dynamics' variables and the physics'
+variables, when each scheme is called, and how its results are coupled back.
+
+\section{When physics runs}
+
+All physics except microphysics runs once per large time step, inside the first Runge--Kutta stage, before the slow
+tendencies of that stage are formed (\cref{alg:solve-em}). In \src{dyn_em/module_first_rk_step_part1.F}{first_rk_step_part1}
+the order is:
+\begin{enumerate}
+  \item zero the physics tendencies (\code{init_zero_tendency}) and prepare the physics variables (\code{phy_prep});
+  \item radiation (\code{radiation_driver}), on radiation steps only;
+  \item surface layer, land surface and surface diagnostics (\code{surface_driver});
+  \item boundary layer (\code{pbl_driver});
+  \item cumulus and shallow convection (\code{cumulus_driver}, \code{shallowcu_driver}), if selected;
+  \item the fire model on its domain (\code{fire_driver_em_step}).
+\end{enumerate}
+Then \src{dyn_em/module_first_rk_step_part2.F}{first_rk_step_part2}:
+\begin{enumerate}
+  \item couples the physics tendencies with the column mass (\code{calculate_phy_tend});
+  \item computes the diffusion of \cref{ch:turb};
+  \item adds the physics tendencies to the dynamics tendencies (\code{update_phy_ten}).
+\end{enumerate}
+Those tendencies then act in all three RK stages.
+
+Microphysics is the exception. It adjusts the state, not the tendency, and runs once after the third RK stage, on the
+updated state (\code{microphysics_driver}, wrapped by \code{moist_physics_prep_em} and \code{moist_physics_finish_em}).
+That way saturation adjustment sees the final state of the step.
+
+\paragraph{Physics time steps.} Some schemes are expensive and run less often than every step.
+\begin{itemize}
+  \item Radiation runs every \code{radt} minutes: every minute in the case, so every 20 steps of d01 and every 180 of
+    d02. Between calls its heating rates (\code{RTHRATEN}) are kept and reapplied every step.
+  \item The boundary layer and surface run every step (\code{bldt = 0}).
+\end{itemize}
+The decision is made on the host from the step count, and the GPU follows the same branch.
+
+\section{From dynamics to physics variables}
+
+The dynamics carries $\theta_m - T_0$, $p'$, $\alpha_d$ and $\phi'$. \src{dyn_em/module_big_step_utilities_em.F}{phy_prep}
+computes, at every point,
+\begin{align}
+  \theta &= \frac{T_0 + \theta'_m}{1 + (R_v/R_d)\,q_v}, & p &= \bar p + p', &
+  \pi &= \Bigl(\frac{p}{p_{1000}}\Bigr)^{R_d/c_p}, \\
+  T &= \theta\,\pi, & \rho &= \frac{1 + q_v}{\alpha_d}, &
+  z &= \frac{\bar\phi + \phi'}{g},
+\end{align}
+plus the layer thicknesses \code{dz8w}, the pressures at full levels \code{p8w} and the temperatures at full levels
+\code{t8w}. The surface pressure at full level 1 is extrapolated with
+$p_{8w,1} = \exp\bigl(w_1 \ln p_1 + w_2 \ln p_2\bigr)$, with interpolation weights $w_1$, $w_2$. The hydrostatic
+pressure at full levels is integrated downward from the top, adding the weight of each layer's water species.
+
+\begin{portnote}
+Two lines of \code{phy_prep} show the reproducibility rules of \cref{ch:repro} at work.
+\begin{itemize}
+  \item The Exner function is \code{pi_phy = rp_pow((p_phy/p1000mb), rcp)}. The original \code{**rcp} would call the
+    compiler's power function, which differs between host and device.
+  \item The downward integration of the hydrostatic pressure is a recurrence in $k$. On the GPU it runs as one thread
+    per column (Template C, kernel K-PPR-6), with the species summed in the source's order.
+\end{itemize}
+\end{portnote}
+
+\section{Physics tendencies and coupling}
+
+Schemes return tendencies of the uncoupled variables:
+\begin{itemize}
+  \item \code{RTHRATEN}: potential temperature tendency from radiation;
+  \item \code{RUBLTEN}, \code{RVBLTEN}, \code{RTHBLTEN}, \code{RQVBLTEN}: tendencies from the boundary layer;
+  \item \code{RTHFRTEN}, \code{RQVFRTEN}: tendencies from the fire (\cref{ch:fire}).
+\end{itemize}
+The dynamics needs them as tendencies of the coupled variables. \src{dyn_em/module_em.F}{calculate_phy_tend}
+multiplies each by the column mass of its level, $c_1\mu + c_2$. Then \src{phys/module_physics_addtendc.F}{update_phy_ten}
+adds them to the tendency arrays of the dynamics:
+\begin{itemize}
+  \item scalars directly;
+  \item $u$ and $v$ after averaging from mass points to their own points (\code{add_a2c_u}, \code{add_a2c_v}).
+\end{itemize}
+Before the next physics call, \code{phy_prep_part2} divides the stored radiation tendency by the column mass again.
+This keeps it in uncoupled form while the column mass changes.
+
+\section{Wrappers and column physics}
+
+Most schemes are written for one $j$ row at a time: their core routines take arrays dimensioned \code{(its:ite,
+kts:kte)}, and the driver loops over $j$. A WRF driver (\code{module_*_driver.F}) selects the scheme. For schemes
+shared with MPAS (\code{phys/physics_mmm/}), a thin wrapper:
+\begin{enumerate}
+  \item copies the three-dimensional WRF arrays into two-dimensional slabs;
+  \item calls the scheme;
+  \item copies the results back.
+\end{enumerate}
+For example, the wrapper of WSM6 converts $\theta$ to $T$ by multiplying by $\pi$ on the way in and divides by $\pi$
+on the way out.
+
+\begin{portnote}
+The slab structure is the main obstacle for GPUs. A slab routine works on many columns at once with loops over $i$
+inside loops over $k$, and it allocates its temporaries on every call. The port turns each scheme into
+\emph{column physics} (\cref{ch:colphys}):
+\begin{itemize}
+  \item one GPU thread per column;
+  \item the same core routine, called with \code{its = ite = 1};
+  \item fixed-size private temporaries;
+  \item every callee compiled for the device.
+\end{itemize}
+Each column performs the same operations in the same order as on the CPU, so the result is identical.
+\end{portnote}
+
+\section{The schemes of the case}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Process & Option & Scheme & Chapter \\
+\midrule
+Microphysics & \code{mp_physics = 6} & WSM6 & \ref{ch:mp} \\
+Longwave radiation & \code{ra_lw_physics = 4} & RRTMG & \ref{ch:rad} \\
+Shortwave radiation & \code{ra_sw_physics = 1} & Dudhia & \ref{ch:rad} \\
+Surface layer & \code{sf_sfclay_physics = 1} & revised MM5 & \ref{ch:sfc} \\
+Land surface & \code{sf_surface_physics = 2} & Noah & \ref{ch:lsm} \\
+Boundary layer & \code{bl_pbl_physics = 1} (d01) & YSU & \ref{ch:pbl} \\
+Cumulus & \code{cu_physics = 0} & none & \ref{ch:cu} \\
+Fire & \code{ifire = 2} (d02) & WRF-Fire & \ref{ch:fire} \\
+\bottomrule
+\end{tabular}
+\end{center}

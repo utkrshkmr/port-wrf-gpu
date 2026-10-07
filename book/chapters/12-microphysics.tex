@@ -1,23 +1,149 @@
 \chapter{Microphysics: WSM6}\label{ch:mp}
 
-The WRF single-moment six-class scheme: water vapour, cloud water, rain, cloud ice, snow and graupel.
+Microphysics turns water vapor into cloud and precipitation and back. WRF offers some thirty schemes. The case uses the
+WRF single-moment six-class scheme, WSM6 \citep{hong2006wsm6}, which builds on the revised ice processes of
+\citet{hong2004}. Its code lives in \code{phys/physics_mmm/mp_wsm6.F90} (shared
+with MPAS), with the WRF wrapper \code{phys/module_mp_wsm6.F} and the driver \code{phys/module_microphysics_driver.F}.
 
-\begin{outline}[(card B-08)]
-\textbf{Sections.}
-\begin{itemize}
-    \item \textbf{Classes and size distributions.} The slope parameters (\code{slope_wsm6} and its variants).
-    \item \textbf{Processes.} Condensation, deposition, autoconversion, accretion, melting, freezing; the order in which they are applied.
-    \item \textbf{Sedimentation.} The semi-Lagrangian fall of rain and of snow and graupel (\code{nislfv_rain_plm}, \code{nislfv_rain_plm6}).
-    \item \textbf{Surface precipitation.} The accumulators.
-    \item \textbf{The driver.} \code{microphysics_driver} and the slab wrapper \code{wsm6}.
-\end{itemize}
-\textbf{Sources.} \citet{hong2006wsm6}.
+\section{Classes and size distributions}
 
-\textbf{Code.}
+WSM6 predicts the mixing ratios of six water species: vapor $q_v$, cloud water $q_c$, cloud ice $q_i$, rain $q_r$,
+snow $q_s$ and graupel $q_g$. It is \emph{single-moment}: only the mass of each species is predicted. The number of
+particles follows from an assumed size distribution. For rain, snow and graupel the distribution is exponential
+(Marshall--Palmer),
+\begin{equation}
+  N_x(D) = N_{0x}\,e^{-\lambda_x D},
+\end{equation}
+and fixing the intercept $N_{0x}$ makes the slope a function of the mass alone:
+\begin{equation}
+  \lambda_x = \left(\frac{\pi\,\rho_x\,N_{0x}}{\rho\,q_x}\right)^{1/4}.
+\end{equation}
+The code writes these slopes as statement functions with two square roots instead of a fourth power (for example
+\code{lamdar(x,y) = sqrt(sqrt(pidn0r/(x*y)))}). The parameters, from \code{mp_wsm6.F90} and its initialization
+\code{mp_wsm6_init}, are:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+ & Rain & Snow & Graupel \\
+\midrule
+Density $\rho_x$ (kg m$^{-3}$) & 1000 & 100 & 500 \\
+Intercept $N_{0x}$ (m$^{-4}$) & $8\times10^{6}$ & $2\times10^{6}\,e^{0.12\,(T_0 - T)}$, $\le 10^{11}$ & $4\times10^{6}$ \\
+Fall speed $a$, $b$ in $V = a\,D^{b}$ & 841.9, 0.8 & 11.72, 0.41 & 330, 0.8 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The snow intercept increases as the temperature falls below $T_0 = 273.15$~K, which mimics smaller, more numerous
+crystals in cold air. With the hail option (\code{hail_opt = 1}) the graupel class becomes hail: density 700, intercept
+$4\times10^{4}$, $a = 285$.
+
+Cloud water and cloud ice are treated as monodisperse and non-precipitating, apart from a small sedimentation of ice.
+The number of ice crystals follows the temperature-independent relation of the scheme,
+\begin{equation}
+  N_i = \min\bigl(\max\bigl(5.38\times10^{7}\,(\rho\,q_i)^{3/4},\ 10^{3}\bigr),\ 10^{6}\bigr)\ \text{m}^{-3},
+\end{equation}
+where the code again avoids a power function: it forms $(\rho q_i)^3$ and takes two square roots.
+
+\begin{keypoint}
+WSM6 writes its fractional powers as square roots wherever it can. Square root is correctly rounded on CPUs and on
+NVIDIA GPUs, so these expressions give identical bits on both without the port's reproducible library. The remaining
+powers (about thirty) and exponentials go through \code{rp_pow} and \code{rp_exp} (\cref{ch:repro}).
+\end{keypoint}
+
+\section{Processes}
+
+The scheme computes a set of process rates, each a transfer of mass from one species to another, named after the
+convention \emph{p} + \emph{target} + \emph{process} + \emph{source}. The ones of WSM6 are:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Rate & Process \\
+\midrule
+\code{pcond} & condensation and evaporation of cloud water (saturation adjustment) \\
+\code{praut} & autoconversion of cloud water to rain \\
+\code{pracw} & accretion of cloud water by rain \\
+\code{prevp} & evaporation of rain \\
+\code{pigen}, \code{pidep} & initiation of ice crystals; deposition on and sublimation of ice \\
+\code{psaut}, \code{pgaut} & autoconversion of ice to snow; of snow to graupel \\
+\code{psdep}, \code{pgdep} & deposition on snow; on graupel \\
+\code{psacw}, \code{pgacw}, \code{paacw} & accretion of cloud water by snow, by graupel; partition at warm temperatures \\
+\code{praci}, \code{psaci}, \code{pgaci} & accretion of cloud ice by rain, snow, graupel \\
+\code{piacr}, \code{psacr}, \code{pgacr} & accretion of rain by ice, snow, graupel \\
+\code{pracs}, \code{pgacs} & accretion of snow by rain; by graupel \\
+\code{psmlt}, \code{pgmlt} & melting of snow; of graupel \\
+\code{pseml}, \code{pgeml} & enhanced melting of snow and graupel by accretion of water \\
+\code{psevp}, \code{pgevp} & evaporation of melting snow; of melting graupel \\
+\bottomrule
+\end{tabular}
+\end{center}
+Comments in the code name the papers each rate comes from. Collection rates integrate the product of two size
+distributions and a fall-speed difference. With exponential distributions these integrals reduce to closed forms in
+the slopes $\lambda$ and gamma functions of the fall-speed exponents, which the code precomputes in
+\code{mp_wsm6_init}.
+
+\section{Sedimentation}
+
+Rain, snow and graupel fall with mass-weighted terminal velocities
+\begin{equation}
+  V_x = a_x\,\frac{\Gamma(4 + b_x)}{6}\,\lambda_x^{-b_x}\left(\frac{\rho_0}{\rho}\right)^{1/2},
+\end{equation}
+computed by \code{slope_wsm6}, \code{slope_rain}, \code{slope_snow} and \code{slope_graup}. Falling through thin model
+layers at these speeds would require a very short time step with an explicit flux scheme. WSM6 instead uses a
+semi-Lagrangian sedimentation (\code{nislfv_rain_plm} for rain, \code{nislfv_rain_plm6} for snow and graupel
+together):
+\begin{enumerate}
+  \item the mass in each layer is moved to where its upper and lower boundaries arrive after one time step;
+  \item it is remapped onto the model layers with a piecewise-linear reconstruction;
+  \item the mass leaving the lowest layer is the surface precipitation.
+\end{enumerate}
+
+\section{One column of WSM6}
+
+\begin{algorithm}[ht]
+\caption{One call of \code{mp_wsm6_run} for one column (simplified).}
+\label{alg:wsm6}
+\begin{algorithmic}[1]
+\State convert inputs: $T = \theta\,\pi$ (in the wrapper), density and fall-speed factors
+\State $\mathrm{loops} \gets \max(\mathrm{nint}(\Delta t/120\,\mathrm{s}), 1)$ \Comment{1 for both domains of the case}
+\For{each minor loop}
+  \State saturation mixing ratios over water and ice
+  \State slopes and terminal velocities (\code{slope_wsm6})
+  \State sedimentation of rain, snow and graupel (\code{nislfv_rain_plm}, \code{nislfv_rain_plm6}); surface precipitation
+  \State sedimentation of cloud ice
+  \State ice processes below freezing, warm processes above, each limited so no species becomes negative
+  \State update $q_x$ and $T$ (latent heating)
+  \State saturation adjustment of cloud water (\code{pcond})
+\EndFor
+\State accumulate surface rain, snow and graupel; convert back $\theta = T/\pi$ (in the wrapper)
+\end{algorithmic}
+\end{algorithm}
+
+All loops inside \code{mp_wsm6_run} are over $k$ outside and $i$ inside, for a $j$ row of columns. The temporaries are
+about eighty arrays dimensioned \code{(its:ite, kts:kte)}, allocated on the stack at every call.
+
+\begin{portnote}
+WSM6 is the model's most expensive per-step physics after radiation, and its structure is typical of column physics:
 \begin{itemize}
-    \item \code{phys/physics_mmm/mp_wsm6.F90}: \code{mp_wsm6_run}, \code{slope_wsm6}, \code{nislfv_rain_plm}, \code{nislfv_rain_plm6}
-    \item \code{phys/module_mp_wsm6.F}: wsm6
-    \item \code{phys/module_microphysics_driver.F}: \code{microphysics_driver}
+  \item many short loops;
+  \item branches on temperature and on species being present;
+  \item large temporaries;
+  \item a vertical sweep (sedimentation) in each column.
 \end{itemize}
-\textbf{The port.} WSM6 is the model case for column physics on the GPU: one thread per column, fixed-size column arrays, and its routines compiled for the device (CP-1 to CP-5).
-\end{outline}
+The port runs it as one GPU thread per column (\cref{ch:colphys}):
+\begin{enumerate}
+  \item the wrapper gathers the column's inputs into private arrays;
+  \item it calls \code{mp_wsm6_run} with \code{its = ite = 1};
+  \item it scatters the results back.
+\end{enumerate}
+The routine and its callees are compiled for the device, and its temporaries get fixed sizes. The operations per
+column are those of the CPU in the same order, so a column harness can prove equality on $10^5$ columns from real
+states before the full model is run (T-WSM6-COL, \cref{ch:subsys}). The effective-radius calculation returns
+immediately in this configuration (the shortwave scheme does not use it), so the GPU wrapper skips the call.
+\end{portnote}
+
+\section{Coupling with the dynamics}
+
+Microphysics runs after the third RK stage on the updated state (\cref{ch:phys}). \code{moist_physics_prep_em}
+prepares the physics variables. After the scheme, \code{moist_physics_finish_em} converts the change of temperature
+back into a change of $\theta_m$, and stores the diabatic heating rate. The dynamics of the next step uses that rate
+(\code{h_diabatic}, in \code{rk_tendency} and \code{small_step_finish}), so the latent heating also acts on the
+pressure during the acoustic steps instead of entering as a jump.

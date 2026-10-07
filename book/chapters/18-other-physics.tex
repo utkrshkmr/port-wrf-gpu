@@ -1,3 +1,42 @@
 \chapter{Other physics}\label{ch:otherphys}
 
-This chapter is being written.
+WRF has many more physics options than the case uses. This chapter gives an overview of those most relevant to fire
+and regional studies, and of how each would enter the port. None of them runs in the case.
+
+\begin{description}
+  \item[Other microphysics.] Thompson (\code{mp_physics = 8}) predicts the number of rain drops and ice crystals and
+    uses large lookup tables for collection. Morrison (10) is double-moment for most species. P3 (50) predicts ice
+    properties continuously. NSSL schemes (17--22) are used for severe storms. All are column physics, with table
+    uploads.
+  \item[Other boundary layers.] MYNN (\code{bl_pbl_physics = 5}) is a TKE-based local scheme with an optional
+    eddy-diffusivity mass-flux component. It is common in fire weather studies because it handles both stable and
+    convective layers well. ACM2 (7) is an asymmetric convective model.
+  \item[Other land models.] Noah-MP (\code{sf_surface_physics = 4}) has multiple options for canopy, snow layers,
+    groundwater and dynamic vegetation. RUC (3) has thin soil layers near the surface. CLM (5) comes from climate
+    modelling.
+  \item[RRTMG shortwave] (\code{ra_sw_physics = 4}) uses the same correlated-$k$ method as the longwave, with 14
+    bands. It pairs naturally with RRTMG LW and can share its batching on the GPU.
+  \item[Slope effects on radiation] (\code{slope_rad}, \code{topo_shading}) tilt the surface toward or away from the
+    sun and let ridges shade valleys. They matter in steep fire terrain such as the San Gabriel foothills of the case,
+    but the case keeps them off.
+  \item[Urban canopy models] (\code{sf_urban_physics}) represent buildings and streets: a single-layer model, or the
+    multi-layer BEP and BEM. The out-of-bounds read of \cref{ch:pbl} comes from the BEP arrays.
+  \item[Lake model] (\code{sf_lake_physics}) solves temperature profiles in lakes.
+  \item[Nudging] (\code{grid_fdda}, \code{obs_nudge_opt}) relaxes the model toward analyses or observations: four-dimensional
+    data assimilation by Newtonian relaxation.
+  \item[Chemistry] (WRF-Chem) and \textbf{tracers} add four-dimensional arrays of species that are advected with the
+    positive-definite scheme of \cref{ch:adv}. Fire emissions can feed them.
+\end{description}
+
+\section{How an option enters the port}
+
+Each family is a phase of the extended plan (\code{roadmap/plan-4.6/stage-8-coverage.md}), with the same steps as the
+case's schemes:
+\begin{enumerate}
+  \item a small case contract with the option on, and CPU reference runs;
+  \item a kernel table of the new routines;
+  \item the routine ladder of the port (\cref{ch:port});
+  \item a column harness for column physics;
+  \item the model-level tests.
+\end{enumerate}
+Until its phase is done, the startup check rejects the option with a message naming it.

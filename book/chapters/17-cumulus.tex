@@ -1,3 +1,34 @@
 \chapter{Cumulus and the grey zone}\label{ch:cu}
 
-This chapter is being written.
+This chapter gives an overview only: the case runs without a cumulus scheme, so none is ported.
+
+\section{What a cumulus scheme does}
+
+Deep convective clouds are a few kilometres wide. On grids of 10~km or more they are invisible to the dynamics, yet
+they carry heat, moisture and momentum vertically and produce much of the precipitation. A cumulus parameterization:
+\begin{enumerate}
+  \item decides whether a column would convect (a \emph{trigger}, usually based on the buoyancy of a lifted parcel);
+  \item computes the mass flux of updrafts and downdrafts from a \emph{closure}, typically the removal of the
+    column's convective available potential energy (CAPE) over a time scale;
+  \item applies the resulting heating, drying and precipitation as tendencies.
+\end{enumerate}
+WRF's \code{cumulus_driver} offers several schemes, among them:
+\begin{itemize}
+  \item Kain--Fritsch (\code{cu_physics = 1}): an entraining--detraining plume with a CAPE closure;
+  \item Grell--Freitas (3): an ensemble of closures, scale-aware;
+  \item the new Tiedtke (16): a mass-flux scheme from the ECMWF tradition, shared with MPAS
+    (\code{physics_mmm/cu_ntiedtke.F90}).
+\end{itemize}
+
+\section{The grey zone}
+
+Between about 1 and 10~km, convection is partly resolved: the model makes convective cells, but too large and too
+late. A conventional scheme there would convect twice. Scale-aware schemes reduce their mass flux as the grid spacing
+shrinks. At 900~m (d01) and 100~m (d02), the case is below the grey zone, so it uses no cumulus scheme at all and lets
+the dynamics and the microphysics make the clouds. That includes the pyro-convective column above the fire.
+
+\section{For the port}
+
+A cumulus scheme is column physics like WSM6, and the methods of \cref{ch:colphys} apply. The startup check of the GPU
+build rejects \code{cu_physics} $\ne 0$ (test T-GATE). A later phase can add a scheme for coarser outer domains
+(\code{roadmap/plan-4.6/stage-8-coverage.md}, phase S8-18).
