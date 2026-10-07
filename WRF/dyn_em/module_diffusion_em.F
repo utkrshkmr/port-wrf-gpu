@@ -6889,6 +6889,9 @@ END SUBROUTINE phy_bc
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_COMPUTE_DIFF_METRICS
+    USE module_gpu_callcheck
+
     IMPLICIT NONE
 
     TYPE( grid_config_rec_type ), INTENT( IN )  &
@@ -6917,8 +6920,34 @@ END SUBROUTINE phy_bc
     INTEGER  &
     :: i, j, k, i_start, i_end, j_start, j_end, ktf
 
+#ifdef WRF_GPU
+#include "gpu_col.h"
+    LOGICAL :: gpu_isl
+    REAL :: z_at_w_col(GPU_K1)
+#endif
+
 ! End declarations.
 !-----------------------------------------------------------------------
+
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_COMPUTE_DIFF_METRICS)) THEN
+        CALL gpu_cc_save_r(1, z, SIZE(z,KIND=8))
+        CALL gpu_cc_save_r(2, rdz, SIZE(rdz,KIND=8))
+        CALL gpu_cc_save_r(3, rdzw, SIZE(rdzw,KIND=8))
+        CALL gpu_cc_save_r(4, zx, SIZE(zx,KIND=8))
+        CALL gpu_cc_save_r(5, zy, SIZE(zy,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_COMPUTE_DIFF_METRICS)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ph, phb, z, rdz, rdzw, zx, zy)
+        ELSE
+!$acc update self(ph, phb, z, rdz, rdzw, zx, zy)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
     ktf = MIN( kte, kde-1 )
 
@@ -6929,8 +6958,41 @@ END SUBROUTINE phy_bc
     j_start = jts-1
     j_end   = jte
 
+#ifdef WRF_GPU
+      IF ( ( j_start >= jts ) .AND. ( j_end <= MIN( jte, jde-1 ) ) ) THEN
+        i_start = its-1
+        i_end   = ite
+      ELSE
+        i_start = its
+        i_end   = MIN( ite, ide-1 )
+      END IF
+
+! K-CDM-1: z_at_w, rdzw, rdz per column (Template C)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(ph, phb, rdz, rdzw) &
+!$acc& firstprivate(i_start, i_end, j_start, j_end, kte, ktf, g) private(k, z_at_w_col)
+      DO j = j_start, j_end
+      DO i = i_start, i_end
+!$acc loop seq
+        DO k = 1, kte
+          z_at_w_col(k) = ( ph(i,k,j) + phb(i,k,j) ) / g
+        END DO
+!$acc loop seq
+        DO k = 1, ktf
+          rdzw(i,k,j) = 1.0 / ( z_at_w_col(k+1) - z_at_w_col(k) )
+        END DO
+!$acc loop seq
+        DO k = 2, ktf
+          rdz(i,k,j) = 2.0 / ( z_at_w_col(k+1) - z_at_w_col(k-1) )
+        END DO
+        rdz(i,1,j) = 2./(z_at_w_col(2)-z_at_w_col(1))
+      END DO
+      END DO
+#endif
+
 ! Begin with dz computations.
 
+#ifndef WRF_GPU
     DO j = j_start, j_end
 
       IF ( ( j_start >= jts ) .AND. ( j_end <= MIN( jte, jde-1 ) ) ) THEN
@@ -6972,6 +7034,7 @@ END SUBROUTINE phy_bc
       END DO
 
     END DO
+#endif
 
 ! End bug fix.
 
@@ -6983,6 +7046,9 @@ END SUBROUTINE phy_bc
     j_start = jts
     j_end   = MIN( jte, jde-1 )
 
+! K-CDM-2: zx from phb (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, phb) firstprivate(j_start, j_end, kte, ids, its, i_end, rdx, g)
     DO j = j_start, j_end
     DO k = 1, kte
     DO i = MAX( ids+1, its ), i_end
@@ -6991,6 +7057,9 @@ END SUBROUTINE phy_bc
     END DO
     END DO
 
+! K-CDM-3: zx add ph (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, ph) firstprivate(j_start, j_end, kte, ids, its, i_end, rdx, g)
     DO j = j_start, j_end
     DO k = 1, kte
     DO i = MAX( ids+1, its ), i_end
@@ -6999,6 +7068,9 @@ END SUBROUTINE phy_bc
     END DO
     END DO
 
+! K-CDM-4: zy from phb (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, phb) firstprivate(j_end, kte, i_start, i_end, jds, jts, rdy, g)
     DO j = MAX( jds+1, jts ), j_end
     DO k = 1, kte
     DO i = i_start, i_end
@@ -7007,6 +7079,9 @@ END SUBROUTINE phy_bc
     END DO
     END DO
 
+! K-CDM-5: zy add ph (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, ph) firstprivate(j_end, kte, i_start, i_end, jds, jts, rdy, g)
     DO j = MAX( jds+1, jts ), j_end
     DO k = 1, kte
     DO i = i_start, i_end
@@ -7020,6 +7095,9 @@ END SUBROUTINE phy_bc
     IF ( .NOT. config_flags%periodic_x ) THEN
 
       IF ( ite == ide ) THEN
+! K-CDM-6A: nonperiodic x, zx at ide is 0 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx) firstprivate(j_start, j_end, ktf, ide)
         DO j = j_start, j_end
         DO k = 1, ktf
           zx(ide,k,j) = 0.0
@@ -7028,6 +7106,9 @@ END SUBROUTINE phy_bc
       END IF
 
       IF ( its == ids ) THEN
+! K-CDM-6B: nonperiodic x, zx at ids is 0 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx) firstprivate(j_start, j_end, ktf, ids)
         DO j = j_start, j_end
         DO k = 1, ktf
           zx(ids,k,j) = 0.0
@@ -7038,12 +7119,18 @@ END SUBROUTINE phy_bc
     ELSE
 
       IF ( ite == ide ) THEN
+! K-CDM-6C: periodic x, zx at ide from phb (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, phb) firstprivate(j_start, j_end, ktf, ide, rdx, g)
         DO j=j_start,j_end
         DO k=1,ktf
          zx(ide,k,j) = rdx * ( phb(ide,k,j) - phb(ide-1,k,j) ) / g
         END DO
         END DO
 
+! K-CDM-6D: periodic x, zx at ide add ph (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, ph) firstprivate(j_start, j_end, ktf, ide, rdx, g)
         DO j = j_start, j_end
         DO k = 1, ktf
           zx(ide,k,j) = zx(ide,k,j) + rdx * ( ph(ide,k,j) - ph(ide-1,k,j) ) / g
@@ -7052,12 +7139,18 @@ END SUBROUTINE phy_bc
       END IF
 
       IF ( its == ids ) THEN
+! K-CDM-6E: periodic x, zx at ids from phb (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, phb) firstprivate(j_start, j_end, ktf, ids, rdx, g)
         DO j = j_start, j_end
         DO k = 1, ktf
           zx(ids,k,j) = rdx * ( phb(ids,k,j) - phb(ids-1,k,j) ) / g
         END DO
         END DO
 
+! K-CDM-6F: periodic x, zx at ids add ph (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zx, ph) firstprivate(j_start, j_end, ktf, ids, rdx, g)
         DO j =j_start,j_end
         DO k =1,ktf
           zx(ids,k,j) = zx(ids,k,j) + rdx * ( ph(ids,k,j) - ph(ids-1,k,j) ) / g
@@ -7070,6 +7163,9 @@ END SUBROUTINE phy_bc
     IF ( .NOT. config_flags%periodic_y ) THEN
 
       IF ( jte == jde ) THEN
+! K-CDM-6G: nonperiodic y, zy at jde is 0 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy) firstprivate(ktf, i_start, i_end, jde)
         DO k =1, ktf
         DO i =i_start, i_end
           zy(i,k,jde) = 0.0
@@ -7078,6 +7174,9 @@ END SUBROUTINE phy_bc
       END IF
 
       IF ( jts == jds ) THEN
+! K-CDM-6H: nonperiodic y, zy at jds is 0 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy) firstprivate(ktf, i_start, i_end, jds)
         DO k =1, ktf
         DO i =i_start, i_end
           zy(i,k,jds) = 0.0
@@ -7088,12 +7187,18 @@ END SUBROUTINE phy_bc
     ELSE
 
       IF ( jte == jde ) THEN
+! K-CDM-6I: periodic y, zy at jde from phb (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, phb) firstprivate(ktf, i_start, i_end, jde, rdy, g)
         DO k=1, ktf
         DO i =i_start, i_end
           zy(i,k,jde) = rdy * ( phb(i,k,jde) - phb(i,k,jde-1) ) / g
         END DO
         END DO
 
+! K-CDM-6J: periodic y, zy at jde add ph (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, ph) firstprivate(ktf, i_start, i_end, jde, rdy, g)
         DO k = 1, ktf
         DO i =i_start, i_end
           zy(i,k,jde) = zy(i,k,jde) + rdy * ( ph(i,k,jde) - ph(i,k,jde-1) ) / g
@@ -7102,12 +7207,18 @@ END SUBROUTINE phy_bc
       END IF
 
       IF ( jts == jds ) THEN
+! K-CDM-6K: periodic y, zy at jds from phb (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, phb) firstprivate(ktf, i_start, i_end, jds, rdy, g)
         DO k = 1, ktf
         DO i =i_start, i_end
           zy(i,k,jds) = rdy * ( phb(i,k,jds) - phb(i,k,jds-1) ) / g
         END DO
         END DO
 
+! K-CDM-6L: periodic y, zy at jds add ph (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(zy, ph) firstprivate(ktf, i_start, i_end, jds, rdy, g)
         DO k = 1, ktf
         DO i =i_start, i_end
           zy(i,k,jds) = zy(i,k,jds) + rdy * ( ph(i,k,jds) - ph(i,k,jds-1) ) / g
@@ -7119,6 +7230,9 @@ END SUBROUTINE phy_bc
 
 ! Calculate z at p points.
 
+! K-CDM-6: z at mass points (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_COMPUTE_DIFF_METRICS)) default(none) &
+!$acc& present(z, ph, phb) firstprivate(j_start, j_end, ktf, i_start, i_end, g)
     DO j = j_start, j_end
       DO k = 1, ktf
       DO i = i_start, i_end
@@ -7127,6 +7241,30 @@ END SUBROUTINE phy_bc
       END DO
       END DO
     END DO
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(z, rdz, rdzw, zx, zy)
+        ELSE
+!$acc update device(z, rdz, rdzw, zx, zy)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_COMPUTE_DIFF_METRICS)) THEN
+        CALL gpu_cc_done_r(1, z, SIZE(z,KIND=8), 'z', &
+          LBOUND(z), UBOUND(z))
+        CALL gpu_cc_done_r(2, rdz, SIZE(rdz,KIND=8), 'rdz', &
+          LBOUND(rdz), UBOUND(rdz))
+        CALL gpu_cc_done_r(3, rdzw, SIZE(rdzw,KIND=8), 'rdzw', &
+          LBOUND(rdzw), UBOUND(rdzw))
+        CALL gpu_cc_done_r(4, zx, SIZE(zx,KIND=8), 'zx', &
+          LBOUND(zx), UBOUND(zx))
+        CALL gpu_cc_done_r(5, zy, SIZE(zy,KIND=8), 'zy', &
+          LBOUND(zy), UBOUND(zy))
+        IF (gpu_cc_next(R_COMPUTE_DIFF_METRICS)) GOTO 99901
+      END IF
+#endif
 
     END SUBROUTINE compute_diff_metrics
 
