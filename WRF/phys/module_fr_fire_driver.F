@@ -120,6 +120,13 @@ halo_fire_mag_sub
     fp%ischap => grid%ischap ! a rate of spread formula switch
     fp%iboros => grid%iboros ! Ib divided by ROS
     fp%fmc_g => grid%fmc_g   ! fuel moisture, ground
+
+#ifdef WRF_GPU
+! fp%fuel_time is not associated here, so it is not attached.
+!$acc enter data copyin(fp)
+!$acc enter data attach(fp%vx, fp%vy, fp%zsf, fp%dzdxf, fp%dzdyf, fp%bbb, &
+!$acc& fp%betafl, fp%phiwc, fp%r_0, fp%fgip, fp%ischap, fp%iboros, fp%fmc_g)
+#endif
             
     ! get ignition data 
     call fire_ignition_convert (config_flags,fire_max_ignitions,fire_ignition_longlat, &
@@ -366,6 +373,12 @@ halo_fire_mag_sub
       enddo
     enddo
     if(tsteps>0)call crash('fire_driver_em: test run of uncoupled fire model completed')
+
+#ifdef WRF_GPU
+!$acc exit data detach(fp%vx, fp%vy, fp%zsf, fp%dzdxf, fp%dzdyf, fp%bbb, &
+!$acc& fp%betafl, fp%phiwc, fp%r_0, fp%fgip, fp%ischap, fp%iboros, fp%fmc_g)
+!$acc exit data delete(fp)
+#endif
 
 end subroutine fire_driver_em
 

@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_model
-- Last commit: (this commit; 56d26ef, 42952d8, 275692c, 326985c)
+- Last commit: (this commit; through fe37559)
 
 ## Items
 
@@ -18,8 +18,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | task 2: integer NaN counts in print_2d_stats/print_3d_stats | coded | 42952d8 | print_2d_stats calls print_3d_stats; the count is there |
 | task 3: delete dead post-loop ignition check | coded | 275692c | ifun 3 loop never ran; print_chsum kept |
 | task 4: fuel_frac_burnt, fuel_frac_end, lfn_out work arrays | coded | 326985c | 16*n2d; sr_x=sr_y=4 |
-| task 5: device data (I-12) flags and constants | coded | (this commit) | flags after set_flags; cmbcnst after init_fuel_cats |
-| task 6: fp on the device (I-12) | todo | | |
+| task 5: device data (I-12) flags and constants | coded | fe37559 | flags after set_flags; cmbcnst after init_fuel_cats |
+| task 6: fp on the device (I-12) | coded | (this commit) | attach every associated component; not fuel_time |
 | task 7: fire_model kernels K-NAN, K-FM5, K-FM6, K-FSC | todo | | K-FSC is in fire_driver_phys |
 | port fire_model | todo | | |
 | port fire_driver_em | todo | | |
@@ -46,4 +46,5 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Task 2: `print_3d_stats` counts NaNs with `x /= x` into integer `nnan` instead of a float sum. `print_2d_stats` only calls `print_3d_stats`, so both paths use the count. A nonzero count still falls through to the host scan and `crash`. Non-NaN values with `fire_print_msg.eq.0` still return before the min/max/avg loop. arith_guard CPU-view change expected. Commit 42952d8.
 - Task 3: deleted the ifun 3 ignition-failure loop in `fire_driver_phys`. Ignition runs at ifun 5, so the count was always 0 and the loop body never ran. The ifun 3 `print_chsum` calls stay. Dropped the unused `wrf_dm_maxval` use and the locals that only that loop used. arith_guard CPU-view deletions expected. Commit 275692c.
 - Task 4: `lfn_out`, `fuel_frac_burnt` and `fuel_frac_end` are contiguous pointers onto `work_p4_model_*`, same bounds as the automatic arrays. Allocation is `16*n2d` because fire memory is `sr*(atm memory)` on each axis and `sr_x=sr_y=4` is fixed. `gpu_work_ensure` runs before each remap. With one thread, tiles reuse the fuel arrays in order. arith_guard flags the pointer remaps; `call gpu_work_ensure` is an allowed CPU-view addition. Commit 326985c.
-- Task 5: `!$acc declare create` of every flag `set_flags` writes, and of `cmbcnst` (the only `module_fr_fire_phys` scalar device code reads; `heat_fluxes`). `print_2d_stats_gpu_flag_upload` runs at the end of `set_flags`. `fire_phys_gpu_upload` runs at the end of `fire_driver_em_init`, after `init_fuel_cats`, so a namelist `cmbcnst` is the uploaded value. `hfgl`, `fuelmc_*` and `fuelheat` stay host-only.
+- Task 5: `!$acc declare create` of every flag `set_flags` writes, and of `cmbcnst` (the only `module_fr_fire_phys` scalar device code reads; `heat_fluxes`). `print_2d_stats_gpu_flag_upload` runs at the end of `set_flags`. `fire_phys_gpu_upload` runs at the end of `fire_driver_em_init`, after `init_fuel_cats`, so a namelist `cmbcnst` is the uploaded value. `hfgl`, `fuelmc_*` and `fuelheat` stay host-only. Commit fe37559.
+- Task 6: after the `fp%` pointer assignments, `enter data copyin(fp)` then `attach` of vx, vy, zsf, dzdxf, dzdyf, bbb, betafl, phiwc, r_0, fgip, ischap, iboros, fmc_g. Before return, `detach` those components and `delete(fp)`. `fp%fuel_time` is never associated, so it is not attached.
