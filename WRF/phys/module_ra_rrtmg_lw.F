@@ -295,12 +295,12 @@
       integer(kind=im), parameter :: ng1  = 10
 
       real(kind=rb) :: fracrefa(ng1)  , fracrefb(ng1)
-      real(kind=rb) :: ka(5,13,ng1)   , absa(65,ng1)
-      real(kind=rb) :: kb(5,13:59,ng1), absb(235,ng1)
+      real(kind=rb) :: ka_s(65*ng1)
+      real(kind=rb) :: kb_s(235*ng1)
       real(kind=rb) :: ka_mn2(19,ng1) , kb_mn2(19,ng1)
       real(kind=rb) :: selfref(10,ng1), forref(4,ng1)
 
-      equivalence (ka(1,1,1),absa(1,1)), (kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg01
 
@@ -363,13 +363,13 @@
       integer(kind=im), parameter :: ng2  = 12
 
       real(kind=rb) :: fracrefa(ng2)  , fracrefb(ng2)
-      real(kind=rb) :: ka(5,13,ng2)   , absa(65,ng2)
-      real(kind=rb) :: kb(5,13:59,ng2), absb(235,ng2)
+      real(kind=rb) :: ka_s(65*ng2)
+      real(kind=rb) :: kb_s(235*ng2)
       real(kind=rb) :: selfref(10,ng2), forref(4,ng2)
 
       real(kind=rb) :: refparam(13)
 
-      equivalence (ka(1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg02
 
@@ -437,13 +437,13 @@
       integer(kind=im), parameter :: ng3  = 16
 
       real(kind=rb) :: fracrefa(ng3,9) ,fracrefb(ng3,5)
-      real(kind=rb) :: ka(9,5,13,ng3)  ,absa(585,ng3)
-      real(kind=rb) :: kb(5,5,13:59,ng3),absb(1175,ng3)
+      real(kind=rb) :: ka_s(585*ng3)
+      real(kind=rb) :: kb_s(1175*ng3)
       real(kind=rb) :: ka_mn2o(9,19,ng3), kb_mn2o(5,19,ng3)
       real(kind=rb) :: selfref(10,ng3)
       real(kind=rb) :: forref(4,ng3)
 
-      equivalence (ka(1,1,1,1),absa(1,1)),(kb(1,1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg03
 
@@ -504,11 +504,11 @@
       integer(kind=im), parameter :: ng4  = 14
 
       real(kind=rb) :: fracrefa(ng4,9)  ,fracrefb(ng4,5)
-      real(kind=rb) :: ka(9,5,13,ng4)   ,absa(585,ng4)
-      real(kind=rb) :: kb(5,5,13:59,ng4),absb(1175,ng4)
+      real(kind=rb) :: ka_s(585*ng4)
+      real(kind=rb) :: kb_s(1175*ng4)
       real(kind=rb) :: selfref(10,ng4)  ,forref(4,ng4)
 
-      equivalence (ka(1,1,1,1),absa(1,1)),(kb(1,1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg04
 
@@ -577,14 +577,14 @@
       integer(kind=im), parameter :: ng5  = 16
 
       real(kind=rb) :: fracrefa(ng5,9) ,fracrefb(ng5,5)
-      real(kind=rb) :: ka(9,5,13,ng5)   ,absa(585,ng5)
-      real(kind=rb) :: kb(5,5,13:59,ng5),absb(1175,ng5)
+      real(kind=rb) :: ka_s(585*ng5)
+      real(kind=rb) :: kb_s(1175*ng5)
       real(kind=rb) :: ka_mo3(9,19,ng5)
       real(kind=rb) :: selfref(10,ng5)
       real(kind=rb) :: forref(4,ng5)
       real(kind=rb) :: ccl4(ng5)
       
-      equivalence (ka(1,1,1,1),absa(1,1)),(kb(1,1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg05
 
@@ -651,7 +651,7 @@
       integer(kind=im), parameter :: ng6  = 8
 
       real(kind=rb) , dimension(ng6) :: fracrefa
-      real(kind=rb) :: ka(5,13,ng6),absa(65,ng6)
+      real(kind=rb) :: ka_s(65*ng6)
       real(kind=rb) :: ka_mco2(19,ng6)
       real(kind=rb) :: selfref(10,ng6)
       real(kind=rb) :: forref(4,ng6)
@@ -659,7 +659,7 @@
       real(kind=rb) , dimension(ng6) :: cfc11adj
       real(kind=rb) , dimension(ng6) :: cfc12
 
-      equivalence (ka(1,1,1),absa(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg06
 
@@ -729,14 +729,14 @@
 
       real(kind=rb) , dimension(ng7) :: fracrefb
       real(kind=rb) :: fracrefa(ng7,9)
-      real(kind=rb) :: ka(9,5,13,ng7) ,absa(585,ng7)
-      real(kind=rb) :: kb(5,13:59,ng7),absb(235,ng7)
+      real(kind=rb) :: ka_s(585*ng7)
+      real(kind=rb) :: kb_s(235*ng7)
       real(kind=rb) :: ka_mco2(9,19,ng7)
       real(kind=rb) :: kb_mco2(19,ng7)
       real(kind=rb) :: selfref(10,ng7)
       real(kind=rb) :: forref(4,ng7)
 
-      equivalence (ka(1,1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg07
 
@@ -826,8 +826,8 @@
       real(kind=rb) , dimension(ng8) :: cfc12
       real(kind=rb) , dimension(ng8) :: cfc22adj
 
-      real(kind=rb) :: ka(5,13,ng8)    ,absa(65,ng8)
-      real(kind=rb) :: kb(5,13:59,ng8) ,absb(235,ng8)
+      real(kind=rb) :: ka_s(65*ng8)
+      real(kind=rb) :: kb_s(235*ng8)
       real(kind=rb) :: ka_mco2(19,ng8)
       real(kind=rb) :: ka_mn2o(19,ng8)
       real(kind=rb) :: ka_mo3(19,ng8)
@@ -836,7 +836,7 @@
       real(kind=rb) :: selfref(10,ng8)
       real(kind=rb) :: forref(4,ng8)
 
-      equivalence (ka(1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg08
 
@@ -908,14 +908,14 @@
 
       real(kind=rb) , dimension(ng9) :: fracrefb
       real(kind=rb) :: fracrefa(ng9,9)
-      real(kind=rb) :: ka(9,5,13,ng9) ,absa(585,ng9)
-      real(kind=rb) :: kb(5,13:59,ng9) ,absb(235,ng9)
+      real(kind=rb) :: ka_s(585*ng9)
+      real(kind=rb) :: kb_s(235*ng9)
       real(kind=rb) :: ka_mn2o(9,19,ng9)
       real(kind=rb) :: kb_mn2o(19,ng9)
       real(kind=rb) :: selfref(10,ng9)
       real(kind=rb) :: forref(4,ng9)
 
-      equivalence (ka(1,1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg09
 
@@ -982,12 +982,12 @@
       real(kind=rb) , dimension(ng10) :: fracrefa
       real(kind=rb) , dimension(ng10) :: fracrefb
 
-      real(kind=rb) :: ka(5,13,ng10)   , absa(65,ng10)
-      real(kind=rb) :: kb(5,13:59,ng10), absb(235,ng10)
+      real(kind=rb) :: ka_s(65*ng10)
+      real(kind=rb) :: kb_s(235*ng10)
       real(kind=rb) :: selfref(10,ng10)
       real(kind=rb) :: forref(4,ng10)
 
-      equivalence (ka(1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg10
 
@@ -1060,14 +1060,14 @@
       real(kind=rb) , dimension(ng11) :: fracrefa
       real(kind=rb) , dimension(ng11) :: fracrefb
 
-      real(kind=rb) :: ka(5,13,ng11)   , absa(65,ng11)
-      real(kind=rb) :: kb(5,13:59,ng11), absb(235,ng11)
+      real(kind=rb) :: ka_s(65*ng11)
+      real(kind=rb) :: kb_s(235*ng11)
       real(kind=rb) :: ka_mo2(19,ng11)
       real(kind=rb) :: kb_mo2(19,ng11)
       real(kind=rb) :: selfref(10,ng11)
       real(kind=rb) :: forref(4,ng11)
 
-      equivalence (ka(1,1,1),absa(1,1)),(kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg11
 
@@ -1124,11 +1124,11 @@
       integer(kind=im), parameter :: ng12 = 8
 
       real(kind=rb) :: fracrefa(ng12,9)
-      real(kind=rb) :: ka(9,5,13,ng12) ,absa(585,ng12)
+      real(kind=rb) :: ka_s(585*ng12)
       real(kind=rb) :: selfref(10,ng12)
       real(kind=rb) :: forref(4,ng12)
 
-      equivalence (ka(1,1,1,1),absa(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg12
 
@@ -1198,14 +1198,14 @@
       real(kind=rb) , dimension(ng13) :: fracrefb
 
       real(kind=rb) :: fracrefa(ng13,9)
-      real(kind=rb) :: ka(9,5,13,ng13) ,absa(585,ng13)
+      real(kind=rb) :: ka_s(585*ng13)
       real(kind=rb) :: ka_mco2(9,19,ng13)
       real(kind=rb) :: ka_mco(9,19,ng13)
       real(kind=rb) :: kb_mo3(19,ng13)
       real(kind=rb) :: selfref(10,ng13)
       real(kind=rb) :: forref(4,ng13)
 
-      equivalence (ka(1,1,1,1),absa(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg13
 
@@ -1272,12 +1272,12 @@
       real(kind=rb) , dimension(ng14) :: fracrefa
       real(kind=rb) , dimension(ng14) :: fracrefb
 
-      real(kind=rb) :: ka(5,13,ng14)   ,absa(65,ng14)
-      real(kind=rb) :: kb(5,13:59,ng14),absb(235,ng14)
+      real(kind=rb) :: ka_s(65*ng14)
+      real(kind=rb) :: kb_s(235*ng14)
       real(kind=rb) :: selfref(10,ng14)
       real(kind=rb) :: forref(4,ng14)
 
-      equivalence (ka(1,1,1),absa(1,1)), (kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg14
 
@@ -1338,12 +1338,12 @@
       integer(kind=im), parameter :: ng15 = 2
 
       real(kind=rb) :: fracrefa(ng15,9)
-      real(kind=rb) :: ka(9,5,13,ng15) ,absa(585,ng15)
+      real(kind=rb) :: ka_s(585*ng15)
       real(kind=rb) :: ka_mn2(9,19,ng15)
       real(kind=rb) :: selfref(10,ng15)
       real(kind=rb) :: forref(4,ng15)
 
-      equivalence (ka(1,1,1,1),absa(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg15
 
@@ -1408,12 +1408,12 @@
       real(kind=rb) , dimension(ng16) :: fracrefb
 
       real(kind=rb) :: fracrefa(ng16,9)
-      real(kind=rb) :: ka(9,5,13,ng16) ,absa(585,ng16)
-      real(kind=rb) :: kb(5,13:59,ng16), absb(235,ng16)
+      real(kind=rb) :: ka_s(585*ng16)
+      real(kind=rb) :: kb_s(235*ng16)
       real(kind=rb) :: selfref(10,ng16)
       real(kind=rb) :: forref(4,ng16)
 
-      equivalence (ka(1,1,1,1),absa(1,1)), (kb(1,13,1),absb(1,1))
+      ! ka/absa and kb/absb are ka_s and kb_s, column-major 1D (plan.md 8.5)
 
       end module rrlw_kg16
 
@@ -5092,7 +5092,7 @@ contains
 ! ------- Modules -------
 
       use parrrtm, only : ng1
-      use rrlw_kg01, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg01, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mn2, kb_mn2, selfref, forref
 
 ! ------- Declarations -------
@@ -5133,10 +5133,10 @@ contains
             taun2 = scalen2*(ka_mn2(indm,ig) + & 
                  minorfrac(lay) * (ka_mn2(indm+1,ig) - ka_mn2(indm,ig)))
             taug(lay,ig) = corradj * (colh2o(lay) * &
-                (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) + &
-                 fac11(lay) * absa(ind1+1,ig)) & 
+                (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) + &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65)) & 
                  + tauself + taufor + taun2)
              fracs(lay,ig) = fracrefa(ig)
          enddo
@@ -5159,10 +5159,10 @@ contains
             taun2 = scalen2*(kb_mn2(indm,ig) + & 
                  minorfrac(lay) * (kb_mn2(indm+1,ig) - kb_mn2(indm,ig)))
             taug(lay,ig) = corradj * (colh2o(lay) * &
-                (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig)) &  
+                (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &  
                  + taufor + taun2)
             fracs(lay,ig) = fracrefb(ig)
          enddo
@@ -5183,7 +5183,7 @@ contains
 ! ------- Modules -------
 
       use parrrtm, only : ng2, ngs1
-      use rrlw_kg02, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg02, only : fracrefa, fracrefb, ka_s, kb_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -5212,10 +5212,10 @@ contains
             taufor =  forfac(lay) * (forref(indf,ig) + forfrac(lay) * &
                  (forref(indf+1,ig) - forref(indf,ig))) 
             taug(lay,ngs1+ig) = corradj * (colh2o(lay) * &
-                (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) + &
-                 fac11(lay) * absa(ind1+1,ig)) &
+                (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) + &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65)) &
                  + tauself + taufor)
             fracs(lay,ngs1+ig) = fracrefa(ig)
          enddo
@@ -5231,10 +5231,10 @@ contains
             taufor =  forfac(lay) * (forref(indf,ig) + &
                  forfrac(lay) * (forref(indf+1,ig) - forref(indf,ig))) 
             taug(lay,ngs1+ig) = colh2o(lay) * &
-                (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig)) &
+                (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &
                  + taufor
             fracs(lay,ngs1+ig) = fracrefb(ig)
          enddo
@@ -5254,7 +5254,7 @@ contains
 
       use parrrtm, only : ng3, ngs2
       use rrlw_ref, only : chi_mls
-      use rrlw_kg03, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg03, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mn2o, kb_mn2o, selfref, forref
 
 ! ------- Declarations -------
@@ -5419,50 +5419,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) +  &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) +  &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs2+ig) = tau_major + tau_major1 &
@@ -5539,15 +5539,15 @@ contains
                  (kb_mn2o(jmn2o+1,indm+1,ig)-kb_mn2o(jmn2o,indm+1,ig))
             absn2o = n2om1 + minorfrac(lay) * (n2om2 - n2om1)
             taug(lay,ngs2+ig) = speccomb * &
-                (fac000 * absb(ind0,ig) + &
-                fac100 * absb(ind0+1,ig) + &
-                fac010 * absb(ind0+5,ig) + &
-                fac110 * absb(ind0+6,ig)) &
+                (fac000 * kb_s((ind0)+(ig-1)*1175) + &
+                fac100 * kb_s((ind0+1)+(ig-1)*1175) + &
+                fac010 * kb_s((ind0+5)+(ig-1)*1175) + &
+                fac110 * kb_s((ind0+6)+(ig-1)*1175)) &
                 + speccomb1 * &
-                (fac001 * absb(ind1,ig) +  &
-                fac101 * absb(ind1+1,ig) + &
-                fac011 * absb(ind1+5,ig) + &
-                fac111 * absb(ind1+6,ig))  &
+                (fac001 * kb_s((ind1)+(ig-1)*1175) +  &
+                fac101 * kb_s((ind1+1)+(ig-1)*1175) + &
+                fac011 * kb_s((ind1+5)+(ig-1)*1175) + &
+                fac111 * kb_s((ind1+6)+(ig-1)*1175))  &
                 + taufor &
                 + adjcoln2o*absn2o
             fracs(lay,ngs2+ig) = fracrefb(ig,jpl) + fpl * &
@@ -5568,7 +5568,7 @@ contains
 
       use parrrtm, only : ng4, ngs3
       use rrlw_ref, only : chi_mls
-      use rrlw_kg04, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg04, only : fracrefa, fracrefb, ka_s, kb_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -5697,50 +5697,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) +  &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) +  &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs3+ig) = tau_major + tau_major1 &
@@ -5788,15 +5788,15 @@ contains
 
          do ig = 1, ng4
             taug(lay,ngs3+ig) =  speccomb * &
-                (fac000 * absb(ind0,ig) + &
-                fac100 * absb(ind0+1,ig) + &
-                fac010 * absb(ind0+5,ig) + &
-                fac110 * absb(ind0+6,ig)) &
+                (fac000 * kb_s((ind0)+(ig-1)*1175) + &
+                fac100 * kb_s((ind0+1)+(ig-1)*1175) + &
+                fac010 * kb_s((ind0+5)+(ig-1)*1175) + &
+                fac110 * kb_s((ind0+6)+(ig-1)*1175)) &
                 + speccomb1 * &
-                (fac001 * absb(ind1,ig) +  &
-                fac101 * absb(ind1+1,ig) + &
-                fac011 * absb(ind1+5,ig) + &
-                fac111 * absb(ind1+6,ig))
+                (fac001 * kb_s((ind1)+(ig-1)*1175) +  &
+                fac101 * kb_s((ind1+1)+(ig-1)*1175) + &
+                fac011 * kb_s((ind1+5)+(ig-1)*1175) + &
+                fac111 * kb_s((ind1+6)+(ig-1)*1175))
             fracs(lay,ngs3+ig) = fracrefb(ig,jpl) + fpl * &
                 (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
          enddo
@@ -5828,7 +5828,7 @@ contains
 
       use parrrtm, only : ng5, ngs4
       use rrlw_ref, only : chi_mls
-      use rrlw_kg05, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg05, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mo3, selfref, forref, ccl4
 
 ! ------- Declarations -------
@@ -5981,50 +5981,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * & 
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs4+ig) = tau_major + tau_major1 &
@@ -6074,15 +6074,15 @@ contains
          
          do ig = 1, ng5
             taug(lay,ngs4+ig) = speccomb * &
-                (fac000 * absb(ind0,ig) + &
-                fac100 * absb(ind0+1,ig) + &
-                fac010 * absb(ind0+5,ig) + &
-                fac110 * absb(ind0+6,ig)) &
+                (fac000 * kb_s((ind0)+(ig-1)*1175) + &
+                fac100 * kb_s((ind0+1)+(ig-1)*1175) + &
+                fac010 * kb_s((ind0+5)+(ig-1)*1175) + &
+                fac110 * kb_s((ind0+6)+(ig-1)*1175)) &
                 + speccomb1 * &
-                (fac001 * absb(ind1,ig) + &
-                fac101 * absb(ind1+1,ig) + &
-                fac011 * absb(ind1+5,ig) + &
-                fac111 * absb(ind1+6,ig))  &
+                (fac001 * kb_s((ind1)+(ig-1)*1175) + &
+                fac101 * kb_s((ind1+1)+(ig-1)*1175) + &
+                fac011 * kb_s((ind1+5)+(ig-1)*1175) + &
+                fac111 * kb_s((ind1+6)+(ig-1)*1175))  &
                 + wx(1,lay) * ccl4(ig)
             fracs(lay,ngs4+ig) = fracrefb(ig,jpl) + fpl * &
                 (fracrefb(ig,jpl+1)-fracrefb(ig,jpl))
@@ -6153,10 +6153,10 @@ contains
             absco2 =  (ka_mco2(indm,ig) + minorfrac(lay) * &
                  (ka_mco2(indm+1,ig) - ka_mco2(indm,ig)))
             taug(lay,ngs5+ig) = colh2o(lay) * &
-                (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) +  &
-                 fac11(lay) * absa(ind1+1,ig))  &
+                (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) +  &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65))  &
                  + tauself + taufor &
                  + adjcolco2 * absco2 &
                  + wx(2,lay) * cfc11adj(ig) &
@@ -6191,7 +6191,7 @@ contains
 
       use parrrtm, only : ng7, ngs6
       use rrlw_ref, only : chi_mls
-      use rrlw_kg07, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg07, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mco2, kb_mco2, selfref, forref
 
 ! ------- Declarations -------
@@ -6354,50 +6354,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) +  &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) +  &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs6+ig) = tau_major + tau_major1 &
@@ -6431,10 +6431,10 @@ contains
             absco2 = kb_mco2(indm,ig) + minorfrac(lay) * &
                  (kb_mco2(indm+1,ig) - kb_mco2(indm,ig))
             taug(lay,ngs6+ig) = colo3(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig)) &
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &
                  + adjcolco2 * absco2
             fracs(lay,ngs6+ig) = fracrefb(ig)
          enddo
@@ -6465,7 +6465,7 @@ contains
 
       use parrrtm, only : ng8, ngs7
       use rrlw_ref, only : chi_mls
-      use rrlw_kg08, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg08, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mco2, ka_mn2o, ka_mo3, kb_mco2, kb_mn2o, &
                             selfref, forref, cfc12, cfc22adj
 
@@ -6523,10 +6523,10 @@ contains
             absn2o =  (ka_mn2o(indm,ig) + minorfrac(lay) * &
                  (ka_mn2o(indm+1,ig) - ka_mn2o(indm,ig)))
             taug(lay,ngs7+ig) = colh2o(lay) * &
-                 (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) +  &
-                 fac11(lay) * absa(ind1+1,ig)) &
+                 (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) +  &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65)) &
                  + tauself + taufor &
                  + adjcolco2*absco2 &
                  + colo3(lay) * abso3 &
@@ -6562,10 +6562,10 @@ contains
             absn2o =  (kb_mn2o(indm,ig) + minorfrac(lay) * &
                  (kb_mn2o(indm+1,ig) - kb_mn2o(indm,ig)))
             taug(lay,ngs7+ig) = colo3(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig)) &
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &
                  + adjcolco2*absco2 &
                  + coln2o(lay)*absn2o & 
                  + wx(3,lay) * cfc12(ig) &
@@ -6588,7 +6588,7 @@ contains
 
       use parrrtm, only : ng9, ngs8
       use rrlw_ref, only : chi_mls
-      use rrlw_kg09, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg09, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mn2o, kb_mn2o, selfref, forref
 
 ! ------- Declarations -------
@@ -6751,50 +6751,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + & 
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + & 
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs8+ig) = tau_major + tau_major1 &
@@ -6828,10 +6828,10 @@ contains
             absn2o = kb_mn2o(indm,ig) + minorfrac(lay) * &
                 (kb_mn2o(indm+1,ig) - kb_mn2o(indm,ig))
             taug(lay,ngs8+ig) = colch4(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) +  &
-                 fac11(lay) * absb(ind1+1,ig)) &
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) +  &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &
                  + adjcoln2o*absn2o
             fracs(lay,ngs8+ig) = fracrefb(ig)
          enddo
@@ -6849,7 +6849,7 @@ contains
 ! ------- Modules -------
 
       use parrrtm, only : ng10, ngs9
-      use rrlw_kg10, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg10, only : fracrefa, fracrefb, ka_s, kb_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -6876,10 +6876,10 @@ contains
             taufor = forfac(lay) * (forref(indf,ig) + forfrac(lay) * &
                  (forref(indf+1,ig) - forref(indf,ig))) 
             taug(lay,ngs9+ig) = colh2o(lay) * &
-                 (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) + &
-                 fac11(lay) * absa(ind1+1,ig))  &
+                 (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) + &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65))  &
                  + tauself + taufor
             fracs(lay,ngs9+ig) = fracrefa(ig)
          enddo
@@ -6895,10 +6895,10 @@ contains
             taufor = forfac(lay) * (forref(indf,ig) + forfrac(lay) * &
                  (forref(indf+1,ig) - forref(indf,ig))) 
             taug(lay,ngs9+ig) = colh2o(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) +  &
-                 fac11(lay) * absb(ind1+1,ig)) &
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) +  &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235)) &
                  + taufor
             fracs(lay,ngs9+ig) = fracrefb(ig)
          enddo
@@ -6917,7 +6917,7 @@ contains
 ! ------- Modules -------
 
       use parrrtm, only : ng11, ngs10
-      use rrlw_kg11, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg11, only : fracrefa, fracrefb, ka_s, kb_s, &
                             ka_mo2, kb_mo2, selfref, forref
 
 ! ------- Declarations -------
@@ -6951,10 +6951,10 @@ contains
             tauo2 =  scaleo2 * (ka_mo2(indm,ig) + minorfrac(lay) * &
                  (ka_mo2(indm+1,ig) - ka_mo2(indm,ig)))
             taug(lay,ngs10+ig) = colh2o(lay) * &
-                 (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) + &
-                 fac11(lay) * absa(ind1+1,ig)) &
+                 (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) + &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65)) &
                  + tauself + taufor &
                  + tauo2
             fracs(lay,ngs10+ig) = fracrefa(ig)
@@ -6974,10 +6974,10 @@ contains
             tauo2 =  scaleo2 * (kb_mo2(indm,ig) + minorfrac(lay) * &
                  (kb_mo2(indm+1,ig) - kb_mo2(indm,ig)))
             taug(lay,ngs10+ig) = colh2o(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig))  &
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235))  &
                  + taufor &
                  + tauo2
             fracs(lay,ngs10+ig) = fracrefb(ig)
@@ -6997,7 +6997,7 @@ contains
 
       use parrrtm, only : ng12, ngs11
       use rrlw_ref, only : chi_mls
-      use rrlw_kg12, only : fracrefa, absa, ka, &
+      use rrlw_kg12, only : fracrefa, ka_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -7126,50 +7126,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs11+ig) = tau_major + tau_major1 &
@@ -7201,7 +7201,7 @@ contains
 
       use parrrtm, only : ng13, ngs12
       use rrlw_ref, only : chi_mls
-      use rrlw_kg13, only : fracrefa, fracrefb, absa, ka, &
+      use rrlw_kg13, only : fracrefa, fracrefb, ka_s, &
                             ka_mco2, ka_mco, kb_mo3, selfref, forref
 
 ! ------- Declarations -------
@@ -7381,50 +7381,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs12+ig) = tau_major + tau_major1 &
@@ -7459,7 +7459,7 @@ contains
 ! ------- Modules -------
 
       use parrrtm, only : ng14, ngs13
-      use rrlw_kg14, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg14, only : fracrefa, fracrefb, ka_s, kb_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -7485,10 +7485,10 @@ contains
             taufor =  forfac(lay) * (forref(indf,ig) + forfrac(lay) * &
                  (forref(indf+1,ig) - forref(indf,ig))) 
             taug(lay,ngs13+ig) = colco2(lay) * &
-                 (fac00(lay) * absa(ind0,ig) + &
-                 fac10(lay) * absa(ind0+1,ig) + &
-                 fac01(lay) * absa(ind1,ig) + &
-                 fac11(lay) * absa(ind1+1,ig)) &
+                 (fac00(lay) * ka_s((ind0)+(ig-1)*65) + &
+                 fac10(lay) * ka_s((ind0+1)+(ig-1)*65) + &
+                 fac01(lay) * ka_s((ind1)+(ig-1)*65) + &
+                 fac11(lay) * ka_s((ind1+1)+(ig-1)*65)) &
                  + tauself + taufor
             fracs(lay,ngs13+ig) = fracrefa(ig)
          enddo
@@ -7500,10 +7500,10 @@ contains
          ind1 = ((jp(lay)-12)*5+(jt1(lay)-1))*nspb(14) + 1
          do ig = 1, ng14
             taug(lay,ngs13+ig) = colco2(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig))
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235))
             fracs(lay,ngs13+ig) = fracrefb(ig)
          enddo
       enddo
@@ -7522,7 +7522,7 @@ contains
 
       use parrrtm, only : ng15, ngs14
       use rrlw_ref, only : chi_mls
-      use rrlw_kg15, only : fracrefa, absa, ka, &
+      use rrlw_kg15, only : fracrefa, ka_s, &
                             ka_mn2, selfref, forref
 
 ! ------- Declarations -------
@@ -7671,50 +7671,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif 
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs14+ig) = tau_major + tau_major1 &
@@ -7746,7 +7746,7 @@ contains
 
       use parrrtm, only : ng16, ngs15
       use rrlw_ref, only : chi_mls
-      use rrlw_kg16, only : fracrefa, fracrefb, absa, ka, absb, kb, &
+      use rrlw_kg16, only : fracrefa, fracrefb, ka_s, kb_s, &
                             selfref, forref
 
 ! ------- Declarations -------
@@ -7875,50 +7875,50 @@ contains
 
             if (specparm .lt. 0.125_rb) then
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac200 * absa(ind0+2,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig) + &
-                    fac210 * absa(ind0+11,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac200 * ka_s((ind0+2)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+11)+(ig-1)*585))
             else if (specparm .gt. 0.875_rb) then
                tau_major = speccomb * &
-                    (fac200 * absa(ind0-1,ig) + &
-                    fac100 * absa(ind0,ig) + &
-                    fac000 * absa(ind0+1,ig) + &
-                    fac210 * absa(ind0+8,ig) + &
-                    fac110 * absa(ind0+9,ig) + &
-                    fac010 * absa(ind0+10,ig))
+                    (fac200 * ka_s((ind0-1)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0)+(ig-1)*585) + &
+                    fac000 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac210 * ka_s((ind0+8)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+10)+(ig-1)*585))
             else
                tau_major = speccomb * &
-                    (fac000 * absa(ind0,ig) + &
-                    fac100 * absa(ind0+1,ig) + &
-                    fac010 * absa(ind0+9,ig) + &
-                    fac110 * absa(ind0+10,ig))
+                    (fac000 * ka_s((ind0)+(ig-1)*585) + &
+                    fac100 * ka_s((ind0+1)+(ig-1)*585) + &
+                    fac010 * ka_s((ind0+9)+(ig-1)*585) + &
+                    fac110 * ka_s((ind0+10)+(ig-1)*585))
             endif
 
             if (specparm1 .lt. 0.125_rb) then
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac201 * absa(ind1+2,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig) + &
-                    fac211 * absa(ind1+11,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac201 * ka_s((ind1+2)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+11)+(ig-1)*585))
             else if (specparm1 .gt. 0.875_rb) then
                tau_major1 = speccomb1 * &
-                    (fac201 * absa(ind1-1,ig) + &
-                    fac101 * absa(ind1,ig) + &
-                    fac001 * absa(ind1+1,ig) + &
-                    fac211 * absa(ind1+8,ig) + &
-                    fac111 * absa(ind1+9,ig) + &
-                    fac011 * absa(ind1+10,ig))
+                    (fac201 * ka_s((ind1-1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1)+(ig-1)*585) + &
+                    fac001 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac211 * ka_s((ind1+8)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+10)+(ig-1)*585))
             else
                tau_major1 = speccomb1 * &
-                    (fac001 * absa(ind1,ig) + &
-                    fac101 * absa(ind1+1,ig) + &
-                    fac011 * absa(ind1+9,ig) + &
-                    fac111 * absa(ind1+10,ig))
+                    (fac001 * ka_s((ind1)+(ig-1)*585) + &
+                    fac101 * ka_s((ind1+1)+(ig-1)*585) + &
+                    fac011 * ka_s((ind1+9)+(ig-1)*585) + &
+                    fac111 * ka_s((ind1+10)+(ig-1)*585))
             endif
 
             taug(lay,ngs15+ig) = tau_major + tau_major1 &
@@ -7934,10 +7934,10 @@ contains
          ind1 = ((jp(lay)-12)*5+(jt1(lay)-1))*nspb(16) + 1
          do ig = 1, ng16
             taug(lay,ngs15+ig) = colch4(lay) * &
-                 (fac00(lay) * absb(ind0,ig) + &
-                 fac10(lay) * absb(ind0+1,ig) + &
-                 fac01(lay) * absb(ind1,ig) + &
-                 fac11(lay) * absb(ind1+1,ig))
+                 (fac00(lay) * kb_s((ind0)+(ig-1)*235) + &
+                 fac10(lay) * kb_s((ind0+1)+(ig-1)*235) + &
+                 fac01(lay) * kb_s((ind1)+(ig-1)*235) + &
+                 fac11(lay) * kb_s((ind1+1)+(ig-1)*235))
             fracs(lay,ngs15+ig) = fracrefb(ig)
          enddo
       enddo
@@ -8347,7 +8347,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng1
       use rrlw_kg01, only: fracrefao, fracrefbo, kao, kbo, kao_mn2, kbo_mn2, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, ka_mn2, kb_mn2, &
+                           fracrefa, fracrefb, ka_s, kb_s, ka_mn2, kb_mn2, &
                            selfref, forref
 
 ! ------- Local -------
@@ -8364,7 +8364,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
          do jp = 13,59
@@ -8375,7 +8375,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -8446,7 +8446,7 @@ contains
 
       use parrrtm, only : mg, nbndlw, ngptlw, ng2
       use rrlw_kg02, only: fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, selfref, forref
+                           fracrefa, fracrefb, ka_s, kb_s, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jt, jp, igc, ipr, iprsm 
@@ -8462,7 +8462,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+16)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
          do jp = 13,59
@@ -8473,7 +8473,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+16)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -8530,7 +8530,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng3
       use rrlw_kg03, only: fracrefao, fracrefbo, kao, kbo, kao_mn2o, kbo_mn2o, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, ka_mn2o, kb_mn2o, &
+                           fracrefa, fracrefb, ka_s, kb_s, ka_mn2o, kb_mn2o, &
                            selfref, forref
 
 ! ------- Local -------
@@ -8548,7 +8548,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+32)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -8563,7 +8563,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kbo(jn,jt,jp,iprsm)*rwgt(iprsm+32)
                   enddo
-                  kb(jn,jt,jp,igc) = sumk
+                  kb_s(jn+(jt-1)*5+(jp-13)*25+(igc-1)*1175) = sumk
                enddo
             enddo
          enddo
@@ -8658,7 +8658,7 @@ contains
 
       use parrrtm, only : mg, nbndlw, ngptlw, ng4
       use rrlw_kg04, only: fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, selfref, forref
+                           fracrefa, fracrefb, ka_s, kb_s, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jn, jt, jp, igc, ipr, iprsm 
@@ -8675,7 +8675,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+48)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -8690,7 +8690,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kbo(jn,jt,jp,iprsm)*rwgt(iprsm+48)
                   enddo
-                  kb(jn,jt,jp,igc) = sumk
+                  kb_s(jn+(jt-1)*5+(jp-13)*25+(igc-1)*1175) = sumk
                enddo
             enddo
          enddo
@@ -8759,7 +8759,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng5
       use rrlw_kg05, only: fracrefao, fracrefbo, kao, kbo, kao_mo3, ccl4o, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, ka_mo3, ccl4, &
+                           fracrefa, fracrefb, ka_s, kb_s, ka_mo3, ccl4, &
                            selfref, forref
 
 ! ------- Local -------
@@ -8777,7 +8777,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+64)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -8792,7 +8792,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kbo(jn,jt,jp,iprsm)*rwgt(iprsm+64)
                   enddo
-                  kb(jn,jt,jp,igc) = sumk
+                  kb_s(jn+(jt-1)*5+(jp-13)*25+(igc-1)*1175) = sumk
                enddo
             enddo
          enddo
@@ -8904,7 +8904,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+80)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
       enddo
@@ -8976,7 +8976,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng7
       use rrlw_kg07, only: fracrefao, fracrefbo, kao, kbo, kao_mco2, kbo_mco2, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, ka_mco2, kb_mco2, &
+                           fracrefa, fracrefb, ka_s, kb_s, ka_mco2, kb_mco2, &
                            selfref, forref
 
 ! ------- Local -------
@@ -8994,7 +8994,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+96)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9008,7 +9008,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+96)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9101,8 +9101,8 @@ contains
       use rrlw_kg08, only: fracrefao, fracrefbo, kao, kao_mco2, kao_mn2o, &
                            kao_mo3, kbo, kbo_mco2, kbo_mn2o, selfrefo, forrefo, &
                            cfc12o, cfc22adjo, &
-                           fracrefa, fracrefb, absa, ka, ka_mco2, ka_mn2o, &
-                           ka_mo3, absb, kb, kb_mco2, kb_mn2o, selfref, forref, &
+                           fracrefa, fracrefb, ka_s, ka_mco2, ka_mn2o, &
+                           ka_mo3, kb_s, kb_mco2, kb_mn2o, selfref, forref, &
                            cfc12, cfc22adj
 
 ! ------- Local -------
@@ -9119,7 +9119,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+112)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
       enddo
@@ -9132,7 +9132,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+112)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9219,8 +9219,8 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng9
       use rrlw_kg09, only: fracrefao, fracrefbo, kao, kao_mn2o, &
                            kbo, kbo_mn2o, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, ka_mn2o, &
-                           absb, kb, kb_mn2o, selfref, forref
+                           fracrefa, fracrefb, ka_s, ka_mn2o, &
+                           kb_s, kb_mn2o, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jn, jt, jp, igc, ipr, iprsm 
@@ -9237,7 +9237,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+128)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9252,7 +9252,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+128)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9343,7 +9343,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng10
       use rrlw_kg10, only: fracrefao, fracrefbo, kao, kbo, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, &
+                           fracrefa, fracrefb, ka_s, kb_s, &
                            selfref, forref
 
 ! ------- Local -------
@@ -9360,7 +9360,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+144)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
       enddo
@@ -9374,7 +9374,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+144)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9432,8 +9432,8 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng11
       use rrlw_kg11, only: fracrefao, fracrefbo, kao, kao_mo2, &
                            kbo, kbo_mo2, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, ka_mo2, &
-                           absb, kb, kb_mo2, selfref, forref
+                           fracrefa, fracrefb, ka_s, ka_mo2, &
+                           kb_s, kb_mo2, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jt, jp, igc, ipr, iprsm 
@@ -9449,7 +9449,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+160)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
       enddo
@@ -9462,7 +9462,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+160)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9532,7 +9532,7 @@ contains
 
       use parrrtm, only : mg, nbndlw, ngptlw, ng12
       use rrlw_kg12, only: fracrefao, kao, selfrefo, forrefo, &
-                           fracrefa, absa, ka, selfref, forref
+                           fracrefa, ka_s, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jn, jt, jp, igc, ipr, iprsm 
@@ -9549,7 +9549,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+176)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9605,7 +9605,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng13
       use rrlw_kg13, only: fracrefao, fracrefbo, kao, kao_mco2, kao_mco, &
                            kbo_mo3, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, ka_mco2, ka_mco, &
+                           fracrefa, fracrefb, ka_s, ka_mco2, ka_mco, &
                            kb_mo3, selfref, forref
 
 ! ------- Local -------
@@ -9623,7 +9623,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+192)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9718,7 +9718,7 @@ contains
       use parrrtm, only : mg, nbndlw, ngptlw, ng14
       use rrlw_kg14, only: fracrefao, fracrefbo, kao, kbo, &
                            selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, &
+                           fracrefa, fracrefb, ka_s, kb_s, &
                            selfref, forref
 
 ! ------- Local -------
@@ -9735,7 +9735,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kao(jt,jp,iprsm)*rwgt(iprsm+208)
                enddo
-               ka(jt,jp,igc) = sumk
+               ka_s(jt+(jp-1)*5+(igc-1)*65) = sumk
             enddo
          enddo
       enddo
@@ -9749,7 +9749,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+208)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -9805,7 +9805,7 @@ contains
 
       use parrrtm, only : mg, nbndlw, ngptlw, ng15
       use rrlw_kg15, only: fracrefao, kao, kao_mn2, selfrefo, forrefo, &
-                           fracrefa, absa, ka, ka_mn2, selfref, forref
+                           fracrefa, ka_s, ka_mn2, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jn, jt, jp, igc, ipr, iprsm 
@@ -9822,7 +9822,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+224)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9891,7 +9891,7 @@ contains
 
       use parrrtm, only : mg, nbndlw, ngptlw, ng16
       use rrlw_kg16, only: fracrefao, fracrefbo, kao, kbo, selfrefo, forrefo, &
-                           fracrefa, fracrefb, absa, ka, absb, kb, selfref, forref
+                           fracrefa, fracrefb, ka_s, kb_s, selfref, forref
 
 ! ------- Local -------
       integer(kind=im) :: jn, jt, jp, igc, ipr, iprsm 
@@ -9908,7 +9908,7 @@ contains
                      iprsm = iprsm + 1
                      sumk = sumk + kao(jn,jt,jp,iprsm)*rwgt(iprsm+240)
                   enddo
-                  ka(jn,jt,jp,igc) = sumk
+                  ka_s(jn+(jt-1)*9+(jp-1)*45+(igc-1)*585) = sumk
                enddo
             enddo
          enddo
@@ -9923,7 +9923,7 @@ contains
                   iprsm = iprsm + 1
                   sumk = sumk + kbo(jt,jp,iprsm)*rwgt(iprsm+240)
                enddo
-               kb(jt,jp,igc) = sumk
+               kb_s(jt+(jp-13)*5+(igc-1)*235) = sumk
             enddo
          enddo
       enddo
@@ -13102,7 +13102,6 @@ IMPLICIT NONE
 ! **************************************************************************
 
       use rrlw_kg01, only : fracrefao, fracrefbo, kao, kbo, kao_mn2, kbo_mn2, &
-                           absa, absb, &
                       selfrefo, forrefo
 
       implicit none
