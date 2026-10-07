@@ -508,6 +508,10 @@ subroutine fire_driver_phys (ifun,need_lfn_update,    &
     )
 
 USE module_domain, only: domain
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_FIRE_MODEL
+#ifdef WRF_GPU
+USE module_wrf_error, ONLY : wrf_error_fatal
+#endif
 
 implicit none
 
@@ -637,8 +641,59 @@ integer::ignitions_done_tile(num_tiles),ignited_tile(num_ignitions,num_tiles)
 
     ! PAJ:
   logical :: fire_is_real_perim
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
 !*** executable
+
+#ifdef WRF_GPU
+if (fire_is_real_perim) call wrf_error_fatal('fire_driver_phys: observed perimeter not ported to the GPU')
+if (run_fuel_moisture) call wrf_error_fatal('fire_driver_phys: fuel moisture not ported to the GPU')
+if (run_advance_moisture) call wrf_error_fatal('fire_driver_phys: moisture advance not ported to the GPU')
+! Round trip. Host writers in ifun 1 and 2 have no route. The flux
+! kernel re-enters just before K-FSC, after the routed sum calls.
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(i_start, i_end, j_start, j_end, u, v, ph, phb, z0, zs, xlong, xlat, lfn, &
+!$acc&   lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, &
+!$acc&   tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, avg_fuel_frac, grnhfx, grnqfx, canhfx, &
+!$acc&   canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, &
+!$acc&   fxlat, fz0, nfuel_cat, fuel_time, rainc, rainnc, t2, q2, psfc, rain_old, t2_old, q2_old, &
+!$acc&   psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(i_start, i_end, j_start, j_end, u, v, ph, phb, z0, zs, xlong, xlat, lfn, &
+!$acc&   lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, &
+!$acc&   tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, avg_fuel_frac, grnhfx, grnqfx, canhfx, &
+!$acc&   canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, &
+!$acc&   fxlat, fz0, nfuel_cat, fuel_time, rainc, rainnc, t2, q2, psfc, rain_old, t2_old, q2_old, &
+!$acc&   psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, &
+!$acc&   lfn_s3, flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+      gpu_isl = .FALSE.
+#endif
 
 ! fire mesh step
 dxf=dx/ir
@@ -1017,6 +1072,33 @@ do ij=1,num_tiles
 !$OMP end CRITICAL(FIRE_DRIVER_CRIT)
 	  call message(msg)
           s = 1./(ir*jr)
+#ifdef WRF_GPU
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(i_start, i_end, j_start, j_end, u, v, ph, phb, z0, zs, xlong, xlat, lfn, &
+!$acc&   lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, &
+!$acc&   tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, avg_fuel_frac, grnhfx, grnqfx, canhfx, &
+!$acc&   canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, &
+!$acc&   fxlat, fz0, nfuel_cat, fuel_time, rainc, rainnc, t2, q2, psfc, rain_old, t2_old, q2_old, &
+!$acc&   psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_dev_all(grid)
+        ELSE
+!$acc update self(i_start, i_end, j_start, j_end, u, v, ph, phb, z0, zs, xlong, xlat, lfn, &
+!$acc&   lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, flame_length, ros_front, &
+!$acc&   tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, avg_fuel_frac, grnhfx, grnqfx, canhfx, &
+!$acc&   canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, &
+!$acc&   fxlat, fz0, nfuel_cat, fuel_time, rainc, rainnc, t2, q2, psfc, rain_old, t2_old, q2_old, &
+!$acc&   psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_host_all(grid)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+! K-FSC: scale fire fluxes onto the atmosphere grid (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_FIRE_MODEL)) default(none) &
+!$acc& present(grnhfx_fu, grnqfx_fu, grnhfx, grnqfx, avg_fuel_frac, canhfx, canqfx) &
+!$acc& firstprivate(jts, jte, its, ite, s, fire_atm_feedback)
           do j=jts,jte
             do i=its,ite
                 ! DME heat fluxes contribution for the case wiythout feedback
@@ -1031,6 +1113,27 @@ do ij=1,num_tiles
                 canqfx(i,j)=0
             enddo
           enddo
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, &
+!$acc&   lfn_s3, flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+      gpu_isl = .FALSE.
+#endif
 
           call print_2d_stats(its,ite,jts,jte,ims,ime,jms,jme,grnhfx,'fire_driver:grnhfx')
           call print_2d_stats(its,ite,jts,jte,ims,ime,jms,jme,grnqfx,'fire_driver:grnqfx')
@@ -1096,6 +1199,27 @@ if(ifun.eq.6)then
     endif
 #endif
 endif
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, lfn_s3, &
+!$acc&   flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_host_all(grid)
+        ELSE
+!$acc update device(xlong, xlat, lfn, lfn_hist, lfn_0, lfn_1, lfn_2, lfn_s0, lfn_s1, lfn_s2, &
+!$acc&   lfn_s3, flame_length, ros_front, tign, fuel_frac, fire_area, burnt_area_dt, lfn_out, &
+!$acc&   avg_fuel_frac, grnhfx, grnqfx, canhfx, canqfx, grnhfx_fu, grnqfx_fu, uah, vah, fgrnhfx, &
+!$acc&   fgrnqfx, fcanhfx, fcanqfx, ros, fxlong, fxlat, fz0, nfuel_cat, fuel_time, rain_old, &
+!$acc&   t2_old, q2_old, psfc_old, rh_fire, fmc_gc, fmep, fmc_equi, fmc_lag, fmc_g)
+          CALL gpu_upd_dev_all(grid)
+        END IF
+      END IF
+#endif
 
 end subroutine fire_driver_phys
 !
