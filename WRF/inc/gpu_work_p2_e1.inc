@@ -40,6 +40,10 @@
    REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_fqzl(:)
    REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_flux_out(:)
    REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_ph_low(:)
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_scl(:)
+   LOGICAL, ALLOCATABLE, TARGET, PUBLIC :: work_p2_e1_lim(:)
+#endif
 #elif GPU_WORK_SECTION == 2
    CALL gpu_work_alloc_r(work_p2_e1_fqx, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqx")
    CALL gpu_work_alloc_r(work_p2_e1_fqy, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqy")
@@ -49,6 +53,18 @@
    CALL gpu_work_alloc_r(work_p2_e1_fqzl, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_fqzl")
    CALL gpu_work_alloc_r(work_p2_e1_flux_out, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_flux_out")
    CALL gpu_work_alloc_r(work_p2_e1_ph_low, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_ph_low")
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p2_e1_scl, INT(ni+3,8)*INT(nj+3,8)*INT(nk,8), "work_p2_e1_scl")
+   IF (.NOT. ALLOCATED(work_p2_e1_lim)) THEN
+      ALLOCATE(work_p2_e1_lim((ni+3)*(nj+3)*nk))
+!$acc enter data create(work_p2_e1_lim)
+   ELSE IF (INT(SIZE(work_p2_e1_lim),8) < INT(ni+3,8)*INT(nj+3,8)*INT(nk,8)) THEN
+!$acc exit data delete(work_p2_e1_lim)
+      DEALLOCATE(work_p2_e1_lim)
+      ALLOCATE(work_p2_e1_lim((ni+3)*(nj+3)*nk))
+!$acc enter data create(work_p2_e1_lim)
+   END IF
+#endif
 #elif GPU_WORK_SECTION == 3
    CALL gpu_work_check_r(work_p2_e1_fqx, "work_p2_e1_fqx", nwork, nbad)
    CALL gpu_work_check_r(work_p2_e1_fqy, "work_p2_e1_fqy", nwork, nbad)
@@ -58,4 +74,7 @@
    CALL gpu_work_check_r(work_p2_e1_fqzl, "work_p2_e1_fqzl", nwork, nbad)
    CALL gpu_work_check_r(work_p2_e1_flux_out, "work_p2_e1_flux_out", nwork, nbad)
    CALL gpu_work_check_r(work_p2_e1_ph_low, "work_p2_e1_ph_low", nwork, nbad)
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p2_e1_scl, "work_p2_e1_scl", nwork, nbad)
+#endif
 #endif
