@@ -19,8 +19,16 @@ Alongside Stage 1, these do not touch 4.8.0 or CFBM:
 - the performance models;
 - the AMD and multi-GPU preparation.
 
-This directory holds the long-term plan. The detailed plan of the 4.6.0 port is [plan.md](../plan.md); its agent
+This directory holds the long-term plan. The design of the 4.6.0 port is [plan.md](../plan.md); its agent
 instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/README.md).
+
+**Working plans (2026-10-07):**
+
+| Plan | What |
+|---|---|
+| [plan-4.6/](plan-4.6/README.md) | The 4.6.0 port in 9 stages and 139 small phases: tasks per routine, machines per task (cloud, A100 workstation, 80 GB GPU, CCR), gates and tests per phase; Stage 8 extends it to the rest of WRF 4.6.0 |
+| [plan-profiler.md](plan-profiler.md) | The profiler, built layer by layer with the port: NVTX, an OpenACC profiling library, nsys/ncu, kernel database, models, and analyzers for fusion, caching, tiling, warp-level work and launches on A100 and H100 |
+| [plan-book.md](plan-book.md) | The textbook: 8 parts, 40 chapters on the WRF ecosystem, its algorithms, WRF-Fire, the port, and GPU optimization concepts with this port's measured examples |
 
 ## The owner's goals and where each is handled
 
@@ -31,7 +39,7 @@ instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/READM
 | 2 | Profile deeply; find the true performance and memory bottlenecks, on one and several GPUs | Track P (models, then measurements); Track M |
 | 3 | Understand the design and stack of WRF and WRF-Fire; refactoring options | Track X |
 | 4 | Port CFBM, NCAR's new fire model | [analysis/cfbm.md](analysis/cfbm.md); Track C |
-| 5 | Run on any GPU: NVIDIA first, AMD if possible | ADR-001; Track G |
+| 5 | Run on any GPU: NVIDIA first, AMD if possible | ADR-001 rev 2 (NVIDIA only for now; AMD deferred); Track G |
 | 6 | Bottlenecks, mitigations, alternative algorithms (a GPU is not automatically faster) | ADR-003 (FAST mode); Track P (P-03 ... P-09, P-14, P-15) |
 | 7 | A LaTeX textbook on WRF, WRF-Fire, their algorithms and implementation | [book/](../book/README.md); Track B |
 | 8 | Small independent tasks within half a day's budget; a free release | [TASK_PROTOCOL.md](TASK_PROTOCOL.md); [BACKLOG.md](BACKLOG.md); Track R |
@@ -41,7 +49,7 @@ instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/READM
 
 | ADR | Decision | Status |
 |---|---|---|
-| [001](decisions/ADR-001-gpu-programming-model.md) | Fortran with OpenMP offload, one source for NVIDIA, AMD and Intel. No CUDA C rewrite; native kernels only as a measured escape hatch. | decided |
+| [001](decisions/ADR-001-gpu-programming-model.md) | Revision 2: OpenACC for every kernel, CUDA Fortran for measured hotspots, NVIDIA A100/H100 only (AMD deferred). Revision 1 (OpenMP offload) is superseded. | decided |
 | [002](decisions/ADR-002-wrf-versions.md) | 4.6.0 first, then a forward port to 4.8.0 by three-way merge; submodules flattened. | decided |
 | [003](decisions/ADR-003-repro-and-fast-modes.md) | REPRO (bit-for-bit, the default) and FAST (statistically validated) build modes from one source. | decided |
 | 004 | License of the port's own files (card R-01). | open (owner) |
@@ -80,7 +88,7 @@ Many cards need only a CPU and can run beside the critical path of Stage 1:
 The repository is divided into **areas** ([../AREAS.md](../AREAS.md)):
 - **Ownership.** Each area owns a set of paths and has its own entry instructions. An agent works in one area at a
   time and changes only that area's paths; `port/tools/check_area_scope.py` checks this.
-- **Work packages.** Inside the port, the code-only run divides the WRF changes further, into 36 work packages with
+- **Work packages.** Inside the port, the code-only run divides the WRF changes further, into 44 work packages (Phases 1–5) with
   exclusive routines.
 - **Roles:**
   - **Code-only agents** (no builds, no tests) write Phases 1–3 in the work packages

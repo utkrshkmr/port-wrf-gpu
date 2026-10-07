@@ -12,7 +12,7 @@ Areas keep agents on dedicated purposes:
 - a port worker cannot touch the book;
 - two areas never edit the same file, so their branches merge without conflicts.
 
-Inside the port, the code-only run of Phases 1–3 goes further, down to WRF routines: 36 work packages with exclusive
+Inside the port, the code-only run of Phases 1–5 goes further, down to WRF routines: 44 work packages with exclusive
 ownership ([port/agent/WORKPACKAGES.md](port/agent/WORKPACKAGES.md)).
 
 ## How to start
