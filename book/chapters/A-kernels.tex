@@ -1,7 +1,23 @@
 \chapter{Kernel catalogue}\label{app:kernels}
 
-\begin{outline}[(card B-21)]
-A table of every GPU kernel of the port: its identifier (for example K-AW), the routine and lines it replaces, its
-template (A to G), its work package, and the tests that cover it. The table is generated from
-\code{port/agent/kernels.csv} by \code{book/tools/kernels_tex.py}, so that it never disagrees with the plan.
-\end{outline}
+This appendix lists every GPU kernel of the port of WRF~4.6.0 for the Eaton case. It is generated from the port's
+kernel table, \code{port/agent/kernels.csv}, by \code{book/tools/kernels_tex.py}, so that it never disagrees with the
+plan. The kernel table itself is generated from \code{plan.md}, sections~7 to~10.
+
+The columns of \cref{tab:kernels} are:
+\begin{description}
+  \item[Kernel(s)] the kernel's identifier, or a family of kernels of one routine (\code{K-DEF-01..40} stands for
+    forty kernels, \code{K-SBU-YS/YE/XS/XE} for four strips). Each kernel carries its identifier in a comment directly
+    above its directive in the source.
+  \item[Route] the route that switches it between device and host (\cref{ch:port}); usually the routine's name.
+  \item[T] the template (\cref{ch:port}): A pointwise, B rolling buffer, C column, G boundary strips, CP column
+    physics. Rows without a template letter are kernels the plan describes individually (calls inside kernels,
+    reductions, per-point models such as Noah).
+  \item[Lines in WRF 4.6.0] the source lines it ports, by file, in the pristine 4.6.0 source; the tool
+    \code{port/tools/ref.py <kernel id>} prints them.
+  \item[Plan] the section of \code{plan.md} that specifies it.
+\end{description}
+The status of each kernel (to do, done, with the commit and the tests that passed) is kept in the kernel table and
+reported by \code{port/tools/workbook.py}, not here.
+
+\input{chapters/A-kernels-table}

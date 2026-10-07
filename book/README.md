@@ -1,7 +1,9 @@
 # The book: WRF and WRF-Fire on GPUs
 
 A LaTeX textbook that grows with the port. It describes WRF's dynamics and physics, WRF-Fire and CFBM, WRF's software
-architecture, and the GPU port: reproducibility, OpenMP offload, the phases, performance.
+architecture, and the GPU port: GPU architecture, OpenACC and CUDA Fortran, reproducibility, the porting method, and
+performance on A100 and H100 (profiling, models, fusion, caching, tiling, warp-level work, column physics). The plan
+of the book is [roadmap/plan-book.md](../roadmap/plan-book.md).
 
 ## Build
 
@@ -16,13 +18,29 @@ cd book && make          # latexmk -pdf; needs TeX Live with the packages listed
 
 ## Status
 
-| Chapter | File | State |
-|---|---|---|
-| Preface, 1 Introduction, 2 The case | `chapters/00-02` | draft |
-| 3–14 Model, physics, fire, architecture | `chapters/03-14` | outline (cards B-03 ... B-14) |
-| 15 Floating-point reproducibility | `chapters/15-reproducibility.tex` | draft (card B-15 completes it) |
-| 16–20 GPUs, the port, performance, multi-GPU, versions | `chapters/16-20` | outline (cards B-16 ... B-20) |
-| Appendices | `chapters/A-kernels.tex`, `B-namelist.tex` | outline (card B-21) |
+All 40 chapters and 6 appendices are written (8 parts). What remains is measured results: every number the port has
+not measured yet is printed as "(to be reported)" (`\tbr`), and is filled in from `port/RESULTS.md`, `port/PERF.md`
+and `perf/` as the gates pass.
+
+| Part | Chapters | File | State |
+|---|---|---|---|
+| Front | Preface | `chapters/00-preface.tex` | written |
+| I The WRF ecosystem | 1-4 | `chapters/01-04` | written |
+| II The ARW dynamical core | 5-10 | `chapters/05-10` | written |
+| III Physics | 11-18 | `chapters/11-18` | written |
+| IV Fire | 19-21 | `chapters/19-21` | written |
+| V Software | 22-24 | `chapters/22-24` | written |
+| VI GPUs and the port | 25-29 | `chapters/25-29` | written; device results to be reported |
+| VII Performance on A100 and H100 | 30-38 | `chapters/30-38` | written; measurements to be reported (chapter 37 is the results table) |
+| VIII Evolution | 39-40 | `chapters/39-40` | written |
+| Appendices | A-F | `chapters/A-F*.tex` | written; A is generated (`tools/kernels_tex.py`) |
+
+Open items:
+- the bibliography (`refs.bib`) is not yet checked against the publishers (card B-02);
+- the figures of measured data (roofline points, time per range) wait for the profiler's database (plan-profiler
+  PR-L5.3);
+- Appendix A must be regenerated whenever `port/agent/kernels.csv` changes:
+  `python3 book/tools/kernels_tex.py` (`--check` reports whether it is current).
 
 ## Rules for writing a chapter (track B of roadmap/BACKLOG.md)
 

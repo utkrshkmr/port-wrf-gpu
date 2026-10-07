@@ -110,7 +110,7 @@ $F(t) = 1$; after ignition at $t_i$ it is
 \begin{equation}
   F(t) = \exp\!\left(-\frac{t - t_i}{T_f}\right),
 \end{equation}
-where $T_f$ is the fuel's \emph{weight}, the time for $1/e$ of the fuel to burn (\code{fgi}, \code{weight}). The heat
+where $T_f$ is the time for the fuel to burn down to $1/e$ (\code{fuel_time} per cell, computed from the fuel table's \code{weight}). The heat
 released is the burned fuel times its heat content. A fixed fraction of it, as moisture of the fuel and of
 combustion, goes into the latent heat flux. \Cref{ch:fire} shows how $F$ is averaged over sub-cells and how the heat
 enters the atmosphere.

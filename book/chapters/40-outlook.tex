@@ -1,3 +1,49 @@
 \chapter{Outlook}\label{ch:outlook}
 
-This chapter is being written.
+This book has followed WRF and WRF-Fire from their equations to their port onto GPUs. The port's guiding decision was
+to accept no difference at all: a GPU build that gives the same bits as the CPU build, so that every difference is a
+bug and every bug can be found. This last chapter looks at what that decision makes possible next.
+
+\section{The new fire model}
+
+WRF~4.8.0 brings NCAR's Community Fire Behavior Model (\cref{ch:cfbm}). Its algorithms are those of WRF-Fire, rewritten
+as a modular, standalone code, so its GPU port can reuse the kernels of WRF-Fire's: level-set stencils, the spread
+rate per node, fuel consumption, the flux sums. Its standalone driver allows the port to be developed and tested
+without WRF, on a small grid, in seconds. The method stays the same: bitwise equality with the CPU build of the same
+source, standalone first, then inside WRF~4.8.0. And since CFBM is under active development, the GPU changes should be
+contributed to NCAR's repository rather than kept in a fork.
+
+\section{Other GPUs}
+
+The port targets NVIDIA's A100 and H100, by the project owner's choice of speed over portability (\cref{ch:gpu}).
+Porting to AMD GPUs would mean rewriting the OpenACC directives as OpenMP offload, which AMD's compilers support,
+and the few CUDA Fortran kernels in HIP. The verification would carry over unchanged: contraction off, the portable
+math library, and the same tests. And since REPRO uses only IEEE basic operations and the portable functions, the
+same bits on every vendor's GPU are within reach. Different hardware would then compute the same fire.
+
+\section{The FAST build}
+
+Users who run forecasts want speed more than bit equality with a reference. The FAST build mode (ADR-003) uses the
+same source and the same kernels with the vendors' fast arithmetic: fused multiply-add, vendor math libraries, and,
+behind macros, the parallel floating-point reductions that REPRO forbids. Its results will differ from REPRO's in
+the last bits, and soon by more, since the fire amplifies differences (\cref{ch:repro}). So FAST is validated
+statistically: an ensemble of REPRO runs with perturbed initial states defines the spread a correct model may show,
+and a FAST run must fall inside it, in the manner of the ensemble consistency tests of \citet{baker2015} and
+\citet{milroy2018}. The fire perimeter is compared against the ensemble's envelope. The speed difference between the
+two modes is itself a result: the measured cost of reproducibility.
+
+\section{More of WRF}
+
+Stage~8 of the plan extends the port beyond the case's configuration, one option family per phase: restarts on the
+GPU, two-way nesting, more than two domains, the adaptive time step, other advection and turbulence options,
+Thompson, Morrison and TEMPO microphysics, MYNN, RRTMG shortwave, Noah-MP, cumulus schemes for coarse outer domains,
+and the other fire options. Each phase brings its own small case, its own CPU reference and its own bitwise gate. The
+order follows what wildfire studies use.
+
+\section{Upstream}
+
+A port maintained apart from NCAR's code must be carried forward with every release (\cref{ch:versions}). The lasting
+solution is upstream: directives in NCAR's own source, under a macro that leaves the CPU build untouched, as the port
+already arranges it. The verification tools (the bit-hash tracer, the call check, the reproducible math library)
+would be useful there too, for any change to WRF, GPU or not: they turn ``the results look similar'' into ``the
+results are identical'' or ``this field, at this step, in this routine, differs''.

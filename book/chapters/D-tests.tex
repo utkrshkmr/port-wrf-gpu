@@ -1,3 +1,122 @@
 \chapter{Test catalogue}\label{app:tests}
 
-This chapter is being written.
+Every test of the port, from \code{plan.md} section~13 and the gates of section~14. ``Bitwise'' means identical bits
+in every compared value: identical bit-hash traces (\cref{ch:repro}), or identical files. All windowed tests start two
+runs from the same restart file, so they do not depend on whether a restart continues a run bit for bit, and they run on
+the dev case \code{eaton_small} unless marked ``full case''.
+
+\section{Windows}
+
+\begin{center}
+\small
+\begin{tabular}{lp{0.65\textwidth}}
+\toprule
+Window & Definition \\
+\midrule
+W-T0 & 27 d02 steps from the initial state, including the start of the nest \\
+W-20 & 27 d02 steps (3 d01 steps) from the 02:20 restart; the development window \\
+W-100 & 108 d02 steps (12 d01 steps) from 02:20 \\
+W-RAD & 720 d02 steps (80 d01 steps) from 02:20, with 4 radiation calls on each domain \\
+W-FORCE & 20 d01 steps from 02:20: the nest forcing \\
+W-TKE & 1008 d02 steps from 02:20: TKE and the subgrid stresses \\
+W-IGN & 02:00 to 02:35: the whole ignition period (8280--9080~s) and the first minutes of spread \\
+W-FIRE & 02:20 to 03:00: free spread, with history frames at 02:30, 02:45 and 03:00 \\
+W-1H & one hour of the dev case on both A100s (phase S5-07) \\
+S-3M & a 3-minute smoke case built from WRF's \code{em_fire} test with the case's physics; needs no case data \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Tests}
+
+\begingroup\small
+\begin{longtable}{p{0.24\textwidth}p{0.5\textwidth}p{0.18\textwidth}}
+\caption{The tests of the port.}\label{tab:tests}\\
+\toprule Test & What & Pass \\ \midrule
+\endfirsthead
+\toprule Test & What & Pass \\ \midrule
+\endhead
+\bottomrule
+\endlastfoot
+\multicolumn{3}{l}{\textbf{Arithmetic (plan P0.5, P0.6)}} \\
+T-FMA & device and host compute $a b + c$ on operands read at run time, including the binary32 tie case of
+  \cref{ch:repro} & unfused, identical \\
+T-SIGNZERO, T-MINMAX & \code{SIGN}, \code{MAX}, \code{MIN}, \code{ABS} on $\pm0$, subnormals, $\pm\infty$, NaN & identical bits \\
+T-SUBNORM & $+$, $-$, $\times$, $/$ and $\sqrt{\phantom{x}}$ on subnormal operands, and $10^9$ random pairs & identical, not flushed \\
+T-RM-EXH & every single-precision input of each one-argument function, host against device & 0 mismatches \\
+T-RM-POW, T-RM-D & \code{rp_pow} on the exponents WRF uses; double-precision functions & 0 mismatches \\
+T-RM-ACC & accuracy against 60-digit arithmetic & reported \\
+T-IPOW & every integer power left in the code, host against device & identical \\
+T-SYM & no math-library symbol in host objects or device code & none \\
+T-OMP-FEAT & the compiler feature probes (OpenACC versions: phase S0-05) & recorded \\
+\midrule
+\multicolumn{3}{l}{\textbf{CPU reference (P0.9a, P0.10)}} \\
+T-SHARED-1 \dots\ 9 & each shared refactor against the unrefactored CPU build & bitwise \\
+T-UNINIT & a build initializing every local to signaling NaN against one initializing to zero & bitwise \\
+T-DET & the same binary twice, 1 hour (full case) & bitwise \\
+T-DEC-A, T-DEC-B & 1 rank against many; different rank counts (full case) & bitwise \\
+T-RST & a continuous run against a restarted one & bitwise or documented \\
+T-XM & the CPU-REF binary on a CCR node and on a GPU node's host & bitwise \\
+T-KISS & the random number streams of McICA, host against device & bitwise \\
+\midrule
+\multicolumn{3}{l}{\textbf{Infrastructure (P1)}} \\
+T-MAP & sampled fields of every domain are present on the device after initialization & all present \\
+T-TAB & checksums of every uploaded table, host against device & equal \\
+T-UPD & download and upload of the whole state every step changes nothing (W-20) & bitwise \\
+T-POOL, T-WORK & the pool and work arrays are on the device, and never copied & as specified \\
+T-GATE & the startup check rejects a namelist outside the envelope & fatal error \\
+\midrule
+\multicolumn{3}{l}{\textbf{Per routine}} \\
+harness & one routine with random inputs: CPU view, GPU view on the host, GPU view on the device & identical \\
+call check & one routine's calls in a real run: device against host, argument by argument & identical \\
+T-AB-\textit{routine} & route on against route off, W-100 (radiation: W-RAD) & identical traces \\
+T-TMPL-B, -C, -G, -CP & the templates' tested examples, with mutants that must fail & bitwise \\
+T-PDLIM & the split positive-definite limiter against the original loop & bitwise \\
+T-WSM6-COL, T-YSU-COL, T-NOAH-PT, T-RRTMG-COL & $10^5$ columns or points from the reference state, host against device & bitwise \\
+T-OZN & the ozone interpolation against the original, all d01 columns at 6 dates & bitwise \\
+T-ZOLRI & occurrences of the undefined path of \code{zolri} in the reference run & 0 \\
+\midrule
+\multicolumn{3}{l}{\textbf{Windows (GPU-REPRO against CPU-REF)}} \\
+T-REG-20 & everything ported so far, W-20; run at every commit & bitwise \\
+T-TRACE-100 & W-100, fine trace & bitwise \\
+T-TRACE-TKE & 1000 d02 steps, including the subgrid stresses & bitwise \\
+T-TRACE-RAD & W-RAD & bitwise \\
+T-FIRE-IGN, T-FIRE-WIN & W-IGN and W-FIRE with every fire array at every step & bitwise; 0 differing cells \\
+T-FIRE-GHOST & the ghost rows and columns of the fire arrays on the device & zeros \\
+T-NSYS & every host--device copy in W-20 is explained & none unexplained \\
+T-DRIFT & CPU-REF at the current commit against the archived reference, 1 hour & bitwise \\
+\midrule
+\multicolumn{3}{l}{\textbf{Forcing and acceptance (P5, G5)}} \\
+T-FORCE & traces after each step of the nest forcing, 20 d01 steps & bitwise \\
+T-SLAB & host data outside the copied slab and strips filled with signaling NaNs & bitwise \\
+T-O3 & the nest's ozone field after every forcing & equal \\
+T-NSYS-CLEAN & only forcing, I/O and reduction results are copied & as specified \\
+T-OUT, T-BDY & history and restart files; a window across a boundary-data read & bitwise \\
+G5 & the full 17 hours on an 80~GB GPU: all history and restart files, all fire arrays, the traces of every step;
+  A100 equal to H100; T-DRIFT-FULL; T-XM on the final binary & bitwise \\
+G-MEM & the peak device memory (full case) & $\le$ 55~GB at G1, $\le$ 70~GB at G3 and G5 \\
+T-CASE-1H & a new fire case: one hour around its ignition & bitwise \\
+\midrule
+\multicolumn{3}{l}{\textbf{Several GPUs (Stage 8)}} \\
+T-DEC-GPU & one GPU against two, dev case & bitwise \\
+\end{longtable}
+\endgroup
+
+\section{Gates}
+
+\begin{center}
+\small
+\begin{tabular}{lp{0.75\textwidth}}
+\toprule
+Gate & Contains \\
+\midrule
+G0 & arithmetic tests and probes; shared refactors certified; CPU-REF reproducible; references archived; memory estimator validated \\
+G1 & T-MAP, T-TAB, T-UPD, T-POOL, T-WORK, T-GATE; the GPU build with all compute on the host bitwise on W-20 \\
+G2 & all dynamics on the device: T-AB of every route, T-TRACE-100, T-TRACE-TKE, T-PDLIM, T-NSYS, T-DRIFT \\
+G3 & all physics on the device: T-TRACE-RAD, the column harnesses, T-NSYS, T-DRIFT, G-MEM \\
+G4 & fire on the device: T-FIRE-IGN, T-FIRE-WIN, 0 differing cells, T-NSYS, T-DRIFT \\
+G5 & forcing on the device, the bracket removed, the full 17-hour run bitwise \\
+G6 & every optimization passed T-REG-20, T-TRACE-100 and T-TRACE-RAD; the tuned binary repeats G5 \\
+\bottomrule
+\end{tabular}
+\end{center}

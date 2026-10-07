@@ -1,3 +1,76 @@
 \chapter{Notation}\label{app:notation}
 
-This chapter is being written.
+The symbols of the book, by topic. Where a symbol has two meanings in different parts of the book (for example
+$\beta$, the packing ratio of a fuel and the memory bandwidth of a GPU), the context makes clear which is meant; both are
+listed. The code names in the last column are those of WRF~4.6.0.
+
+\begingroup\small
+\begin{longtable}{p{0.16\textwidth}p{0.52\textwidth}p{0.24\textwidth}}
+\caption{Symbols.}\label{tab:notation}\\
+\toprule Symbol & Meaning & In the code \\ \midrule
+\endfirsthead
+\toprule Symbol & Meaning & In the code \\ \midrule
+\endhead
+\bottomrule
+\endlastfoot
+\multicolumn{3}{l}{\textbf{Grid and time}} \\
+$x$, $y$, $\eta$ & horizontal coordinates; the hybrid vertical coordinate (\cref{ch:eq}) & \\
+$i$, $j$, $k$ & grid indices in $x$, $y$ and the vertical; arrays are stored \code{a(i,k,j)} & \code{i}, \code{j}, \code{k} \\
+$\Delta x$, $\Delta y$ & horizontal grid spacing & \code{dx}, \code{dy} \\
+$\Delta t$, $\Delta\tau$ & large time step; acoustic time step & \code{dt}, \code{dts} \\
+$m_x$, $m_y$ & map-scale factors & \code{msftx}, \code{msfty}, \dots \\
+$B(\eta)$ & hybrid coordinate function (\cref{fig:hybrid}) & \code{c3h}, \code{c3f} \\
+$c_1$, $c_2$ & coefficients of the column mass, $\mu_d = c_1\mu + c_2$ & \code{c1h}, \code{c2h}, \code{c1f}, \code{c2f} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Dynamics}} \\
+$\mu$, $\mu_d$ & column dry-air mass; its value at a level & \code{mu}, \code{mut} \\
+$u$, $v$, $w$ & velocity components & \code{u_2}, \code{v_2}, \code{w_2} \\
+$U$, $V$, $W$, $\Omega$ & mass-coupled velocities; coupled vertical mass flux & \code{ru}, \code{rv}, \code{rw}, \code{ww} \\
+$\theta$, $\theta_m$ & potential temperature; moist potential temperature & \code{t_2} ($\theta_m - 300$ K) \\
+$\Theta_m$, $Q_m$ & mass-coupled $\theta_m$ and mixing ratios & \\
+$\phi$ & geopotential & \code{ph_2} + \code{phb} \\
+$p$, $\alpha$, $\alpha_d$ & pressure; inverse density of moist and of dry air & \code{p}, \code{al}, \code{alt} \\
+$\bar{a}$, $a'$ & base state and perturbation of a quantity $a$ & \code{pb}, \code{p}, \dots \\
+$q_v$, $q_c$, $q_r$, $q_i$, $q_s$, $q_g$ & mixing ratios of vapour, cloud water, rain, ice, snow, graupel & \code{moist(:,:,:,P_QV)}, \dots \\
+$f$, $e$ & Coriolis parameter; Coriolis parameter of the horizontal Earth rotation & \code{f}, \code{e} \\
+$F_U$, $F_\Theta$, \dots & forcing terms: physics, diffusion, damping & \code{ru_tendf}, \dots \\
+\midrule
+\multicolumn{3}{l}{\textbf{Turbulence}} \\
+$D_{ij}$, $\tau_{ij}$ & deformation tensor; subgrid stress & \code{defor11}, \dots; \code{titau} \\
+$K_h$, $K_v$ & horizontal and vertical eddy viscosities & \code{xkmh}, \code{xkmv} \\
+$e$ & subgrid turbulent kinetic energy (\cref{ch:turb}) & \code{tke_2} \\
+$N^2$ & Brunt--V\"ais\"al\"a frequency squared & \code{bn2} \\
+$l$, $c_k$, $C_s$ & length scale; TKE constant; Smagorinsky constant & \code{c_k}, \code{c_s} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Physics}} \\
+$T$, $\rho$ & temperature; density & \code{t_phy}, \code{rho} \\
+$c_p$, $R_d$, $R_v$, $L_v$, $g$ & heat capacity, gas constants of dry air and vapour, latent heat, gravity & \code{cp}, \code{r_d}, \code{r_v}, \code{xlv}, \code{g} \\
+$u_*$, $L$, $z_0$ & friction velocity; Obukhov length; roughness length (\cref{ch:sfc}) & \code{ust}, \code{znt} \\
+$\psi_m$, $\psi_h$ & integrated stability functions for momentum and heat & \code{psim}, \code{psih} \\
+$h$ & boundary-layer height (\cref{ch:pbl}) & \code{hpbl} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Fire}} \\
+$\psi$ & level-set function: burning or burned where $\psi \le 0$ (\cref{ch:fire}) & \code{lfn} \\
+$R$, $R_0$ & rate of spread; spread rate without wind and slope (\cref{ch:firebasics}) & \code{ros}, \code{r_0} \\
+$\phi_w$, $\phi_s$ & wind and slope factors of the spread rate & \\
+$w_0$, $\delta$, $\sigma$ & fuel load; fuel bed depth; surface-to-volume ratio & \code{fgi} (\code{fgip} per cell), \code{fueldepthm}, \code{savr} \\
+$\beta$, $\beta_{\mathrm{op}}$ & packing ratio; optimum packing ratio & \code{betafl} \\
+$M_f$, $M_x$ & fuel moisture; moisture of extinction & \code{fmc_g}, \code{fuelmce} \\
+$t_i$ & ignition time & \code{tign_g} \\
+$F$, $T_f$ & fuel fraction left; time to burn down to $1/e$ & \code{fuel_frac}, \code{fuel_time} \\
+$H_g$, $E_g$ & sensible and latent heat flux of the fire at the ground & \code{fgrnhfx}, \code{fgrnqfx} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Floating point}} \\
+$\fl(\cdot)$ & the floating-point result of an operation (\cref{ch:repro}) & \\
+$u$ & unit roundoff, $2^{-24}$ in single precision & \\
+$\ulp(x)$ & unit in the last place of $x$ & \\
+$b_g$, $h_1$, $h_2$ & bit pattern of a value; the two words of the tracer's hash & \code{hsum}, \code{hpos} \\
+\midrule
+\multicolumn{3}{l}{\textbf{GPU performance}} \\
+$\pi$, $\beta$ & peak arithmetic rate; memory bandwidth (\cref{ch:perf}) & \\
+$I$, $I^*$ & arithmetic intensity; its value at the ridge of the roofline & \\
+$R$ & registers per thread (\cref{eq:occ-regs}) & \\
+$T_i$, $T_j$, $\rho$ & tile sizes; ratio of bytes loaded to minimal bytes (\cref{ch:tiling}) & \\
+$B$ & batch size of RRTMG (\cref{ch:colphys}) & \code{WRF_RRTMG_BATCH} \\
+\end{longtable}
+\endgroup

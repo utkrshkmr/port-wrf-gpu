@@ -1,19 +1,81 @@
 \chapter{From WRF 4.6.0 to 4.8.0}\label{ch:versions}
 
-What NCAR changed between the two releases, and how a verified port is carried forward.
+The port is written for WRF~4.6.0, the version of the case. NCAR released 4.6.1, 4.7.0, 4.7.1 and, on 8 June 2026,
+4.8.0, which is what users will run. This chapter describes what changed between 4.6.0 and 4.8.0, as measured on the
+two source trees (\code{roadmap/analysis/wrf-4.6.0-to-4.8.0.md}), and how a port verified on one version is carried
+to the next (\code{roadmap/decisions/ADR-002-wrf-versions.md}).
 
-\begin{outline}[(card B-20)]
-\textbf{Sections.}
-\begin{itemize}
-    \item \textbf{The changes.} By directory, by file, by routine of the port.
-    \item \textbf{Forward porting.} Three-way merge; what merges cleanly and what must be ported again.
-    \item \textbf{Comparing versions.} Statistics and fire perimeters, not bits.
-\end{itemize}
-\textbf{Sources.} \code{roadmap/analysis/wrf-4.6.0-to-4.8.0.md}; \code{roadmap/decisions/ADR-002-wrf-versions.md}.
+\section{What changed}
 
-\textbf{Code.}
+\subsection{The whole code base}
+
+\begin{center}
+\small
+\begin{tabular}{lr}
+\toprule
+ & Count \\
+\midrule
+source files in 4.6.0 / 4.8.0 & 3466 / 3459 \\
+files added / removed in 4.8.0 & 25 / 32 \\
+files changed & 173 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The changed files are spread over \code{phys} (47), \code{hydro} (34), \code{chem} (21), \code{var} (15), the tangent
+linear and adjoint code (11), \code{dyn_em} (10), \code{external} (9), \code{frame} (8), \code{share} (7),
+\code{tools} (6), the Registry (3) and \code{main} (1). New submodules bring new physics: the Community Fire Behavior
+Model (\code{phys/fire_behavior}, \cref{ch:cfbm}), the TEMPO microphysics, the MYNN-EDMF boundary layer and its
+surface layer, and others.
+
+\subsection{The files and routines the port touches}
+
+Of the 60 files the port edits, 21 changed. By routine, the picture is clearer:
 \begin{itemize}
-    \item \code{roadmap/tools/version_diff.py}: the measurement (card V-01)
+  \item \textbf{Dynamics:} none of the 74 routines of the dynamics work packages changed. Every kernel of Stage~2
+    carries over as it is.
+  \item \textbf{Physics cores:} WSM6's \code{mp_wsm6_run}, Noah's \code{SFLX} and its callees, RRTMG and the Dudhia
+    shortwave are unchanged; YSU and sfclayrev changed in a few lines.
+  \item \textbf{Physics drivers:} \code{surface_driver} (273 changed lines), \code{microphysics_driver} (362),
+    \code{pbl_driver} (108), \code{calculate_phy_tend} (126) and Noah's \code{lsm} (40) changed, mostly to call the
+    new schemes. About twenty routines, most of them glue code, must be ported again.
+  \item \textbf{WRF-Fire:} every \code{module_fr_fire_*} file is unchanged.
+  \item \textbf{Infrastructure:} \code{solve_em} gained 206 lines, and \code{first_rk_step_part1} 199, for the new fire
+    model's coupling; the Registry changed in 229 lines, which regenerates the port's generated code automatically.
 \end{itemize}
-\textbf{The port.} Track V.
-\end{outline}
+
+\section{Carrying the port forward}
+
+ADR-002 decides how one port serves two versions:
+\begin{enumerate}
+  \item \textbf{4.6.0 first.} The port is finished and verified on 4.6.0, through the full acceptance run. No 4.8.0 work
+    begins before that gate.
+  \item \textbf{A three-way merge.} The port's changes are carried to 4.8.0 by merging three trees: the pristine
+    4.6.0 (base), the 4.6.0 port (ours) and the pristine 4.8.0 (theirs). A routine NCAR did not change merges cleanly,
+    and its kernels, islands and tests apply unchanged. A routine NCAR changed is ported again against its 4.8.0 lines
+    and verified again.
+  \item \textbf{One repository, one branch per version.} The tools, tests and gates are shared and version-agnostic.
+    The data that depends on the source (the CPU-view base commit, the kernel table with its line numbers, the routes,
+    the case files) lives on each version's branch and is regenerated from that branch's base.
+  \item \textbf{Bitwise within a version, statistical across versions.} The GPU build of 4.8.0 must equal the CPU build
+    of 4.8.0 bit for bit, as for 4.6.0. The two versions are compared with each other scientifically: field
+    statistics, fire perimeters, timings. They cannot be compared bit for bit, because NCAR changed the physics
+    between them.
+  \item \textbf{Submodules flattened.} The repository imports 4.8.0 with its submodules checked out as plain files at
+    the pinned commits, as it did 4.6.0, so that a version is one tree and every change is visible in one diff.
+\end{enumerate}
+
+The estimated effort, in the half-day tasks of the backlog: about 8 tasks to import and re-baseline, about 10 to port
+the changed routines again, about 4 for the build and the case contract, and the new fire model on top.
+
+\section{The build}
+
+In 4.8.0 the new fire model is built only by WRF's CMake build (\code{phys/CMakeLists.txt} adds the
+\code{fire_behavior} directory; \code{phys/Makefile} does not list it). The port's build scripts use the traditional
+\code{configure} and \code{compile}; a 4.8.0 port with the new fire model needs a CMake mode in them, with the same
+reproducible flags (\cref{ch:iobuild}).
+
+\begin{keypoint}
+A port that keeps the CPU loops as they are, with directives in front, survives a new release well: where NCAR did
+not change a routine, the port's changes merge without conflict and its tests still apply. This is the practical
+payoff of keeping one Fortran source rather than a rewrite.
+\end{keypoint}

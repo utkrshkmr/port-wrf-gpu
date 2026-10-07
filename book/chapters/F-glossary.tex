@@ -1,3 +1,73 @@
 \chapter{Glossary}\label{app:glossary}
 
-This chapter is being written.
+\begin{description}
+  \item[\code{arith_guard}] The static checker that compares the CPU view of every ported file with the base commit,
+    statement by statement (\cref{ch:port}).
+  \item[ARW] The Advanced Research WRF, WRF's dynamical core (Part~II).
+  \item[Bracket] During Phases 1 to 4, the download of the whole state at the start of \code{solve_em} and its
+    upload at the end.
+  \item[Call check] A test inside a model run that executes a routine on the device and on the host from the same
+    inputs and compares every output (\cref{alg:callcheck}).
+  \item[CCR] The CPU cluster on which the case was originally run and the reference runs are made.
+  \item[CFBM] The Community Fire Behavior Model, NCAR's new fire model in WRF~4.8.0 (\cref{ch:cfbm}).
+  \item[Coalesced access] A load or store by a warp to consecutive addresses, served with the fewest memory
+    transactions (\cref{ch:memory}).
+  \item[Column kernel] A kernel with one thread per $(i,j)$ column and a sequential loop over levels inside
+    (Template C).
+  \item[CPU-REF] The reproducible CPU build of the port's source, and the reference every GPU result must equal.
+  \item[CPU view, GPU view] What a ported file compiles to without and with the macro \code{WRF_GPU}.
+  \item[CUDA Fortran] NVIDIA's extension of Fortran for writing GPU kernels explicitly (\cref{ch:gpu}).
+  \item[d01, d02] The outer domain (900~m) and the nest (100~m) of the case.
+  \item[Dev case] \code{eaton_small}: the case with a smaller nest, used for all development windows.
+  \item[Divergence] Threads of one warp taking different branches, which the warp then executes one after the other
+    (\cref{ch:warp}).
+  \item[ENO, WENO] (Weighted) essentially non-oscillatory differences, used for the fire's level set
+    (\cref{ch:fire}).
+  \item[FAST] The planned build mode with the vendors' fast arithmetic, validated statistically (ADR-003).
+  \item[FMA] Fused multiply-add: $a b + c$ with one rounding. Forbidden in REPRO.
+  \item[Gang, vector] OpenACC's levels of parallelism; on NVIDIA GPUs, thread blocks and the threads in a block.
+  \item[Gate] A set of tests that must pass before the next stage begins (G0 to G6).
+  \item[Ghost cells] The outermost rows and columns of the fire arrays, read but never written (\cref{ch:subsys}).
+  \item[GPU-REPRO] The GPU build of the port, which must equal CPU-REF bit for bit.
+  \item[Halo] The copies of neighbouring points that a patch or a tile keeps for its stencils.
+  \item[HBM] High-bandwidth memory, the device memory of the A100 and H100.
+  \item[Island] The copies that move a routine's arguments to where the routine runs and back (\cref{alg:island}).
+  \item[Kernel] A loop nest compiled to run on the GPU, launched from the host.
+  \item[Kernel table] \code{port/agent/kernels.csv}: every kernel of the port with its source lines, template, route
+    and status (\cref{app:kernels}).
+  \item[LES] Large-eddy simulation: resolving the large turbulent eddies, as d02 does.
+  \item[Level set] The function whose zero contour is the fire front (\cref{ch:fire}).
+  \item[Local memory] Per-thread memory in device memory, used for spilled registers and indexed private arrays.
+  \item[McICA] The Monte Carlo independent column approximation for clouds in RRTMG.
+  \item[NVTX] NVIDIA's library for marking ranges of a run on the profilers' timeline.
+  \item[Occupancy] The fraction of an SM's warp slots that are in use.
+  \item[OpenACC] The directive-based programming model in which the port's kernels are written (\cref{ch:gpu}).
+  \item[Patch, tile] A rank's part of a domain; a part of a patch processed by one thread on the CPU
+    (\cref{ch:cpupar}).
+  \item[Pool] The one array that holds the scratch arrays of \code{solve_em} in both builds.
+  \item[R0, R1, R2, F] The classes of optimizations by their effect on the bits (\cref{tab:bitclass}).
+  \item[Registry] WRF's table of fields and options, from which code is generated (\cref{ch:arch}).
+  \item[REPRO] The bitwise build mode, in which the whole port is verified.
+  \item[Roofline] The bound on a kernel's speed set by the peak arithmetic rate and the memory bandwidth
+    (\cref{eq:roofline}).
+  \item[Route] The switch of one routine between device and host (\code{R_<NAME>}, \code{WRF_GPU_OFF}).
+  \item[Routine ladder] The eight rungs a routine climbs from writing to recorded profile (\cref{ch:port}).
+  \item[RSL\_LITE] WRF's communication layer for halo exchanges and nest data (\cref{ch:mgpu}).
+  \item[Shared refactor] A change applied to both views, allowed only with bitwise evidence.
+  \item[SM] Streaming multiprocessor, the GPU's unit of execution (\cref{ch:gpuarch}).
+  \item[Stage, phase] The plan's units of work: 9 stages of 139 phases (\code{roadmap/plan-4.6/}).
+  \item[Sync point] A named place where data moves between host and device (\cref{ch:port}).
+  \item[T-AB] The test that compares a routine's device execution with its host execution on real data.
+  \item[T-TRACE] The test that compares GPU-REPRO with CPU-REF over a window.
+  \item[Template] A pattern for porting a kind of loop nest: A, B, C, D, G, L, R, CP (\cref{ch:port}).
+  \item[TMA] The H100's Tensor Memory Accelerator, which copies tiles into shared memory (\cref{ch:tiling}).
+  \item[Tracer] \code{module_bittrace}: exact integer hashes of fields at checkpoints of the step
+    (\cref{ch:repro}).
+  \item[ulp] Unit in the last place: the spacing of floating-point numbers near a value.
+  \item[Warp] 32 threads that execute together.
+  \item[Window] A short model run between fixed times, started from a restart file, used by the tests
+    (\cref{app:tests}).
+  \item[Work array] A named array, allocated once, that replaces a large automatic array of a routine.
+  \item[Work package] A set of routines that one worker owns in a code-only run.
+  \item[WPS] The WRF Preprocessing System, which prepares the input data (\cref{ch:system}).
+\end{description}

@@ -1,3 +1,118 @@
 \chapter{Build and run guide}\label{app:build}
 
-This chapter is being written.
+This appendix collects the commands to build the port and run its tests, in the order a new contributor needs them.
+The authoritative versions are in the repository: \code{port/agent/ENV_H100.md} (machine setup),
+\code{port/agent/WORKFLOW.md} (the work loop) and the usage lines at the top of each script.
+
+\section{Without a GPU}
+
+The first three rungs of the routine ladder (\cref{ch:port}) need only gfortran and Python:
+\begin{lstlisting}[language={}]
+bash port/gates/static.sh                         # guards: arith_guard, kernel_lint, scope, ...
+bash port/h100/compile_one.sh gnu-gpu <file>      # one file, GPU view (gfortran -fopenacc)
+bash port/h100/compile_one.sh gnu-ref <file>      # one file, CPU view
+bash port/h100/harness.sh <file> <routine> --builds gnu-ref,gnu-gpu
+CONTAINER=none NETCDF=/opt/netcdf bash port/gates/cpu_verify.sh   # whole-model CPU check
+\end{lstlisting}
+\code{cpu_verify.sh} builds both gfortran views and the CPU view of the base commit from clean directories, runs the
+smoke case S-3M with each, and requires the GPU view to equal the CPU view bit for bit. It also runs the reference unit
+tests (templates, mutants, the limiter, the ozone interpolation, KISS).
+
+\section{Setting up the GPU machine}
+
+Everything runs in NVIDIA's HPC SDK container, without root:
+\begin{lstlisting}[language={}]
+cp port/h100/env.sh port/h100/env.local.sh        # set WORK, CASE_INPUTS, CONTAINER, IMAGE, CPU_RANKS, GPU_ID
+bash port/h100/setup_toolchain.sh image           # pull the pinned NVHPC image
+bash port/h100/setup_toolchain.sh deps            # tcsh, m4, HDF5 and netCDF built with nvfortran
+bash port/h100/setup_toolchain.sh python          # numpy, netCDF4, mpmath for the host tools
+bash port/h100/setup_toolchain.sh check           # must end with "toolchain: PASS"
+\end{lstlisting}
+The compiler version is pinned for the whole port: the arithmetic tests and probes are valid only for the version
+they ran with.
+
+\section{Builds}
+
+\begin{lstlisting}[language={}]
+bash port/h100/build.sh <mode> --commit REV       # clean build of a commit, reused if it exists
+bash port/h100/build.sh <mode> --worktree         # incremental build of the working tree
+\end{lstlisting}
+\begin{center}
+\small
+\begin{tabular}{lp{0.7\textwidth}}
+\toprule
+Mode & What \\
+\midrule
+\code{cpu-ref} & CPU-REF: nvfortran, reproducible flags, \code{REPRO_MATH}, \code{WRF_POOL} (\cref{ch:iobuild}) \\
+\code{gpu-repro} & GPU-REPRO: as CPU-REF, plus \code{-acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz} and \code{WRF_GPU} \\
+\code{gpu-debug} & GPU-REPRO with debugging information and line numbers \\
+\code{gnu-ref}, \code{gnu-gpu} & the two gfortran views, for checks without NVHPC or a GPU \\
+\bottomrule
+\end{tabular}
+\end{center}
+Options: \code{--fine} adds the fine trace checkpoints; \code{--uninit nan|zero} (gfortran) builds the two halves of
+T-UNINIT. A clean build of WRF takes 30 to 90 minutes, an incremental build after editing one file a few minutes.
+
+\section{The dev case and its references}
+
+\begin{lstlisting}[language={}]
+bash port/h100/dev_case.sh make                   # checks the inputs' md5s, builds eaton_small
+nohup bash port/h100/dev_case.sh reference > $WORK/dev_reference.log 2>&1 &   # CPU-REF references, hours
+bash port/h100/dev_case.sh status
+\end{lstlisting}
+
+\section{Windows and comparisons}
+
+\begin{lstlisting}[language={}]
+bash port/h100/window.sh <build dir> W-20 [VAR=value ...]   # one window; prints the run directory
+bash port/h100/compare.sh <run A> <run B>          # traces and files, bit for bit
+bash port/gates/t_ab.sh <route> W-20               # route on against route off
+bash port/gates/t_trace.sh W-20                    # GPU-REPRO against CPU-REF
+bash port/gates/t_reg20.sh                         # the per-commit regression
+\end{lstlisting}
+The windows are defined in \code{port/h100/windows.txt} (\cref{app:tests}). Runs are reused while the binary is the same.
+
+\section{Environment variables}
+
+\begin{center}
+\small
+\begin{tabular}{lp{0.65\textwidth}}
+\toprule
+Variable & Effect \\
+\midrule
+\code{WRF_GPU_OFF=r1,r2} & run these routes on the host (T-AB) \\
+\code{WRF_GPU_ONLY=r1,r2} & run only these routes on the device \\
+\code{WRF_GPU_CALLCHECK=r:n} & check the first $n$ calls of route $r$, device against host (\cref{alg:callcheck}) \\
+\code{WRF_BITTRACE=0|1|2} & tracer off; end of every step; every checkpoint \\
+\code{WRF_BITTRACE_FROM}, \code{_TO} & range of steps to trace \\
+\code{WRF_GPU_TIMING=1} & time per NVTX range, per simulated hour \\
+\code{WRF_RRTMG_BATCH=n} & columns per RRTMG batch (default 4096) \\
+\code{NV_ACC_CUDA_STACKSIZE} & device stack per thread, for column physics \\
+\code{ACC_PROFLIB} & load an OpenACC profiling library (\cref{ch:prof}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{The work loop}
+
+\begin{lstlisting}[language={}]
+python3 port/tools/workbook.py resume              # where the work stands
+python3 port/tools/workbook.py next                # what to do
+python3 port/tools/ref.py <kernel id>              # the CPU lines to port
+# edit under #ifdef WRF_GPU, following port/agent/CODING_STANDARD.md
+bash port/gates/static.sh
+bash port/h100/compile_one.sh gpu-repro <file> --minfo
+bash port/h100/harness.sh <file> <routine>
+bash port/gates/t_ab.sh <route> W-20
+bash port/gates/t_trace.sh W-20
+python3 port/tools/workbook.py set <kernel> done --commit <sha> --tests "..."
+\end{lstlisting}
+
+\section{Building this book}
+
+\begin{lstlisting}[language={}]
+cd book && make                                     # latexmk -pdf; needs TeX Live
+python3 book/tools/kernels_tex.py                   # regenerate Appendix A from kernels.csv
+\end{lstlisting}
+On every push that changes \code{book/}, GitHub Actions builds the PDF and keeps it as the artifact
+\code{wrf-gpu-book}; the build fails on any undefined reference or citation.
