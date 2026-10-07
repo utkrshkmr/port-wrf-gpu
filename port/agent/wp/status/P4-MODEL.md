@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_model
-- Last commit: (this commit; through c095f21)
+- Last commit: (this commit; through 855b7bb)
 
 ## Items
 
@@ -13,7 +13,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-NAN | todo | | stats any-NaN reduction; ported with print_3d_stats |
 | K-FM5 | coded | f0eafa1 | Template A copy of lfn_out into lfn |
 | K-FM6 | coded | f0eafa1 | Template A fuel fraction update |
-| K-FSC | coded | (this commit) | Template A scale after sum_2d_cells; island re-enters for this loop only |
+| K-FSC | coded | 855b7bb | Template A scale after sum_2d_cells; island re-enters for this loop only |
 | task 1: hoist set_flags once per domain at init | coded | 56d26ef | call stays in fire_driver_em, gated on fire_ifun_start.eq.1; see Questions |
 | task 2: integer NaN counts in print_2d_stats/print_3d_stats | coded | 42952d8 | print_2d_stats calls print_3d_stats; the count is there |
 | task 3: delete dead post-loop ignition check | coded | 275692c | ifun 3 loop never ran; print_chsum kept |
@@ -23,8 +23,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | task 7: fire_model kernels K-NAN, K-FM5, K-FM6, K-FSC | in-progress | | K-FM5, K-FM6, K-FSC coded; K-NAN waits on print_3d_stats |
 | port fire_model | coded | f0eafa1 | island plus host bracket around fuel init |
 | port fire_driver_em | coded | c095f21 | round-trip island; does not hold the device |
-| port fire_driver_phys | coded | (this commit) | round-trip, then re-enter around K-FSC |
-| port set_flags | todo | | |
+| port fire_driver_phys | coded | 855b7bb | round-trip, then re-enter around K-FSC |
+| port set_flags | coded | (this commit) | 0 arrays; call check 99901; world flag restored before return |
 | port fire_driver_em_init | todo | | |
 | port fire_driver_em_step | todo | | |
 | port print_2d_stats | todo | | |
@@ -52,4 +52,5 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Task 6: after the `fp%` pointer assignments, `enter data copyin(fp)` then `attach` of vx, vy, zsf, dzdxf, dzdyf, bbb, betafl, phiwc, r_0, fgip, ischap, iboros, fmc_g. Before return, `detach` those components and `delete(fp)`. `fp%fuel_time` is never associated, so it is not attached. Commit fb22d22.
 - fire_model: pasted the `R_FIRE_MODEL` island at the first executable and before `END`. K-FM5 and K-FM6 are unchanged loops with a Template A directive. The ifun 2 slope check is a message-only max reduction (`present(fp)`). Observed perimeter, constant heat, `fire_print_msg.ge.1`, and `run_fuel_moisture` call `wrf_error_fatal` before the island. `set_nfuel_cat`, `set_fire_params`, and `init_no_fire` have no route, so the island downloads around those three calls and uploads again. `DEBUG_OUT` array dumps are host-only. kernel_lint: 3 kernels, 0 errors. Commit f0eafa1.
 - fire_driver_em: pasted the island, then the exit immediately, then `gpu_isl = .FALSE.` so the exit before `END` is a no-op. A held island would hide `fire_model` host fuel setup and the ifun 1 and 2 writers that have no route. Moisture run, moisture interpolation, moisture only, and `tracer_opt.eq.3` stop before the island. Commit c095f21.
-- fire_driver_phys: same round trip at entry, so ifun 1 and 2 host writers see host data. After `sum_2d_cells`, the island re-enters for K-FSC only, then exits before `print_2d_stats`. Observed perimeter, fuel moisture, and moisture advance stop before the island. kernel_lint: 1 kernel, 0 errors.
+- fire_driver_phys: same round trip at entry, so ifun 1 and 2 host writers see host data. After `sum_2d_cells`, the island re-enters for K-FSC only, then exits before `print_2d_stats`. Observed perimeter, fuel moisture, and moisture advance stop before the island. kernel_lint: 1 kernel, 0 errors. Commit 855b7bb.
+- set_flags: pasted the empty-array island and call check label 99901. The routine only copies scalars, then uploads them. The exit restores `gpu_world_host` before return, so the caller still sees host data.

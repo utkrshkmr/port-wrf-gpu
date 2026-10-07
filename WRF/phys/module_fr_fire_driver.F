@@ -1814,11 +1814,28 @@ end subroutine check_fmesh
 !*****************************
 !
 subroutine set_flags(config_flags)
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_FIRE_MODEL
+USE module_gpu_callcheck
 implicit none
 TYPE (grid_config_rec_type) , INTENT(IN)          :: config_flags
 ! copy flags from wrf to module_fr_fire_util
 ! for instructions how to add a flag see the top of module_fr_fire_util.F
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_FIRE_MODEL)) THEN
+      END IF
+      gpu_isl = gpu_island(R_FIRE_MODEL)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+        ELSE
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
 fire_print_msg          = config_flags%fire_print_msg
 fire_print_file         = config_flags%fire_print_file
@@ -1851,6 +1868,15 @@ fire_fmc_read           = config_flags%fire_fmc_read
 
 #ifdef WRF_GPU
 call print_2d_stats_gpu_flag_upload()
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+        ELSE
+        END IF
+      END IF
+      IF (gpu_cc_active(R_FIRE_MODEL)) THEN
+        IF (gpu_cc_next(R_FIRE_MODEL)) GOTO 99901
+      END IF
 #endif
 
 end subroutine set_flags
