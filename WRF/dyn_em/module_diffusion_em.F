@@ -4025,6 +4025,8 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 ! Begin declarations.
 
    USE module_gpu_work, ONLY : work_p2_g3_var_mix
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_VERTICAL_DIFFUSION_2
+   USE module_gpu_callcheck
 
    IMPLICIT NONE
 
@@ -4103,6 +4105,12 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: var_mix
 
+#ifdef WRF_GPU
+   LOGICAL :: gpu_isl
+   INTEGER :: m_opt_l, sfs_opt_l, use_theta_m_l
+   INTEGER :: p_m13_l, p_m23_l, p_qv_l
+#endif
+
    INTEGER :: im, i,j,k
    INTEGER :: i_start, i_end, j_start, j_end
 
@@ -4123,6 +4131,51 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
 ! End declarations.
 !-----------------------------------------------------------------------
+
+#ifdef WRF_GPU
+   IF (config_flags%isfflx /= 1) THEN
+      CALL wrf_error_fatal('vertical_diffusion_2: isfflx not ported to the GPU')
+   END IF
+99901 CONTINUE
+      IF (gpu_cc_start(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_save_r(1, ru_tendf, SIZE(ru_tendf,KIND=8))
+        CALL gpu_cc_save_r(2, rv_tendf, SIZE(rv_tendf,KIND=8))
+        CALL gpu_cc_save_r(3, rw_tendf, SIZE(rw_tendf,KIND=8))
+        CALL gpu_cc_save_r(4, rt_tendf, SIZE(rt_tendf,KIND=8))
+        CALL gpu_cc_save_r(5, tke_tendf, SIZE(tke_tendf,KIND=8))
+        CALL gpu_cc_save_r(6, moist_tendf, SIZE(moist_tendf,KIND=8))
+        CALL gpu_cc_save_r(7, chem_tendf, SIZE(chem_tendf,KIND=8))
+        CALL gpu_cc_save_r(8, scalar_tendf, SIZE(scalar_tendf,KIND=8))
+        CALL gpu_cc_save_r(9, tracer_tendf, SIZE(tracer_tendf,KIND=8))
+        CALL gpu_cc_save_r(10, thp, SIZE(thp,KIND=8))
+        CALL gpu_cc_save_r(11, nba_mij, SIZE(nba_mij,KIND=8))
+        CALL gpu_cc_save_r(12, moist, SIZE(moist,KIND=8))
+        CALL gpu_cc_save_r(13, chem, SIZE(chem,KIND=8))
+        CALL gpu_cc_save_r(14, hfx, SIZE(hfx,KIND=8))
+        CALL gpu_cc_save_r(15, qfx, SIZE(qfx,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_VERTICAL_DIFFUSION_2)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ru_tendf, rv_tendf, rw_tendf, rt_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, u_2, v_2, thp, u_base, v_base, t_base, qv_base, tke, theta, &
+!$acc&   defor13, defor23, defor33, nba_mij, div, moist, chem, scalar, tracer, xkmv, xkhv, xkmh, &
+!$acc&   fnm, fnp, dn, dnw, rdz, rdzw, hfx, qfx, ust, rho)
+        ELSE
+!$acc update self(ru_tendf, rv_tendf, rw_tendf, rt_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, u_2, v_2, thp, u_base, v_base, t_base, qv_base, tke, theta, &
+!$acc&   defor13, defor23, defor33, nba_mij, div, moist, chem, scalar, tracer, xkmv, xkhv, xkmh, &
+!$acc&   fnm, fnp, dn, dnw, rdz, rdzw, hfx, qfx, ust, rho)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+   m_opt_l = config_flags%m_opt
+   sfs_opt_l = config_flags%sfs_opt
+   use_theta_m_l = config_flags%use_theta_m
+   p_m13_l = p_m13
+   p_m23_l = p_m23
+   p_qv_l = p_qv
+#endif
 
    i_start = its
    i_end   = MIN(ite,ide-1)
@@ -4207,6 +4260,54 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
     ENDDO
 
   CASE (1,2) ! ustar computed from surface routine
+#ifdef WRF_GPU
+! K-VD2-U: surface momentum flux u (Template A, 2D)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(u_2, v_2, ust, ru_tendf, rho, dnw, nba_mij) &
+!$acc& firstprivate(j_start, j_end, i_start, ite, kts, m_opt_l, sfs_opt_l, p_m13_l) &
+!$acc& private(V0_u, tao_xz, ustar)
+    DO j = j_start, j_end
+    DO i = i_start, ite
+       V0_u=0.
+       tao_xz=0.
+       V0_u=    sqrt((u_2(i,kts,j)**2) +         &
+                        (((v_2(i  ,kts,j  )+          &
+                           v_2(i  ,kts,j+1)+          &
+                           v_2(i-1,kts,j  )+          &
+                           v_2(i-1,kts,j+1))/4)**2))+epsilon
+       ustar=0.5*(ust(i,j)+ust(i-1,j))
+
+       tao_xz=ustar*ustar*u_2(i,kts,j)/V0_u
+       ru_tendf(i,kts,j)=ru_tendf(i,kts,j) +   g*tao_xz*0.5*(rho(i,kts,j)+rho(i-1,kts,j))/dnw(kts)
+       IF ( (m_opt_l .EQ. 1) .OR. (sfs_opt_l .GT. 0) ) THEN
+          nba_mij(i,kts,j,p_m13_l) = -tao_xz
+       ENDIF
+    ENDDO
+    ENDDO
+! K-VD2-V: surface momentum flux v (Template A, 2D)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(u_2, v_2, ust, rv_tendf, rho, dnw, nba_mij) &
+!$acc& firstprivate(j_start, jte, i_start, i_end, kts, m_opt_l, sfs_opt_l, p_m23_l) &
+!$acc& private(V0_v, tao_yz, ustar)
+    DO j = j_start, jte
+    DO i = i_start, i_end
+       V0_v=0.
+       tao_yz=0.
+       V0_v=    sqrt((v_2(i,kts,j)**2) +         &
+                        (((u_2(i  ,kts,j  )+          &
+                           u_2(i  ,kts,j-1)+          &
+                           u_2(i+1,kts,j  )+          &
+                           u_2(i+1,kts,j-1))/4)**2))+epsilon
+       ustar=0.5*(ust(i,j)+ust(i,j-1))
+
+       tao_yz=ustar*ustar*v_2(i,kts,j)/V0_v
+       rv_tendf(i,kts,j)=rv_tendf(i,kts,j) +   g*tao_yz*0.5*(rho(i,kts,j)+rho(i,kts,j-1))/dnw(kts)
+       IF ( (m_opt_l .EQ. 1) .OR. (sfs_opt_l .GT. 0) ) THEN
+          nba_mij(i,kts,j,p_m23_l) = -tao_yz
+       ENDIF
+    ENDDO
+    ENDDO
+#else
     DO j = j_start, j_end
     DO i = i_start, ite
        V0_u=0.
@@ -4244,6 +4345,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
        ENDIF
     ENDDO
     ENDDO
+#endif
 
   CASE DEFAULT
     CALL wrf_error_fatal( 'isfflx value invalid for diff_opt=2' )
@@ -4256,6 +4358,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    IF ( config_flags%mix_full_fields ) THEN
 
+! K-VD2-THF: var_mix fill, full theta (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(var_mix, thp) &
+!$acc& firstprivate(jts, jte, jde, kts, kte, its, ite, ide)
      DO j=jts,min(jte,jde-1)
      DO k=kts,kte-1
      DO i=its,min(ite,ide-1)
@@ -4266,6 +4372,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    ELSE
 
+! K-VD2-TH: var_mix fill, theta perturbation (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(var_mix, thp, t_base) &
+!$acc& firstprivate(jts, jte, jde, kts, kte, its, ite, ide)
      DO j=jts,min(jte,jde-1)
      DO k=kts,kte-1
      DO i=its,min(ite,ide-1)
@@ -4309,6 +4419,29 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
     ENDDO
 
   CASE (1) ! use surface heat flux computed from surface routine
+#ifdef WRF_GPU
+! K-VD2-HF: surface heat flux (Template A, 2D)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(moist, hfx, rt_tendf, dnw, theta, qfx) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, kts, p_qv_l, use_theta_m_l) &
+!$acc& private(cpm, heat_flux)
+    DO j = j_start, j_end
+    DO i = i_start, i_end
+
+       cpm = cp * (1. + 0.8 * moist(i,kts,j,p_qv_l))
+       heat_flux = hfx(i,j)/cpm
+       if(use_theta_m_l == 1)THEN
+         rt_tendf(i,kts,j)=rt_tendf(i,kts,j)  &
+             -g*heat_flux*(1.+rvovrd*moist(i,kts,j,p_qv_l))/dnw(kts) &
+             -g*1.61*theta(i,kts,j)*qfx(i,j)/dnw(kts)
+       ELSE
+         rt_tendf(i,kts,j)=rt_tendf(i,kts,j)  &
+             -g*heat_flux/dnw(kts)
+       ENDIF
+
+    ENDDO
+    ENDDO
+#else
     DO j = j_start, j_end
     DO i = i_start, i_end
 
@@ -4325,6 +4458,7 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
     ENDDO
     ENDDO
+#endif
 
   CASE DEFAULT
     CALL wrf_error_fatal( 'isfflx value invalid for diff_opt=2' )
@@ -4352,6 +4486,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
        IF ( (.not. config_flags%mix_full_fields) .and. (im == P_QV) ) THEN
 
+! K-VD2-QV: var_mix fill, water vapor (Template A). Species loop stays on the host.
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(var_mix, moist, qv_base) &
+!$acc& firstprivate(jts, jte, jde, kts, kte, its, ite, ide, im)
          DO j=jts,min(jte,jde-1)
          DO k=kts,kte-1
          DO i=its,min(ite,ide-1)
@@ -4362,6 +4500,10 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
        ELSE
 
+! K-VD2-QM: var_mix fill, other moist species (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(var_mix, moist) &
+!$acc& firstprivate(jts, jte, jde, kts, kte, its, ite, ide, im)
          DO j=jts,min(jte,jde-1)
          DO k=kts,kte-1
          DO i=its,min(ite,ide-1)
@@ -4392,6 +4534,11 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 ! do nothing
   CASE (1,2) ! with surface moisture flux
     IF ( im == P_QV ) THEN
+! K-VD2-QF: surface moisture flux (Template A, 2D)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(qfx, moist_tendf, dnw) &
+!$acc& firstprivate(j_start, j_end, i_start, i_end, kts, im) &
+!$acc& private(moist_flux)
        DO j = j_start, j_end
        DO i = i_start, i_end
           moist_flux = qfx(i,j)
@@ -4460,6 +4607,52 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
      ENDDO scalar_loop
 
    ENDIF
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(ru_tendf, rv_tendf, rw_tendf, rt_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, nba_mij, moist, chem, hfx, qfx)
+        ELSE
+!$acc update device(ru_tendf, rv_tendf, rw_tendf, rt_tendf, tke_tendf, moist_tendf, chem_tendf, &
+!$acc&   scalar_tendf, tracer_tendf, thp, nba_mij, moist, chem, hfx, qfx)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_done_r(1, ru_tendf, SIZE(ru_tendf,KIND=8), 'ru_tendf', &
+          LBOUND(ru_tendf), UBOUND(ru_tendf))
+        CALL gpu_cc_done_r(2, rv_tendf, SIZE(rv_tendf,KIND=8), 'rv_tendf', &
+          LBOUND(rv_tendf), UBOUND(rv_tendf))
+        CALL gpu_cc_done_r(3, rw_tendf, SIZE(rw_tendf,KIND=8), 'rw_tendf', &
+          LBOUND(rw_tendf), UBOUND(rw_tendf))
+        CALL gpu_cc_done_r(4, rt_tendf, SIZE(rt_tendf,KIND=8), 'rt_tendf', &
+          LBOUND(rt_tendf), UBOUND(rt_tendf))
+        CALL gpu_cc_done_r(5, tke_tendf, SIZE(tke_tendf,KIND=8), 'tke_tendf', &
+          LBOUND(tke_tendf), UBOUND(tke_tendf))
+        CALL gpu_cc_done_r(6, moist_tendf, SIZE(moist_tendf,KIND=8), 'moist_tendf', &
+          LBOUND(moist_tendf), UBOUND(moist_tendf))
+        CALL gpu_cc_done_r(7, chem_tendf, SIZE(chem_tendf,KIND=8), 'chem_tendf', &
+          LBOUND(chem_tendf), UBOUND(chem_tendf))
+        CALL gpu_cc_done_r(8, scalar_tendf, SIZE(scalar_tendf,KIND=8), 'scalar_tendf', &
+          LBOUND(scalar_tendf), UBOUND(scalar_tendf))
+        CALL gpu_cc_done_r(9, tracer_tendf, SIZE(tracer_tendf,KIND=8), 'tracer_tendf', &
+          LBOUND(tracer_tendf), UBOUND(tracer_tendf))
+        CALL gpu_cc_done_r(10, thp, SIZE(thp,KIND=8), 'thp', &
+          LBOUND(thp), UBOUND(thp))
+        CALL gpu_cc_done_r(11, nba_mij, SIZE(nba_mij,KIND=8), 'nba_mij', &
+          LBOUND(nba_mij), UBOUND(nba_mij))
+        CALL gpu_cc_done_r(12, moist, SIZE(moist,KIND=8), 'moist', &
+          LBOUND(moist), UBOUND(moist))
+        CALL gpu_cc_done_r(13, chem, SIZE(chem,KIND=8), 'chem', &
+          LBOUND(chem), UBOUND(chem))
+        CALL gpu_cc_done_r(14, hfx, SIZE(hfx,KIND=8), 'hfx', &
+          LBOUND(hfx), UBOUND(hfx))
+        CALL gpu_cc_done_r(15, qfx, SIZE(qfx,KIND=8), 'qfx', &
+          LBOUND(qfx), UBOUND(qfx))
+        IF (gpu_cc_next(R_VERTICAL_DIFFUSION_2)) GOTO 99901
+      END IF
+#endif
 
 END SUBROUTINE vertical_diffusion_2
 
