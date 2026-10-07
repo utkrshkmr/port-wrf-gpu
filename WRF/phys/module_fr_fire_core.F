@@ -1999,6 +1999,8 @@ end subroutine tign_update
 subroutine calc_flame_length(ifts,ifte,jfts,jfte, &
                              ifms,ifme,jfms,jfme, &
                              ros,iboros,flame_length,ros_fl,fire_area)
+USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_CALC_FLAME_LENGTH
+USE module_gpu_callcheck
 
 ! Diagnoses flame length
 ! Domingo Munoz-Esparza, NCAR/RAL
@@ -2010,7 +2012,31 @@ real,dimension(ifms:ifme,jfms:jfme),intent(in)::ros,iboros,fire_area
 real,dimension(ifms:ifme,jfms:jfme),intent(out)::flame_length,ros_fl
 ! local
 integer::i,j
+#ifdef WRF_GPU
+      LOGICAL :: gpu_isl
+#endif
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_CALC_FLAME_LENGTH)) THEN
+        CALL gpu_cc_save_r(1, flame_length, SIZE(flame_length,KIND=8))
+        CALL gpu_cc_save_r(2, ros_fl, SIZE(ros_fl,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CALC_FLAME_LENGTH)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(ros, iboros, flame_length, ros_fl, fire_area)
+        ELSE
+!$acc update self(ros, iboros, flame_length, ros_fl, fire_area)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+
+! K-FLAME: flame length from Byram (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_CALC_FLAME_LENGTH)) default(none) &
+!$acc& present(ros, iboros, flame_length, ros_fl, fire_area) &
+!$acc& firstprivate(jfts, jfte, ifts, ifte)
 do j=jfts,jfte
   do i=ifts,ifte
     if (fire_area(i,j).gt.0.0 .AND. fire_area(i,j).lt.1.0) then
@@ -2023,6 +2049,23 @@ do j=jfts,jfte
   enddo
 enddo
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(flame_length, ros_fl)
+        ELSE
+!$acc update device(flame_length, ros_fl)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CALC_FLAME_LENGTH)) THEN
+        CALL gpu_cc_done_r(1, flame_length, SIZE(flame_length,KIND=8), 'flame_length', &
+          LBOUND(flame_length), UBOUND(flame_length))
+        CALL gpu_cc_done_r(2, ros_fl, SIZE(ros_fl,KIND=8), 'ros_fl', &
+          LBOUND(ros_fl), UBOUND(ros_fl))
+        IF (gpu_cc_next(R_CALC_FLAME_LENGTH)) GOTO 99901
+      END IF
+#endif
 end subroutine calc_flame_length
 
 !

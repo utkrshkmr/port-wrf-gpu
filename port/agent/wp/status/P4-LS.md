@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_ls
-- Last commit: (this commit) WP P4-LS: port tign_update
+- Last commit: (this commit) WP P4-LS: port calc_flame_length
 
 ## Items
 
@@ -14,9 +14,9 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-TLS | coded | 9cb0383 | One thread per point. reduction(max:tbound); reciprocal on the host. |
 | K-PLS-1..3 | coded | 14c3810 | Template A, three kernels in source order (dt/3, dt/2, dt). tend is present. |
 | K-ROS | coded | 4ffbddb | !$acc routine seq. No island and no call check. fp% references unchanged. |
-| K-TIGN-1 | coded | (this commit) | Template A on the ignition-time loop. |
-| K-TIGN-G | coded | (this commit) | Two integer any-reductions; host repeats the original crash loops if any point is burning in the guard. |
-| K-FLAME | todo | |  |
+| K-TIGN-1 | coded | c7784bc | Template A on the ignition-time loop. |
+| K-TIGN-G | coded | c7784bc | Two integer any-reductions; host repeats the original crash loops if any point is burning in the guard. |
+| K-FLAME | coded | (this commit) | Template A. rp_pow(..., 0.46) unchanged. |
 | K-RI-0 | todo | |  |
 | K-ALR | todo | |  |
 | K-RI-F | todo | |  |
@@ -43,3 +43,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Ported `tend_ls` (K-TLS): one kernel per point for `fire_upwinding=9` and `fire_upwind_split=0`. `reduction(max:tbound)` then `tbound=1/(tbound+tol)` on the host. `! island of R_FIRE_ROS in tend_ls` next to the kernel. Not compiled or tested (code-only).
 - Ported `fire_ros` (K-ROS): `!$acc routine seq`, called from `tend_ls`. No island, no call check, signatures and `fp%` references unchanged. The `ros_max` cap is copied verbatim. Not compiled or tested (code-only).
 - Ported `tign_update` (K-TIGN-1, K-TIGN-G): Template A on the ignition loop. Guard strips are integer any-reductions; a set flag reruns the original host loops, which crash with the original message. Not compiled or tested (code-only).
+- Ported `calc_flame_length` (K-FLAME): Template A on the 2D loop. `rp_pow` call unchanged. Not compiled or tested (code-only).
