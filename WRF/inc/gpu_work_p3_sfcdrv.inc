@@ -37,3 +37,35 @@
    CALL gpu_work_check_r(work_p3_sfcdrv_u_phytmp, "work_p3_sfcdrv_u_phytmp", nwork, nbad)
    CALL gpu_work_check_r(work_p3_sfcdrv_v_phytmp, "work_p3_sfcdrv_v_phytmp", nwork, nbad)
 #endif
+
+! GPU view only: 2D automatics of surface_driver that the kernels and the
+! device callees SFCLAYREV, lsm, seaice_noah and SFCDIAGS receive
+! (QGH, CHS, CQS, CPM, CHS2, CQS2, IRRIGATION_CHANNEL).
+! The CPU view keeps the automatic arrays. Shape (ims:ime, jms:jme) maps onto n2d.
+#ifdef WRF_GPU
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_qgh(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_chs(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_cqs(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_cpm(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_chs2(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_cqs2(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_sfcdrv_irrigation_channel(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_qgh, n2d, "work_p3_sfcdrv_qgh")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_chs, n2d, "work_p3_sfcdrv_chs")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_cqs, n2d, "work_p3_sfcdrv_cqs")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_cpm, n2d, "work_p3_sfcdrv_cpm")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_chs2, n2d, "work_p3_sfcdrv_chs2")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_cqs2, n2d, "work_p3_sfcdrv_cqs2")
+   CALL gpu_work_alloc_r(work_p3_sfcdrv_irrigation_channel, n2d, "work_p3_sfcdrv_irrigation_channel")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p3_sfcdrv_qgh, "work_p3_sfcdrv_qgh", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_chs, "work_p3_sfcdrv_chs", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_cqs, "work_p3_sfcdrv_cqs", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_cpm, "work_p3_sfcdrv_cpm", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_chs2, "work_p3_sfcdrv_chs2", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_cqs2, "work_p3_sfcdrv_cqs2", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_sfcdrv_irrigation_channel, "work_p3_sfcdrv_irrigation_channel", nwork, nbad)
+#endif
+#endif

@@ -357,6 +357,14 @@ CONTAINS
 
    USE module_model_constants
    USE module_gpu_work, ONLY : work_p3_sfcdrv_u_phytmp, work_p3_sfcdrv_v_phytmp
+#ifdef WRF_GPU
+   USE module_gpu_work, ONLY : work_p3_sfcdrv_qgh, work_p3_sfcdrv_chs,          &
+                               work_p3_sfcdrv_cqs, work_p3_sfcdrv_cpm,          &
+                               work_p3_sfcdrv_chs2, work_p3_sfcdrv_cqs2,        &
+                               work_p3_sfcdrv_irrigation_channel
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_SURFACE_DRIVER
+   USE module_gpu_callcheck
+#endif
 ! *** add new modules of schemes here
    USE module_irrigation
    USE module_sf_sfclay
@@ -1234,7 +1242,15 @@ CONTAINS
    ! P1.7: was automatic (ims:ime, kms:kme, jms:jme)
    REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: v_phytmp
    REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: u_phytmp
+#ifdef WRF_GPU
+   LOGICAL :: gpu_isl
+   INTEGER :: its, ite, jts, jte
+   INTEGER, DIMENSION(num_tiles) :: i_start_h, i_end_h, j_start_h, j_end_h
+#endif
 
+#ifdef WRF_GPU
+   REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: QGH, CHS, CQS, CPM, CHS2, CQS2
+#else
    REAL,       DIMENSION( ims:ime, jms:jme )          ::          &
                                                              QGH, &
                                                              CHS, &
@@ -1242,6 +1258,7 @@ CONTAINS
                                                              CPM, &
                                                             CHS2, &
                                                             CQS2
+#endif
 ! CTSM local variable
    REAL, DIMENSION( ims:ime , jms:jme ) :: xland_ctsm
 ! SSIB local variables
@@ -1463,7 +1480,11 @@ CONTAINS
    real,    optional,  dimension(ims:ime,jms:jme ),intent(inout) :: XLAIDYN
 ! IRRIGATION
    INTEGER :: ihour, jmonth, jday
+#ifdef WRF_GPU
+   REAL, DIMENSION(:,:), POINTER, CONTIGUOUS :: IRRIGATION_CHANNEL
+#else
    REAL, DIMENSION( ims:ime, jms:jme ) :: IRRIGATION_CHANNEL      
+#endif
    REAL, DIMENSION( ims:ime, jms:jme ), INTENT(IN)   , OPTIONAL::   IRRIGATION
    REAL,  INTENT(IN),OPTIONAL::  irr_daily_amount     
    INTEGER, DIMENSION( ims:ime , jms:jme ), INTENT(INOUT),OPTIONAL :: irr_rand_field
@@ -1493,6 +1514,6417 @@ CONTAINS
    ! P1.7: remap the former 3D automatic arrays onto work arrays (both builds).
    u_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_sfcdrv_u_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
    v_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_sfcdrv_v_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+#ifdef WRF_GPU
+   ! GPU-only 2D automatics passed into SFCLAYREV, lsm, seaice_noah and SFCDIAGS.
+   qgh(ims:ime,jms:jme) => work_p3_sfcdrv_qgh(1:(ime-ims+1)*(jme-jms+1))
+   chs(ims:ime,jms:jme) => work_p3_sfcdrv_chs(1:(ime-ims+1)*(jme-jms+1))
+   cqs(ims:ime,jms:jme) => work_p3_sfcdrv_cqs(1:(ime-ims+1)*(jme-jms+1))
+   cpm(ims:ime,jms:jme) => work_p3_sfcdrv_cpm(1:(ime-ims+1)*(jme-jms+1))
+   chs2(ims:ime,jms:jme) => work_p3_sfcdrv_chs2(1:(ime-ims+1)*(jme-jms+1))
+   cqs2(ims:ime,jms:jme) => work_p3_sfcdrv_cqs2(1:(ime-ims+1)*(jme-jms+1))
+   irrigation_channel(ims:ime,jms:jme) => work_p3_sfcdrv_irrigation_channel(1:(ime-ims+1)*(jme-jms+1))
+   DO ij = 1, num_tiles
+      i_start_h(ij) = i_start(ij)
+      i_end_h(ij) = i_end(ij)
+      j_start_h(ij) = j_start(ij)
+      j_end_h(ij) = j_end(ij)
+   END DO
+   ! Unported options stop before the entry island moves the arrays.
+   IF (sf_sfclay_physics .NE. SFCLAYREVSCHEME) &
+      CALL wrf_error_fatal('surface_driver: sf_sfclay_physics not ported to the GPU')
+   IF (sf_surface_physics .NE. LSMSCHEME) &
+      CALL wrf_error_fatal('surface_driver: sf_surface_physics not ported to the GPU')
+   IF (fractional_seaice .NE. 0) &
+      CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+   IF (sst_update .EQ. 1) &
+      CALL wrf_error_fatal('surface_driver: sst_update not ported to the GPU')
+   IF (PRESENT(sst_skin)) THEN
+      IF (sst_skin .EQ. 1) &
+         CALL wrf_error_fatal('surface_driver: sst_skin not ported to the GPU')
+   END IF
+   IF (PRESENT(tmn_update)) THEN
+      IF (tmn_update .EQ. 1) &
+         CALL wrf_error_fatal('surface_driver: tmn_update not ported to the GPU')
+   END IF
+   IF (PRESENT(slope_rad)) THEN
+      IF (slope_rad .EQ. 1) &
+         CALL wrf_error_fatal('surface_driver: slope_rad not ported to the GPU')
+   END IF
+   IF (sf_urban_physics .NE. 0) &
+      CALL wrf_error_fatal('surface_driver: sf_urban_physics not ported to the GPU')
+   IF (sf_surface_mosaic .NE. 0) &
+      CALL wrf_error_fatal('surface_driver: sf_surface_mosaic not ported to the GPU')
+   IF (fasdas .NE. 0) &
+      CALL wrf_error_fatal('surface_driver: fasdas not ported to the GPU')
+   IF (PRESENT(sf_surf_irr_scheme)) THEN
+      IF (sf_surf_irr_scheme .NE. 0) &
+         CALL wrf_error_fatal('surface_driver: sf_surf_irr_scheme not ported to the GPU')
+   END IF
+   IF (isfflx .EQ. 0) &
+      CALL wrf_error_fatal('surface_driver: isfflx=0 not ported to the GPU')
+   IF (distributed_ahe_opt .EQ. 2) &
+      CALL wrf_error_fatal('surface_driver: distributed_ahe_opt not ported to the GPU')
+   IF (LakeModel .EQ. 1) &
+      CALL wrf_error_fatal('surface_driver: LakeModel not ported to the GPU')
+   IF (coupler_on) &
+      CALL wrf_error_fatal('surface_driver: coupler_on not ported to the GPU')
+   IF (pert_noah .AND. multi_perturb .EQ. 1) &
+      CALL wrf_error_fatal('surface_driver: pert_noah not ported to the GPU')
+   IF (.NOT. PRESENT(rainncv) .AND. PRESENT(rainbl)) &
+      CALL wrf_error_fatal('surface_driver: rainbl without rainncv not ported to the GPU')
+#if (EM_CORE==1)
+   IF (PRESENT(grav_settling)) THEN
+      IF (grav_settling .NE. 0) &
+         CALL wrf_error_fatal('surface_driver: grav_settling not ported to the GPU')
+   END IF
+   IF (PRESENT(sf_ocean_physics)) THEN
+      IF (sf_ocean_physics .EQ. OMLSCHEME .OR. sf_ocean_physics .EQ. PWP3DSCHEME) &
+         CALL wrf_error_fatal('surface_driver: sf_ocean_physics not ported to the GPU')
+   END IF
+#endif
+#endif
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_SURFACE_DRIVER)) THEN
+        CALL gpu_cc_save_r0(1, hydro_dt)
+        CALL gpu_cc_save_r(2, sfcheadrt, SIZE(sfcheadrt,KIND=8))
+        CALL gpu_cc_save_r(3, infxsrt, SIZE(infxsrt,KIND=8))
+        CALL gpu_cc_save_r(4, soldrain, SIZE(soldrain,KIND=8))
+        CALL gpu_cc_save_r(5, qtiledrain, SIZE(qtiledrain,KIND=8))
+        CALL gpu_cc_save_r(6, zwatble2d, SIZE(zwatble2d,KIND=8))
+        IF (PRESENT(acgrdflx)) CALL gpu_cc_save_r(7, acgrdflx, SIZE(acgrdflx,KIND=8))
+        IF (PRESENT(achfx)) CALL gpu_cc_save_r(8, achfx, SIZE(achfx,KIND=8))
+        IF (PRESENT(aclhf)) CALL gpu_cc_save_r(9, aclhf, SIZE(aclhf,KIND=8))
+        CALL gpu_cc_save_r(10, acsnom, SIZE(acsnom,KIND=8))
+        CALL gpu_cc_save_r(11, acsnow, SIZE(acsnow,KIND=8))
+        IF (PRESENT(snowfallac)) CALL gpu_cc_save_r(12, snowfallac, SIZE(snowfallac,KIND=8))
+        CALL gpu_cc_save_r(13, akhs, SIZE(akhs,KIND=8))
+        CALL gpu_cc_save_r(14, akms, SIZE(akms,KIND=8))
+        CALL gpu_cc_save_r(15, albedo, SIZE(albedo,KIND=8))
+        CALL gpu_cc_save_r(16, br, SIZE(br,KIND=8))
+        CALL gpu_cc_save_r(17, canwat, SIZE(canwat,KIND=8))
+        CALL gpu_cc_save_r(18, chklowq, SIZE(chklowq,KIND=8))
+        CALL gpu_cc_save_r(19, grdflx, SIZE(grdflx,KIND=8))
+        CALL gpu_cc_save_r(20, gsw, SIZE(gsw,KIND=8))
+        CALL gpu_cc_save_r(21, swdown, SIZE(swdown,KIND=8))
+        CALL gpu_cc_save_r(22, gz1oz0, SIZE(gz1oz0,KIND=8))
+        CALL gpu_cc_save_r(23, hfx, SIZE(hfx,KIND=8))
+        CALL gpu_cc_save_i(24, isltyp, SIZE(isltyp,KIND=8))
+        CALL gpu_cc_save_i(25, ivgtyp, SIZE(ivgtyp,KIND=8))
+        CALL gpu_cc_save_r(26, mavail, SIZE(mavail,KIND=8))
+        CALL gpu_cc_save_r(27, rmol, SIZE(rmol,KIND=8))
+        CALL gpu_cc_save_r(28, pblh, SIZE(pblh,KIND=8))
+        CALL gpu_cc_save_r(29, pshltr, SIZE(pshltr,KIND=8))
+        CALL gpu_cc_save_r(30, fm, SIZE(fm,KIND=8))
+        CALL gpu_cc_save_r(31, fhh, SIZE(fhh,KIND=8))
+        CALL gpu_cc_save_r(32, psih, SIZE(psih,KIND=8))
+        CALL gpu_cc_save_r(33, psim, SIZE(psim,KIND=8))
+        CALL gpu_cc_save_r(34, q10, SIZE(q10,KIND=8))
+        CALL gpu_cc_save_r(35, q2, SIZE(q2,KIND=8))
+        CALL gpu_cc_save_r(36, qfx, SIZE(qfx,KIND=8))
+        CALL gpu_cc_save_r(37, qsfc, SIZE(qsfc,KIND=8))
+        CALL gpu_cc_save_r(38, qshltr, SIZE(qshltr,KIND=8))
+        CALL gpu_cc_save_r(39, qz0, SIZE(qz0,KIND=8))
+        CALL gpu_cc_save_r(40, sfcevp, SIZE(sfcevp,KIND=8))
+        CALL gpu_cc_save_r(41, sfcexc, SIZE(sfcexc,KIND=8))
+        CALL gpu_cc_save_r(42, sfcrunoff, SIZE(sfcrunoff,KIND=8))
+        CALL gpu_cc_save_r(43, acrunoff, SIZE(acrunoff,KIND=8))
+        CALL gpu_cc_save_r(44, smois, SIZE(smois,KIND=8))
+        CALL gpu_cc_save_r(45, smstav, SIZE(smstav,KIND=8))
+        CALL gpu_cc_save_r(46, smstot, SIZE(smstot,KIND=8))
+        CALL gpu_cc_save_r(47, snoalb, SIZE(snoalb,KIND=8))
+        CALL gpu_cc_save_r(48, snow, SIZE(snow,KIND=8))
+        CALL gpu_cc_save_r(49, snowc, SIZE(snowc,KIND=8))
+        CALL gpu_cc_save_r(50, snowh, SIZE(snowh,KIND=8))
+        CALL gpu_cc_save_r(51, smcrel, SIZE(smcrel,KIND=8))
+        CALL gpu_cc_save_r(52, th10, SIZE(th10,KIND=8))
+        CALL gpu_cc_save_r(53, th2, SIZE(th2,KIND=8))
+        CALL gpu_cc_save_r(54, thz0, SIZE(thz0,KIND=8))
+        CALL gpu_cc_save_r(55, tmn, SIZE(tmn,KIND=8))
+        CALL gpu_cc_save_r(56, tshltr, SIZE(tshltr,KIND=8))
+        CALL gpu_cc_save_r(57, tsk, SIZE(tsk,KIND=8))
+        CALL gpu_cc_save_r(58, tslb, SIZE(tslb,KIND=8))
+        IF (PRESENT(tyr)) CALL gpu_cc_save_r(59, tyr, SIZE(tyr,KIND=8))
+        IF (PRESENT(tyra)) CALL gpu_cc_save_r(60, tyra, SIZE(tyra,KIND=8))
+        IF (PRESENT(tdly)) CALL gpu_cc_save_r(61, tdly, SIZE(tdly,KIND=8))
+        IF (PRESENT(tlag)) CALL gpu_cc_save_r(62, tlag, SIZE(tlag,KIND=8))
+        IF (PRESENT(nyear)) CALL gpu_cc_save_i0(63, nyear)
+        IF (PRESENT(nday)) CALL gpu_cc_save_r0(64, nday)
+        CALL gpu_cc_save_r(65, t_phy, SIZE(t_phy,KIND=8))
+        CALL gpu_cc_save_r(66, u10, SIZE(u10,KIND=8))
+        CALL gpu_cc_save_r(67, udrunoff, SIZE(udrunoff,KIND=8))
+        CALL gpu_cc_save_r(68, ust, SIZE(ust,KIND=8))
+        CALL gpu_cc_save_r(69, uz0, SIZE(uz0,KIND=8))
+        CALL gpu_cc_save_r(70, v10, SIZE(v10,KIND=8))
+        CALL gpu_cc_save_r(71, vegfra, SIZE(vegfra,KIND=8))
+        CALL gpu_cc_save_r(72, u10e, SIZE(u10e,KIND=8))
+        CALL gpu_cc_save_r(73, v10e, SIZE(v10e,KIND=8))
+        CALL gpu_cc_save_r(74, uoce, SIZE(uoce,KIND=8))
+        CALL gpu_cc_save_r(75, voce, SIZE(voce,KIND=8))
+        CALL gpu_cc_save_r(76, vz0, SIZE(vz0,KIND=8))
+        CALL gpu_cc_save_r(77, wspd, SIZE(wspd,KIND=8))
+        CALL gpu_cc_save_r(78, xice, SIZE(xice,KIND=8))
+        CALL gpu_cc_save_r(79, xland, SIZE(xland,KIND=8))
+        CALL gpu_cc_save_r(80, znt, SIZE(znt,KIND=8))
+        CALL gpu_cc_save_r(81, albsi, SIZE(albsi,KIND=8))
+        CALL gpu_cc_save_r(82, icedepth, SIZE(icedepth,KIND=8))
+        CALL gpu_cc_save_r(83, snowsi, SIZE(snowsi,KIND=8))
+        CALL gpu_cc_save_r(84, xicem, SIZE(xicem,KIND=8))
+        CALL gpu_cc_save_r(85, ct, SIZE(ct,KIND=8))
+        CALL gpu_cc_save_r(86, tke_pbl, SIZE(tke_pbl,KIND=8))
+        CALL gpu_cc_save_r(87, albbck, SIZE(albbck,KIND=8))
+        CALL gpu_cc_save_r(88, embck, SIZE(embck,KIND=8))
+        CALL gpu_cc_save_r(89, lh, SIZE(lh,KIND=8))
+        CALL gpu_cc_save_r(90, sh2o, SIZE(sh2o,KIND=8))
+        CALL gpu_cc_save_r(91, z0, SIZE(z0,KIND=8))
+        CALL gpu_cc_save_r(92, flqc, SIZE(flqc,KIND=8))
+        CALL gpu_cc_save_r(93, flhc, SIZE(flhc,KIND=8))
+        CALL gpu_cc_save_r(94, psfc, SIZE(psfc,KIND=8))
+        CALL gpu_cc_save_r(95, sst, SIZE(sst,KIND=8))
+        IF (PRESENT(sstsk)) CALL gpu_cc_save_r(96, sstsk, SIZE(sstsk,KIND=8))
+        IF (PRESENT(dtw)) CALL gpu_cc_save_r(97, dtw, SIZE(dtw,KIND=8))
+        IF (PRESENT(t2)) CALL gpu_cc_save_r(98, t2, SIZE(t2,KIND=8))
+        IF (PRESENT(emiss)) CALL gpu_cc_save_r(99, emiss, SIZE(emiss,KIND=8))
+        IF (PRESENT(landusef)) CALL gpu_cc_save_r(100, landusef, SIZE(landusef,KIND=8))
+        IF (PRESENT(soilctop)) CALL gpu_cc_save_r(101, soilctop, SIZE(soilctop,KIND=8))
+        IF (PRESENT(soilcbot)) CALL gpu_cc_save_r(102, soilcbot, SIZE(soilcbot,KIND=8))
+        IF (PRESENT(ra)) CALL gpu_cc_save_r(103, ra, SIZE(ra,KIND=8))
+        IF (PRESENT(rs)) CALL gpu_cc_save_r(104, rs, SIZE(rs,KIND=8))
+        IF (PRESENT(vegf_px)) CALL gpu_cc_save_r(105, vegf_px, SIZE(vegf_px,KIND=8))
+        IF (PRESENT(lai)) CALL gpu_cc_save_r(106, lai, SIZE(lai,KIND=8))
+        IF (PRESENT(imperv)) CALL gpu_cc_save_r(107, imperv, SIZE(imperv,KIND=8))
+        IF (PRESENT(canfra)) CALL gpu_cc_save_r(108, canfra, SIZE(canfra,KIND=8))
+        IF (PRESENT(lai_px)) CALL gpu_cc_save_r(109, lai_px, SIZE(lai_px,KIND=8))
+        IF (PRESENT(wwlt_px)) CALL gpu_cc_save_r(110, wwlt_px, SIZE(wwlt_px,KIND=8))
+        IF (PRESENT(wfc_px)) CALL gpu_cc_save_r(111, wfc_px, SIZE(wfc_px,KIND=8))
+        IF (PRESENT(wsat_px)) CALL gpu_cc_save_r(112, wsat_px, SIZE(wsat_px,KIND=8))
+        IF (PRESENT(clay_px)) CALL gpu_cc_save_r(113, clay_px, SIZE(clay_px,KIND=8))
+        IF (PRESENT(csand_px)) CALL gpu_cc_save_r(114, csand_px, SIZE(csand_px,KIND=8))
+        IF (PRESENT(fmsand_px)) CALL gpu_cc_save_r(115, fmsand_px, SIZE(fmsand_px,KIND=8))
+        IF (PRESENT(isnowxy)) CALL gpu_cc_save_i(116, isnowxy, SIZE(isnowxy,KIND=8))
+        IF (PRESENT(tvxy)) CALL gpu_cc_save_r(117, tvxy, SIZE(tvxy,KIND=8))
+        IF (PRESENT(tgxy)) CALL gpu_cc_save_r(118, tgxy, SIZE(tgxy,KIND=8))
+        IF (PRESENT(canicexy)) CALL gpu_cc_save_r(119, canicexy, SIZE(canicexy,KIND=8))
+        IF (PRESENT(canliqxy)) CALL gpu_cc_save_r(120, canliqxy, SIZE(canliqxy,KIND=8))
+        IF (PRESENT(eahxy)) CALL gpu_cc_save_r(121, eahxy, SIZE(eahxy,KIND=8))
+        IF (PRESENT(tahxy)) CALL gpu_cc_save_r(122, tahxy, SIZE(tahxy,KIND=8))
+        IF (PRESENT(cmxy)) CALL gpu_cc_save_r(123, cmxy, SIZE(cmxy,KIND=8))
+        IF (PRESENT(chxy)) CALL gpu_cc_save_r(124, chxy, SIZE(chxy,KIND=8))
+        IF (PRESENT(fwetxy)) CALL gpu_cc_save_r(125, fwetxy, SIZE(fwetxy,KIND=8))
+        IF (PRESENT(sneqvoxy)) CALL gpu_cc_save_r(126, sneqvoxy, SIZE(sneqvoxy,KIND=8))
+        IF (PRESENT(alboldxy)) CALL gpu_cc_save_r(127, alboldxy, SIZE(alboldxy,KIND=8))
+        IF (PRESENT(qsnowxy)) CALL gpu_cc_save_r(128, qsnowxy, SIZE(qsnowxy,KIND=8))
+        IF (PRESENT(qrainxy)) CALL gpu_cc_save_r(129, qrainxy, SIZE(qrainxy,KIND=8))
+        IF (PRESENT(wslakexy)) CALL gpu_cc_save_r(130, wslakexy, SIZE(wslakexy,KIND=8))
+        IF (PRESENT(zwtxy)) CALL gpu_cc_save_r(131, zwtxy, SIZE(zwtxy,KIND=8))
+        IF (PRESENT(waxy)) CALL gpu_cc_save_r(132, waxy, SIZE(waxy,KIND=8))
+        IF (PRESENT(wtxy)) CALL gpu_cc_save_r(133, wtxy, SIZE(wtxy,KIND=8))
+        IF (PRESENT(tsnoxy)) CALL gpu_cc_save_r(134, tsnoxy, SIZE(tsnoxy,KIND=8))
+        IF (PRESENT(zsnsoxy)) CALL gpu_cc_save_r(135, zsnsoxy, SIZE(zsnsoxy,KIND=8))
+        IF (PRESENT(snicexy)) CALL gpu_cc_save_r(136, snicexy, SIZE(snicexy,KIND=8))
+        IF (PRESENT(snliqxy)) CALL gpu_cc_save_r(137, snliqxy, SIZE(snliqxy,KIND=8))
+        IF (PRESENT(lfmassxy)) CALL gpu_cc_save_r(138, lfmassxy, SIZE(lfmassxy,KIND=8))
+        IF (PRESENT(rtmassxy)) CALL gpu_cc_save_r(139, rtmassxy, SIZE(rtmassxy,KIND=8))
+        IF (PRESENT(stmassxy)) CALL gpu_cc_save_r(140, stmassxy, SIZE(stmassxy,KIND=8))
+        IF (PRESENT(woodxy)) CALL gpu_cc_save_r(141, woodxy, SIZE(woodxy,KIND=8))
+        IF (PRESENT(stblcpxy)) CALL gpu_cc_save_r(142, stblcpxy, SIZE(stblcpxy,KIND=8))
+        IF (PRESENT(fastcpxy)) CALL gpu_cc_save_r(143, fastcpxy, SIZE(fastcpxy,KIND=8))
+        IF (PRESENT(xsaixy)) CALL gpu_cc_save_r(144, xsaixy, SIZE(xsaixy,KIND=8))
+        IF (PRESENT(taussxy)) CALL gpu_cc_save_r(145, taussxy, SIZE(taussxy,KIND=8))
+        IF (PRESENT(grainxy)) CALL gpu_cc_save_r(146, grainxy, SIZE(grainxy,KIND=8))
+        IF (PRESENT(gddxy)) CALL gpu_cc_save_r(147, gddxy, SIZE(gddxy,KIND=8))
+        IF (PRESENT(pgsxy)) CALL gpu_cc_save_i(148, pgsxy, SIZE(pgsxy,KIND=8))
+        IF (PRESENT(t2mvxy)) CALL gpu_cc_save_r(149, t2mvxy, SIZE(t2mvxy,KIND=8))
+        IF (PRESENT(t2mbxy)) CALL gpu_cc_save_r(150, t2mbxy, SIZE(t2mbxy,KIND=8))
+        IF (PRESENT(q2mvxy)) CALL gpu_cc_save_r(151, q2mvxy, SIZE(q2mvxy,KIND=8))
+        IF (PRESENT(q2mbxy)) CALL gpu_cc_save_r(152, q2mbxy, SIZE(q2mbxy,KIND=8))
+        IF (PRESENT(tradxy)) CALL gpu_cc_save_r(153, tradxy, SIZE(tradxy,KIND=8))
+        IF (PRESENT(neexy)) CALL gpu_cc_save_r(154, neexy, SIZE(neexy,KIND=8))
+        IF (PRESENT(gppxy)) CALL gpu_cc_save_r(155, gppxy, SIZE(gppxy,KIND=8))
+        IF (PRESENT(nppxy)) CALL gpu_cc_save_r(156, nppxy, SIZE(nppxy,KIND=8))
+        IF (PRESENT(fvegxy)) CALL gpu_cc_save_r(157, fvegxy, SIZE(fvegxy,KIND=8))
+        IF (PRESENT(runsfxy)) CALL gpu_cc_save_r(158, runsfxy, SIZE(runsfxy,KIND=8))
+        IF (PRESENT(runsbxy)) CALL gpu_cc_save_r(159, runsbxy, SIZE(runsbxy,KIND=8))
+        IF (PRESENT(ecanxy)) CALL gpu_cc_save_r(160, ecanxy, SIZE(ecanxy,KIND=8))
+        IF (PRESENT(edirxy)) CALL gpu_cc_save_r(161, edirxy, SIZE(edirxy,KIND=8))
+        IF (PRESENT(etranxy)) CALL gpu_cc_save_r(162, etranxy, SIZE(etranxy,KIND=8))
+        IF (PRESENT(fsaxy)) CALL gpu_cc_save_r(163, fsaxy, SIZE(fsaxy,KIND=8))
+        IF (PRESENT(firaxy)) CALL gpu_cc_save_r(164, firaxy, SIZE(firaxy,KIND=8))
+        IF (PRESENT(aparxy)) CALL gpu_cc_save_r(165, aparxy, SIZE(aparxy,KIND=8))
+        IF (PRESENT(psnxy)) CALL gpu_cc_save_r(166, psnxy, SIZE(psnxy,KIND=8))
+        IF (PRESENT(savxy)) CALL gpu_cc_save_r(167, savxy, SIZE(savxy,KIND=8))
+        IF (PRESENT(sagxy)) CALL gpu_cc_save_r(168, sagxy, SIZE(sagxy,KIND=8))
+        IF (PRESENT(rssunxy)) CALL gpu_cc_save_r(169, rssunxy, SIZE(rssunxy,KIND=8))
+        IF (PRESENT(rsshaxy)) CALL gpu_cc_save_r(170, rsshaxy, SIZE(rsshaxy,KIND=8))
+        IF (PRESENT(bgapxy)) CALL gpu_cc_save_r(171, bgapxy, SIZE(bgapxy,KIND=8))
+        IF (PRESENT(wgapxy)) CALL gpu_cc_save_r(172, wgapxy, SIZE(wgapxy,KIND=8))
+        IF (PRESENT(tgvxy)) CALL gpu_cc_save_r(173, tgvxy, SIZE(tgvxy,KIND=8))
+        IF (PRESENT(tgbxy)) CALL gpu_cc_save_r(174, tgbxy, SIZE(tgbxy,KIND=8))
+        IF (PRESENT(chvxy)) CALL gpu_cc_save_r(175, chvxy, SIZE(chvxy,KIND=8))
+        IF (PRESENT(chbxy)) CALL gpu_cc_save_r(176, chbxy, SIZE(chbxy,KIND=8))
+        IF (PRESENT(shgxy)) CALL gpu_cc_save_r(177, shgxy, SIZE(shgxy,KIND=8))
+        IF (PRESENT(shcxy)) CALL gpu_cc_save_r(178, shcxy, SIZE(shcxy,KIND=8))
+        IF (PRESENT(shbxy)) CALL gpu_cc_save_r(179, shbxy, SIZE(shbxy,KIND=8))
+        IF (PRESENT(evgxy)) CALL gpu_cc_save_r(180, evgxy, SIZE(evgxy,KIND=8))
+        IF (PRESENT(evbxy)) CALL gpu_cc_save_r(181, evbxy, SIZE(evbxy,KIND=8))
+        IF (PRESENT(ghvxy)) CALL gpu_cc_save_r(182, ghvxy, SIZE(ghvxy,KIND=8))
+        IF (PRESENT(ghbxy)) CALL gpu_cc_save_r(183, ghbxy, SIZE(ghbxy,KIND=8))
+        IF (PRESENT(irgxy)) CALL gpu_cc_save_r(184, irgxy, SIZE(irgxy,KIND=8))
+        IF (PRESENT(ircxy)) CALL gpu_cc_save_r(185, ircxy, SIZE(ircxy,KIND=8))
+        IF (PRESENT(irbxy)) CALL gpu_cc_save_r(186, irbxy, SIZE(irbxy,KIND=8))
+        IF (PRESENT(trxy)) CALL gpu_cc_save_r(187, trxy, SIZE(trxy,KIND=8))
+        IF (PRESENT(evcxy)) CALL gpu_cc_save_r(188, evcxy, SIZE(evcxy,KIND=8))
+        IF (PRESENT(chleafxy)) CALL gpu_cc_save_r(189, chleafxy, SIZE(chleafxy,KIND=8))
+        IF (PRESENT(chucxy)) CALL gpu_cc_save_r(190, chucxy, SIZE(chucxy,KIND=8))
+        IF (PRESENT(chv2xy)) CALL gpu_cc_save_r(191, chv2xy, SIZE(chv2xy,KIND=8))
+        IF (PRESENT(chb2xy)) CALL gpu_cc_save_r(192, chb2xy, SIZE(chb2xy,KIND=8))
+        IF (PRESENT(chstarxy)) CALL gpu_cc_save_r(193, chstarxy, SIZE(chstarxy,KIND=8))
+        IF (PRESENT(qintsxy)) CALL gpu_cc_save_r(194, qintsxy, SIZE(qintsxy,KIND=8))
+        IF (PRESENT(qintrxy)) CALL gpu_cc_save_r(195, qintrxy, SIZE(qintrxy,KIND=8))
+        IF (PRESENT(qdripsxy)) CALL gpu_cc_save_r(196, qdripsxy, SIZE(qdripsxy,KIND=8))
+        IF (PRESENT(qdriprxy)) CALL gpu_cc_save_r(197, qdriprxy, SIZE(qdriprxy,KIND=8))
+        IF (PRESENT(qthrosxy)) CALL gpu_cc_save_r(198, qthrosxy, SIZE(qthrosxy,KIND=8))
+        IF (PRESENT(qthrorxy)) CALL gpu_cc_save_r(199, qthrorxy, SIZE(qthrorxy,KIND=8))
+        IF (PRESENT(qsnsubxy)) CALL gpu_cc_save_r(200, qsnsubxy, SIZE(qsnsubxy,KIND=8))
+        IF (PRESENT(qsnfroxy)) CALL gpu_cc_save_r(201, qsnfroxy, SIZE(qsnfroxy,KIND=8))
+        IF (PRESENT(qsubcxy)) CALL gpu_cc_save_r(202, qsubcxy, SIZE(qsubcxy,KIND=8))
+        IF (PRESENT(qfrocxy)) CALL gpu_cc_save_r(203, qfrocxy, SIZE(qfrocxy,KIND=8))
+        IF (PRESENT(qevacxy)) CALL gpu_cc_save_r(204, qevacxy, SIZE(qevacxy,KIND=8))
+        IF (PRESENT(qdewcxy)) CALL gpu_cc_save_r(205, qdewcxy, SIZE(qdewcxy,KIND=8))
+        IF (PRESENT(qfrzcxy)) CALL gpu_cc_save_r(206, qfrzcxy, SIZE(qfrzcxy,KIND=8))
+        IF (PRESENT(qmeltcxy)) CALL gpu_cc_save_r(207, qmeltcxy, SIZE(qmeltcxy,KIND=8))
+        IF (PRESENT(qsnbotxy)) CALL gpu_cc_save_r(208, qsnbotxy, SIZE(qsnbotxy,KIND=8))
+        IF (PRESENT(pondingxy)) CALL gpu_cc_save_r(209, pondingxy, SIZE(pondingxy,KIND=8))
+        IF (PRESENT(pahxy)) CALL gpu_cc_save_r(210, pahxy, SIZE(pahxy,KIND=8))
+        IF (PRESENT(pahgxy)) CALL gpu_cc_save_r(211, pahgxy, SIZE(pahgxy,KIND=8))
+        IF (PRESENT(pahvxy)) CALL gpu_cc_save_r(212, pahvxy, SIZE(pahvxy,KIND=8))
+        IF (PRESENT(pahbxy)) CALL gpu_cc_save_r(213, pahbxy, SIZE(pahbxy,KIND=8))
+        IF (PRESENT(qmeltxy)) CALL gpu_cc_save_r(214, qmeltxy, SIZE(qmeltxy,KIND=8))
+        IF (PRESENT(fpicexy)) CALL gpu_cc_save_r(215, fpicexy, SIZE(fpicexy,KIND=8))
+        IF (PRESENT(rainlsm)) CALL gpu_cc_save_r(216, rainlsm, SIZE(rainlsm,KIND=8))
+        IF (PRESENT(snowlsm)) CALL gpu_cc_save_r(217, snowlsm, SIZE(snowlsm,KIND=8))
+        IF (PRESENT(forctlsm)) CALL gpu_cc_save_r(218, forctlsm, SIZE(forctlsm,KIND=8))
+        IF (PRESENT(forcqlsm)) CALL gpu_cc_save_r(219, forcqlsm, SIZE(forcqlsm,KIND=8))
+        IF (PRESENT(forcplsm)) CALL gpu_cc_save_r(220, forcplsm, SIZE(forcplsm,KIND=8))
+        IF (PRESENT(forczlsm)) CALL gpu_cc_save_r(221, forczlsm, SIZE(forczlsm,KIND=8))
+        IF (PRESENT(forcwlsm)) CALL gpu_cc_save_r(222, forcwlsm, SIZE(forcwlsm,KIND=8))
+        IF (PRESENT(acc_ssoil)) CALL gpu_cc_save_r(223, acc_ssoil, SIZE(acc_ssoil,KIND=8))
+        IF (PRESENT(acc_qinsur)) CALL gpu_cc_save_r(224, acc_qinsur, SIZE(acc_qinsur,KIND=8))
+        IF (PRESENT(acc_qseva)) CALL gpu_cc_save_r(225, acc_qseva, SIZE(acc_qseva,KIND=8))
+        IF (PRESENT(acc_etrani)) CALL gpu_cc_save_r(226, acc_etrani, SIZE(acc_etrani,KIND=8))
+        IF (PRESENT(eflxbxy)) CALL gpu_cc_save_r(227, eflxbxy, SIZE(eflxbxy,KIND=8))
+        IF (PRESENT(soilenergy)) CALL gpu_cc_save_r(228, soilenergy, SIZE(soilenergy,KIND=8))
+        IF (PRESENT(snowenergy)) CALL gpu_cc_save_r(229, snowenergy, SIZE(snowenergy,KIND=8))
+        IF (PRESENT(canhsxy)) CALL gpu_cc_save_r(230, canhsxy, SIZE(canhsxy,KIND=8))
+        IF (PRESENT(acc_dwaterxy)) CALL gpu_cc_save_r(231, acc_dwaterxy, SIZE(acc_dwaterxy,KIND=8))
+        IF (PRESENT(acc_prcpxy)) CALL gpu_cc_save_r(232, acc_prcpxy, SIZE(acc_prcpxy,KIND=8))
+        IF (PRESENT(acc_ecanxy)) CALL gpu_cc_save_r(233, acc_ecanxy, SIZE(acc_ecanxy,KIND=8))
+        IF (PRESENT(acc_etranxy)) CALL gpu_cc_save_r(234, acc_etranxy, SIZE(acc_etranxy,KIND=8))
+        IF (PRESENT(acc_edirxy)) CALL gpu_cc_save_r(235, acc_edirxy, SIZE(acc_edirxy,KIND=8))
+        IF (PRESENT(irnumsi)) CALL gpu_cc_save_i(236, irnumsi, SIZE(irnumsi,KIND=8))
+        IF (PRESENT(irnummi)) CALL gpu_cc_save_i(237, irnummi, SIZE(irnummi,KIND=8))
+        IF (PRESENT(irnumfi)) CALL gpu_cc_save_i(238, irnumfi, SIZE(irnumfi,KIND=8))
+        IF (PRESENT(irwatsi)) CALL gpu_cc_save_r(239, irwatsi, SIZE(irwatsi,KIND=8))
+        IF (PRESENT(irwatmi)) CALL gpu_cc_save_r(240, irwatmi, SIZE(irwatmi,KIND=8))
+        IF (PRESENT(irwatfi)) CALL gpu_cc_save_r(241, irwatfi, SIZE(irwatfi,KIND=8))
+        IF (PRESENT(ireloss)) CALL gpu_cc_save_r(242, ireloss, SIZE(ireloss,KIND=8))
+        IF (PRESENT(irsivol)) CALL gpu_cc_save_r(243, irsivol, SIZE(irsivol,KIND=8))
+        IF (PRESENT(irmivol)) CALL gpu_cc_save_r(244, irmivol, SIZE(irmivol,KIND=8))
+        IF (PRESENT(irfivol)) CALL gpu_cc_save_r(245, irfivol, SIZE(irfivol,KIND=8))
+        IF (PRESENT(irrsplh)) CALL gpu_cc_save_r(246, irrsplh, SIZE(irrsplh,KIND=8))
+        IF (PRESENT(qtdrain)) CALL gpu_cc_save_r(247, qtdrain, SIZE(qtdrain,KIND=8))
+        IF (PRESENT(smcwtdxy)) CALL gpu_cc_save_r(248, smcwtdxy, SIZE(smcwtdxy,KIND=8))
+        IF (PRESENT(rechxy)) CALL gpu_cc_save_r(249, rechxy, SIZE(rechxy,KIND=8))
+        IF (PRESENT(deeprechxy)) CALL gpu_cc_save_r(250, deeprechxy, SIZE(deeprechxy,KIND=8))
+        IF (PRESENT(fdepthxy)) CALL gpu_cc_save_r(251, fdepthxy, SIZE(fdepthxy,KIND=8))
+        IF (PRESENT(areaxy)) CALL gpu_cc_save_r(252, areaxy, SIZE(areaxy,KIND=8))
+        IF (PRESENT(rivercondxy)) CALL gpu_cc_save_r(253, rivercondxy, SIZE(rivercondxy,KIND=8))
+        IF (PRESENT(riverbedxy)) CALL gpu_cc_save_r(254, riverbedxy, SIZE(riverbedxy,KIND=8))
+        IF (PRESENT(eqzwt)) CALL gpu_cc_save_r(255, eqzwt, SIZE(eqzwt,KIND=8))
+        IF (PRESENT(pexpxy)) CALL gpu_cc_save_r(256, pexpxy, SIZE(pexpxy,KIND=8))
+        IF (PRESENT(qrfxy)) CALL gpu_cc_save_r(257, qrfxy, SIZE(qrfxy,KIND=8))
+        IF (PRESENT(qspringxy)) CALL gpu_cc_save_r(258, qspringxy, SIZE(qspringxy,KIND=8))
+        IF (PRESENT(qslatxy)) CALL gpu_cc_save_r(259, qslatxy, SIZE(qslatxy,KIND=8))
+        IF (PRESENT(qrfsxy)) CALL gpu_cc_save_r(260, qrfsxy, SIZE(qrfsxy,KIND=8))
+        IF (PRESENT(qlatxy)) CALL gpu_cc_save_r(261, qlatxy, SIZE(qlatxy,KIND=8))
+        IF (PRESENT(qspringsxy)) CALL gpu_cc_save_r(262, qspringsxy, SIZE(qspringsxy,KIND=8))
+        IF (PRESENT(smoiseq)) CALL gpu_cc_save_r(263, smoiseq, SIZE(smoiseq,KIND=8))
+        IF (PRESENT(gecros_state)) CALL gpu_cc_save_r(264, gecros_state, SIZE(gecros_state,KIND=8))
+        CALL gpu_cc_save_r(265, flx4, SIZE(flx4,KIND=8))
+        CALL gpu_cc_save_r(266, fvb, SIZE(fvb,KIND=8))
+        CALL gpu_cc_save_r(267, fbur, SIZE(fbur,KIND=8))
+        CALL gpu_cc_save_r(268, fgsn, SIZE(fgsn,KIND=8))
+        IF (PRESENT(ch)) CALL gpu_cc_save_r(269, ch, SIZE(ch,KIND=8))
+        IF (PRESENT(fgdp)) CALL gpu_cc_save_r(270, fgdp, SIZE(fgdp,KIND=8))
+        IF (PRESENT(dfgdp)) CALL gpu_cc_save_r(271, dfgdp, SIZE(dfgdp,KIND=8))
+        IF (PRESENT(vdfg)) CALL gpu_cc_save_r(272, vdfg, SIZE(vdfg,KIND=8))
+        CALL gpu_cc_save_r(273, water_depth, SIZE(water_depth,KIND=8))
+        CALL gpu_cc_save_r(274, savedtke12d, SIZE(savedtke12d,KIND=8))
+        CALL gpu_cc_save_r(275, snowdp2d, SIZE(snowdp2d,KIND=8))
+        CALL gpu_cc_save_r(276, h2osno2d, SIZE(h2osno2d,KIND=8))
+        CALL gpu_cc_save_r(277, snl2d, SIZE(snl2d,KIND=8))
+        CALL gpu_cc_save_r(278, t_grnd2d, SIZE(t_grnd2d,KIND=8))
+        CALL gpu_cc_save_r(279, t_lake3d, SIZE(t_lake3d,KIND=8))
+        CALL gpu_cc_save_r(280, lake_icefrac3d, SIZE(lake_icefrac3d,KIND=8))
+        CALL gpu_cc_save_r(281, t_soisno3d, SIZE(t_soisno3d,KIND=8))
+        CALL gpu_cc_save_r(282, h2osoi_ice3d, SIZE(h2osoi_ice3d,KIND=8))
+        CALL gpu_cc_save_r(283, h2osoi_liq3d, SIZE(h2osoi_liq3d,KIND=8))
+        CALL gpu_cc_save_r(284, h2osoi_vol3d, SIZE(h2osoi_vol3d,KIND=8))
+        CALL gpu_cc_save_r(285, z3d, SIZE(z3d,KIND=8))
+        CALL gpu_cc_save_r(286, dz3d, SIZE(dz3d,KIND=8))
+        CALL gpu_cc_save_r(287, zi3d, SIZE(zi3d,KIND=8))
+        CALL gpu_cc_save_r(288, lakemask, SIZE(lakemask,KIND=8))
+        IF (PRESENT(om_tmp)) CALL gpu_cc_save_r(289, om_tmp, SIZE(om_tmp,KIND=8))
+        IF (PRESENT(om_s)) CALL gpu_cc_save_r(290, om_s, SIZE(om_s,KIND=8))
+        IF (PRESENT(om_u)) CALL gpu_cc_save_r(291, om_u, SIZE(om_u,KIND=8))
+        IF (PRESENT(om_v)) CALL gpu_cc_save_r(292, om_v, SIZE(om_v,KIND=8))
+        IF (PRESENT(om_depth)) CALL gpu_cc_save_r(293, om_depth, SIZE(om_depth,KIND=8))
+        IF (PRESENT(om_ml)) CALL gpu_cc_save_r(294, om_ml, SIZE(om_ml,KIND=8))
+        IF (PRESENT(om_lon)) CALL gpu_cc_save_r(295, om_lon, SIZE(om_lon,KIND=8))
+        IF (PRESENT(om_lat)) CALL gpu_cc_save_r(296, om_lat, SIZE(om_lat,KIND=8))
+        CALL gpu_cc_save_i0(297, okms)
+        CALL gpu_cc_save_i0(298, okme)
+#if (WRF_CHEM == 1)
+        IF (PRESENT(e_bio)) CALL gpu_cc_save_r(299, e_bio, SIZE(e_bio,KIND=8))
+#endif
+        IF (PRESENT(numc)) CALL gpu_cc_save_i(300, numc, SIZE(numc,KIND=8))
+        IF (PRESENT(nump)) CALL gpu_cc_save_i(301, nump, SIZE(nump,KIND=8))
+        IF (PRESENT(sabv)) CALL gpu_cc_save_r(302, sabv, SIZE(sabv,KIND=8))
+        IF (PRESENT(sabg)) CALL gpu_cc_save_r(303, sabg, SIZE(sabg,KIND=8))
+        IF (PRESENT(lwup)) CALL gpu_cc_save_r(304, lwup, SIZE(lwup,KIND=8))
+        IF (PRESENT(snl)) CALL gpu_cc_save_i(305, snl, SIZE(snl,KIND=8))
+        IF (PRESENT(snowdp)) CALL gpu_cc_save_r(306, snowdp, SIZE(snowdp,KIND=8))
+        IF (PRESENT(wtc)) CALL gpu_cc_save_r(307, wtc, SIZE(wtc,KIND=8))
+        IF (PRESENT(wtp)) CALL gpu_cc_save_r(308, wtp, SIZE(wtp,KIND=8))
+        IF (PRESENT(h2osno)) CALL gpu_cc_save_r(309, h2osno, SIZE(h2osno,KIND=8))
+        IF (PRESENT(t_grnd)) CALL gpu_cc_save_r(310, t_grnd, SIZE(t_grnd,KIND=8))
+        IF (PRESENT(t_veg)) CALL gpu_cc_save_r(311, t_veg, SIZE(t_veg,KIND=8))
+        IF (PRESENT(h2ocan)) CALL gpu_cc_save_r(312, h2ocan, SIZE(h2ocan,KIND=8))
+        IF (PRESENT(h2ocan_col)) CALL gpu_cc_save_r(313, h2ocan_col, SIZE(h2ocan_col,KIND=8))
+        IF (PRESENT(t2m_max)) CALL gpu_cc_save_r(314, t2m_max, SIZE(t2m_max,KIND=8))
+        IF (PRESENT(t2m_min)) CALL gpu_cc_save_r(315, t2m_min, SIZE(t2m_min,KIND=8))
+        IF (PRESENT(t2clm)) CALL gpu_cc_save_r(316, t2clm, SIZE(t2clm,KIND=8))
+        IF (PRESENT(t_ref2m)) CALL gpu_cc_save_r(317, t_ref2m, SIZE(t_ref2m,KIND=8))
+        IF (PRESENT(h2osoi_liq_s1)) CALL gpu_cc_save_r(318, h2osoi_liq_s1, SIZE(h2osoi_liq_s1,KIND=8))
+        IF (PRESENT(h2osoi_liq_s2)) CALL gpu_cc_save_r(319, h2osoi_liq_s2, SIZE(h2osoi_liq_s2,KIND=8))
+        IF (PRESENT(h2osoi_liq_s3)) CALL gpu_cc_save_r(320, h2osoi_liq_s3, SIZE(h2osoi_liq_s3,KIND=8))
+        IF (PRESENT(h2osoi_liq_s4)) CALL gpu_cc_save_r(321, h2osoi_liq_s4, SIZE(h2osoi_liq_s4,KIND=8))
+        IF (PRESENT(h2osoi_liq_s5)) CALL gpu_cc_save_r(322, h2osoi_liq_s5, SIZE(h2osoi_liq_s5,KIND=8))
+        IF (PRESENT(h2osoi_liq1)) CALL gpu_cc_save_r(323, h2osoi_liq1, SIZE(h2osoi_liq1,KIND=8))
+        IF (PRESENT(h2osoi_liq2)) CALL gpu_cc_save_r(324, h2osoi_liq2, SIZE(h2osoi_liq2,KIND=8))
+        IF (PRESENT(h2osoi_liq3)) CALL gpu_cc_save_r(325, h2osoi_liq3, SIZE(h2osoi_liq3,KIND=8))
+        IF (PRESENT(h2osoi_liq4)) CALL gpu_cc_save_r(326, h2osoi_liq4, SIZE(h2osoi_liq4,KIND=8))
+        IF (PRESENT(h2osoi_liq5)) CALL gpu_cc_save_r(327, h2osoi_liq5, SIZE(h2osoi_liq5,KIND=8))
+        IF (PRESENT(h2osoi_liq6)) CALL gpu_cc_save_r(328, h2osoi_liq6, SIZE(h2osoi_liq6,KIND=8))
+        IF (PRESENT(h2osoi_liq7)) CALL gpu_cc_save_r(329, h2osoi_liq7, SIZE(h2osoi_liq7,KIND=8))
+        IF (PRESENT(h2osoi_liq8)) CALL gpu_cc_save_r(330, h2osoi_liq8, SIZE(h2osoi_liq8,KIND=8))
+        IF (PRESENT(h2osoi_liq9)) CALL gpu_cc_save_r(331, h2osoi_liq9, SIZE(h2osoi_liq9,KIND=8))
+        IF (PRESENT(h2osoi_liq10)) CALL gpu_cc_save_r(332, h2osoi_liq10, SIZE(h2osoi_liq10,KIND=8))
+        IF (PRESENT(h2osoi_ice_s1)) CALL gpu_cc_save_r(333, h2osoi_ice_s1, SIZE(h2osoi_ice_s1,KIND=8))
+        IF (PRESENT(h2osoi_ice_s2)) CALL gpu_cc_save_r(334, h2osoi_ice_s2, SIZE(h2osoi_ice_s2,KIND=8))
+        IF (PRESENT(h2osoi_ice_s3)) CALL gpu_cc_save_r(335, h2osoi_ice_s3, SIZE(h2osoi_ice_s3,KIND=8))
+        IF (PRESENT(h2osoi_ice_s4)) CALL gpu_cc_save_r(336, h2osoi_ice_s4, SIZE(h2osoi_ice_s4,KIND=8))
+        IF (PRESENT(h2osoi_ice_s5)) CALL gpu_cc_save_r(337, h2osoi_ice_s5, SIZE(h2osoi_ice_s5,KIND=8))
+        IF (PRESENT(h2osoi_ice1)) CALL gpu_cc_save_r(338, h2osoi_ice1, SIZE(h2osoi_ice1,KIND=8))
+        IF (PRESENT(h2osoi_ice2)) CALL gpu_cc_save_r(339, h2osoi_ice2, SIZE(h2osoi_ice2,KIND=8))
+        IF (PRESENT(h2osoi_ice3)) CALL gpu_cc_save_r(340, h2osoi_ice3, SIZE(h2osoi_ice3,KIND=8))
+        IF (PRESENT(h2osoi_ice4)) CALL gpu_cc_save_r(341, h2osoi_ice4, SIZE(h2osoi_ice4,KIND=8))
+        IF (PRESENT(h2osoi_ice5)) CALL gpu_cc_save_r(342, h2osoi_ice5, SIZE(h2osoi_ice5,KIND=8))
+        IF (PRESENT(h2osoi_ice6)) CALL gpu_cc_save_r(343, h2osoi_ice6, SIZE(h2osoi_ice6,KIND=8))
+        IF (PRESENT(h2osoi_ice7)) CALL gpu_cc_save_r(344, h2osoi_ice7, SIZE(h2osoi_ice7,KIND=8))
+        IF (PRESENT(h2osoi_ice8)) CALL gpu_cc_save_r(345, h2osoi_ice8, SIZE(h2osoi_ice8,KIND=8))
+        IF (PRESENT(h2osoi_ice9)) CALL gpu_cc_save_r(346, h2osoi_ice9, SIZE(h2osoi_ice9,KIND=8))
+        IF (PRESENT(h2osoi_ice10)) CALL gpu_cc_save_r(347, h2osoi_ice10, SIZE(h2osoi_ice10,KIND=8))
+        IF (PRESENT(t_soisno_s1)) CALL gpu_cc_save_r(348, t_soisno_s1, SIZE(t_soisno_s1,KIND=8))
+        IF (PRESENT(t_soisno_s2)) CALL gpu_cc_save_r(349, t_soisno_s2, SIZE(t_soisno_s2,KIND=8))
+        IF (PRESENT(t_soisno_s3)) CALL gpu_cc_save_r(350, t_soisno_s3, SIZE(t_soisno_s3,KIND=8))
+        IF (PRESENT(t_soisno_s4)) CALL gpu_cc_save_r(351, t_soisno_s4, SIZE(t_soisno_s4,KIND=8))
+        IF (PRESENT(t_soisno_s5)) CALL gpu_cc_save_r(352, t_soisno_s5, SIZE(t_soisno_s5,KIND=8))
+        IF (PRESENT(t_soisno1)) CALL gpu_cc_save_r(353, t_soisno1, SIZE(t_soisno1,KIND=8))
+        IF (PRESENT(t_soisno2)) CALL gpu_cc_save_r(354, t_soisno2, SIZE(t_soisno2,KIND=8))
+        IF (PRESENT(t_soisno3)) CALL gpu_cc_save_r(355, t_soisno3, SIZE(t_soisno3,KIND=8))
+        IF (PRESENT(t_soisno4)) CALL gpu_cc_save_r(356, t_soisno4, SIZE(t_soisno4,KIND=8))
+        IF (PRESENT(t_soisno5)) CALL gpu_cc_save_r(357, t_soisno5, SIZE(t_soisno5,KIND=8))
+        IF (PRESENT(t_soisno6)) CALL gpu_cc_save_r(358, t_soisno6, SIZE(t_soisno6,KIND=8))
+        IF (PRESENT(t_soisno7)) CALL gpu_cc_save_r(359, t_soisno7, SIZE(t_soisno7,KIND=8))
+        IF (PRESENT(t_soisno8)) CALL gpu_cc_save_r(360, t_soisno8, SIZE(t_soisno8,KIND=8))
+        IF (PRESENT(t_soisno9)) CALL gpu_cc_save_r(361, t_soisno9, SIZE(t_soisno9,KIND=8))
+        IF (PRESENT(t_soisno10)) CALL gpu_cc_save_r(362, t_soisno10, SIZE(t_soisno10,KIND=8))
+        IF (PRESENT(dzsnow1)) CALL gpu_cc_save_r(363, dzsnow1, SIZE(dzsnow1,KIND=8))
+        IF (PRESENT(dzsnow2)) CALL gpu_cc_save_r(364, dzsnow2, SIZE(dzsnow2,KIND=8))
+        IF (PRESENT(dzsnow3)) CALL gpu_cc_save_r(365, dzsnow3, SIZE(dzsnow3,KIND=8))
+        IF (PRESENT(dzsnow4)) CALL gpu_cc_save_r(366, dzsnow4, SIZE(dzsnow4,KIND=8))
+        IF (PRESENT(dzsnow5)) CALL gpu_cc_save_r(367, dzsnow5, SIZE(dzsnow5,KIND=8))
+        IF (PRESENT(snowrds1)) CALL gpu_cc_save_r(368, snowrds1, SIZE(snowrds1,KIND=8))
+        IF (PRESENT(snowrds2)) CALL gpu_cc_save_r(369, snowrds2, SIZE(snowrds2,KIND=8))
+        IF (PRESENT(snowrds3)) CALL gpu_cc_save_r(370, snowrds3, SIZE(snowrds3,KIND=8))
+        IF (PRESENT(snowrds4)) CALL gpu_cc_save_r(371, snowrds4, SIZE(snowrds4,KIND=8))
+        IF (PRESENT(snowrds5)) CALL gpu_cc_save_r(372, snowrds5, SIZE(snowrds5,KIND=8))
+        IF (PRESENT(t_lake1)) CALL gpu_cc_save_r(373, t_lake1, SIZE(t_lake1,KIND=8))
+        IF (PRESENT(t_lake2)) CALL gpu_cc_save_r(374, t_lake2, SIZE(t_lake2,KIND=8))
+        IF (PRESENT(t_lake3)) CALL gpu_cc_save_r(375, t_lake3, SIZE(t_lake3,KIND=8))
+        IF (PRESENT(t_lake4)) CALL gpu_cc_save_r(376, t_lake4, SIZE(t_lake4,KIND=8))
+        IF (PRESENT(t_lake5)) CALL gpu_cc_save_r(377, t_lake5, SIZE(t_lake5,KIND=8))
+        IF (PRESENT(t_lake6)) CALL gpu_cc_save_r(378, t_lake6, SIZE(t_lake6,KIND=8))
+        IF (PRESENT(t_lake7)) CALL gpu_cc_save_r(379, t_lake7, SIZE(t_lake7,KIND=8))
+        IF (PRESENT(t_lake8)) CALL gpu_cc_save_r(380, t_lake8, SIZE(t_lake8,KIND=8))
+        IF (PRESENT(t_lake9)) CALL gpu_cc_save_r(381, t_lake9, SIZE(t_lake9,KIND=8))
+        IF (PRESENT(t_lake10)) CALL gpu_cc_save_r(382, t_lake10, SIZE(t_lake10,KIND=8))
+        IF (PRESENT(h2osoi_vol1)) CALL gpu_cc_save_r(383, h2osoi_vol1, SIZE(h2osoi_vol1,KIND=8))
+        IF (PRESENT(h2osoi_vol2)) CALL gpu_cc_save_r(384, h2osoi_vol2, SIZE(h2osoi_vol2,KIND=8))
+        IF (PRESENT(h2osoi_vol3)) CALL gpu_cc_save_r(385, h2osoi_vol3, SIZE(h2osoi_vol3,KIND=8))
+        IF (PRESENT(h2osoi_vol4)) CALL gpu_cc_save_r(386, h2osoi_vol4, SIZE(h2osoi_vol4,KIND=8))
+        IF (PRESENT(h2osoi_vol5)) CALL gpu_cc_save_r(387, h2osoi_vol5, SIZE(h2osoi_vol5,KIND=8))
+        IF (PRESENT(h2osoi_vol6)) CALL gpu_cc_save_r(388, h2osoi_vol6, SIZE(h2osoi_vol6,KIND=8))
+        IF (PRESENT(h2osoi_vol7)) CALL gpu_cc_save_r(389, h2osoi_vol7, SIZE(h2osoi_vol7,KIND=8))
+        IF (PRESENT(h2osoi_vol8)) CALL gpu_cc_save_r(390, h2osoi_vol8, SIZE(h2osoi_vol8,KIND=8))
+        IF (PRESENT(h2osoi_vol9)) CALL gpu_cc_save_r(391, h2osoi_vol9, SIZE(h2osoi_vol9,KIND=8))
+        IF (PRESENT(h2osoi_vol10)) CALL gpu_cc_save_r(392, h2osoi_vol10, SIZE(h2osoi_vol10,KIND=8))
+        IF (PRESENT(albedosubgrid)) CALL gpu_cc_save_r(393, albedosubgrid, SIZE(albedosubgrid,KIND=8))
+        IF (PRESENT(lhsubgrid)) CALL gpu_cc_save_r(394, lhsubgrid, SIZE(lhsubgrid,KIND=8))
+        IF (PRESENT(hfxsubgrid)) CALL gpu_cc_save_r(395, hfxsubgrid, SIZE(hfxsubgrid,KIND=8))
+        IF (PRESENT(lwupsubgrid)) CALL gpu_cc_save_r(396, lwupsubgrid, SIZE(lwupsubgrid,KIND=8))
+        IF (PRESENT(q2subgrid)) CALL gpu_cc_save_r(397, q2subgrid, SIZE(q2subgrid,KIND=8))
+        IF (PRESENT(sabvsubgrid)) CALL gpu_cc_save_r(398, sabvsubgrid, SIZE(sabvsubgrid,KIND=8))
+        IF (PRESENT(sabgsubgrid)) CALL gpu_cc_save_r(399, sabgsubgrid, SIZE(sabgsubgrid,KIND=8))
+        IF (PRESENT(nrasubgrid)) CALL gpu_cc_save_r(400, nrasubgrid, SIZE(nrasubgrid,KIND=8))
+        IF (PRESENT(swupsubgrid)) CALL gpu_cc_save_r(401, swupsubgrid, SIZE(swupsubgrid,KIND=8))
+        IF (PRESENT(lhsoi)) CALL gpu_cc_save_r(402, lhsoi, SIZE(lhsoi,KIND=8))
+        IF (PRESENT(lhveg)) CALL gpu_cc_save_r(403, lhveg, SIZE(lhveg,KIND=8))
+        IF (PRESENT(lhtran)) CALL gpu_cc_save_r(404, lhtran, SIZE(lhtran,KIND=8))
+        IF (PRESENT(t_veg24)) CALL gpu_cc_save_r(405, t_veg24, SIZE(t_veg24,KIND=8))
+        IF (PRESENT(t_veg240)) CALL gpu_cc_save_r(406, t_veg240, SIZE(t_veg240,KIND=8))
+        IF (PRESENT(fsun24)) CALL gpu_cc_save_r(407, fsun24, SIZE(fsun24,KIND=8))
+        IF (PRESENT(fsun240)) CALL gpu_cc_save_r(408, fsun240, SIZE(fsun240,KIND=8))
+        IF (PRESENT(fsd24)) CALL gpu_cc_save_r(409, fsd24, SIZE(fsd24,KIND=8))
+        IF (PRESENT(fsd240)) CALL gpu_cc_save_r(410, fsd240, SIZE(fsd240,KIND=8))
+        IF (PRESENT(fsi24)) CALL gpu_cc_save_r(411, fsi24, SIZE(fsi24,KIND=8))
+        IF (PRESENT(fsi240)) CALL gpu_cc_save_r(412, fsi240, SIZE(fsi240,KIND=8))
+        IF (PRESENT(laip)) CALL gpu_cc_save_r(413, laip, SIZE(laip,KIND=8))
+#ifdef CN
+        IF (PRESENT(dyntlai)) CALL gpu_cc_save_r(414, dyntlai, SIZE(dyntlai,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dyntsai)) CALL gpu_cc_save_r(415, dyntsai, SIZE(dyntsai,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dyntop)) CALL gpu_cc_save_r(416, dyntop, SIZE(dyntop,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dynbot)) CALL gpu_cc_save_r(417, dynbot, SIZE(dynbot,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(htmx)) CALL gpu_cc_save_r(418, htmx, SIZE(htmx,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(croplive)) CALL gpu_cc_save_i(419, croplive, SIZE(croplive,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd1020)) CALL gpu_cc_save_r(420, gdd1020, SIZE(gdd1020,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd820)) CALL gpu_cc_save_r(421, gdd820, SIZE(gdd820,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd020)) CALL gpu_cc_save_r(422, gdd020, SIZE(gdd020,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc)) CALL gpu_cc_save_r(423, grainc, SIZE(grainc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc_storage)) CALL gpu_cc_save_r(424, grainc_storage, SIZE(grainc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc_xfer)) CALL gpu_cc_save_r(425, grainc_xfer, SIZE(grainc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn)) CALL gpu_cc_save_r(426, grainn, SIZE(grainn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn_storage)) CALL gpu_cc_save_r(427, grainn_storage, SIZE(grainn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn_xfer)) CALL gpu_cc_save_r(428, grainn_xfer, SIZE(grainn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(days_active)) CALL gpu_cc_save_r(429, days_active, SIZE(days_active,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_flag)) CALL gpu_cc_save_r(430, onset_flag, SIZE(onset_flag,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_counter)) CALL gpu_cc_save_r(431, onset_counter, SIZE(onset_counter,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_gddflag)) CALL gpu_cc_save_r(432, onset_gddflag, SIZE(onset_gddflag,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_fdd)) CALL gpu_cc_save_r(433, onset_fdd, SIZE(onset_fdd,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_gdd)) CALL gpu_cc_save_r(434, onset_gdd, SIZE(onset_gdd,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_swi)) CALL gpu_cc_save_r(435, onset_swi, SIZE(onset_swi,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_flag)) CALL gpu_cc_save_r(436, offset_flag, SIZE(offset_flag,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_counter)) CALL gpu_cc_save_r(437, offset_counter, SIZE(offset_counter,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_fdd)) CALL gpu_cc_save_r(438, offset_fdd, SIZE(offset_fdd,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_swi)) CALL gpu_cc_save_r(439, offset_swi, SIZE(offset_swi,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dayl)) CALL gpu_cc_save_r(440, dayl, SIZE(dayl,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(annavg_t2m)) CALL gpu_cc_save_r(441, annavg_t2m, SIZE(annavg_t2m,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(tempavg_t2m)) CALL gpu_cc_save_r(442, tempavg_t2m, SIZE(tempavg_t2m,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(tempsum_potential_gpp)) CALL gpu_cc_save_r(443, tempsum_potential_gpp, SIZE(tempsum_potential_gpp,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_potential_gpp)) CALL gpu_cc_save_r(444, annsum_potential_gpp, SIZE(annsum_potential_gpp,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(tempmax_retransn)) CALL gpu_cc_save_r(445, tempmax_retransn, SIZE(tempmax_retransn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(annmax_retransn)) CALL gpu_cc_save_r(446, annmax_retransn, SIZE(annmax_retransn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prev_leafc_to_litter)) CALL gpu_cc_save_r(447, prev_leafc_to_litter, SIZE(prev_leafc_to_litter,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prev_frootc_to_litter)) CALL gpu_cc_save_r(448, prev_frootc_to_litter, SIZE(prev_frootc_to_litter,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(tempsum_npp)) CALL gpu_cc_save_r(449, tempsum_npp, SIZE(tempsum_npp,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_npp)) CALL gpu_cc_save_r(450, annsum_npp, SIZE(annsum_npp,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc)) CALL gpu_cc_save_r(451, leafc, SIZE(leafc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc_storage)) CALL gpu_cc_save_r(452, leafc_storage, SIZE(leafc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc_xfer)) CALL gpu_cc_save_r(453, leafc_xfer, SIZE(leafc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc)) CALL gpu_cc_save_r(454, frootc, SIZE(frootc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc_storage)) CALL gpu_cc_save_r(455, frootc_storage, SIZE(frootc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc_xfer)) CALL gpu_cc_save_r(456, frootc_xfer, SIZE(frootc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc)) CALL gpu_cc_save_r(457, livestemc, SIZE(livestemc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc_storage)) CALL gpu_cc_save_r(458, livestemc_storage, SIZE(livestemc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc_xfer)) CALL gpu_cc_save_r(459, livestemc_xfer, SIZE(livestemc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc)) CALL gpu_cc_save_r(460, deadstemc, SIZE(deadstemc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc_storage)) CALL gpu_cc_save_r(461, deadstemc_storage, SIZE(deadstemc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc_xfer)) CALL gpu_cc_save_r(462, deadstemc_xfer, SIZE(deadstemc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc)) CALL gpu_cc_save_r(463, livecrootc, SIZE(livecrootc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc_storage)) CALL gpu_cc_save_r(464, livecrootc_storage, SIZE(livecrootc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc_xfer)) CALL gpu_cc_save_r(465, livecrootc_xfer, SIZE(livecrootc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc)) CALL gpu_cc_save_r(466, deadcrootc, SIZE(deadcrootc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc_storage)) CALL gpu_cc_save_r(467, deadcrootc_storage, SIZE(deadcrootc_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc_xfer)) CALL gpu_cc_save_r(468, deadcrootc_xfer, SIZE(deadcrootc_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(cpool)) CALL gpu_cc_save_r(469, cpool, SIZE(cpool,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(pft_ctrunc)) CALL gpu_cc_save_r(470, pft_ctrunc, SIZE(pft_ctrunc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn)) CALL gpu_cc_save_r(471, leafn, SIZE(leafn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn_storage)) CALL gpu_cc_save_r(472, leafn_storage, SIZE(leafn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn_xfer)) CALL gpu_cc_save_r(473, leafn_xfer, SIZE(leafn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn)) CALL gpu_cc_save_r(474, frootn, SIZE(frootn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn_storage)) CALL gpu_cc_save_r(475, frootn_storage, SIZE(frootn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn_xfer)) CALL gpu_cc_save_r(476, frootn_xfer, SIZE(frootn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn)) CALL gpu_cc_save_r(477, livestemn, SIZE(livestemn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn_storage)) CALL gpu_cc_save_r(478, livestemn_storage, SIZE(livestemn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn_xfer)) CALL gpu_cc_save_r(479, livestemn_xfer, SIZE(livestemn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn)) CALL gpu_cc_save_r(480, deadstemn, SIZE(deadstemn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn_storage)) CALL gpu_cc_save_r(481, deadstemn_storage, SIZE(deadstemn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn_xfer)) CALL gpu_cc_save_r(482, deadstemn_xfer, SIZE(deadstemn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn)) CALL gpu_cc_save_r(483, livecrootn, SIZE(livecrootn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn_storage)) CALL gpu_cc_save_r(484, livecrootn_storage, SIZE(livecrootn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn_xfer)) CALL gpu_cc_save_r(485, livecrootn_xfer, SIZE(livecrootn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn)) CALL gpu_cc_save_r(486, deadcrootn, SIZE(deadcrootn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn_storage)) CALL gpu_cc_save_r(487, deadcrootn_storage, SIZE(deadcrootn_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn_xfer)) CALL gpu_cc_save_r(488, deadcrootn_xfer, SIZE(deadcrootn_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(npool)) CALL gpu_cc_save_r(489, npool, SIZE(npool,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(pft_ntrunc)) CALL gpu_cc_save_r(490, pft_ntrunc, SIZE(pft_ntrunc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(gresp_storage)) CALL gpu_cc_save_r(491, gresp_storage, SIZE(gresp_storage,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(gresp_xfer)) CALL gpu_cc_save_r(492, gresp_xfer, SIZE(gresp_xfer,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(xsmrpool)) CALL gpu_cc_save_r(493, xsmrpool, SIZE(xsmrpool,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_counter)) CALL gpu_cc_save_r(494, annsum_counter, SIZE(annsum_counter,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(cannsum_npp)) CALL gpu_cc_save_r(495, cannsum_npp, SIZE(cannsum_npp,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(cannavg_t2m)) CALL gpu_cc_save_r(496, cannavg_t2m, SIZE(cannavg_t2m,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(wf)) CALL gpu_cc_save_r(497, wf, SIZE(wf,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(me)) CALL gpu_cc_save_r(498, me, SIZE(me,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(mean_fire_prob)) CALL gpu_cc_save_r(499, mean_fire_prob, SIZE(mean_fire_prob,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(cwdc)) CALL gpu_cc_save_r(500, cwdc, SIZE(cwdc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr1c)) CALL gpu_cc_save_r(501, litr1c, SIZE(litr1c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr2c)) CALL gpu_cc_save_r(502, litr2c, SIZE(litr2c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr3c)) CALL gpu_cc_save_r(503, litr3c, SIZE(litr3c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil1c)) CALL gpu_cc_save_r(504, soil1c, SIZE(soil1c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil2c)) CALL gpu_cc_save_r(505, soil2c, SIZE(soil2c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil3c)) CALL gpu_cc_save_r(506, soil3c, SIZE(soil3c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil4c)) CALL gpu_cc_save_r(507, soil4c, SIZE(soil4c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(seedc)) CALL gpu_cc_save_r(508, seedc, SIZE(seedc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(col_ctrunc)) CALL gpu_cc_save_r(509, col_ctrunc, SIZE(col_ctrunc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod10c)) CALL gpu_cc_save_r(510, prod10c, SIZE(prod10c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100c)) CALL gpu_cc_save_r(511, prod100c, SIZE(prod100c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(cwdn)) CALL gpu_cc_save_r(512, cwdn, SIZE(cwdn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr1n)) CALL gpu_cc_save_r(513, litr1n, SIZE(litr1n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr2n)) CALL gpu_cc_save_r(514, litr2n, SIZE(litr2n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(litr3n)) CALL gpu_cc_save_r(515, litr3n, SIZE(litr3n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil1n)) CALL gpu_cc_save_r(516, soil1n, SIZE(soil1n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil2n)) CALL gpu_cc_save_r(517, soil2n, SIZE(soil2n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil3n)) CALL gpu_cc_save_r(518, soil3n, SIZE(soil3n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(soil4n)) CALL gpu_cc_save_r(519, soil4n, SIZE(soil4n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(seedn)) CALL gpu_cc_save_r(520, seedn, SIZE(seedn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(col_ntrunc)) CALL gpu_cc_save_r(521, col_ntrunc, SIZE(col_ntrunc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod10n)) CALL gpu_cc_save_r(522, prod10n, SIZE(prod10n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100n)) CALL gpu_cc_save_r(523, prod100n, SIZE(prod100n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(sminn)) CALL gpu_cc_save_r(524, sminn, SIZE(sminn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(totlitc)) CALL gpu_cc_save_r(525, totlitc, SIZE(totlitc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedc_to_leaf)) CALL gpu_cc_save_r(526, dwt_seedc_to_leaf, SIZE(dwt_seedc_to_leaf,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedc_to_deadstem)) CALL gpu_cc_save_r(527, dwt_seedc_to_deadstem, SIZE(dwt_seedc_to_deadstem,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_conv_cflux)) CALL gpu_cc_save_r(528, dwt_conv_cflux, SIZE(dwt_conv_cflux,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod10c_gain)) CALL gpu_cc_save_r(529, dwt_prod10c_gain, SIZE(dwt_prod10c_gain,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod100c_gain)) CALL gpu_cc_save_r(530, dwt_prod100c_gain, SIZE(dwt_prod100c_gain,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100c_loss)) CALL gpu_cc_save_r(531, prod100c_loss, SIZE(prod100c_loss,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr1c)) CALL gpu_cc_save_r(532, dwt_frootc_to_litr1c, SIZE(dwt_frootc_to_litr1c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr2c)) CALL gpu_cc_save_r(533, dwt_frootc_to_litr2c, SIZE(dwt_frootc_to_litr2c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr3c)) CALL gpu_cc_save_r(534, dwt_frootc_to_litr3c, SIZE(dwt_frootc_to_litr3c,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_livecrootc_to_cwdc)) CALL gpu_cc_save_r(535, dwt_livecrootc_to_cwdc, SIZE(dwt_livecrootc_to_cwdc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_deadcrootc_to_cwdc)) CALL gpu_cc_save_r(536, dwt_deadcrootc_to_cwdc, SIZE(dwt_deadcrootc_to_cwdc,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedn_to_leaf)) CALL gpu_cc_save_r(537, dwt_seedn_to_leaf, SIZE(dwt_seedn_to_leaf,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedn_to_deadstem)) CALL gpu_cc_save_r(538, dwt_seedn_to_deadstem, SIZE(dwt_seedn_to_deadstem,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_conv_nflux)) CALL gpu_cc_save_r(539, dwt_conv_nflux, SIZE(dwt_conv_nflux,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod10n_gain)) CALL gpu_cc_save_r(540, dwt_prod10n_gain, SIZE(dwt_prod10n_gain,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod100n_gain)) CALL gpu_cc_save_r(541, dwt_prod100n_gain, SIZE(dwt_prod100n_gain,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100n_loss)) CALL gpu_cc_save_r(542, prod100n_loss, SIZE(prod100n_loss,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr1n)) CALL gpu_cc_save_r(543, dwt_frootn_to_litr1n, SIZE(dwt_frootn_to_litr1n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr2n)) CALL gpu_cc_save_r(544, dwt_frootn_to_litr2n, SIZE(dwt_frootn_to_litr2n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr3n)) CALL gpu_cc_save_r(545, dwt_frootn_to_litr3n, SIZE(dwt_frootn_to_litr3n,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_livecrootn_to_cwdn)) CALL gpu_cc_save_r(546, dwt_livecrootn_to_cwdn, SIZE(dwt_livecrootn_to_cwdn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_deadcrootn_to_cwdn)) CALL gpu_cc_save_r(547, dwt_deadcrootn_to_cwdn, SIZE(dwt_deadcrootn_to_cwdn,KIND=8))
+#endif
+#ifdef CN
+        IF (PRESENT(retransn)) CALL gpu_cc_save_r(548, retransn, SIZE(retransn,KIND=8))
+#endif
+        IF (PRESENT(swnorm)) CALL gpu_cc_save_r(549, swnorm, SIZE(swnorm,KIND=8))
+        IF (PRESENT(tr_urb2d)) CALL gpu_cc_save_r(550, tr_urb2d, SIZE(tr_urb2d,KIND=8))
+        IF (PRESENT(tb_urb2d)) CALL gpu_cc_save_r(551, tb_urb2d, SIZE(tb_urb2d,KIND=8))
+        IF (PRESENT(tg_urb2d)) CALL gpu_cc_save_r(552, tg_urb2d, SIZE(tg_urb2d,KIND=8))
+        IF (PRESENT(tc_urb2d)) CALL gpu_cc_save_r(553, tc_urb2d, SIZE(tc_urb2d,KIND=8))
+        IF (PRESENT(qc_urb2d)) CALL gpu_cc_save_r(554, qc_urb2d, SIZE(qc_urb2d,KIND=8))
+        IF (PRESENT(uc_urb2d)) CALL gpu_cc_save_r(555, uc_urb2d, SIZE(uc_urb2d,KIND=8))
+        IF (PRESENT(xxxr_urb2d)) CALL gpu_cc_save_r(556, xxxr_urb2d, SIZE(xxxr_urb2d,KIND=8))
+        IF (PRESENT(xxxb_urb2d)) CALL gpu_cc_save_r(557, xxxb_urb2d, SIZE(xxxb_urb2d,KIND=8))
+        IF (PRESENT(xxxg_urb2d)) CALL gpu_cc_save_r(558, xxxg_urb2d, SIZE(xxxg_urb2d,KIND=8))
+        IF (PRESENT(xxxc_urb2d)) CALL gpu_cc_save_r(559, xxxc_urb2d, SIZE(xxxc_urb2d,KIND=8))
+        IF (PRESENT(cmcr_urb2d)) CALL gpu_cc_save_r(560, cmcr_urb2d, SIZE(cmcr_urb2d,KIND=8))
+        IF (PRESENT(tgr_urb2d)) CALL gpu_cc_save_r(561, tgr_urb2d, SIZE(tgr_urb2d,KIND=8))
+        IF (PRESENT(tgrl_urb3d)) CALL gpu_cc_save_r(562, tgrl_urb3d, SIZE(tgrl_urb3d,KIND=8))
+        IF (PRESENT(smr_urb3d)) CALL gpu_cc_save_r(563, smr_urb3d, SIZE(smr_urb3d,KIND=8))
+        IF (PRESENT(drelr_urb2d)) CALL gpu_cc_save_r(564, drelr_urb2d, SIZE(drelr_urb2d,KIND=8))
+        IF (PRESENT(drelb_urb2d)) CALL gpu_cc_save_r(565, drelb_urb2d, SIZE(drelb_urb2d,KIND=8))
+        IF (PRESENT(drelg_urb2d)) CALL gpu_cc_save_r(566, drelg_urb2d, SIZE(drelg_urb2d,KIND=8))
+        IF (PRESENT(flxhumr_urb2d)) CALL gpu_cc_save_r(567, flxhumr_urb2d, SIZE(flxhumr_urb2d,KIND=8))
+        IF (PRESENT(flxhumb_urb2d)) CALL gpu_cc_save_r(568, flxhumb_urb2d, SIZE(flxhumb_urb2d,KIND=8))
+        IF (PRESENT(flxhumg_urb2d)) CALL gpu_cc_save_r(569, flxhumg_urb2d, SIZE(flxhumg_urb2d,KIND=8))
+        IF (PRESENT(trl_urb3d)) CALL gpu_cc_save_r(570, trl_urb3d, SIZE(trl_urb3d,KIND=8))
+        IF (PRESENT(tbl_urb3d)) CALL gpu_cc_save_r(571, tbl_urb3d, SIZE(tbl_urb3d,KIND=8))
+        IF (PRESENT(tgl_urb3d)) CALL gpu_cc_save_r(572, tgl_urb3d, SIZE(tgl_urb3d,KIND=8))
+        IF (PRESENT(sh_urb2d)) CALL gpu_cc_save_r(573, sh_urb2d, SIZE(sh_urb2d,KIND=8))
+        IF (PRESENT(lh_urb2d)) CALL gpu_cc_save_r(574, lh_urb2d, SIZE(lh_urb2d,KIND=8))
+        IF (PRESENT(g_urb2d)) CALL gpu_cc_save_r(575, g_urb2d, SIZE(g_urb2d,KIND=8))
+        IF (PRESENT(rn_urb2d)) CALL gpu_cc_save_r(576, rn_urb2d, SIZE(rn_urb2d,KIND=8))
+        IF (PRESENT(ts_urb2d)) CALL gpu_cc_save_r(577, ts_urb2d, SIZE(ts_urb2d,KIND=8))
+        IF (PRESENT(frc_urb2d)) CALL gpu_cc_save_r(578, frc_urb2d, SIZE(frc_urb2d,KIND=8))
+        IF (PRESENT(utype_urb2d)) CALL gpu_cc_save_i(579, utype_urb2d, SIZE(utype_urb2d,KIND=8))
+        IF (PRESENT(cmr_sfcdif)) CALL gpu_cc_save_r(580, cmr_sfcdif, SIZE(cmr_sfcdif,KIND=8))
+        IF (PRESENT(chr_sfcdif)) CALL gpu_cc_save_r(581, chr_sfcdif, SIZE(chr_sfcdif,KIND=8))
+        IF (PRESENT(cmc_sfcdif)) CALL gpu_cc_save_r(582, cmc_sfcdif, SIZE(cmc_sfcdif,KIND=8))
+        IF (PRESENT(chc_sfcdif)) CALL gpu_cc_save_r(583, chc_sfcdif, SIZE(chc_sfcdif,KIND=8))
+        IF (PRESENT(cmgr_sfcdif)) CALL gpu_cc_save_r(584, cmgr_sfcdif, SIZE(cmgr_sfcdif,KIND=8))
+        IF (PRESENT(chgr_sfcdif)) CALL gpu_cc_save_r(585, chgr_sfcdif, SIZE(chgr_sfcdif,KIND=8))
+        IF (PRESENT(alswvisdir)) CALL gpu_cc_save_r(586, alswvisdir, SIZE(alswvisdir,KIND=8))
+        IF (PRESENT(alswvisdif)) CALL gpu_cc_save_r(587, alswvisdif, SIZE(alswvisdif,KIND=8))
+        IF (PRESENT(alswnirdir)) CALL gpu_cc_save_r(588, alswnirdir, SIZE(alswnirdir,KIND=8))
+        IF (PRESENT(alswnirdif)) CALL gpu_cc_save_r(589, alswnirdif, SIZE(alswnirdif,KIND=8))
+        IF (PRESENT(ssib_br)) CALL gpu_cc_save_r(590, ssib_br, SIZE(ssib_br,KIND=8))
+        IF (PRESENT(ssib_fm)) CALL gpu_cc_save_r(591, ssib_fm, SIZE(ssib_fm,KIND=8))
+        IF (PRESENT(ssib_fh)) CALL gpu_cc_save_r(592, ssib_fh, SIZE(ssib_fh,KIND=8))
+        IF (PRESENT(ssib_cm)) CALL gpu_cc_save_r(593, ssib_cm, SIZE(ssib_cm,KIND=8))
+        IF (PRESENT(ssibxdd)) CALL gpu_cc_save_r(594, ssibxdd, SIZE(ssibxdd,KIND=8))
+        IF (PRESENT(ssib_lhf)) CALL gpu_cc_save_r(595, ssib_lhf, SIZE(ssib_lhf,KIND=8))
+        IF (PRESENT(ssib_shf)) CALL gpu_cc_save_r(596, ssib_shf, SIZE(ssib_shf,KIND=8))
+        IF (PRESENT(ssib_ghf)) CALL gpu_cc_save_r(597, ssib_ghf, SIZE(ssib_ghf,KIND=8))
+        IF (PRESENT(ssib_egs)) CALL gpu_cc_save_r(598, ssib_egs, SIZE(ssib_egs,KIND=8))
+        IF (PRESENT(ssib_eci)) CALL gpu_cc_save_r(599, ssib_eci, SIZE(ssib_eci,KIND=8))
+        IF (PRESENT(ssib_ect)) CALL gpu_cc_save_r(600, ssib_ect, SIZE(ssib_ect,KIND=8))
+        IF (PRESENT(ssib_egi)) CALL gpu_cc_save_r(601, ssib_egi, SIZE(ssib_egi,KIND=8))
+        IF (PRESENT(ssib_egt)) CALL gpu_cc_save_r(602, ssib_egt, SIZE(ssib_egt,KIND=8))
+        IF (PRESENT(ssib_sdn)) CALL gpu_cc_save_r(603, ssib_sdn, SIZE(ssib_sdn,KIND=8))
+        IF (PRESENT(ssib_sup)) CALL gpu_cc_save_r(604, ssib_sup, SIZE(ssib_sup,KIND=8))
+        IF (PRESENT(ssib_ldn)) CALL gpu_cc_save_r(605, ssib_ldn, SIZE(ssib_ldn,KIND=8))
+        IF (PRESENT(ssib_lup)) CALL gpu_cc_save_r(606, ssib_lup, SIZE(ssib_lup,KIND=8))
+        IF (PRESENT(ssib_wat)) CALL gpu_cc_save_r(607, ssib_wat, SIZE(ssib_wat,KIND=8))
+        IF (PRESENT(ssib_shc)) CALL gpu_cc_save_r(608, ssib_shc, SIZE(ssib_shc,KIND=8))
+        IF (PRESENT(ssib_shg)) CALL gpu_cc_save_r(609, ssib_shg, SIZE(ssib_shg,KIND=8))
+        IF (PRESENT(ssib_lai)) CALL gpu_cc_save_r(610, ssib_lai, SIZE(ssib_lai,KIND=8))
+        IF (PRESENT(ssib_vcf)) CALL gpu_cc_save_r(611, ssib_vcf, SIZE(ssib_vcf,KIND=8))
+        IF (PRESENT(ssib_z00)) CALL gpu_cc_save_r(612, ssib_z00, SIZE(ssib_z00,KIND=8))
+        IF (PRESENT(ssib_veg)) CALL gpu_cc_save_r(613, ssib_veg, SIZE(ssib_veg,KIND=8))
+        IF (PRESENT(isnow)) CALL gpu_cc_save_i(614, isnow, SIZE(isnow,KIND=8))
+        IF (PRESENT(swe)) CALL gpu_cc_save_r(615, swe, SIZE(swe,KIND=8))
+        IF (PRESENT(snowden)) CALL gpu_cc_save_r(616, snowden, SIZE(snowden,KIND=8))
+        IF (PRESENT(snowdepth)) CALL gpu_cc_save_r(617, snowdepth, SIZE(snowdepth,KIND=8))
+        IF (PRESENT(tkair)) CALL gpu_cc_save_r(618, tkair, SIZE(tkair,KIND=8))
+        IF (PRESENT(dzo1)) CALL gpu_cc_save_r(619, dzo1, SIZE(dzo1,KIND=8))
+        IF (PRESENT(wo1)) CALL gpu_cc_save_r(620, wo1, SIZE(wo1,KIND=8))
+        IF (PRESENT(tssn1)) CALL gpu_cc_save_r(621, tssn1, SIZE(tssn1,KIND=8))
+        IF (PRESENT(tssno1)) CALL gpu_cc_save_r(622, tssno1, SIZE(tssno1,KIND=8))
+        IF (PRESENT(bwo1)) CALL gpu_cc_save_r(623, bwo1, SIZE(bwo1,KIND=8))
+        IF (PRESENT(bto1)) CALL gpu_cc_save_r(624, bto1, SIZE(bto1,KIND=8))
+        IF (PRESENT(cto1)) CALL gpu_cc_save_r(625, cto1, SIZE(cto1,KIND=8))
+        IF (PRESENT(fio1)) CALL gpu_cc_save_r(626, fio1, SIZE(fio1,KIND=8))
+        IF (PRESENT(flo1)) CALL gpu_cc_save_r(627, flo1, SIZE(flo1,KIND=8))
+        IF (PRESENT(bio1)) CALL gpu_cc_save_r(628, bio1, SIZE(bio1,KIND=8))
+        IF (PRESENT(blo1)) CALL gpu_cc_save_r(629, blo1, SIZE(blo1,KIND=8))
+        IF (PRESENT(ho1)) CALL gpu_cc_save_r(630, ho1, SIZE(ho1,KIND=8))
+        IF (PRESENT(dzo2)) CALL gpu_cc_save_r(631, dzo2, SIZE(dzo2,KIND=8))
+        IF (PRESENT(wo2)) CALL gpu_cc_save_r(632, wo2, SIZE(wo2,KIND=8))
+        IF (PRESENT(tssn2)) CALL gpu_cc_save_r(633, tssn2, SIZE(tssn2,KIND=8))
+        IF (PRESENT(tssno2)) CALL gpu_cc_save_r(634, tssno2, SIZE(tssno2,KIND=8))
+        IF (PRESENT(bwo2)) CALL gpu_cc_save_r(635, bwo2, SIZE(bwo2,KIND=8))
+        IF (PRESENT(bto2)) CALL gpu_cc_save_r(636, bto2, SIZE(bto2,KIND=8))
+        IF (PRESENT(cto2)) CALL gpu_cc_save_r(637, cto2, SIZE(cto2,KIND=8))
+        IF (PRESENT(fio2)) CALL gpu_cc_save_r(638, fio2, SIZE(fio2,KIND=8))
+        IF (PRESENT(flo2)) CALL gpu_cc_save_r(639, flo2, SIZE(flo2,KIND=8))
+        IF (PRESENT(bio2)) CALL gpu_cc_save_r(640, bio2, SIZE(bio2,KIND=8))
+        IF (PRESENT(blo2)) CALL gpu_cc_save_r(641, blo2, SIZE(blo2,KIND=8))
+        IF (PRESENT(ho2)) CALL gpu_cc_save_r(642, ho2, SIZE(ho2,KIND=8))
+        IF (PRESENT(dzo3)) CALL gpu_cc_save_r(643, dzo3, SIZE(dzo3,KIND=8))
+        IF (PRESENT(wo3)) CALL gpu_cc_save_r(644, wo3, SIZE(wo3,KIND=8))
+        IF (PRESENT(tssn3)) CALL gpu_cc_save_r(645, tssn3, SIZE(tssn3,KIND=8))
+        IF (PRESENT(tssno3)) CALL gpu_cc_save_r(646, tssno3, SIZE(tssno3,KIND=8))
+        IF (PRESENT(bwo3)) CALL gpu_cc_save_r(647, bwo3, SIZE(bwo3,KIND=8))
+        IF (PRESENT(bto3)) CALL gpu_cc_save_r(648, bto3, SIZE(bto3,KIND=8))
+        IF (PRESENT(cto3)) CALL gpu_cc_save_r(649, cto3, SIZE(cto3,KIND=8))
+        IF (PRESENT(fio3)) CALL gpu_cc_save_r(650, fio3, SIZE(fio3,KIND=8))
+        IF (PRESENT(flo3)) CALL gpu_cc_save_r(651, flo3, SIZE(flo3,KIND=8))
+        IF (PRESENT(bio3)) CALL gpu_cc_save_r(652, bio3, SIZE(bio3,KIND=8))
+        IF (PRESENT(blo3)) CALL gpu_cc_save_r(653, blo3, SIZE(blo3,KIND=8))
+        IF (PRESENT(ho3)) CALL gpu_cc_save_r(654, ho3, SIZE(ho3,KIND=8))
+        IF (PRESENT(dzo4)) CALL gpu_cc_save_r(655, dzo4, SIZE(dzo4,KIND=8))
+        IF (PRESENT(wo4)) CALL gpu_cc_save_r(656, wo4, SIZE(wo4,KIND=8))
+        IF (PRESENT(tssn4)) CALL gpu_cc_save_r(657, tssn4, SIZE(tssn4,KIND=8))
+        IF (PRESENT(tssno4)) CALL gpu_cc_save_r(658, tssno4, SIZE(tssno4,KIND=8))
+        IF (PRESENT(bwo4)) CALL gpu_cc_save_r(659, bwo4, SIZE(bwo4,KIND=8))
+        IF (PRESENT(bto4)) CALL gpu_cc_save_r(660, bto4, SIZE(bto4,KIND=8))
+        IF (PRESENT(cto4)) CALL gpu_cc_save_r(661, cto4, SIZE(cto4,KIND=8))
+        IF (PRESENT(fio4)) CALL gpu_cc_save_r(662, fio4, SIZE(fio4,KIND=8))
+        IF (PRESENT(flo4)) CALL gpu_cc_save_r(663, flo4, SIZE(flo4,KIND=8))
+        IF (PRESENT(bio4)) CALL gpu_cc_save_r(664, bio4, SIZE(bio4,KIND=8))
+        IF (PRESENT(blo4)) CALL gpu_cc_save_r(665, blo4, SIZE(blo4,KIND=8))
+        IF (PRESENT(ho4)) CALL gpu_cc_save_r(666, ho4, SIZE(ho4,KIND=8))
+        IF (PRESENT(qv_curr)) CALL gpu_cc_save_r(667, qv_curr, SIZE(qv_curr,KIND=8))
+        IF (PRESENT(qc_curr)) CALL gpu_cc_save_r(668, qc_curr, SIZE(qc_curr,KIND=8))
+        IF (PRESENT(qr_curr)) CALL gpu_cc_save_r(669, qr_curr, SIZE(qr_curr,KIND=8))
+        IF (PRESENT(qi_curr)) CALL gpu_cc_save_r(670, qi_curr, SIZE(qi_curr,KIND=8))
+        IF (PRESENT(qs_curr)) CALL gpu_cc_save_r(671, qs_curr, SIZE(qs_curr,KIND=8))
+        IF (PRESENT(qg_curr)) CALL gpu_cc_save_r(672, qg_curr, SIZE(qg_curr,KIND=8))
+        IF (PRESENT(capg)) CALL gpu_cc_save_r(673, capg, SIZE(capg,KIND=8))
+        IF (PRESENT(hol)) CALL gpu_cc_save_r(674, hol, SIZE(hol,KIND=8))
+        IF (PRESENT(mol)) CALL gpu_cc_save_r(675, mol, SIZE(mol,KIND=8))
+        IF (PRESENT(rainbl)) CALL gpu_cc_save_r(676, rainbl, SIZE(rainbl,KIND=8))
+        IF (PRESENT(regime)) CALL gpu_cc_save_r(677, regime, SIZE(regime,KIND=8))
+        IF (PRESENT(qsg)) CALL gpu_cc_save_r(678, qsg, SIZE(qsg,KIND=8))
+        IF (PRESENT(qvg)) CALL gpu_cc_save_r(679, qvg, SIZE(qvg,KIND=8))
+        IF (PRESENT(qcg)) CALL gpu_cc_save_r(680, qcg, SIZE(qcg,KIND=8))
+        IF (PRESENT(soilt1)) CALL gpu_cc_save_r(681, soilt1, SIZE(soilt1,KIND=8))
+        IF (PRESENT(tsnav)) CALL gpu_cc_save_r(682, tsnav, SIZE(tsnav,KIND=8))
+        IF (PRESENT(smfr3d)) CALL gpu_cc_save_r(683, smfr3d, SIZE(smfr3d,KIND=8))
+        IF (PRESENT(keepfr3dflag)) CALL gpu_cc_save_r(684, keepfr3dflag, SIZE(keepfr3dflag,KIND=8))
+        IF (PRESENT(dew)) CALL gpu_cc_save_r(685, dew, SIZE(dew,KIND=8))
+        IF (PRESENT(rhosnf)) CALL gpu_cc_save_r(686, rhosnf, SIZE(rhosnf,KIND=8))
+        IF (PRESENT(precipfr)) CALL gpu_cc_save_r(687, precipfr, SIZE(precipfr,KIND=8))
+        IF (PRESENT(potevp)) CALL gpu_cc_save_r(688, potevp, SIZE(potevp,KIND=8))
+        IF (PRESENT(snopcx)) CALL gpu_cc_save_r(689, snopcx, SIZE(snopcx,KIND=8))
+        IF (PRESENT(soiltb)) CALL gpu_cc_save_r(690, soiltb, SIZE(soiltb,KIND=8))
+        IF (PRESENT(sr)) CALL gpu_cc_save_r(691, sr, SIZE(sr,KIND=8))
+        IF (PRESENT(t2_ndg_old)) CALL gpu_cc_save_r(692, t2_ndg_old, SIZE(t2_ndg_old,KIND=8))
+        IF (PRESENT(q2_ndg_old)) CALL gpu_cc_save_r(693, q2_ndg_old, SIZE(q2_ndg_old,KIND=8))
+        IF (PRESENT(t2_ndg_new)) CALL gpu_cc_save_r(694, t2_ndg_new, SIZE(t2_ndg_new,KIND=8))
+        IF (PRESENT(q2_ndg_new)) CALL gpu_cc_save_r(695, q2_ndg_new, SIZE(q2_ndg_new,KIND=8))
+        IF (PRESENT(sn_ndg_old)) CALL gpu_cc_save_r(696, sn_ndg_old, SIZE(sn_ndg_old,KIND=8))
+        IF (PRESENT(sn_ndg_new)) CALL gpu_cc_save_r(697, sn_ndg_new, SIZE(sn_ndg_new,KIND=8))
+        IF (PRESENT(t2obs)) CALL gpu_cc_save_r(698, t2obs, SIZE(t2obs,KIND=8))
+        IF (PRESENT(q2obs)) CALL gpu_cc_save_r(699, q2obs, SIZE(q2obs,KIND=8))
+        IF (PRESENT(hd_temf)) CALL gpu_cc_save_r(700, hd_temf, SIZE(hd_temf,KIND=8))
+        IF (PRESENT(te_temf)) CALL gpu_cc_save_r(701, te_temf, SIZE(te_temf,KIND=8))
+        IF (PRESENT(exch_temf)) CALL gpu_cc_save_r(702, exch_temf, SIZE(exch_temf,KIND=8))
+        IF (PRESENT(wm_temf)) CALL gpu_cc_save_r(703, wm_temf, SIZE(wm_temf,KIND=8))
+        IF (PRESENT(hfx_force)) CALL gpu_cc_save_r0(704, hfx_force)
+        IF (PRESENT(lh_force)) CALL gpu_cc_save_r0(705, lh_force)
+        IF (PRESENT(tsk_force)) CALL gpu_cc_save_r0(706, tsk_force)
+        IF (PRESENT(uratx)) CALL gpu_cc_save_r(707, uratx, SIZE(uratx,KIND=8))
+        IF (PRESENT(vratx)) CALL gpu_cc_save_r(708, vratx, SIZE(vratx,KIND=8))
+        IF (PRESENT(tratx)) CALL gpu_cc_save_r(709, tratx, SIZE(tratx,KIND=8))
+        IF (PRESENT(tml)) CALL gpu_cc_save_r(710, tml, SIZE(tml,KIND=8))
+        IF (PRESENT(t0ml)) CALL gpu_cc_save_r(711, t0ml, SIZE(t0ml,KIND=8))
+        IF (PRESENT(hml)) CALL gpu_cc_save_r(712, hml, SIZE(hml,KIND=8))
+        IF (PRESENT(h0ml)) CALL gpu_cc_save_r(713, h0ml, SIZE(h0ml,KIND=8))
+        IF (PRESENT(huml)) CALL gpu_cc_save_r(714, huml, SIZE(huml,KIND=8))
+        IF (PRESENT(hvml)) CALL gpu_cc_save_r(715, hvml, SIZE(hvml,KIND=8))
+        IF (PRESENT(ustm)) CALL gpu_cc_save_r(716, ustm, SIZE(ustm,KIND=8))
+        IF (PRESENT(ck)) CALL gpu_cc_save_r(717, ck, SIZE(ck,KIND=8))
+        IF (PRESENT(cka)) CALL gpu_cc_save_r(718, cka, SIZE(cka,KIND=8))
+        IF (PRESENT(cd)) CALL gpu_cc_save_r(719, cd, SIZE(cd,KIND=8))
+        IF (PRESENT(cda)) CALL gpu_cc_save_r(720, cda, SIZE(cda,KIND=8))
+        IF (PRESENT(snotime)) CALL gpu_cc_save_r(721, snotime, SIZE(snotime,KIND=8))
+        IF (PRESENT(noahres)) CALL gpu_cc_save_r(722, noahres, SIZE(noahres,KIND=8))
+        IF (PRESENT(bldtacttime)) CALL gpu_cc_save_r0(723, bldtacttime)
+        IF (PRESENT(tsk_rural)) CALL gpu_cc_save_r(724, tsk_rural, SIZE(tsk_rural,KIND=8))
+        IF (PRESENT(trb_urb4d)) CALL gpu_cc_save_r(725, trb_urb4d, SIZE(trb_urb4d,KIND=8))
+        IF (PRESENT(tw1_urb4d)) CALL gpu_cc_save_r(726, tw1_urb4d, SIZE(tw1_urb4d,KIND=8))
+        IF (PRESENT(tw2_urb4d)) CALL gpu_cc_save_r(727, tw2_urb4d, SIZE(tw2_urb4d,KIND=8))
+        IF (PRESENT(tgb_urb4d)) CALL gpu_cc_save_r(728, tgb_urb4d, SIZE(tgb_urb4d,KIND=8))
+        IF (PRESENT(tlev_urb3d)) CALL gpu_cc_save_r(729, tlev_urb3d, SIZE(tlev_urb3d,KIND=8))
+        IF (PRESENT(qlev_urb3d)) CALL gpu_cc_save_r(730, qlev_urb3d, SIZE(qlev_urb3d,KIND=8))
+        IF (PRESENT(tw1lev_urb3d)) CALL gpu_cc_save_r(731, tw1lev_urb3d, SIZE(tw1lev_urb3d,KIND=8))
+        IF (PRESENT(tw2lev_urb3d)) CALL gpu_cc_save_r(732, tw2lev_urb3d, SIZE(tw2lev_urb3d,KIND=8))
+        IF (PRESENT(tglev_urb3d)) CALL gpu_cc_save_r(733, tglev_urb3d, SIZE(tglev_urb3d,KIND=8))
+        IF (PRESENT(tflev_urb3d)) CALL gpu_cc_save_r(734, tflev_urb3d, SIZE(tflev_urb3d,KIND=8))
+        IF (PRESENT(sf_ac_urb3d)) CALL gpu_cc_save_r(735, sf_ac_urb3d, SIZE(sf_ac_urb3d,KIND=8))
+        IF (PRESENT(lf_ac_urb3d)) CALL gpu_cc_save_r(736, lf_ac_urb3d, SIZE(lf_ac_urb3d,KIND=8))
+        IF (PRESENT(cm_ac_urb3d)) CALL gpu_cc_save_r(737, cm_ac_urb3d, SIZE(cm_ac_urb3d,KIND=8))
+        IF (PRESENT(sfvent_urb3d)) CALL gpu_cc_save_r(738, sfvent_urb3d, SIZE(sfvent_urb3d,KIND=8))
+        IF (PRESENT(lfvent_urb3d)) CALL gpu_cc_save_r(739, lfvent_urb3d, SIZE(lfvent_urb3d,KIND=8))
+        IF (PRESENT(sfwin1_urb3d)) CALL gpu_cc_save_r(740, sfwin1_urb3d, SIZE(sfwin1_urb3d,KIND=8))
+        IF (PRESENT(sfwin2_urb3d)) CALL gpu_cc_save_r(741, sfwin2_urb3d, SIZE(sfwin2_urb3d,KIND=8))
+        IF (PRESENT(sfw1_urb3d)) CALL gpu_cc_save_r(742, sfw1_urb3d, SIZE(sfw1_urb3d,KIND=8))
+        IF (PRESENT(sfw2_urb3d)) CALL gpu_cc_save_r(743, sfw2_urb3d, SIZE(sfw2_urb3d,KIND=8))
+        IF (PRESENT(sfr_urb3d)) CALL gpu_cc_save_r(744, sfr_urb3d, SIZE(sfr_urb3d,KIND=8))
+        IF (PRESENT(sfg_urb3d)) CALL gpu_cc_save_r(745, sfg_urb3d, SIZE(sfg_urb3d,KIND=8))
+        IF (PRESENT(ep_pv_urb3d)) CALL gpu_cc_save_r(746, ep_pv_urb3d, SIZE(ep_pv_urb3d,KIND=8))
+        IF (PRESENT(t_pv_urb3d)) CALL gpu_cc_save_r(747, t_pv_urb3d, SIZE(t_pv_urb3d,KIND=8))
+        IF (PRESENT(trv_urb4d)) CALL gpu_cc_save_r(748, trv_urb4d, SIZE(trv_urb4d,KIND=8))
+        IF (PRESENT(qr_urb4d)) CALL gpu_cc_save_r(749, qr_urb4d, SIZE(qr_urb4d,KIND=8))
+        IF (PRESENT(qgr_urb3d)) CALL gpu_cc_save_r(750, qgr_urb3d, SIZE(qgr_urb3d,KIND=8))
+        IF (PRESENT(tgr_urb3d)) CALL gpu_cc_save_r(751, tgr_urb3d, SIZE(tgr_urb3d,KIND=8))
+        IF (PRESENT(drain_urb4d)) CALL gpu_cc_save_r(752, drain_urb4d, SIZE(drain_urb4d,KIND=8))
+        IF (PRESENT(draingr_urb3d)) CALL gpu_cc_save_r(753, draingr_urb3d, SIZE(draingr_urb3d,KIND=8))
+        IF (PRESENT(sfrv_urb3d)) CALL gpu_cc_save_r(754, sfrv_urb3d, SIZE(sfrv_urb3d,KIND=8))
+        IF (PRESENT(lfrv_urb3d)) CALL gpu_cc_save_r(755, lfrv_urb3d, SIZE(lfrv_urb3d,KIND=8))
+        IF (PRESENT(dgr_urb3d)) CALL gpu_cc_save_r(756, dgr_urb3d, SIZE(dgr_urb3d,KIND=8))
+        IF (PRESENT(dg_urb3d)) CALL gpu_cc_save_r(757, dg_urb3d, SIZE(dg_urb3d,KIND=8))
+        IF (PRESENT(lfr_urb3d)) CALL gpu_cc_save_r(758, lfr_urb3d, SIZE(lfr_urb3d,KIND=8))
+        IF (PRESENT(lfg_urb3d)) CALL gpu_cc_save_r(759, lfg_urb3d, SIZE(lfg_urb3d,KIND=8))
+        IF (PRESENT(a_u_bep)) CALL gpu_cc_save_r(760, a_u_bep, SIZE(a_u_bep,KIND=8))
+        IF (PRESENT(a_v_bep)) CALL gpu_cc_save_r(761, a_v_bep, SIZE(a_v_bep,KIND=8))
+        IF (PRESENT(a_t_bep)) CALL gpu_cc_save_r(762, a_t_bep, SIZE(a_t_bep,KIND=8))
+        IF (PRESENT(a_q_bep)) CALL gpu_cc_save_r(763, a_q_bep, SIZE(a_q_bep,KIND=8))
+        IF (PRESENT(b_u_bep)) CALL gpu_cc_save_r(764, b_u_bep, SIZE(b_u_bep,KIND=8))
+        IF (PRESENT(b_v_bep)) CALL gpu_cc_save_r(765, b_v_bep, SIZE(b_v_bep,KIND=8))
+        IF (PRESENT(b_t_bep)) CALL gpu_cc_save_r(766, b_t_bep, SIZE(b_t_bep,KIND=8))
+        IF (PRESENT(b_q_bep)) CALL gpu_cc_save_r(767, b_q_bep, SIZE(b_q_bep,KIND=8))
+        IF (PRESENT(sf_bep)) CALL gpu_cc_save_r(768, sf_bep, SIZE(sf_bep,KIND=8))
+        IF (PRESENT(vl_bep)) CALL gpu_cc_save_r(769, vl_bep, SIZE(vl_bep,KIND=8))
+        IF (PRESENT(a_e_bep)) CALL gpu_cc_save_r(770, a_e_bep, SIZE(a_e_bep,KIND=8))
+        IF (PRESENT(b_e_bep)) CALL gpu_cc_save_r(771, b_e_bep, SIZE(b_e_bep,KIND=8))
+        IF (PRESENT(dlg_bep)) CALL gpu_cc_save_r(772, dlg_bep, SIZE(dlg_bep,KIND=8))
+        IF (PRESENT(dl_u_bep)) CALL gpu_cc_save_r(773, dl_u_bep, SIZE(dl_u_bep,KIND=8))
+        IF (PRESENT(tsk_save)) CALL gpu_cc_save_r(774, tsk_save, SIZE(tsk_save,KIND=8))
+        IF (PRESENT(mosaic_cat_index)) CALL gpu_cc_save_i(775, mosaic_cat_index, SIZE(mosaic_cat_index,KIND=8))
+        IF (PRESENT(landusef2)) CALL gpu_cc_save_r(776, landusef2, SIZE(landusef2,KIND=8))
+        IF (PRESENT(tsk_mosaic)) CALL gpu_cc_save_r(777, tsk_mosaic, SIZE(tsk_mosaic,KIND=8))
+        IF (PRESENT(qsfc_mosaic)) CALL gpu_cc_save_r(778, qsfc_mosaic, SIZE(qsfc_mosaic,KIND=8))
+        IF (PRESENT(tslb_mosaic)) CALL gpu_cc_save_r(779, tslb_mosaic, SIZE(tslb_mosaic,KIND=8))
+        IF (PRESENT(smois_mosaic)) CALL gpu_cc_save_r(780, smois_mosaic, SIZE(smois_mosaic,KIND=8))
+        IF (PRESENT(sh2o_mosaic)) CALL gpu_cc_save_r(781, sh2o_mosaic, SIZE(sh2o_mosaic,KIND=8))
+        IF (PRESENT(canwat_mosaic)) CALL gpu_cc_save_r(782, canwat_mosaic, SIZE(canwat_mosaic,KIND=8))
+        IF (PRESENT(snow_mosaic)) CALL gpu_cc_save_r(783, snow_mosaic, SIZE(snow_mosaic,KIND=8))
+        IF (PRESENT(snowh_mosaic)) CALL gpu_cc_save_r(784, snowh_mosaic, SIZE(snowh_mosaic,KIND=8))
+        IF (PRESENT(snowc_mosaic)) CALL gpu_cc_save_r(785, snowc_mosaic, SIZE(snowc_mosaic,KIND=8))
+        IF (PRESENT(albedo_mosaic)) CALL gpu_cc_save_r(786, albedo_mosaic, SIZE(albedo_mosaic,KIND=8))
+        IF (PRESENT(albbck_mosaic)) CALL gpu_cc_save_r(787, albbck_mosaic, SIZE(albbck_mosaic,KIND=8))
+        IF (PRESENT(emiss_mosaic)) CALL gpu_cc_save_r(788, emiss_mosaic, SIZE(emiss_mosaic,KIND=8))
+        IF (PRESENT(embck_mosaic)) CALL gpu_cc_save_r(789, embck_mosaic, SIZE(embck_mosaic,KIND=8))
+        IF (PRESENT(znt_mosaic)) CALL gpu_cc_save_r(790, znt_mosaic, SIZE(znt_mosaic,KIND=8))
+        IF (PRESENT(z0_mosaic)) CALL gpu_cc_save_r(791, z0_mosaic, SIZE(z0_mosaic,KIND=8))
+        IF (PRESENT(hfx_mosaic)) CALL gpu_cc_save_r(792, hfx_mosaic, SIZE(hfx_mosaic,KIND=8))
+        IF (PRESENT(qfx_mosaic)) CALL gpu_cc_save_r(793, qfx_mosaic, SIZE(qfx_mosaic,KIND=8))
+        IF (PRESENT(lh_mosaic)) CALL gpu_cc_save_r(794, lh_mosaic, SIZE(lh_mosaic,KIND=8))
+        IF (PRESENT(grdflx_mosaic)) CALL gpu_cc_save_r(795, grdflx_mosaic, SIZE(grdflx_mosaic,KIND=8))
+        IF (PRESENT(snotime_mosaic)) CALL gpu_cc_save_r(796, snotime_mosaic, SIZE(snotime_mosaic,KIND=8))
+        IF (PRESENT(rs_mosaic)) CALL gpu_cc_save_r(797, rs_mosaic, SIZE(rs_mosaic,KIND=8))
+        IF (PRESENT(lai_mosaic)) CALL gpu_cc_save_r(798, lai_mosaic, SIZE(lai_mosaic,KIND=8))
+        IF (PRESENT(tr_urb2d_mosaic)) CALL gpu_cc_save_r(799, tr_urb2d_mosaic, SIZE(tr_urb2d_mosaic,KIND=8))
+        IF (PRESENT(tb_urb2d_mosaic)) CALL gpu_cc_save_r(800, tb_urb2d_mosaic, SIZE(tb_urb2d_mosaic,KIND=8))
+        IF (PRESENT(tg_urb2d_mosaic)) CALL gpu_cc_save_r(801, tg_urb2d_mosaic, SIZE(tg_urb2d_mosaic,KIND=8))
+        IF (PRESENT(tc_urb2d_mosaic)) CALL gpu_cc_save_r(802, tc_urb2d_mosaic, SIZE(tc_urb2d_mosaic,KIND=8))
+        IF (PRESENT(qc_urb2d_mosaic)) CALL gpu_cc_save_r(803, qc_urb2d_mosaic, SIZE(qc_urb2d_mosaic,KIND=8))
+        IF (PRESENT(uc_urb2d_mosaic)) CALL gpu_cc_save_r(804, uc_urb2d_mosaic, SIZE(uc_urb2d_mosaic,KIND=8))
+        IF (PRESENT(trl_urb3d_mosaic)) CALL gpu_cc_save_r(805, trl_urb3d_mosaic, SIZE(trl_urb3d_mosaic,KIND=8))
+        IF (PRESENT(tbl_urb3d_mosaic)) CALL gpu_cc_save_r(806, tbl_urb3d_mosaic, SIZE(tbl_urb3d_mosaic,KIND=8))
+        IF (PRESENT(tgl_urb3d_mosaic)) CALL gpu_cc_save_r(807, tgl_urb3d_mosaic, SIZE(tgl_urb3d_mosaic,KIND=8))
+        IF (PRESENT(sh_urb2d_mosaic)) CALL gpu_cc_save_r(808, sh_urb2d_mosaic, SIZE(sh_urb2d_mosaic,KIND=8))
+        IF (PRESENT(lh_urb2d_mosaic)) CALL gpu_cc_save_r(809, lh_urb2d_mosaic, SIZE(lh_urb2d_mosaic,KIND=8))
+        IF (PRESENT(g_urb2d_mosaic)) CALL gpu_cc_save_r(810, g_urb2d_mosaic, SIZE(g_urb2d_mosaic,KIND=8))
+        IF (PRESENT(rn_urb2d_mosaic)) CALL gpu_cc_save_r(811, rn_urb2d_mosaic, SIZE(rn_urb2d_mosaic,KIND=8))
+        IF (PRESENT(ts_urb2d_mosaic)) CALL gpu_cc_save_r(812, ts_urb2d_mosaic, SIZE(ts_urb2d_mosaic,KIND=8))
+        IF (PRESENT(ts_rul2d_mosaic)) CALL gpu_cc_save_r(813, ts_rul2d_mosaic, SIZE(ts_rul2d_mosaic,KIND=8))
+        CALL gpu_cc_save_r(814, zol, SIZE(zol,KIND=8))
+        IF (PRESENT(sda_hfx)) CALL gpu_cc_save_r(815, sda_hfx, SIZE(sda_hfx,KIND=8))
+        IF (PRESENT(sda_qfx)) CALL gpu_cc_save_r(816, sda_qfx, SIZE(sda_qfx,KIND=8))
+        IF (PRESENT(hfx_both)) CALL gpu_cc_save_r(817, hfx_both, SIZE(hfx_both,KIND=8))
+        IF (PRESENT(qfx_both)) CALL gpu_cc_save_r(818, qfx_both, SIZE(qfx_both,KIND=8))
+        IF (PRESENT(qnorm)) CALL gpu_cc_save_r(819, qnorm, SIZE(qnorm,KIND=8))
+        IF (PRESENT(pattern_spp_lsm)) CALL gpu_cc_save_r(820, pattern_spp_lsm, SIZE(pattern_spp_lsm,KIND=8))
+        IF (PRESENT(field_sf)) CALL gpu_cc_save_r(821, field_sf, SIZE(field_sf,KIND=8))
+        IF (PRESENT(pattern_spp_pbl)) CALL gpu_cc_save_r(822, pattern_spp_pbl, SIZE(pattern_spp_pbl,KIND=8))
+        IF (PRESENT(xlaidyn)) CALL gpu_cc_save_r(823, xlaidyn, SIZE(xlaidyn,KIND=8))
+        IF (PRESENT(perts_qvapor)) CALL gpu_cc_save_r(824, perts_qvapor, SIZE(perts_qvapor,KIND=8))
+        IF (PRESENT(perts_th)) CALL gpu_cc_save_r(825, perts_th, SIZE(perts_th,KIND=8))
+        IF (PRESENT(perts_smois)) CALL gpu_cc_save_r(826, perts_smois, SIZE(perts_smois,KIND=8))
+        IF (PRESENT(perts_tsoil)) CALL gpu_cc_save_r(827, perts_tsoil, SIZE(perts_tsoil,KIND=8))
+        IF (PRESENT(irr_rand_field)) CALL gpu_cc_save_i(828, irr_rand_field, SIZE(irr_rand_field,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_SURFACE_DRIVER)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(sfcheadrt, infxsrt, soldrain, qtiledrain, zwatble2d, acsnom, acsnow, akhs, &
+!$acc&   akms, albedo, br, canwat, chklowq, dz8w, dzs, glw, grdflx, gsw, swdown, gz1oz0, hfx, ht, &
+!$acc&   isltyp, ivgtyp, lowlyr, mavail, rmol, p8w, pblh, pi_phy, pshltr, fm, fhh, psih, psim, &
+!$acc&   p_phy, q10, q2, qfx, qsfc, qshltr, qz0, raincv, rho, sfcevp, sfcexc, sfcrunoff, acrunoff, &
+!$acc&   smois, smstav, smstot, snoalb, snow, snowc, snowh, smcrel, th10, th2, thz0, th_phy, tmn, &
+!$acc&   tshltr, tsk, tslb, t_phy, u10, udrunoff, ust, uz0, u_phy, v10, vegfra, u10e, v10e, uoce, &
+!$acc&   voce, vz0, v_phy, wspd, xice, xland, z, znt, zs, albsi, icedepth, snowsi, xicem, ct, &
+!$acc&   tke_pbl, albbck, embck, lh, sh2o, shdmax, shdmin, shdavg, z0, flqc, flhc, psfc, sst, flx4, &
+!$acc&   fvb, fbur, fgsn, water_depth, lakedepth2d, savedtke12d, snowdp2d, h2osno2d, snl2d, &
+!$acc&   t_grnd2d, t_lake3d, lake_icefrac3d, z_lake3d, dz_lake3d, t_soisno3d, h2osoi_ice3d, &
+!$acc&   h2osoi_liq3d, h2osoi_vol3d, z3d, dz3d, zi3d, watsat3d, csol3d, tkmg3d, tkdry3d, tksatu3d, &
+!$acc&   lakemask, i_start, i_end, j_start, j_end, zol)
+          IF (PRESENT(acgrdflx)) THEN
+!$acc update device(acgrdflx)
+          END IF
+          IF (PRESENT(achfx)) THEN
+!$acc update device(achfx)
+          END IF
+          IF (PRESENT(aclhf)) THEN
+!$acc update device(aclhf)
+          END IF
+          IF (PRESENT(snowfallac)) THEN
+!$acc update device(snowfallac)
+          END IF
+          IF (PRESENT(dx2d)) THEN
+!$acc update device(dx2d)
+          END IF
+          IF (PRESENT(area2d)) THEN
+!$acc update device(area2d)
+          END IF
+          IF (PRESENT(tyr)) THEN
+!$acc update device(tyr)
+          END IF
+          IF (PRESENT(tyra)) THEN
+!$acc update device(tyra)
+          END IF
+          IF (PRESENT(tdly)) THEN
+!$acc update device(tdly)
+          END IF
+          IF (PRESENT(tlag)) THEN
+!$acc update device(tlag)
+          END IF
+          IF (PRESENT(cplmask)) THEN
+!$acc update device(cplmask)
+          END IF
+          IF (PRESENT(sst_input)) THEN
+!$acc update device(sst_input)
+          END IF
+          IF (PRESENT(sstsk)) THEN
+!$acc update device(sstsk)
+          END IF
+          IF (PRESENT(dtw)) THEN
+!$acc update device(dtw)
+          END IF
+          IF (PRESENT(t2)) THEN
+!$acc update device(t2)
+          END IF
+          IF (PRESENT(emiss)) THEN
+!$acc update device(emiss)
+          END IF
+          IF (PRESENT(landusef)) THEN
+!$acc update device(landusef)
+          END IF
+          IF (PRESENT(soilctop)) THEN
+!$acc update device(soilctop)
+          END IF
+          IF (PRESENT(soilcbot)) THEN
+!$acc update device(soilcbot)
+          END IF
+          IF (PRESENT(ra)) THEN
+!$acc update device(ra)
+          END IF
+          IF (PRESENT(rs)) THEN
+!$acc update device(rs)
+          END IF
+          IF (PRESENT(vegf_px)) THEN
+!$acc update device(vegf_px)
+          END IF
+          IF (PRESENT(snowncv)) THEN
+!$acc update device(snowncv)
+          END IF
+          IF (PRESENT(lai)) THEN
+!$acc update device(lai)
+          END IF
+          IF (PRESENT(imperv)) THEN
+!$acc update device(imperv)
+          END IF
+          IF (PRESENT(canfra)) THEN
+!$acc update device(canfra)
+          END IF
+          IF (PRESENT(lai_px)) THEN
+!$acc update device(lai_px)
+          END IF
+          IF (PRESENT(wwlt_px)) THEN
+!$acc update device(wwlt_px)
+          END IF
+          IF (PRESENT(wfc_px)) THEN
+!$acc update device(wfc_px)
+          END IF
+          IF (PRESENT(wsat_px)) THEN
+!$acc update device(wsat_px)
+          END IF
+          IF (PRESENT(clay_px)) THEN
+!$acc update device(clay_px)
+          END IF
+          IF (PRESENT(csand_px)) THEN
+!$acc update device(csand_px)
+          END IF
+          IF (PRESENT(fmsand_px)) THEN
+!$acc update device(fmsand_px)
+          END IF
+          IF (PRESENT(soilcomp)) THEN
+!$acc update device(soilcomp)
+          END IF
+          IF (PRESENT(soilcl1)) THEN
+!$acc update device(soilcl1)
+          END IF
+          IF (PRESENT(soilcl2)) THEN
+!$acc update device(soilcl2)
+          END IF
+          IF (PRESENT(soilcl3)) THEN
+!$acc update device(soilcl3)
+          END IF
+          IF (PRESENT(soilcl4)) THEN
+!$acc update device(soilcl4)
+          END IF
+          IF (PRESENT(isnowxy)) THEN
+!$acc update device(isnowxy)
+          END IF
+          IF (PRESENT(tvxy)) THEN
+!$acc update device(tvxy)
+          END IF
+          IF (PRESENT(tgxy)) THEN
+!$acc update device(tgxy)
+          END IF
+          IF (PRESENT(canicexy)) THEN
+!$acc update device(canicexy)
+          END IF
+          IF (PRESENT(canliqxy)) THEN
+!$acc update device(canliqxy)
+          END IF
+          IF (PRESENT(eahxy)) THEN
+!$acc update device(eahxy)
+          END IF
+          IF (PRESENT(tahxy)) THEN
+!$acc update device(tahxy)
+          END IF
+          IF (PRESENT(cmxy)) THEN
+!$acc update device(cmxy)
+          END IF
+          IF (PRESENT(chxy)) THEN
+!$acc update device(chxy)
+          END IF
+          IF (PRESENT(fwetxy)) THEN
+!$acc update device(fwetxy)
+          END IF
+          IF (PRESENT(sneqvoxy)) THEN
+!$acc update device(sneqvoxy)
+          END IF
+          IF (PRESENT(alboldxy)) THEN
+!$acc update device(alboldxy)
+          END IF
+          IF (PRESENT(qsnowxy)) THEN
+!$acc update device(qsnowxy)
+          END IF
+          IF (PRESENT(qrainxy)) THEN
+!$acc update device(qrainxy)
+          END IF
+          IF (PRESENT(wslakexy)) THEN
+!$acc update device(wslakexy)
+          END IF
+          IF (PRESENT(zwtxy)) THEN
+!$acc update device(zwtxy)
+          END IF
+          IF (PRESENT(waxy)) THEN
+!$acc update device(waxy)
+          END IF
+          IF (PRESENT(wtxy)) THEN
+!$acc update device(wtxy)
+          END IF
+          IF (PRESENT(tsnoxy)) THEN
+!$acc update device(tsnoxy)
+          END IF
+          IF (PRESENT(zsnsoxy)) THEN
+!$acc update device(zsnsoxy)
+          END IF
+          IF (PRESENT(snicexy)) THEN
+!$acc update device(snicexy)
+          END IF
+          IF (PRESENT(snliqxy)) THEN
+!$acc update device(snliqxy)
+          END IF
+          IF (PRESENT(lfmassxy)) THEN
+!$acc update device(lfmassxy)
+          END IF
+          IF (PRESENT(rtmassxy)) THEN
+!$acc update device(rtmassxy)
+          END IF
+          IF (PRESENT(stmassxy)) THEN
+!$acc update device(stmassxy)
+          END IF
+          IF (PRESENT(woodxy)) THEN
+!$acc update device(woodxy)
+          END IF
+          IF (PRESENT(stblcpxy)) THEN
+!$acc update device(stblcpxy)
+          END IF
+          IF (PRESENT(fastcpxy)) THEN
+!$acc update device(fastcpxy)
+          END IF
+          IF (PRESENT(xsaixy)) THEN
+!$acc update device(xsaixy)
+          END IF
+          IF (PRESENT(taussxy)) THEN
+!$acc update device(taussxy)
+          END IF
+          IF (PRESENT(grainxy)) THEN
+!$acc update device(grainxy)
+          END IF
+          IF (PRESENT(gddxy)) THEN
+!$acc update device(gddxy)
+          END IF
+          IF (PRESENT(cropcat)) THEN
+!$acc update device(cropcat)
+          END IF
+          IF (PRESENT(pgsxy)) THEN
+!$acc update device(pgsxy)
+          END IF
+          IF (PRESENT(planting)) THEN
+!$acc update device(planting)
+          END IF
+          IF (PRESENT(harvest)) THEN
+!$acc update device(harvest)
+          END IF
+          IF (PRESENT(season_gdd)) THEN
+!$acc update device(season_gdd)
+          END IF
+          IF (PRESENT(t2mvxy)) THEN
+!$acc update device(t2mvxy)
+          END IF
+          IF (PRESENT(t2mbxy)) THEN
+!$acc update device(t2mbxy)
+          END IF
+          IF (PRESENT(q2mvxy)) THEN
+!$acc update device(q2mvxy)
+          END IF
+          IF (PRESENT(q2mbxy)) THEN
+!$acc update device(q2mbxy)
+          END IF
+          IF (PRESENT(tradxy)) THEN
+!$acc update device(tradxy)
+          END IF
+          IF (PRESENT(neexy)) THEN
+!$acc update device(neexy)
+          END IF
+          IF (PRESENT(gppxy)) THEN
+!$acc update device(gppxy)
+          END IF
+          IF (PRESENT(nppxy)) THEN
+!$acc update device(nppxy)
+          END IF
+          IF (PRESENT(fvegxy)) THEN
+!$acc update device(fvegxy)
+          END IF
+          IF (PRESENT(runsfxy)) THEN
+!$acc update device(runsfxy)
+          END IF
+          IF (PRESENT(runsbxy)) THEN
+!$acc update device(runsbxy)
+          END IF
+          IF (PRESENT(ecanxy)) THEN
+!$acc update device(ecanxy)
+          END IF
+          IF (PRESENT(edirxy)) THEN
+!$acc update device(edirxy)
+          END IF
+          IF (PRESENT(etranxy)) THEN
+!$acc update device(etranxy)
+          END IF
+          IF (PRESENT(fsaxy)) THEN
+!$acc update device(fsaxy)
+          END IF
+          IF (PRESENT(firaxy)) THEN
+!$acc update device(firaxy)
+          END IF
+          IF (PRESENT(aparxy)) THEN
+!$acc update device(aparxy)
+          END IF
+          IF (PRESENT(psnxy)) THEN
+!$acc update device(psnxy)
+          END IF
+          IF (PRESENT(savxy)) THEN
+!$acc update device(savxy)
+          END IF
+          IF (PRESENT(sagxy)) THEN
+!$acc update device(sagxy)
+          END IF
+          IF (PRESENT(rssunxy)) THEN
+!$acc update device(rssunxy)
+          END IF
+          IF (PRESENT(rsshaxy)) THEN
+!$acc update device(rsshaxy)
+          END IF
+          IF (PRESENT(bgapxy)) THEN
+!$acc update device(bgapxy)
+          END IF
+          IF (PRESENT(wgapxy)) THEN
+!$acc update device(wgapxy)
+          END IF
+          IF (PRESENT(tgvxy)) THEN
+!$acc update device(tgvxy)
+          END IF
+          IF (PRESENT(tgbxy)) THEN
+!$acc update device(tgbxy)
+          END IF
+          IF (PRESENT(chvxy)) THEN
+!$acc update device(chvxy)
+          END IF
+          IF (PRESENT(chbxy)) THEN
+!$acc update device(chbxy)
+          END IF
+          IF (PRESENT(shgxy)) THEN
+!$acc update device(shgxy)
+          END IF
+          IF (PRESENT(shcxy)) THEN
+!$acc update device(shcxy)
+          END IF
+          IF (PRESENT(shbxy)) THEN
+!$acc update device(shbxy)
+          END IF
+          IF (PRESENT(evgxy)) THEN
+!$acc update device(evgxy)
+          END IF
+          IF (PRESENT(evbxy)) THEN
+!$acc update device(evbxy)
+          END IF
+          IF (PRESENT(ghvxy)) THEN
+!$acc update device(ghvxy)
+          END IF
+          IF (PRESENT(ghbxy)) THEN
+!$acc update device(ghbxy)
+          END IF
+          IF (PRESENT(irgxy)) THEN
+!$acc update device(irgxy)
+          END IF
+          IF (PRESENT(ircxy)) THEN
+!$acc update device(ircxy)
+          END IF
+          IF (PRESENT(irbxy)) THEN
+!$acc update device(irbxy)
+          END IF
+          IF (PRESENT(trxy)) THEN
+!$acc update device(trxy)
+          END IF
+          IF (PRESENT(evcxy)) THEN
+!$acc update device(evcxy)
+          END IF
+          IF (PRESENT(chleafxy)) THEN
+!$acc update device(chleafxy)
+          END IF
+          IF (PRESENT(chucxy)) THEN
+!$acc update device(chucxy)
+          END IF
+          IF (PRESENT(chv2xy)) THEN
+!$acc update device(chv2xy)
+          END IF
+          IF (PRESENT(chb2xy)) THEN
+!$acc update device(chb2xy)
+          END IF
+          IF (PRESENT(chstarxy)) THEN
+!$acc update device(chstarxy)
+          END IF
+          IF (PRESENT(qintsxy)) THEN
+!$acc update device(qintsxy)
+          END IF
+          IF (PRESENT(qintrxy)) THEN
+!$acc update device(qintrxy)
+          END IF
+          IF (PRESENT(qdripsxy)) THEN
+!$acc update device(qdripsxy)
+          END IF
+          IF (PRESENT(qdriprxy)) THEN
+!$acc update device(qdriprxy)
+          END IF
+          IF (PRESENT(qthrosxy)) THEN
+!$acc update device(qthrosxy)
+          END IF
+          IF (PRESENT(qthrorxy)) THEN
+!$acc update device(qthrorxy)
+          END IF
+          IF (PRESENT(qsnsubxy)) THEN
+!$acc update device(qsnsubxy)
+          END IF
+          IF (PRESENT(qsnfroxy)) THEN
+!$acc update device(qsnfroxy)
+          END IF
+          IF (PRESENT(qsubcxy)) THEN
+!$acc update device(qsubcxy)
+          END IF
+          IF (PRESENT(qfrocxy)) THEN
+!$acc update device(qfrocxy)
+          END IF
+          IF (PRESENT(qevacxy)) THEN
+!$acc update device(qevacxy)
+          END IF
+          IF (PRESENT(qdewcxy)) THEN
+!$acc update device(qdewcxy)
+          END IF
+          IF (PRESENT(qfrzcxy)) THEN
+!$acc update device(qfrzcxy)
+          END IF
+          IF (PRESENT(qmeltcxy)) THEN
+!$acc update device(qmeltcxy)
+          END IF
+          IF (PRESENT(qsnbotxy)) THEN
+!$acc update device(qsnbotxy)
+          END IF
+          IF (PRESENT(pondingxy)) THEN
+!$acc update device(pondingxy)
+          END IF
+          IF (PRESENT(pahxy)) THEN
+!$acc update device(pahxy)
+          END IF
+          IF (PRESENT(pahgxy)) THEN
+!$acc update device(pahgxy)
+          END IF
+          IF (PRESENT(pahvxy)) THEN
+!$acc update device(pahvxy)
+          END IF
+          IF (PRESENT(pahbxy)) THEN
+!$acc update device(pahbxy)
+          END IF
+          IF (PRESENT(qmeltxy)) THEN
+!$acc update device(qmeltxy)
+          END IF
+          IF (PRESENT(fpicexy)) THEN
+!$acc update device(fpicexy)
+          END IF
+          IF (PRESENT(rainlsm)) THEN
+!$acc update device(rainlsm)
+          END IF
+          IF (PRESENT(snowlsm)) THEN
+!$acc update device(snowlsm)
+          END IF
+          IF (PRESENT(forctlsm)) THEN
+!$acc update device(forctlsm)
+          END IF
+          IF (PRESENT(forcqlsm)) THEN
+!$acc update device(forcqlsm)
+          END IF
+          IF (PRESENT(forcplsm)) THEN
+!$acc update device(forcplsm)
+          END IF
+          IF (PRESENT(forczlsm)) THEN
+!$acc update device(forczlsm)
+          END IF
+          IF (PRESENT(forcwlsm)) THEN
+!$acc update device(forcwlsm)
+          END IF
+          IF (PRESENT(acc_ssoil)) THEN
+!$acc update device(acc_ssoil)
+          END IF
+          IF (PRESENT(acc_qinsur)) THEN
+!$acc update device(acc_qinsur)
+          END IF
+          IF (PRESENT(acc_qseva)) THEN
+!$acc update device(acc_qseva)
+          END IF
+          IF (PRESENT(acc_etrani)) THEN
+!$acc update device(acc_etrani)
+          END IF
+          IF (PRESENT(eflxbxy)) THEN
+!$acc update device(eflxbxy)
+          END IF
+          IF (PRESENT(soilenergy)) THEN
+!$acc update device(soilenergy)
+          END IF
+          IF (PRESENT(snowenergy)) THEN
+!$acc update device(snowenergy)
+          END IF
+          IF (PRESENT(canhsxy)) THEN
+!$acc update device(canhsxy)
+          END IF
+          IF (PRESENT(acc_dwaterxy)) THEN
+!$acc update device(acc_dwaterxy)
+          END IF
+          IF (PRESENT(acc_prcpxy)) THEN
+!$acc update device(acc_prcpxy)
+          END IF
+          IF (PRESENT(acc_ecanxy)) THEN
+!$acc update device(acc_ecanxy)
+          END IF
+          IF (PRESENT(acc_etranxy)) THEN
+!$acc update device(acc_etranxy)
+          END IF
+          IF (PRESENT(acc_edirxy)) THEN
+!$acc update device(acc_edirxy)
+          END IF
+          IF (PRESENT(irfract)) THEN
+!$acc update device(irfract)
+          END IF
+          IF (PRESENT(sifract)) THEN
+!$acc update device(sifract)
+          END IF
+          IF (PRESENT(mifract)) THEN
+!$acc update device(mifract)
+          END IF
+          IF (PRESENT(fifract)) THEN
+!$acc update device(fifract)
+          END IF
+          IF (PRESENT(irnumsi)) THEN
+!$acc update device(irnumsi)
+          END IF
+          IF (PRESENT(irnummi)) THEN
+!$acc update device(irnummi)
+          END IF
+          IF (PRESENT(irnumfi)) THEN
+!$acc update device(irnumfi)
+          END IF
+          IF (PRESENT(irwatsi)) THEN
+!$acc update device(irwatsi)
+          END IF
+          IF (PRESENT(irwatmi)) THEN
+!$acc update device(irwatmi)
+          END IF
+          IF (PRESENT(irwatfi)) THEN
+!$acc update device(irwatfi)
+          END IF
+          IF (PRESENT(ireloss)) THEN
+!$acc update device(ireloss)
+          END IF
+          IF (PRESENT(irsivol)) THEN
+!$acc update device(irsivol)
+          END IF
+          IF (PRESENT(irmivol)) THEN
+!$acc update device(irmivol)
+          END IF
+          IF (PRESENT(irfivol)) THEN
+!$acc update device(irfivol)
+          END IF
+          IF (PRESENT(irrsplh)) THEN
+!$acc update device(irrsplh)
+          END IF
+          IF (PRESENT(qtdrain)) THEN
+!$acc update device(qtdrain)
+          END IF
+          IF (PRESENT(td_fraction)) THEN
+!$acc update device(td_fraction)
+          END IF
+          IF (PRESENT(smcwtdxy)) THEN
+!$acc update device(smcwtdxy)
+          END IF
+          IF (PRESENT(rechxy)) THEN
+!$acc update device(rechxy)
+          END IF
+          IF (PRESENT(deeprechxy)) THEN
+!$acc update device(deeprechxy)
+          END IF
+          IF (PRESENT(fdepthxy)) THEN
+!$acc update device(fdepthxy)
+          END IF
+          IF (PRESENT(areaxy)) THEN
+!$acc update device(areaxy)
+          END IF
+          IF (PRESENT(rivercondxy)) THEN
+!$acc update device(rivercondxy)
+          END IF
+          IF (PRESENT(riverbedxy)) THEN
+!$acc update device(riverbedxy)
+          END IF
+          IF (PRESENT(eqzwt)) THEN
+!$acc update device(eqzwt)
+          END IF
+          IF (PRESENT(pexpxy)) THEN
+!$acc update device(pexpxy)
+          END IF
+          IF (PRESENT(qrfxy)) THEN
+!$acc update device(qrfxy)
+          END IF
+          IF (PRESENT(qspringxy)) THEN
+!$acc update device(qspringxy)
+          END IF
+          IF (PRESENT(qslatxy)) THEN
+!$acc update device(qslatxy)
+          END IF
+          IF (PRESENT(qrfsxy)) THEN
+!$acc update device(qrfsxy)
+          END IF
+          IF (PRESENT(qlatxy)) THEN
+!$acc update device(qlatxy)
+          END IF
+          IF (PRESENT(qspringsxy)) THEN
+!$acc update device(qspringsxy)
+          END IF
+          IF (PRESENT(smoiseq)) THEN
+!$acc update device(smoiseq)
+          END IF
+          IF (PRESENT(gecros_state)) THEN
+!$acc update device(gecros_state)
+          END IF
+          IF (PRESENT(ch)) THEN
+!$acc update device(ch)
+          END IF
+          IF (PRESENT(fgdp)) THEN
+!$acc update device(fgdp)
+          END IF
+          IF (PRESENT(dfgdp)) THEN
+!$acc update device(dfgdp)
+          END IF
+          IF (PRESENT(vdfg)) THEN
+!$acc update device(vdfg)
+          END IF
+          IF (PRESENT(om_tmp)) THEN
+!$acc update device(om_tmp)
+          END IF
+          IF (PRESENT(om_s)) THEN
+!$acc update device(om_s)
+          END IF
+          IF (PRESENT(om_u)) THEN
+!$acc update device(om_u)
+          END IF
+          IF (PRESENT(om_v)) THEN
+!$acc update device(om_v)
+          END IF
+          IF (PRESENT(om_depth)) THEN
+!$acc update device(om_depth)
+          END IF
+          IF (PRESENT(om_ml)) THEN
+!$acc update device(om_ml)
+          END IF
+          IF (PRESENT(om_lon)) THEN
+!$acc update device(om_lon)
+          END IF
+          IF (PRESENT(om_lat)) THEN
+!$acc update device(om_lat)
+          END IF
+          IF (PRESENT(msfu)) THEN
+!$acc update device(msfu)
+          END IF
+          IF (PRESENT(msfv)) THEN
+!$acc update device(msfv)
+          END IF
+          IF (PRESENT(msft)) THEN
+!$acc update device(msft)
+          END IF
+          IF (PRESENT(om_tini)) THEN
+!$acc update device(om_tini)
+          END IF
+          IF (PRESENT(om_sini)) THEN
+!$acc update device(om_sini)
+          END IF
+#if (WRF_CHEM == 1)
+          IF (PRESENT(e_bio)) THEN
+!$acc update device(e_bio)
+          END IF
+#endif
+          IF (PRESENT(numc)) THEN
+!$acc update device(numc)
+          END IF
+          IF (PRESENT(nump)) THEN
+!$acc update device(nump)
+          END IF
+          IF (PRESENT(sabv)) THEN
+!$acc update device(sabv)
+          END IF
+          IF (PRESENT(sabg)) THEN
+!$acc update device(sabg)
+          END IF
+          IF (PRESENT(lwup)) THEN
+!$acc update device(lwup)
+          END IF
+          IF (PRESENT(snl)) THEN
+!$acc update device(snl)
+          END IF
+          IF (PRESENT(snowdp)) THEN
+!$acc update device(snowdp)
+          END IF
+          IF (PRESENT(wtc)) THEN
+!$acc update device(wtc)
+          END IF
+          IF (PRESENT(wtp)) THEN
+!$acc update device(wtp)
+          END IF
+          IF (PRESENT(h2osno)) THEN
+!$acc update device(h2osno)
+          END IF
+          IF (PRESENT(t_grnd)) THEN
+!$acc update device(t_grnd)
+          END IF
+          IF (PRESENT(t_veg)) THEN
+!$acc update device(t_veg)
+          END IF
+          IF (PRESENT(h2ocan)) THEN
+!$acc update device(h2ocan)
+          END IF
+          IF (PRESENT(h2ocan_col)) THEN
+!$acc update device(h2ocan_col)
+          END IF
+          IF (PRESENT(t2m_max)) THEN
+!$acc update device(t2m_max)
+          END IF
+          IF (PRESENT(t2m_min)) THEN
+!$acc update device(t2m_min)
+          END IF
+          IF (PRESENT(t2clm)) THEN
+!$acc update device(t2clm)
+          END IF
+          IF (PRESENT(t_ref2m)) THEN
+!$acc update device(t_ref2m)
+          END IF
+          IF (PRESENT(h2osoi_liq_s1)) THEN
+!$acc update device(h2osoi_liq_s1)
+          END IF
+          IF (PRESENT(h2osoi_liq_s2)) THEN
+!$acc update device(h2osoi_liq_s2)
+          END IF
+          IF (PRESENT(h2osoi_liq_s3)) THEN
+!$acc update device(h2osoi_liq_s3)
+          END IF
+          IF (PRESENT(h2osoi_liq_s4)) THEN
+!$acc update device(h2osoi_liq_s4)
+          END IF
+          IF (PRESENT(h2osoi_liq_s5)) THEN
+!$acc update device(h2osoi_liq_s5)
+          END IF
+          IF (PRESENT(h2osoi_liq1)) THEN
+!$acc update device(h2osoi_liq1)
+          END IF
+          IF (PRESENT(h2osoi_liq2)) THEN
+!$acc update device(h2osoi_liq2)
+          END IF
+          IF (PRESENT(h2osoi_liq3)) THEN
+!$acc update device(h2osoi_liq3)
+          END IF
+          IF (PRESENT(h2osoi_liq4)) THEN
+!$acc update device(h2osoi_liq4)
+          END IF
+          IF (PRESENT(h2osoi_liq5)) THEN
+!$acc update device(h2osoi_liq5)
+          END IF
+          IF (PRESENT(h2osoi_liq6)) THEN
+!$acc update device(h2osoi_liq6)
+          END IF
+          IF (PRESENT(h2osoi_liq7)) THEN
+!$acc update device(h2osoi_liq7)
+          END IF
+          IF (PRESENT(h2osoi_liq8)) THEN
+!$acc update device(h2osoi_liq8)
+          END IF
+          IF (PRESENT(h2osoi_liq9)) THEN
+!$acc update device(h2osoi_liq9)
+          END IF
+          IF (PRESENT(h2osoi_liq10)) THEN
+!$acc update device(h2osoi_liq10)
+          END IF
+          IF (PRESENT(h2osoi_ice_s1)) THEN
+!$acc update device(h2osoi_ice_s1)
+          END IF
+          IF (PRESENT(h2osoi_ice_s2)) THEN
+!$acc update device(h2osoi_ice_s2)
+          END IF
+          IF (PRESENT(h2osoi_ice_s3)) THEN
+!$acc update device(h2osoi_ice_s3)
+          END IF
+          IF (PRESENT(h2osoi_ice_s4)) THEN
+!$acc update device(h2osoi_ice_s4)
+          END IF
+          IF (PRESENT(h2osoi_ice_s5)) THEN
+!$acc update device(h2osoi_ice_s5)
+          END IF
+          IF (PRESENT(h2osoi_ice1)) THEN
+!$acc update device(h2osoi_ice1)
+          END IF
+          IF (PRESENT(h2osoi_ice2)) THEN
+!$acc update device(h2osoi_ice2)
+          END IF
+          IF (PRESENT(h2osoi_ice3)) THEN
+!$acc update device(h2osoi_ice3)
+          END IF
+          IF (PRESENT(h2osoi_ice4)) THEN
+!$acc update device(h2osoi_ice4)
+          END IF
+          IF (PRESENT(h2osoi_ice5)) THEN
+!$acc update device(h2osoi_ice5)
+          END IF
+          IF (PRESENT(h2osoi_ice6)) THEN
+!$acc update device(h2osoi_ice6)
+          END IF
+          IF (PRESENT(h2osoi_ice7)) THEN
+!$acc update device(h2osoi_ice7)
+          END IF
+          IF (PRESENT(h2osoi_ice8)) THEN
+!$acc update device(h2osoi_ice8)
+          END IF
+          IF (PRESENT(h2osoi_ice9)) THEN
+!$acc update device(h2osoi_ice9)
+          END IF
+          IF (PRESENT(h2osoi_ice10)) THEN
+!$acc update device(h2osoi_ice10)
+          END IF
+          IF (PRESENT(t_soisno_s1)) THEN
+!$acc update device(t_soisno_s1)
+          END IF
+          IF (PRESENT(t_soisno_s2)) THEN
+!$acc update device(t_soisno_s2)
+          END IF
+          IF (PRESENT(t_soisno_s3)) THEN
+!$acc update device(t_soisno_s3)
+          END IF
+          IF (PRESENT(t_soisno_s4)) THEN
+!$acc update device(t_soisno_s4)
+          END IF
+          IF (PRESENT(t_soisno_s5)) THEN
+!$acc update device(t_soisno_s5)
+          END IF
+          IF (PRESENT(t_soisno1)) THEN
+!$acc update device(t_soisno1)
+          END IF
+          IF (PRESENT(t_soisno2)) THEN
+!$acc update device(t_soisno2)
+          END IF
+          IF (PRESENT(t_soisno3)) THEN
+!$acc update device(t_soisno3)
+          END IF
+          IF (PRESENT(t_soisno4)) THEN
+!$acc update device(t_soisno4)
+          END IF
+          IF (PRESENT(t_soisno5)) THEN
+!$acc update device(t_soisno5)
+          END IF
+          IF (PRESENT(t_soisno6)) THEN
+!$acc update device(t_soisno6)
+          END IF
+          IF (PRESENT(t_soisno7)) THEN
+!$acc update device(t_soisno7)
+          END IF
+          IF (PRESENT(t_soisno8)) THEN
+!$acc update device(t_soisno8)
+          END IF
+          IF (PRESENT(t_soisno9)) THEN
+!$acc update device(t_soisno9)
+          END IF
+          IF (PRESENT(t_soisno10)) THEN
+!$acc update device(t_soisno10)
+          END IF
+          IF (PRESENT(dzsnow1)) THEN
+!$acc update device(dzsnow1)
+          END IF
+          IF (PRESENT(dzsnow2)) THEN
+!$acc update device(dzsnow2)
+          END IF
+          IF (PRESENT(dzsnow3)) THEN
+!$acc update device(dzsnow3)
+          END IF
+          IF (PRESENT(dzsnow4)) THEN
+!$acc update device(dzsnow4)
+          END IF
+          IF (PRESENT(dzsnow5)) THEN
+!$acc update device(dzsnow5)
+          END IF
+          IF (PRESENT(snowrds1)) THEN
+!$acc update device(snowrds1)
+          END IF
+          IF (PRESENT(snowrds2)) THEN
+!$acc update device(snowrds2)
+          END IF
+          IF (PRESENT(snowrds3)) THEN
+!$acc update device(snowrds3)
+          END IF
+          IF (PRESENT(snowrds4)) THEN
+!$acc update device(snowrds4)
+          END IF
+          IF (PRESENT(snowrds5)) THEN
+!$acc update device(snowrds5)
+          END IF
+          IF (PRESENT(t_lake1)) THEN
+!$acc update device(t_lake1)
+          END IF
+          IF (PRESENT(t_lake2)) THEN
+!$acc update device(t_lake2)
+          END IF
+          IF (PRESENT(t_lake3)) THEN
+!$acc update device(t_lake3)
+          END IF
+          IF (PRESENT(t_lake4)) THEN
+!$acc update device(t_lake4)
+          END IF
+          IF (PRESENT(t_lake5)) THEN
+!$acc update device(t_lake5)
+          END IF
+          IF (PRESENT(t_lake6)) THEN
+!$acc update device(t_lake6)
+          END IF
+          IF (PRESENT(t_lake7)) THEN
+!$acc update device(t_lake7)
+          END IF
+          IF (PRESENT(t_lake8)) THEN
+!$acc update device(t_lake8)
+          END IF
+          IF (PRESENT(t_lake9)) THEN
+!$acc update device(t_lake9)
+          END IF
+          IF (PRESENT(t_lake10)) THEN
+!$acc update device(t_lake10)
+          END IF
+          IF (PRESENT(h2osoi_vol1)) THEN
+!$acc update device(h2osoi_vol1)
+          END IF
+          IF (PRESENT(h2osoi_vol2)) THEN
+!$acc update device(h2osoi_vol2)
+          END IF
+          IF (PRESENT(h2osoi_vol3)) THEN
+!$acc update device(h2osoi_vol3)
+          END IF
+          IF (PRESENT(h2osoi_vol4)) THEN
+!$acc update device(h2osoi_vol4)
+          END IF
+          IF (PRESENT(h2osoi_vol5)) THEN
+!$acc update device(h2osoi_vol5)
+          END IF
+          IF (PRESENT(h2osoi_vol6)) THEN
+!$acc update device(h2osoi_vol6)
+          END IF
+          IF (PRESENT(h2osoi_vol7)) THEN
+!$acc update device(h2osoi_vol7)
+          END IF
+          IF (PRESENT(h2osoi_vol8)) THEN
+!$acc update device(h2osoi_vol8)
+          END IF
+          IF (PRESENT(h2osoi_vol9)) THEN
+!$acc update device(h2osoi_vol9)
+          END IF
+          IF (PRESENT(h2osoi_vol10)) THEN
+!$acc update device(h2osoi_vol10)
+          END IF
+          IF (PRESENT(albedosubgrid)) THEN
+!$acc update device(albedosubgrid)
+          END IF
+          IF (PRESENT(lhsubgrid)) THEN
+!$acc update device(lhsubgrid)
+          END IF
+          IF (PRESENT(hfxsubgrid)) THEN
+!$acc update device(hfxsubgrid)
+          END IF
+          IF (PRESENT(lwupsubgrid)) THEN
+!$acc update device(lwupsubgrid)
+          END IF
+          IF (PRESENT(q2subgrid)) THEN
+!$acc update device(q2subgrid)
+          END IF
+          IF (PRESENT(sabvsubgrid)) THEN
+!$acc update device(sabvsubgrid)
+          END IF
+          IF (PRESENT(sabgsubgrid)) THEN
+!$acc update device(sabgsubgrid)
+          END IF
+          IF (PRESENT(nrasubgrid)) THEN
+!$acc update device(nrasubgrid)
+          END IF
+          IF (PRESENT(swupsubgrid)) THEN
+!$acc update device(swupsubgrid)
+          END IF
+          IF (PRESENT(lhsoi)) THEN
+!$acc update device(lhsoi)
+          END IF
+          IF (PRESENT(lhveg)) THEN
+!$acc update device(lhveg)
+          END IF
+          IF (PRESENT(lhtran)) THEN
+!$acc update device(lhtran)
+          END IF
+          IF (PRESENT(t_veg24)) THEN
+!$acc update device(t_veg24)
+          END IF
+          IF (PRESENT(t_veg240)) THEN
+!$acc update device(t_veg240)
+          END IF
+          IF (PRESENT(fsun24)) THEN
+!$acc update device(fsun24)
+          END IF
+          IF (PRESENT(fsun240)) THEN
+!$acc update device(fsun240)
+          END IF
+          IF (PRESENT(fsd24)) THEN
+!$acc update device(fsd24)
+          END IF
+          IF (PRESENT(fsd240)) THEN
+!$acc update device(fsd240)
+          END IF
+          IF (PRESENT(fsi24)) THEN
+!$acc update device(fsi24)
+          END IF
+          IF (PRESENT(fsi240)) THEN
+!$acc update device(fsi240)
+          END IF
+          IF (PRESENT(laip)) THEN
+!$acc update device(laip)
+          END IF
+#ifdef CN
+          IF (PRESENT(dyntlai)) THEN
+!$acc update device(dyntlai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntsai)) THEN
+!$acc update device(dyntsai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntop)) THEN
+!$acc update device(dyntop)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dynbot)) THEN
+!$acc update device(dynbot)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(htmx)) THEN
+!$acc update device(htmx)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(croplive)) THEN
+!$acc update device(croplive)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd1020)) THEN
+!$acc update device(gdd1020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd820)) THEN
+!$acc update device(gdd820)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd020)) THEN
+!$acc update device(gdd020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc)) THEN
+!$acc update device(grainc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_storage)) THEN
+!$acc update device(grainc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_xfer)) THEN
+!$acc update device(grainc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn)) THEN
+!$acc update device(grainn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_storage)) THEN
+!$acc update device(grainn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_xfer)) THEN
+!$acc update device(grainn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(days_active)) THEN
+!$acc update device(days_active)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_flag)) THEN
+!$acc update device(onset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_counter)) THEN
+!$acc update device(onset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gddflag)) THEN
+!$acc update device(onset_gddflag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_fdd)) THEN
+!$acc update device(onset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gdd)) THEN
+!$acc update device(onset_gdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_swi)) THEN
+!$acc update device(onset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_flag)) THEN
+!$acc update device(offset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_counter)) THEN
+!$acc update device(offset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_fdd)) THEN
+!$acc update device(offset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_swi)) THEN
+!$acc update device(offset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dayl)) THEN
+!$acc update device(dayl)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annavg_t2m)) THEN
+!$acc update device(annavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempavg_t2m)) THEN
+!$acc update device(tempavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_potential_gpp)) THEN
+!$acc update device(tempsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_potential_gpp)) THEN
+!$acc update device(annsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempmax_retransn)) THEN
+!$acc update device(tempmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annmax_retransn)) THEN
+!$acc update device(annmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_leafc_to_litter)) THEN
+!$acc update device(prev_leafc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_frootc_to_litter)) THEN
+!$acc update device(prev_frootc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_npp)) THEN
+!$acc update device(tempsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_npp)) THEN
+!$acc update device(annsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc)) THEN
+!$acc update device(leafc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_storage)) THEN
+!$acc update device(leafc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_xfer)) THEN
+!$acc update device(leafc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc)) THEN
+!$acc update device(frootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_storage)) THEN
+!$acc update device(frootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_xfer)) THEN
+!$acc update device(frootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc)) THEN
+!$acc update device(livestemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_storage)) THEN
+!$acc update device(livestemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_xfer)) THEN
+!$acc update device(livestemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc)) THEN
+!$acc update device(deadstemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_storage)) THEN
+!$acc update device(deadstemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_xfer)) THEN
+!$acc update device(deadstemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc)) THEN
+!$acc update device(livecrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_storage)) THEN
+!$acc update device(livecrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_xfer)) THEN
+!$acc update device(livecrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc)) THEN
+!$acc update device(deadcrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_storage)) THEN
+!$acc update device(deadcrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_xfer)) THEN
+!$acc update device(deadcrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cpool)) THEN
+!$acc update device(cpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ctrunc)) THEN
+!$acc update device(pft_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn)) THEN
+!$acc update device(leafn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_storage)) THEN
+!$acc update device(leafn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_xfer)) THEN
+!$acc update device(leafn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn)) THEN
+!$acc update device(frootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_storage)) THEN
+!$acc update device(frootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_xfer)) THEN
+!$acc update device(frootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn)) THEN
+!$acc update device(livestemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_storage)) THEN
+!$acc update device(livestemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_xfer)) THEN
+!$acc update device(livestemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn)) THEN
+!$acc update device(deadstemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_storage)) THEN
+!$acc update device(deadstemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_xfer)) THEN
+!$acc update device(deadstemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn)) THEN
+!$acc update device(livecrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_storage)) THEN
+!$acc update device(livecrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_xfer)) THEN
+!$acc update device(livecrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn)) THEN
+!$acc update device(deadcrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_storage)) THEN
+!$acc update device(deadcrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_xfer)) THEN
+!$acc update device(deadcrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(npool)) THEN
+!$acc update device(npool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ntrunc)) THEN
+!$acc update device(pft_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_storage)) THEN
+!$acc update device(gresp_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_xfer)) THEN
+!$acc update device(gresp_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(xsmrpool)) THEN
+!$acc update device(xsmrpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_counter)) THEN
+!$acc update device(annsum_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannsum_npp)) THEN
+!$acc update device(cannsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannavg_t2m)) THEN
+!$acc update device(cannavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(wf)) THEN
+!$acc update device(wf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(me)) THEN
+!$acc update device(me)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(mean_fire_prob)) THEN
+!$acc update device(mean_fire_prob)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdc)) THEN
+!$acc update device(cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1c)) THEN
+!$acc update device(litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2c)) THEN
+!$acc update device(litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3c)) THEN
+!$acc update device(litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1c)) THEN
+!$acc update device(soil1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2c)) THEN
+!$acc update device(soil2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3c)) THEN
+!$acc update device(soil3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4c)) THEN
+!$acc update device(soil4c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedc)) THEN
+!$acc update device(seedc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ctrunc)) THEN
+!$acc update device(col_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10c)) THEN
+!$acc update device(prod10c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c)) THEN
+!$acc update device(prod100c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdn)) THEN
+!$acc update device(cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1n)) THEN
+!$acc update device(litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2n)) THEN
+!$acc update device(litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3n)) THEN
+!$acc update device(litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1n)) THEN
+!$acc update device(soil1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2n)) THEN
+!$acc update device(soil2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3n)) THEN
+!$acc update device(soil3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4n)) THEN
+!$acc update device(soil4n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedn)) THEN
+!$acc update device(seedn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ntrunc)) THEN
+!$acc update device(col_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10n)) THEN
+!$acc update device(prod10n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n)) THEN
+!$acc update device(prod100n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(sminn)) THEN
+!$acc update device(sminn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(totlitc)) THEN
+!$acc update device(totlitc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_leaf)) THEN
+!$acc update device(dwt_seedc_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_deadstem)) THEN
+!$acc update device(dwt_seedc_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_cflux)) THEN
+!$acc update device(dwt_conv_cflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10c_gain)) THEN
+!$acc update device(dwt_prod10c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100c_gain)) THEN
+!$acc update device(dwt_prod100c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c_loss)) THEN
+!$acc update device(prod100c_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr1c)) THEN
+!$acc update device(dwt_frootc_to_litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr2c)) THEN
+!$acc update device(dwt_frootc_to_litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr3c)) THEN
+!$acc update device(dwt_frootc_to_litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootc_to_cwdc)) THEN
+!$acc update device(dwt_livecrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootc_to_cwdc)) THEN
+!$acc update device(dwt_deadcrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_leaf)) THEN
+!$acc update device(dwt_seedn_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_deadstem)) THEN
+!$acc update device(dwt_seedn_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_nflux)) THEN
+!$acc update device(dwt_conv_nflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10n_gain)) THEN
+!$acc update device(dwt_prod10n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100n_gain)) THEN
+!$acc update device(dwt_prod100n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n_loss)) THEN
+!$acc update device(prod100n_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr1n)) THEN
+!$acc update device(dwt_frootn_to_litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr2n)) THEN
+!$acc update device(dwt_frootn_to_litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr3n)) THEN
+!$acc update device(dwt_frootn_to_litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootn_to_cwdn)) THEN
+!$acc update device(dwt_livecrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootn_to_cwdn)) THEN
+!$acc update device(dwt_deadcrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(retransn)) THEN
+!$acc update device(retransn)
+          END IF
+#endif
+          IF (PRESENT(pct_pft_input)) THEN
+!$acc update device(pct_pft_input)
+          END IF
+          IF (PRESENT(shadowmask)) THEN
+!$acc update device(shadowmask)
+          END IF
+          IF (PRESENT(swnorm)) THEN
+!$acc update device(swnorm)
+          END IF
+          IF (PRESENT(slope)) THEN
+!$acc update device(slope)
+          END IF
+          IF (PRESENT(slp_azi)) THEN
+!$acc update device(slp_azi)
+          END IF
+          IF (PRESENT(diffuse_frac)) THEN
+!$acc update device(diffuse_frac)
+          END IF
+          IF (PRESENT(coszen)) THEN
+!$acc update device(coszen)
+          END IF
+          IF (PRESENT(hrang)) THEN
+!$acc update device(hrang)
+          END IF
+          IF (PRESENT(xlat_urb2d)) THEN
+!$acc update device(xlat_urb2d)
+          END IF
+          IF (PRESENT(dzr)) THEN
+!$acc update device(dzr)
+          END IF
+          IF (PRESENT(dzb)) THEN
+!$acc update device(dzb)
+          END IF
+          IF (PRESENT(dzg)) THEN
+!$acc update device(dzg)
+          END IF
+          IF (PRESENT(tr_urb2d)) THEN
+!$acc update device(tr_urb2d)
+          END IF
+          IF (PRESENT(tb_urb2d)) THEN
+!$acc update device(tb_urb2d)
+          END IF
+          IF (PRESENT(tg_urb2d)) THEN
+!$acc update device(tg_urb2d)
+          END IF
+          IF (PRESENT(tc_urb2d)) THEN
+!$acc update device(tc_urb2d)
+          END IF
+          IF (PRESENT(qc_urb2d)) THEN
+!$acc update device(qc_urb2d)
+          END IF
+          IF (PRESENT(uc_urb2d)) THEN
+!$acc update device(uc_urb2d)
+          END IF
+          IF (PRESENT(xxxr_urb2d)) THEN
+!$acc update device(xxxr_urb2d)
+          END IF
+          IF (PRESENT(xxxb_urb2d)) THEN
+!$acc update device(xxxb_urb2d)
+          END IF
+          IF (PRESENT(xxxg_urb2d)) THEN
+!$acc update device(xxxg_urb2d)
+          END IF
+          IF (PRESENT(xxxc_urb2d)) THEN
+!$acc update device(xxxc_urb2d)
+          END IF
+          IF (PRESENT(cmcr_urb2d)) THEN
+!$acc update device(cmcr_urb2d)
+          END IF
+          IF (PRESENT(tgr_urb2d)) THEN
+!$acc update device(tgr_urb2d)
+          END IF
+          IF (PRESENT(tgrl_urb3d)) THEN
+!$acc update device(tgrl_urb3d)
+          END IF
+          IF (PRESENT(smr_urb3d)) THEN
+!$acc update device(smr_urb3d)
+          END IF
+          IF (PRESENT(drelr_urb2d)) THEN
+!$acc update device(drelr_urb2d)
+          END IF
+          IF (PRESENT(drelb_urb2d)) THEN
+!$acc update device(drelb_urb2d)
+          END IF
+          IF (PRESENT(drelg_urb2d)) THEN
+!$acc update device(drelg_urb2d)
+          END IF
+          IF (PRESENT(flxhumr_urb2d)) THEN
+!$acc update device(flxhumr_urb2d)
+          END IF
+          IF (PRESENT(flxhumb_urb2d)) THEN
+!$acc update device(flxhumb_urb2d)
+          END IF
+          IF (PRESENT(flxhumg_urb2d)) THEN
+!$acc update device(flxhumg_urb2d)
+          END IF
+          IF (PRESENT(trl_urb3d)) THEN
+!$acc update device(trl_urb3d)
+          END IF
+          IF (PRESENT(tbl_urb3d)) THEN
+!$acc update device(tbl_urb3d)
+          END IF
+          IF (PRESENT(tgl_urb3d)) THEN
+!$acc update device(tgl_urb3d)
+          END IF
+          IF (PRESENT(sh_urb2d)) THEN
+!$acc update device(sh_urb2d)
+          END IF
+          IF (PRESENT(lh_urb2d)) THEN
+!$acc update device(lh_urb2d)
+          END IF
+          IF (PRESENT(g_urb2d)) THEN
+!$acc update device(g_urb2d)
+          END IF
+          IF (PRESENT(rn_urb2d)) THEN
+!$acc update device(rn_urb2d)
+          END IF
+          IF (PRESENT(ts_urb2d)) THEN
+!$acc update device(ts_urb2d)
+          END IF
+          IF (PRESENT(frc_urb2d)) THEN
+!$acc update device(frc_urb2d)
+          END IF
+          IF (PRESENT(utype_urb2d)) THEN
+!$acc update device(utype_urb2d)
+          END IF
+          IF (PRESENT(cmr_sfcdif)) THEN
+!$acc update device(cmr_sfcdif)
+          END IF
+          IF (PRESENT(chr_sfcdif)) THEN
+!$acc update device(chr_sfcdif)
+          END IF
+          IF (PRESENT(cmc_sfcdif)) THEN
+!$acc update device(cmc_sfcdif)
+          END IF
+          IF (PRESENT(chc_sfcdif)) THEN
+!$acc update device(chc_sfcdif)
+          END IF
+          IF (PRESENT(cmgr_sfcdif)) THEN
+!$acc update device(cmgr_sfcdif)
+          END IF
+          IF (PRESENT(chgr_sfcdif)) THEN
+!$acc update device(chgr_sfcdif)
+          END IF
+          IF (PRESENT(alswvisdir)) THEN
+!$acc update device(alswvisdir)
+          END IF
+          IF (PRESENT(alswvisdif)) THEN
+!$acc update device(alswvisdif)
+          END IF
+          IF (PRESENT(alswnirdir)) THEN
+!$acc update device(alswnirdir)
+          END IF
+          IF (PRESENT(alswnirdif)) THEN
+!$acc update device(alswnirdif)
+          END IF
+          IF (PRESENT(swvisdir)) THEN
+!$acc update device(swvisdir)
+          END IF
+          IF (PRESENT(swvisdif)) THEN
+!$acc update device(swvisdif)
+          END IF
+          IF (PRESENT(swnirdir)) THEN
+!$acc update device(swnirdir)
+          END IF
+          IF (PRESENT(swnirdif)) THEN
+!$acc update device(swnirdif)
+          END IF
+          IF (PRESENT(ssib_br)) THEN
+!$acc update device(ssib_br)
+          END IF
+          IF (PRESENT(ssib_fm)) THEN
+!$acc update device(ssib_fm)
+          END IF
+          IF (PRESENT(ssib_fh)) THEN
+!$acc update device(ssib_fh)
+          END IF
+          IF (PRESENT(ssib_cm)) THEN
+!$acc update device(ssib_cm)
+          END IF
+          IF (PRESENT(ssibxdd)) THEN
+!$acc update device(ssibxdd)
+          END IF
+          IF (PRESENT(ssib_lhf)) THEN
+!$acc update device(ssib_lhf)
+          END IF
+          IF (PRESENT(ssib_shf)) THEN
+!$acc update device(ssib_shf)
+          END IF
+          IF (PRESENT(ssib_ghf)) THEN
+!$acc update device(ssib_ghf)
+          END IF
+          IF (PRESENT(ssib_egs)) THEN
+!$acc update device(ssib_egs)
+          END IF
+          IF (PRESENT(ssib_eci)) THEN
+!$acc update device(ssib_eci)
+          END IF
+          IF (PRESENT(ssib_ect)) THEN
+!$acc update device(ssib_ect)
+          END IF
+          IF (PRESENT(ssib_egi)) THEN
+!$acc update device(ssib_egi)
+          END IF
+          IF (PRESENT(ssib_egt)) THEN
+!$acc update device(ssib_egt)
+          END IF
+          IF (PRESENT(ssib_sdn)) THEN
+!$acc update device(ssib_sdn)
+          END IF
+          IF (PRESENT(ssib_sup)) THEN
+!$acc update device(ssib_sup)
+          END IF
+          IF (PRESENT(ssib_ldn)) THEN
+!$acc update device(ssib_ldn)
+          END IF
+          IF (PRESENT(ssib_lup)) THEN
+!$acc update device(ssib_lup)
+          END IF
+          IF (PRESENT(ssib_wat)) THEN
+!$acc update device(ssib_wat)
+          END IF
+          IF (PRESENT(ssib_shc)) THEN
+!$acc update device(ssib_shc)
+          END IF
+          IF (PRESENT(ssib_shg)) THEN
+!$acc update device(ssib_shg)
+          END IF
+          IF (PRESENT(ssib_lai)) THEN
+!$acc update device(ssib_lai)
+          END IF
+          IF (PRESENT(ssib_vcf)) THEN
+!$acc update device(ssib_vcf)
+          END IF
+          IF (PRESENT(ssib_z00)) THEN
+!$acc update device(ssib_z00)
+          END IF
+          IF (PRESENT(ssib_veg)) THEN
+!$acc update device(ssib_veg)
+          END IF
+          IF (PRESENT(isnow)) THEN
+!$acc update device(isnow)
+          END IF
+          IF (PRESENT(swe)) THEN
+!$acc update device(swe)
+          END IF
+          IF (PRESENT(snowden)) THEN
+!$acc update device(snowden)
+          END IF
+          IF (PRESENT(snowdepth)) THEN
+!$acc update device(snowdepth)
+          END IF
+          IF (PRESENT(tkair)) THEN
+!$acc update device(tkair)
+          END IF
+          IF (PRESENT(dzo1)) THEN
+!$acc update device(dzo1)
+          END IF
+          IF (PRESENT(wo1)) THEN
+!$acc update device(wo1)
+          END IF
+          IF (PRESENT(tssn1)) THEN
+!$acc update device(tssn1)
+          END IF
+          IF (PRESENT(tssno1)) THEN
+!$acc update device(tssno1)
+          END IF
+          IF (PRESENT(bwo1)) THEN
+!$acc update device(bwo1)
+          END IF
+          IF (PRESENT(bto1)) THEN
+!$acc update device(bto1)
+          END IF
+          IF (PRESENT(cto1)) THEN
+!$acc update device(cto1)
+          END IF
+          IF (PRESENT(fio1)) THEN
+!$acc update device(fio1)
+          END IF
+          IF (PRESENT(flo1)) THEN
+!$acc update device(flo1)
+          END IF
+          IF (PRESENT(bio1)) THEN
+!$acc update device(bio1)
+          END IF
+          IF (PRESENT(blo1)) THEN
+!$acc update device(blo1)
+          END IF
+          IF (PRESENT(ho1)) THEN
+!$acc update device(ho1)
+          END IF
+          IF (PRESENT(dzo2)) THEN
+!$acc update device(dzo2)
+          END IF
+          IF (PRESENT(wo2)) THEN
+!$acc update device(wo2)
+          END IF
+          IF (PRESENT(tssn2)) THEN
+!$acc update device(tssn2)
+          END IF
+          IF (PRESENT(tssno2)) THEN
+!$acc update device(tssno2)
+          END IF
+          IF (PRESENT(bwo2)) THEN
+!$acc update device(bwo2)
+          END IF
+          IF (PRESENT(bto2)) THEN
+!$acc update device(bto2)
+          END IF
+          IF (PRESENT(cto2)) THEN
+!$acc update device(cto2)
+          END IF
+          IF (PRESENT(fio2)) THEN
+!$acc update device(fio2)
+          END IF
+          IF (PRESENT(flo2)) THEN
+!$acc update device(flo2)
+          END IF
+          IF (PRESENT(bio2)) THEN
+!$acc update device(bio2)
+          END IF
+          IF (PRESENT(blo2)) THEN
+!$acc update device(blo2)
+          END IF
+          IF (PRESENT(ho2)) THEN
+!$acc update device(ho2)
+          END IF
+          IF (PRESENT(dzo3)) THEN
+!$acc update device(dzo3)
+          END IF
+          IF (PRESENT(wo3)) THEN
+!$acc update device(wo3)
+          END IF
+          IF (PRESENT(tssn3)) THEN
+!$acc update device(tssn3)
+          END IF
+          IF (PRESENT(tssno3)) THEN
+!$acc update device(tssno3)
+          END IF
+          IF (PRESENT(bwo3)) THEN
+!$acc update device(bwo3)
+          END IF
+          IF (PRESENT(bto3)) THEN
+!$acc update device(bto3)
+          END IF
+          IF (PRESENT(cto3)) THEN
+!$acc update device(cto3)
+          END IF
+          IF (PRESENT(fio3)) THEN
+!$acc update device(fio3)
+          END IF
+          IF (PRESENT(flo3)) THEN
+!$acc update device(flo3)
+          END IF
+          IF (PRESENT(bio3)) THEN
+!$acc update device(bio3)
+          END IF
+          IF (PRESENT(blo3)) THEN
+!$acc update device(blo3)
+          END IF
+          IF (PRESENT(ho3)) THEN
+!$acc update device(ho3)
+          END IF
+          IF (PRESENT(dzo4)) THEN
+!$acc update device(dzo4)
+          END IF
+          IF (PRESENT(wo4)) THEN
+!$acc update device(wo4)
+          END IF
+          IF (PRESENT(tssn4)) THEN
+!$acc update device(tssn4)
+          END IF
+          IF (PRESENT(tssno4)) THEN
+!$acc update device(tssno4)
+          END IF
+          IF (PRESENT(bwo4)) THEN
+!$acc update device(bwo4)
+          END IF
+          IF (PRESENT(bto4)) THEN
+!$acc update device(bto4)
+          END IF
+          IF (PRESENT(cto4)) THEN
+!$acc update device(cto4)
+          END IF
+          IF (PRESENT(fio4)) THEN
+!$acc update device(fio4)
+          END IF
+          IF (PRESENT(flo4)) THEN
+!$acc update device(flo4)
+          END IF
+          IF (PRESENT(bio4)) THEN
+!$acc update device(bio4)
+          END IF
+          IF (PRESENT(blo4)) THEN
+!$acc update device(blo4)
+          END IF
+          IF (PRESENT(ho4)) THEN
+!$acc update device(ho4)
+          END IF
+          IF (PRESENT(qv_curr)) THEN
+!$acc update device(qv_curr)
+          END IF
+          IF (PRESENT(qc_curr)) THEN
+!$acc update device(qc_curr)
+          END IF
+          IF (PRESENT(qr_curr)) THEN
+!$acc update device(qr_curr)
+          END IF
+          IF (PRESENT(qi_curr)) THEN
+!$acc update device(qi_curr)
+          END IF
+          IF (PRESENT(qs_curr)) THEN
+!$acc update device(qs_curr)
+          END IF
+          IF (PRESENT(qg_curr)) THEN
+!$acc update device(qg_curr)
+          END IF
+          IF (PRESENT(capg)) THEN
+!$acc update device(capg)
+          END IF
+          IF (PRESENT(hol)) THEN
+!$acc update device(hol)
+          END IF
+          IF (PRESENT(mol)) THEN
+!$acc update device(mol)
+          END IF
+          IF (PRESENT(rainncv)) THEN
+!$acc update device(rainncv)
+          END IF
+          IF (PRESENT(rainshv)) THEN
+!$acc update device(rainshv)
+          END IF
+          IF (PRESENT(rainbl)) THEN
+!$acc update device(rainbl)
+          END IF
+          IF (PRESENT(regime)) THEN
+!$acc update device(regime)
+          END IF
+          IF (PRESENT(thc)) THEN
+!$acc update device(thc)
+          END IF
+          IF (PRESENT(graupelncv)) THEN
+!$acc update device(graupelncv)
+          END IF
+          IF (PRESENT(hailncv)) THEN
+!$acc update device(hailncv)
+          END IF
+          IF (PRESENT(qsg)) THEN
+!$acc update device(qsg)
+          END IF
+          IF (PRESENT(qvg)) THEN
+!$acc update device(qvg)
+          END IF
+          IF (PRESENT(qcg)) THEN
+!$acc update device(qcg)
+          END IF
+          IF (PRESENT(soilt1)) THEN
+!$acc update device(soilt1)
+          END IF
+          IF (PRESENT(tsnav)) THEN
+!$acc update device(tsnav)
+          END IF
+          IF (PRESENT(smfr3d)) THEN
+!$acc update device(smfr3d)
+          END IF
+          IF (PRESENT(keepfr3dflag)) THEN
+!$acc update device(keepfr3dflag)
+          END IF
+          IF (PRESENT(dew)) THEN
+!$acc update device(dew)
+          END IF
+          IF (PRESENT(rhosnf)) THEN
+!$acc update device(rhosnf)
+          END IF
+          IF (PRESENT(precipfr)) THEN
+!$acc update device(precipfr)
+          END IF
+          IF (PRESENT(potevp)) THEN
+!$acc update device(potevp)
+          END IF
+          IF (PRESENT(snopcx)) THEN
+!$acc update device(snopcx)
+          END IF
+          IF (PRESENT(soiltb)) THEN
+!$acc update device(soiltb)
+          END IF
+          IF (PRESENT(sr)) THEN
+!$acc update device(sr)
+          END IF
+          IF (PRESENT(t2_ndg_old)) THEN
+!$acc update device(t2_ndg_old)
+          END IF
+          IF (PRESENT(q2_ndg_old)) THEN
+!$acc update device(q2_ndg_old)
+          END IF
+          IF (PRESENT(t2_ndg_new)) THEN
+!$acc update device(t2_ndg_new)
+          END IF
+          IF (PRESENT(q2_ndg_new)) THEN
+!$acc update device(q2_ndg_new)
+          END IF
+          IF (PRESENT(sn_ndg_old)) THEN
+!$acc update device(sn_ndg_old)
+          END IF
+          IF (PRESENT(sn_ndg_new)) THEN
+!$acc update device(sn_ndg_new)
+          END IF
+          IF (PRESENT(t2obs)) THEN
+!$acc update device(t2obs)
+          END IF
+          IF (PRESENT(q2obs)) THEN
+!$acc update device(q2obs)
+          END IF
+          IF (PRESENT(hd_temf)) THEN
+!$acc update device(hd_temf)
+          END IF
+          IF (PRESENT(te_temf)) THEN
+!$acc update device(te_temf)
+          END IF
+          IF (PRESENT(fcor)) THEN
+!$acc update device(fcor)
+          END IF
+          IF (PRESENT(exch_temf)) THEN
+!$acc update device(exch_temf)
+          END IF
+          IF (PRESENT(wm_temf)) THEN
+!$acc update device(wm_temf)
+          END IF
+          IF (PRESENT(uratx)) THEN
+!$acc update device(uratx)
+          END IF
+          IF (PRESENT(vratx)) THEN
+!$acc update device(vratx)
+          END IF
+          IF (PRESENT(tratx)) THEN
+!$acc update device(tratx)
+          END IF
+          IF (PRESENT(tml)) THEN
+!$acc update device(tml)
+          END IF
+          IF (PRESENT(t0ml)) THEN
+!$acc update device(t0ml)
+          END IF
+          IF (PRESENT(hml)) THEN
+!$acc update device(hml)
+          END IF
+          IF (PRESENT(h0ml)) THEN
+!$acc update device(h0ml)
+          END IF
+          IF (PRESENT(huml)) THEN
+!$acc update device(huml)
+          END IF
+          IF (PRESENT(hvml)) THEN
+!$acc update device(hvml)
+          END IF
+          IF (PRESENT(f)) THEN
+!$acc update device(f)
+          END IF
+          IF (PRESENT(tmoml)) THEN
+!$acc update device(tmoml)
+          END IF
+          IF (PRESENT(ustm)) THEN
+!$acc update device(ustm)
+          END IF
+          IF (PRESENT(ck)) THEN
+!$acc update device(ck)
+          END IF
+          IF (PRESENT(cka)) THEN
+!$acc update device(cka)
+          END IF
+          IF (PRESENT(cd)) THEN
+!$acc update device(cd)
+          END IF
+          IF (PRESENT(cda)) THEN
+!$acc update device(cda)
+          END IF
+          IF (PRESENT(snotime)) THEN
+!$acc update device(snotime)
+          END IF
+          IF (PRESENT(noahres)) THEN
+!$acc update device(noahres)
+          END IF
+          IF (PRESENT(xlat)) THEN
+!$acc update device(xlat)
+          END IF
+          IF (PRESENT(xlong)) THEN
+!$acc update device(xlong)
+          END IF
+          IF (PRESENT(ahe)) THEN
+!$acc update device(ahe)
+          END IF
+          IF (PRESENT(tsk_rural)) THEN
+!$acc update device(tsk_rural)
+          END IF
+          IF (PRESENT(trb_urb4d)) THEN
+!$acc update device(trb_urb4d)
+          END IF
+          IF (PRESENT(tw1_urb4d)) THEN
+!$acc update device(tw1_urb4d)
+          END IF
+          IF (PRESENT(tw2_urb4d)) THEN
+!$acc update device(tw2_urb4d)
+          END IF
+          IF (PRESENT(tgb_urb4d)) THEN
+!$acc update device(tgb_urb4d)
+          END IF
+          IF (PRESENT(tlev_urb3d)) THEN
+!$acc update device(tlev_urb3d)
+          END IF
+          IF (PRESENT(qlev_urb3d)) THEN
+!$acc update device(qlev_urb3d)
+          END IF
+          IF (PRESENT(tw1lev_urb3d)) THEN
+!$acc update device(tw1lev_urb3d)
+          END IF
+          IF (PRESENT(tw2lev_urb3d)) THEN
+!$acc update device(tw2lev_urb3d)
+          END IF
+          IF (PRESENT(tglev_urb3d)) THEN
+!$acc update device(tglev_urb3d)
+          END IF
+          IF (PRESENT(tflev_urb3d)) THEN
+!$acc update device(tflev_urb3d)
+          END IF
+          IF (PRESENT(sf_ac_urb3d)) THEN
+!$acc update device(sf_ac_urb3d)
+          END IF
+          IF (PRESENT(lf_ac_urb3d)) THEN
+!$acc update device(lf_ac_urb3d)
+          END IF
+          IF (PRESENT(cm_ac_urb3d)) THEN
+!$acc update device(cm_ac_urb3d)
+          END IF
+          IF (PRESENT(sfvent_urb3d)) THEN
+!$acc update device(sfvent_urb3d)
+          END IF
+          IF (PRESENT(lfvent_urb3d)) THEN
+!$acc update device(lfvent_urb3d)
+          END IF
+          IF (PRESENT(sfwin1_urb3d)) THEN
+!$acc update device(sfwin1_urb3d)
+          END IF
+          IF (PRESENT(sfwin2_urb3d)) THEN
+!$acc update device(sfwin2_urb3d)
+          END IF
+          IF (PRESENT(sfw1_urb3d)) THEN
+!$acc update device(sfw1_urb3d)
+          END IF
+          IF (PRESENT(sfw2_urb3d)) THEN
+!$acc update device(sfw2_urb3d)
+          END IF
+          IF (PRESENT(sfr_urb3d)) THEN
+!$acc update device(sfr_urb3d)
+          END IF
+          IF (PRESENT(sfg_urb3d)) THEN
+!$acc update device(sfg_urb3d)
+          END IF
+          IF (PRESENT(ep_pv_urb3d)) THEN
+!$acc update device(ep_pv_urb3d)
+          END IF
+          IF (PRESENT(t_pv_urb3d)) THEN
+!$acc update device(t_pv_urb3d)
+          END IF
+          IF (PRESENT(trv_urb4d)) THEN
+!$acc update device(trv_urb4d)
+          END IF
+          IF (PRESENT(qr_urb4d)) THEN
+!$acc update device(qr_urb4d)
+          END IF
+          IF (PRESENT(qgr_urb3d)) THEN
+!$acc update device(qgr_urb3d)
+          END IF
+          IF (PRESENT(tgr_urb3d)) THEN
+!$acc update device(tgr_urb3d)
+          END IF
+          IF (PRESENT(drain_urb4d)) THEN
+!$acc update device(drain_urb4d)
+          END IF
+          IF (PRESENT(draingr_urb3d)) THEN
+!$acc update device(draingr_urb3d)
+          END IF
+          IF (PRESENT(sfrv_urb3d)) THEN
+!$acc update device(sfrv_urb3d)
+          END IF
+          IF (PRESENT(lfrv_urb3d)) THEN
+!$acc update device(lfrv_urb3d)
+          END IF
+          IF (PRESENT(dgr_urb3d)) THEN
+!$acc update device(dgr_urb3d)
+          END IF
+          IF (PRESENT(dg_urb3d)) THEN
+!$acc update device(dg_urb3d)
+          END IF
+          IF (PRESENT(lfr_urb3d)) THEN
+!$acc update device(lfr_urb3d)
+          END IF
+          IF (PRESENT(lfg_urb3d)) THEN
+!$acc update device(lfg_urb3d)
+          END IF
+          IF (PRESENT(swddir)) THEN
+!$acc update device(swddir)
+          END IF
+          IF (PRESENT(swddif)) THEN
+!$acc update device(swddif)
+          END IF
+          IF (PRESENT(lp_urb2d)) THEN
+!$acc update device(lp_urb2d)
+          END IF
+          IF (PRESENT(hi_urb2d)) THEN
+!$acc update device(hi_urb2d)
+          END IF
+          IF (PRESENT(lb_urb2d)) THEN
+!$acc update device(lb_urb2d)
+          END IF
+          IF (PRESENT(hgt_urb2d)) THEN
+!$acc update device(hgt_urb2d)
+          END IF
+          IF (PRESENT(mh_urb2d)) THEN
+!$acc update device(mh_urb2d)
+          END IF
+          IF (PRESENT(stdh_urb2d)) THEN
+!$acc update device(stdh_urb2d)
+          END IF
+          IF (PRESENT(lf_urb2d)) THEN
+!$acc update device(lf_urb2d)
+          END IF
+          IF (PRESENT(lf_urb2d_s)) THEN
+!$acc update device(lf_urb2d_s)
+          END IF
+          IF (PRESENT(z0_urb2d)) THEN
+!$acc update device(z0_urb2d)
+          END IF
+          IF (PRESENT(a_u_bep)) THEN
+!$acc update device(a_u_bep)
+          END IF
+          IF (PRESENT(a_v_bep)) THEN
+!$acc update device(a_v_bep)
+          END IF
+          IF (PRESENT(a_t_bep)) THEN
+!$acc update device(a_t_bep)
+          END IF
+          IF (PRESENT(a_q_bep)) THEN
+!$acc update device(a_q_bep)
+          END IF
+          IF (PRESENT(b_u_bep)) THEN
+!$acc update device(b_u_bep)
+          END IF
+          IF (PRESENT(b_v_bep)) THEN
+!$acc update device(b_v_bep)
+          END IF
+          IF (PRESENT(b_t_bep)) THEN
+!$acc update device(b_t_bep)
+          END IF
+          IF (PRESENT(b_q_bep)) THEN
+!$acc update device(b_q_bep)
+          END IF
+          IF (PRESENT(sf_bep)) THEN
+!$acc update device(sf_bep)
+          END IF
+          IF (PRESENT(vl_bep)) THEN
+!$acc update device(vl_bep)
+          END IF
+          IF (PRESENT(a_e_bep)) THEN
+!$acc update device(a_e_bep)
+          END IF
+          IF (PRESENT(b_e_bep)) THEN
+!$acc update device(b_e_bep)
+          END IF
+          IF (PRESENT(dlg_bep)) THEN
+!$acc update device(dlg_bep)
+          END IF
+          IF (PRESENT(dl_u_bep)) THEN
+!$acc update device(dl_u_bep)
+          END IF
+          IF (PRESENT(tsk_save)) THEN
+!$acc update device(tsk_save)
+          END IF
+          IF (PRESENT(cldfra)) THEN
+!$acc update device(cldfra)
+          END IF
+          IF (PRESENT(mosaic_cat_index)) THEN
+!$acc update device(mosaic_cat_index)
+          END IF
+          IF (PRESENT(landusef2)) THEN
+!$acc update device(landusef2)
+          END IF
+          IF (PRESENT(tsk_mosaic)) THEN
+!$acc update device(tsk_mosaic)
+          END IF
+          IF (PRESENT(qsfc_mosaic)) THEN
+!$acc update device(qsfc_mosaic)
+          END IF
+          IF (PRESENT(tslb_mosaic)) THEN
+!$acc update device(tslb_mosaic)
+          END IF
+          IF (PRESENT(smois_mosaic)) THEN
+!$acc update device(smois_mosaic)
+          END IF
+          IF (PRESENT(sh2o_mosaic)) THEN
+!$acc update device(sh2o_mosaic)
+          END IF
+          IF (PRESENT(canwat_mosaic)) THEN
+!$acc update device(canwat_mosaic)
+          END IF
+          IF (PRESENT(snow_mosaic)) THEN
+!$acc update device(snow_mosaic)
+          END IF
+          IF (PRESENT(snowh_mosaic)) THEN
+!$acc update device(snowh_mosaic)
+          END IF
+          IF (PRESENT(snowc_mosaic)) THEN
+!$acc update device(snowc_mosaic)
+          END IF
+          IF (PRESENT(albedo_mosaic)) THEN
+!$acc update device(albedo_mosaic)
+          END IF
+          IF (PRESENT(albbck_mosaic)) THEN
+!$acc update device(albbck_mosaic)
+          END IF
+          IF (PRESENT(emiss_mosaic)) THEN
+!$acc update device(emiss_mosaic)
+          END IF
+          IF (PRESENT(embck_mosaic)) THEN
+!$acc update device(embck_mosaic)
+          END IF
+          IF (PRESENT(znt_mosaic)) THEN
+!$acc update device(znt_mosaic)
+          END IF
+          IF (PRESENT(z0_mosaic)) THEN
+!$acc update device(z0_mosaic)
+          END IF
+          IF (PRESENT(hfx_mosaic)) THEN
+!$acc update device(hfx_mosaic)
+          END IF
+          IF (PRESENT(qfx_mosaic)) THEN
+!$acc update device(qfx_mosaic)
+          END IF
+          IF (PRESENT(lh_mosaic)) THEN
+!$acc update device(lh_mosaic)
+          END IF
+          IF (PRESENT(grdflx_mosaic)) THEN
+!$acc update device(grdflx_mosaic)
+          END IF
+          IF (PRESENT(snotime_mosaic)) THEN
+!$acc update device(snotime_mosaic)
+          END IF
+          IF (PRESENT(rs_mosaic)) THEN
+!$acc update device(rs_mosaic)
+          END IF
+          IF (PRESENT(lai_mosaic)) THEN
+!$acc update device(lai_mosaic)
+          END IF
+          IF (PRESENT(tr_urb2d_mosaic)) THEN
+!$acc update device(tr_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tb_urb2d_mosaic)) THEN
+!$acc update device(tb_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tg_urb2d_mosaic)) THEN
+!$acc update device(tg_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tc_urb2d_mosaic)) THEN
+!$acc update device(tc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(qc_urb2d_mosaic)) THEN
+!$acc update device(qc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(uc_urb2d_mosaic)) THEN
+!$acc update device(uc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(trl_urb3d_mosaic)) THEN
+!$acc update device(trl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tbl_urb3d_mosaic)) THEN
+!$acc update device(tbl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tgl_urb3d_mosaic)) THEN
+!$acc update device(tgl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(sh_urb2d_mosaic)) THEN
+!$acc update device(sh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(lh_urb2d_mosaic)) THEN
+!$acc update device(lh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(g_urb2d_mosaic)) THEN
+!$acc update device(g_urb2d_mosaic)
+          END IF
+          IF (PRESENT(rn_urb2d_mosaic)) THEN
+!$acc update device(rn_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_urb2d_mosaic)) THEN
+!$acc update device(ts_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_rul2d_mosaic)) THEN
+!$acc update device(ts_rul2d_mosaic)
+          END IF
+          IF (PRESENT(sda_hfx)) THEN
+!$acc update device(sda_hfx)
+          END IF
+          IF (PRESENT(sda_qfx)) THEN
+!$acc update device(sda_qfx)
+          END IF
+          IF (PRESENT(hfx_both)) THEN
+!$acc update device(hfx_both)
+          END IF
+          IF (PRESENT(qfx_both)) THEN
+!$acc update device(qfx_both)
+          END IF
+          IF (PRESENT(qnorm)) THEN
+!$acc update device(qnorm)
+          END IF
+          IF (PRESENT(pattern_spp_lsm)) THEN
+!$acc update device(pattern_spp_lsm)
+          END IF
+          IF (PRESENT(field_sf)) THEN
+!$acc update device(field_sf)
+          END IF
+          IF (PRESENT(pattern_spp_pbl)) THEN
+!$acc update device(pattern_spp_pbl)
+          END IF
+          IF (PRESENT(xlaidyn)) THEN
+!$acc update device(xlaidyn)
+          END IF
+          IF (PRESENT(perts_qvapor)) THEN
+!$acc update device(perts_qvapor)
+          END IF
+          IF (PRESENT(perts_th)) THEN
+!$acc update device(perts_th)
+          END IF
+          IF (PRESENT(perts_smois)) THEN
+!$acc update device(perts_smois)
+          END IF
+          IF (PRESENT(perts_tsoil)) THEN
+!$acc update device(perts_tsoil)
+          END IF
+          IF (PRESENT(irrigation)) THEN
+!$acc update device(irrigation)
+          END IF
+          IF (PRESENT(irr_rand_field)) THEN
+!$acc update device(irr_rand_field)
+          END IF
+        ELSE
+!$acc update self(sfcheadrt, infxsrt, soldrain, qtiledrain, zwatble2d, acsnom, acsnow, akhs, akms, &
+!$acc&   albedo, br, canwat, chklowq, dz8w, dzs, glw, grdflx, gsw, swdown, gz1oz0, hfx, ht, isltyp, &
+!$acc&   ivgtyp, lowlyr, mavail, rmol, p8w, pblh, pi_phy, pshltr, fm, fhh, psih, psim, p_phy, q10, &
+!$acc&   q2, qfx, qsfc, qshltr, qz0, raincv, rho, sfcevp, sfcexc, sfcrunoff, acrunoff, smois, &
+!$acc&   smstav, smstot, snoalb, snow, snowc, snowh, smcrel, th10, th2, thz0, th_phy, tmn, tshltr, &
+!$acc&   tsk, tslb, t_phy, u10, udrunoff, ust, uz0, u_phy, v10, vegfra, u10e, v10e, uoce, voce, &
+!$acc&   vz0, v_phy, wspd, xice, xland, z, znt, zs, albsi, icedepth, snowsi, xicem, ct, tke_pbl, &
+!$acc&   albbck, embck, lh, sh2o, shdmax, shdmin, shdavg, z0, flqc, flhc, psfc, sst, flx4, fvb, &
+!$acc&   fbur, fgsn, water_depth, lakedepth2d, savedtke12d, snowdp2d, h2osno2d, snl2d, t_grnd2d, &
+!$acc&   t_lake3d, lake_icefrac3d, z_lake3d, dz_lake3d, t_soisno3d, h2osoi_ice3d, h2osoi_liq3d, &
+!$acc&   h2osoi_vol3d, z3d, dz3d, zi3d, watsat3d, csol3d, tkmg3d, tkdry3d, tksatu3d, lakemask, &
+!$acc&   i_start, i_end, j_start, j_end, zol)
+          IF (PRESENT(acgrdflx)) THEN
+!$acc update self(acgrdflx)
+          END IF
+          IF (PRESENT(achfx)) THEN
+!$acc update self(achfx)
+          END IF
+          IF (PRESENT(aclhf)) THEN
+!$acc update self(aclhf)
+          END IF
+          IF (PRESENT(snowfallac)) THEN
+!$acc update self(snowfallac)
+          END IF
+          IF (PRESENT(dx2d)) THEN
+!$acc update self(dx2d)
+          END IF
+          IF (PRESENT(area2d)) THEN
+!$acc update self(area2d)
+          END IF
+          IF (PRESENT(tyr)) THEN
+!$acc update self(tyr)
+          END IF
+          IF (PRESENT(tyra)) THEN
+!$acc update self(tyra)
+          END IF
+          IF (PRESENT(tdly)) THEN
+!$acc update self(tdly)
+          END IF
+          IF (PRESENT(tlag)) THEN
+!$acc update self(tlag)
+          END IF
+          IF (PRESENT(cplmask)) THEN
+!$acc update self(cplmask)
+          END IF
+          IF (PRESENT(sst_input)) THEN
+!$acc update self(sst_input)
+          END IF
+          IF (PRESENT(sstsk)) THEN
+!$acc update self(sstsk)
+          END IF
+          IF (PRESENT(dtw)) THEN
+!$acc update self(dtw)
+          END IF
+          IF (PRESENT(t2)) THEN
+!$acc update self(t2)
+          END IF
+          IF (PRESENT(emiss)) THEN
+!$acc update self(emiss)
+          END IF
+          IF (PRESENT(landusef)) THEN
+!$acc update self(landusef)
+          END IF
+          IF (PRESENT(soilctop)) THEN
+!$acc update self(soilctop)
+          END IF
+          IF (PRESENT(soilcbot)) THEN
+!$acc update self(soilcbot)
+          END IF
+          IF (PRESENT(ra)) THEN
+!$acc update self(ra)
+          END IF
+          IF (PRESENT(rs)) THEN
+!$acc update self(rs)
+          END IF
+          IF (PRESENT(vegf_px)) THEN
+!$acc update self(vegf_px)
+          END IF
+          IF (PRESENT(snowncv)) THEN
+!$acc update self(snowncv)
+          END IF
+          IF (PRESENT(lai)) THEN
+!$acc update self(lai)
+          END IF
+          IF (PRESENT(imperv)) THEN
+!$acc update self(imperv)
+          END IF
+          IF (PRESENT(canfra)) THEN
+!$acc update self(canfra)
+          END IF
+          IF (PRESENT(lai_px)) THEN
+!$acc update self(lai_px)
+          END IF
+          IF (PRESENT(wwlt_px)) THEN
+!$acc update self(wwlt_px)
+          END IF
+          IF (PRESENT(wfc_px)) THEN
+!$acc update self(wfc_px)
+          END IF
+          IF (PRESENT(wsat_px)) THEN
+!$acc update self(wsat_px)
+          END IF
+          IF (PRESENT(clay_px)) THEN
+!$acc update self(clay_px)
+          END IF
+          IF (PRESENT(csand_px)) THEN
+!$acc update self(csand_px)
+          END IF
+          IF (PRESENT(fmsand_px)) THEN
+!$acc update self(fmsand_px)
+          END IF
+          IF (PRESENT(soilcomp)) THEN
+!$acc update self(soilcomp)
+          END IF
+          IF (PRESENT(soilcl1)) THEN
+!$acc update self(soilcl1)
+          END IF
+          IF (PRESENT(soilcl2)) THEN
+!$acc update self(soilcl2)
+          END IF
+          IF (PRESENT(soilcl3)) THEN
+!$acc update self(soilcl3)
+          END IF
+          IF (PRESENT(soilcl4)) THEN
+!$acc update self(soilcl4)
+          END IF
+          IF (PRESENT(isnowxy)) THEN
+!$acc update self(isnowxy)
+          END IF
+          IF (PRESENT(tvxy)) THEN
+!$acc update self(tvxy)
+          END IF
+          IF (PRESENT(tgxy)) THEN
+!$acc update self(tgxy)
+          END IF
+          IF (PRESENT(canicexy)) THEN
+!$acc update self(canicexy)
+          END IF
+          IF (PRESENT(canliqxy)) THEN
+!$acc update self(canliqxy)
+          END IF
+          IF (PRESENT(eahxy)) THEN
+!$acc update self(eahxy)
+          END IF
+          IF (PRESENT(tahxy)) THEN
+!$acc update self(tahxy)
+          END IF
+          IF (PRESENT(cmxy)) THEN
+!$acc update self(cmxy)
+          END IF
+          IF (PRESENT(chxy)) THEN
+!$acc update self(chxy)
+          END IF
+          IF (PRESENT(fwetxy)) THEN
+!$acc update self(fwetxy)
+          END IF
+          IF (PRESENT(sneqvoxy)) THEN
+!$acc update self(sneqvoxy)
+          END IF
+          IF (PRESENT(alboldxy)) THEN
+!$acc update self(alboldxy)
+          END IF
+          IF (PRESENT(qsnowxy)) THEN
+!$acc update self(qsnowxy)
+          END IF
+          IF (PRESENT(qrainxy)) THEN
+!$acc update self(qrainxy)
+          END IF
+          IF (PRESENT(wslakexy)) THEN
+!$acc update self(wslakexy)
+          END IF
+          IF (PRESENT(zwtxy)) THEN
+!$acc update self(zwtxy)
+          END IF
+          IF (PRESENT(waxy)) THEN
+!$acc update self(waxy)
+          END IF
+          IF (PRESENT(wtxy)) THEN
+!$acc update self(wtxy)
+          END IF
+          IF (PRESENT(tsnoxy)) THEN
+!$acc update self(tsnoxy)
+          END IF
+          IF (PRESENT(zsnsoxy)) THEN
+!$acc update self(zsnsoxy)
+          END IF
+          IF (PRESENT(snicexy)) THEN
+!$acc update self(snicexy)
+          END IF
+          IF (PRESENT(snliqxy)) THEN
+!$acc update self(snliqxy)
+          END IF
+          IF (PRESENT(lfmassxy)) THEN
+!$acc update self(lfmassxy)
+          END IF
+          IF (PRESENT(rtmassxy)) THEN
+!$acc update self(rtmassxy)
+          END IF
+          IF (PRESENT(stmassxy)) THEN
+!$acc update self(stmassxy)
+          END IF
+          IF (PRESENT(woodxy)) THEN
+!$acc update self(woodxy)
+          END IF
+          IF (PRESENT(stblcpxy)) THEN
+!$acc update self(stblcpxy)
+          END IF
+          IF (PRESENT(fastcpxy)) THEN
+!$acc update self(fastcpxy)
+          END IF
+          IF (PRESENT(xsaixy)) THEN
+!$acc update self(xsaixy)
+          END IF
+          IF (PRESENT(taussxy)) THEN
+!$acc update self(taussxy)
+          END IF
+          IF (PRESENT(grainxy)) THEN
+!$acc update self(grainxy)
+          END IF
+          IF (PRESENT(gddxy)) THEN
+!$acc update self(gddxy)
+          END IF
+          IF (PRESENT(cropcat)) THEN
+!$acc update self(cropcat)
+          END IF
+          IF (PRESENT(pgsxy)) THEN
+!$acc update self(pgsxy)
+          END IF
+          IF (PRESENT(planting)) THEN
+!$acc update self(planting)
+          END IF
+          IF (PRESENT(harvest)) THEN
+!$acc update self(harvest)
+          END IF
+          IF (PRESENT(season_gdd)) THEN
+!$acc update self(season_gdd)
+          END IF
+          IF (PRESENT(t2mvxy)) THEN
+!$acc update self(t2mvxy)
+          END IF
+          IF (PRESENT(t2mbxy)) THEN
+!$acc update self(t2mbxy)
+          END IF
+          IF (PRESENT(q2mvxy)) THEN
+!$acc update self(q2mvxy)
+          END IF
+          IF (PRESENT(q2mbxy)) THEN
+!$acc update self(q2mbxy)
+          END IF
+          IF (PRESENT(tradxy)) THEN
+!$acc update self(tradxy)
+          END IF
+          IF (PRESENT(neexy)) THEN
+!$acc update self(neexy)
+          END IF
+          IF (PRESENT(gppxy)) THEN
+!$acc update self(gppxy)
+          END IF
+          IF (PRESENT(nppxy)) THEN
+!$acc update self(nppxy)
+          END IF
+          IF (PRESENT(fvegxy)) THEN
+!$acc update self(fvegxy)
+          END IF
+          IF (PRESENT(runsfxy)) THEN
+!$acc update self(runsfxy)
+          END IF
+          IF (PRESENT(runsbxy)) THEN
+!$acc update self(runsbxy)
+          END IF
+          IF (PRESENT(ecanxy)) THEN
+!$acc update self(ecanxy)
+          END IF
+          IF (PRESENT(edirxy)) THEN
+!$acc update self(edirxy)
+          END IF
+          IF (PRESENT(etranxy)) THEN
+!$acc update self(etranxy)
+          END IF
+          IF (PRESENT(fsaxy)) THEN
+!$acc update self(fsaxy)
+          END IF
+          IF (PRESENT(firaxy)) THEN
+!$acc update self(firaxy)
+          END IF
+          IF (PRESENT(aparxy)) THEN
+!$acc update self(aparxy)
+          END IF
+          IF (PRESENT(psnxy)) THEN
+!$acc update self(psnxy)
+          END IF
+          IF (PRESENT(savxy)) THEN
+!$acc update self(savxy)
+          END IF
+          IF (PRESENT(sagxy)) THEN
+!$acc update self(sagxy)
+          END IF
+          IF (PRESENT(rssunxy)) THEN
+!$acc update self(rssunxy)
+          END IF
+          IF (PRESENT(rsshaxy)) THEN
+!$acc update self(rsshaxy)
+          END IF
+          IF (PRESENT(bgapxy)) THEN
+!$acc update self(bgapxy)
+          END IF
+          IF (PRESENT(wgapxy)) THEN
+!$acc update self(wgapxy)
+          END IF
+          IF (PRESENT(tgvxy)) THEN
+!$acc update self(tgvxy)
+          END IF
+          IF (PRESENT(tgbxy)) THEN
+!$acc update self(tgbxy)
+          END IF
+          IF (PRESENT(chvxy)) THEN
+!$acc update self(chvxy)
+          END IF
+          IF (PRESENT(chbxy)) THEN
+!$acc update self(chbxy)
+          END IF
+          IF (PRESENT(shgxy)) THEN
+!$acc update self(shgxy)
+          END IF
+          IF (PRESENT(shcxy)) THEN
+!$acc update self(shcxy)
+          END IF
+          IF (PRESENT(shbxy)) THEN
+!$acc update self(shbxy)
+          END IF
+          IF (PRESENT(evgxy)) THEN
+!$acc update self(evgxy)
+          END IF
+          IF (PRESENT(evbxy)) THEN
+!$acc update self(evbxy)
+          END IF
+          IF (PRESENT(ghvxy)) THEN
+!$acc update self(ghvxy)
+          END IF
+          IF (PRESENT(ghbxy)) THEN
+!$acc update self(ghbxy)
+          END IF
+          IF (PRESENT(irgxy)) THEN
+!$acc update self(irgxy)
+          END IF
+          IF (PRESENT(ircxy)) THEN
+!$acc update self(ircxy)
+          END IF
+          IF (PRESENT(irbxy)) THEN
+!$acc update self(irbxy)
+          END IF
+          IF (PRESENT(trxy)) THEN
+!$acc update self(trxy)
+          END IF
+          IF (PRESENT(evcxy)) THEN
+!$acc update self(evcxy)
+          END IF
+          IF (PRESENT(chleafxy)) THEN
+!$acc update self(chleafxy)
+          END IF
+          IF (PRESENT(chucxy)) THEN
+!$acc update self(chucxy)
+          END IF
+          IF (PRESENT(chv2xy)) THEN
+!$acc update self(chv2xy)
+          END IF
+          IF (PRESENT(chb2xy)) THEN
+!$acc update self(chb2xy)
+          END IF
+          IF (PRESENT(chstarxy)) THEN
+!$acc update self(chstarxy)
+          END IF
+          IF (PRESENT(qintsxy)) THEN
+!$acc update self(qintsxy)
+          END IF
+          IF (PRESENT(qintrxy)) THEN
+!$acc update self(qintrxy)
+          END IF
+          IF (PRESENT(qdripsxy)) THEN
+!$acc update self(qdripsxy)
+          END IF
+          IF (PRESENT(qdriprxy)) THEN
+!$acc update self(qdriprxy)
+          END IF
+          IF (PRESENT(qthrosxy)) THEN
+!$acc update self(qthrosxy)
+          END IF
+          IF (PRESENT(qthrorxy)) THEN
+!$acc update self(qthrorxy)
+          END IF
+          IF (PRESENT(qsnsubxy)) THEN
+!$acc update self(qsnsubxy)
+          END IF
+          IF (PRESENT(qsnfroxy)) THEN
+!$acc update self(qsnfroxy)
+          END IF
+          IF (PRESENT(qsubcxy)) THEN
+!$acc update self(qsubcxy)
+          END IF
+          IF (PRESENT(qfrocxy)) THEN
+!$acc update self(qfrocxy)
+          END IF
+          IF (PRESENT(qevacxy)) THEN
+!$acc update self(qevacxy)
+          END IF
+          IF (PRESENT(qdewcxy)) THEN
+!$acc update self(qdewcxy)
+          END IF
+          IF (PRESENT(qfrzcxy)) THEN
+!$acc update self(qfrzcxy)
+          END IF
+          IF (PRESENT(qmeltcxy)) THEN
+!$acc update self(qmeltcxy)
+          END IF
+          IF (PRESENT(qsnbotxy)) THEN
+!$acc update self(qsnbotxy)
+          END IF
+          IF (PRESENT(pondingxy)) THEN
+!$acc update self(pondingxy)
+          END IF
+          IF (PRESENT(pahxy)) THEN
+!$acc update self(pahxy)
+          END IF
+          IF (PRESENT(pahgxy)) THEN
+!$acc update self(pahgxy)
+          END IF
+          IF (PRESENT(pahvxy)) THEN
+!$acc update self(pahvxy)
+          END IF
+          IF (PRESENT(pahbxy)) THEN
+!$acc update self(pahbxy)
+          END IF
+          IF (PRESENT(qmeltxy)) THEN
+!$acc update self(qmeltxy)
+          END IF
+          IF (PRESENT(fpicexy)) THEN
+!$acc update self(fpicexy)
+          END IF
+          IF (PRESENT(rainlsm)) THEN
+!$acc update self(rainlsm)
+          END IF
+          IF (PRESENT(snowlsm)) THEN
+!$acc update self(snowlsm)
+          END IF
+          IF (PRESENT(forctlsm)) THEN
+!$acc update self(forctlsm)
+          END IF
+          IF (PRESENT(forcqlsm)) THEN
+!$acc update self(forcqlsm)
+          END IF
+          IF (PRESENT(forcplsm)) THEN
+!$acc update self(forcplsm)
+          END IF
+          IF (PRESENT(forczlsm)) THEN
+!$acc update self(forczlsm)
+          END IF
+          IF (PRESENT(forcwlsm)) THEN
+!$acc update self(forcwlsm)
+          END IF
+          IF (PRESENT(acc_ssoil)) THEN
+!$acc update self(acc_ssoil)
+          END IF
+          IF (PRESENT(acc_qinsur)) THEN
+!$acc update self(acc_qinsur)
+          END IF
+          IF (PRESENT(acc_qseva)) THEN
+!$acc update self(acc_qseva)
+          END IF
+          IF (PRESENT(acc_etrani)) THEN
+!$acc update self(acc_etrani)
+          END IF
+          IF (PRESENT(eflxbxy)) THEN
+!$acc update self(eflxbxy)
+          END IF
+          IF (PRESENT(soilenergy)) THEN
+!$acc update self(soilenergy)
+          END IF
+          IF (PRESENT(snowenergy)) THEN
+!$acc update self(snowenergy)
+          END IF
+          IF (PRESENT(canhsxy)) THEN
+!$acc update self(canhsxy)
+          END IF
+          IF (PRESENT(acc_dwaterxy)) THEN
+!$acc update self(acc_dwaterxy)
+          END IF
+          IF (PRESENT(acc_prcpxy)) THEN
+!$acc update self(acc_prcpxy)
+          END IF
+          IF (PRESENT(acc_ecanxy)) THEN
+!$acc update self(acc_ecanxy)
+          END IF
+          IF (PRESENT(acc_etranxy)) THEN
+!$acc update self(acc_etranxy)
+          END IF
+          IF (PRESENT(acc_edirxy)) THEN
+!$acc update self(acc_edirxy)
+          END IF
+          IF (PRESENT(irfract)) THEN
+!$acc update self(irfract)
+          END IF
+          IF (PRESENT(sifract)) THEN
+!$acc update self(sifract)
+          END IF
+          IF (PRESENT(mifract)) THEN
+!$acc update self(mifract)
+          END IF
+          IF (PRESENT(fifract)) THEN
+!$acc update self(fifract)
+          END IF
+          IF (PRESENT(irnumsi)) THEN
+!$acc update self(irnumsi)
+          END IF
+          IF (PRESENT(irnummi)) THEN
+!$acc update self(irnummi)
+          END IF
+          IF (PRESENT(irnumfi)) THEN
+!$acc update self(irnumfi)
+          END IF
+          IF (PRESENT(irwatsi)) THEN
+!$acc update self(irwatsi)
+          END IF
+          IF (PRESENT(irwatmi)) THEN
+!$acc update self(irwatmi)
+          END IF
+          IF (PRESENT(irwatfi)) THEN
+!$acc update self(irwatfi)
+          END IF
+          IF (PRESENT(ireloss)) THEN
+!$acc update self(ireloss)
+          END IF
+          IF (PRESENT(irsivol)) THEN
+!$acc update self(irsivol)
+          END IF
+          IF (PRESENT(irmivol)) THEN
+!$acc update self(irmivol)
+          END IF
+          IF (PRESENT(irfivol)) THEN
+!$acc update self(irfivol)
+          END IF
+          IF (PRESENT(irrsplh)) THEN
+!$acc update self(irrsplh)
+          END IF
+          IF (PRESENT(qtdrain)) THEN
+!$acc update self(qtdrain)
+          END IF
+          IF (PRESENT(td_fraction)) THEN
+!$acc update self(td_fraction)
+          END IF
+          IF (PRESENT(smcwtdxy)) THEN
+!$acc update self(smcwtdxy)
+          END IF
+          IF (PRESENT(rechxy)) THEN
+!$acc update self(rechxy)
+          END IF
+          IF (PRESENT(deeprechxy)) THEN
+!$acc update self(deeprechxy)
+          END IF
+          IF (PRESENT(fdepthxy)) THEN
+!$acc update self(fdepthxy)
+          END IF
+          IF (PRESENT(areaxy)) THEN
+!$acc update self(areaxy)
+          END IF
+          IF (PRESENT(rivercondxy)) THEN
+!$acc update self(rivercondxy)
+          END IF
+          IF (PRESENT(riverbedxy)) THEN
+!$acc update self(riverbedxy)
+          END IF
+          IF (PRESENT(eqzwt)) THEN
+!$acc update self(eqzwt)
+          END IF
+          IF (PRESENT(pexpxy)) THEN
+!$acc update self(pexpxy)
+          END IF
+          IF (PRESENT(qrfxy)) THEN
+!$acc update self(qrfxy)
+          END IF
+          IF (PRESENT(qspringxy)) THEN
+!$acc update self(qspringxy)
+          END IF
+          IF (PRESENT(qslatxy)) THEN
+!$acc update self(qslatxy)
+          END IF
+          IF (PRESENT(qrfsxy)) THEN
+!$acc update self(qrfsxy)
+          END IF
+          IF (PRESENT(qlatxy)) THEN
+!$acc update self(qlatxy)
+          END IF
+          IF (PRESENT(qspringsxy)) THEN
+!$acc update self(qspringsxy)
+          END IF
+          IF (PRESENT(smoiseq)) THEN
+!$acc update self(smoiseq)
+          END IF
+          IF (PRESENT(gecros_state)) THEN
+!$acc update self(gecros_state)
+          END IF
+          IF (PRESENT(ch)) THEN
+!$acc update self(ch)
+          END IF
+          IF (PRESENT(fgdp)) THEN
+!$acc update self(fgdp)
+          END IF
+          IF (PRESENT(dfgdp)) THEN
+!$acc update self(dfgdp)
+          END IF
+          IF (PRESENT(vdfg)) THEN
+!$acc update self(vdfg)
+          END IF
+          IF (PRESENT(om_tmp)) THEN
+!$acc update self(om_tmp)
+          END IF
+          IF (PRESENT(om_s)) THEN
+!$acc update self(om_s)
+          END IF
+          IF (PRESENT(om_u)) THEN
+!$acc update self(om_u)
+          END IF
+          IF (PRESENT(om_v)) THEN
+!$acc update self(om_v)
+          END IF
+          IF (PRESENT(om_depth)) THEN
+!$acc update self(om_depth)
+          END IF
+          IF (PRESENT(om_ml)) THEN
+!$acc update self(om_ml)
+          END IF
+          IF (PRESENT(om_lon)) THEN
+!$acc update self(om_lon)
+          END IF
+          IF (PRESENT(om_lat)) THEN
+!$acc update self(om_lat)
+          END IF
+          IF (PRESENT(msfu)) THEN
+!$acc update self(msfu)
+          END IF
+          IF (PRESENT(msfv)) THEN
+!$acc update self(msfv)
+          END IF
+          IF (PRESENT(msft)) THEN
+!$acc update self(msft)
+          END IF
+          IF (PRESENT(om_tini)) THEN
+!$acc update self(om_tini)
+          END IF
+          IF (PRESENT(om_sini)) THEN
+!$acc update self(om_sini)
+          END IF
+#if (WRF_CHEM == 1)
+          IF (PRESENT(e_bio)) THEN
+!$acc update self(e_bio)
+          END IF
+#endif
+          IF (PRESENT(numc)) THEN
+!$acc update self(numc)
+          END IF
+          IF (PRESENT(nump)) THEN
+!$acc update self(nump)
+          END IF
+          IF (PRESENT(sabv)) THEN
+!$acc update self(sabv)
+          END IF
+          IF (PRESENT(sabg)) THEN
+!$acc update self(sabg)
+          END IF
+          IF (PRESENT(lwup)) THEN
+!$acc update self(lwup)
+          END IF
+          IF (PRESENT(snl)) THEN
+!$acc update self(snl)
+          END IF
+          IF (PRESENT(snowdp)) THEN
+!$acc update self(snowdp)
+          END IF
+          IF (PRESENT(wtc)) THEN
+!$acc update self(wtc)
+          END IF
+          IF (PRESENT(wtp)) THEN
+!$acc update self(wtp)
+          END IF
+          IF (PRESENT(h2osno)) THEN
+!$acc update self(h2osno)
+          END IF
+          IF (PRESENT(t_grnd)) THEN
+!$acc update self(t_grnd)
+          END IF
+          IF (PRESENT(t_veg)) THEN
+!$acc update self(t_veg)
+          END IF
+          IF (PRESENT(h2ocan)) THEN
+!$acc update self(h2ocan)
+          END IF
+          IF (PRESENT(h2ocan_col)) THEN
+!$acc update self(h2ocan_col)
+          END IF
+          IF (PRESENT(t2m_max)) THEN
+!$acc update self(t2m_max)
+          END IF
+          IF (PRESENT(t2m_min)) THEN
+!$acc update self(t2m_min)
+          END IF
+          IF (PRESENT(t2clm)) THEN
+!$acc update self(t2clm)
+          END IF
+          IF (PRESENT(t_ref2m)) THEN
+!$acc update self(t_ref2m)
+          END IF
+          IF (PRESENT(h2osoi_liq_s1)) THEN
+!$acc update self(h2osoi_liq_s1)
+          END IF
+          IF (PRESENT(h2osoi_liq_s2)) THEN
+!$acc update self(h2osoi_liq_s2)
+          END IF
+          IF (PRESENT(h2osoi_liq_s3)) THEN
+!$acc update self(h2osoi_liq_s3)
+          END IF
+          IF (PRESENT(h2osoi_liq_s4)) THEN
+!$acc update self(h2osoi_liq_s4)
+          END IF
+          IF (PRESENT(h2osoi_liq_s5)) THEN
+!$acc update self(h2osoi_liq_s5)
+          END IF
+          IF (PRESENT(h2osoi_liq1)) THEN
+!$acc update self(h2osoi_liq1)
+          END IF
+          IF (PRESENT(h2osoi_liq2)) THEN
+!$acc update self(h2osoi_liq2)
+          END IF
+          IF (PRESENT(h2osoi_liq3)) THEN
+!$acc update self(h2osoi_liq3)
+          END IF
+          IF (PRESENT(h2osoi_liq4)) THEN
+!$acc update self(h2osoi_liq4)
+          END IF
+          IF (PRESENT(h2osoi_liq5)) THEN
+!$acc update self(h2osoi_liq5)
+          END IF
+          IF (PRESENT(h2osoi_liq6)) THEN
+!$acc update self(h2osoi_liq6)
+          END IF
+          IF (PRESENT(h2osoi_liq7)) THEN
+!$acc update self(h2osoi_liq7)
+          END IF
+          IF (PRESENT(h2osoi_liq8)) THEN
+!$acc update self(h2osoi_liq8)
+          END IF
+          IF (PRESENT(h2osoi_liq9)) THEN
+!$acc update self(h2osoi_liq9)
+          END IF
+          IF (PRESENT(h2osoi_liq10)) THEN
+!$acc update self(h2osoi_liq10)
+          END IF
+          IF (PRESENT(h2osoi_ice_s1)) THEN
+!$acc update self(h2osoi_ice_s1)
+          END IF
+          IF (PRESENT(h2osoi_ice_s2)) THEN
+!$acc update self(h2osoi_ice_s2)
+          END IF
+          IF (PRESENT(h2osoi_ice_s3)) THEN
+!$acc update self(h2osoi_ice_s3)
+          END IF
+          IF (PRESENT(h2osoi_ice_s4)) THEN
+!$acc update self(h2osoi_ice_s4)
+          END IF
+          IF (PRESENT(h2osoi_ice_s5)) THEN
+!$acc update self(h2osoi_ice_s5)
+          END IF
+          IF (PRESENT(h2osoi_ice1)) THEN
+!$acc update self(h2osoi_ice1)
+          END IF
+          IF (PRESENT(h2osoi_ice2)) THEN
+!$acc update self(h2osoi_ice2)
+          END IF
+          IF (PRESENT(h2osoi_ice3)) THEN
+!$acc update self(h2osoi_ice3)
+          END IF
+          IF (PRESENT(h2osoi_ice4)) THEN
+!$acc update self(h2osoi_ice4)
+          END IF
+          IF (PRESENT(h2osoi_ice5)) THEN
+!$acc update self(h2osoi_ice5)
+          END IF
+          IF (PRESENT(h2osoi_ice6)) THEN
+!$acc update self(h2osoi_ice6)
+          END IF
+          IF (PRESENT(h2osoi_ice7)) THEN
+!$acc update self(h2osoi_ice7)
+          END IF
+          IF (PRESENT(h2osoi_ice8)) THEN
+!$acc update self(h2osoi_ice8)
+          END IF
+          IF (PRESENT(h2osoi_ice9)) THEN
+!$acc update self(h2osoi_ice9)
+          END IF
+          IF (PRESENT(h2osoi_ice10)) THEN
+!$acc update self(h2osoi_ice10)
+          END IF
+          IF (PRESENT(t_soisno_s1)) THEN
+!$acc update self(t_soisno_s1)
+          END IF
+          IF (PRESENT(t_soisno_s2)) THEN
+!$acc update self(t_soisno_s2)
+          END IF
+          IF (PRESENT(t_soisno_s3)) THEN
+!$acc update self(t_soisno_s3)
+          END IF
+          IF (PRESENT(t_soisno_s4)) THEN
+!$acc update self(t_soisno_s4)
+          END IF
+          IF (PRESENT(t_soisno_s5)) THEN
+!$acc update self(t_soisno_s5)
+          END IF
+          IF (PRESENT(t_soisno1)) THEN
+!$acc update self(t_soisno1)
+          END IF
+          IF (PRESENT(t_soisno2)) THEN
+!$acc update self(t_soisno2)
+          END IF
+          IF (PRESENT(t_soisno3)) THEN
+!$acc update self(t_soisno3)
+          END IF
+          IF (PRESENT(t_soisno4)) THEN
+!$acc update self(t_soisno4)
+          END IF
+          IF (PRESENT(t_soisno5)) THEN
+!$acc update self(t_soisno5)
+          END IF
+          IF (PRESENT(t_soisno6)) THEN
+!$acc update self(t_soisno6)
+          END IF
+          IF (PRESENT(t_soisno7)) THEN
+!$acc update self(t_soisno7)
+          END IF
+          IF (PRESENT(t_soisno8)) THEN
+!$acc update self(t_soisno8)
+          END IF
+          IF (PRESENT(t_soisno9)) THEN
+!$acc update self(t_soisno9)
+          END IF
+          IF (PRESENT(t_soisno10)) THEN
+!$acc update self(t_soisno10)
+          END IF
+          IF (PRESENT(dzsnow1)) THEN
+!$acc update self(dzsnow1)
+          END IF
+          IF (PRESENT(dzsnow2)) THEN
+!$acc update self(dzsnow2)
+          END IF
+          IF (PRESENT(dzsnow3)) THEN
+!$acc update self(dzsnow3)
+          END IF
+          IF (PRESENT(dzsnow4)) THEN
+!$acc update self(dzsnow4)
+          END IF
+          IF (PRESENT(dzsnow5)) THEN
+!$acc update self(dzsnow5)
+          END IF
+          IF (PRESENT(snowrds1)) THEN
+!$acc update self(snowrds1)
+          END IF
+          IF (PRESENT(snowrds2)) THEN
+!$acc update self(snowrds2)
+          END IF
+          IF (PRESENT(snowrds3)) THEN
+!$acc update self(snowrds3)
+          END IF
+          IF (PRESENT(snowrds4)) THEN
+!$acc update self(snowrds4)
+          END IF
+          IF (PRESENT(snowrds5)) THEN
+!$acc update self(snowrds5)
+          END IF
+          IF (PRESENT(t_lake1)) THEN
+!$acc update self(t_lake1)
+          END IF
+          IF (PRESENT(t_lake2)) THEN
+!$acc update self(t_lake2)
+          END IF
+          IF (PRESENT(t_lake3)) THEN
+!$acc update self(t_lake3)
+          END IF
+          IF (PRESENT(t_lake4)) THEN
+!$acc update self(t_lake4)
+          END IF
+          IF (PRESENT(t_lake5)) THEN
+!$acc update self(t_lake5)
+          END IF
+          IF (PRESENT(t_lake6)) THEN
+!$acc update self(t_lake6)
+          END IF
+          IF (PRESENT(t_lake7)) THEN
+!$acc update self(t_lake7)
+          END IF
+          IF (PRESENT(t_lake8)) THEN
+!$acc update self(t_lake8)
+          END IF
+          IF (PRESENT(t_lake9)) THEN
+!$acc update self(t_lake9)
+          END IF
+          IF (PRESENT(t_lake10)) THEN
+!$acc update self(t_lake10)
+          END IF
+          IF (PRESENT(h2osoi_vol1)) THEN
+!$acc update self(h2osoi_vol1)
+          END IF
+          IF (PRESENT(h2osoi_vol2)) THEN
+!$acc update self(h2osoi_vol2)
+          END IF
+          IF (PRESENT(h2osoi_vol3)) THEN
+!$acc update self(h2osoi_vol3)
+          END IF
+          IF (PRESENT(h2osoi_vol4)) THEN
+!$acc update self(h2osoi_vol4)
+          END IF
+          IF (PRESENT(h2osoi_vol5)) THEN
+!$acc update self(h2osoi_vol5)
+          END IF
+          IF (PRESENT(h2osoi_vol6)) THEN
+!$acc update self(h2osoi_vol6)
+          END IF
+          IF (PRESENT(h2osoi_vol7)) THEN
+!$acc update self(h2osoi_vol7)
+          END IF
+          IF (PRESENT(h2osoi_vol8)) THEN
+!$acc update self(h2osoi_vol8)
+          END IF
+          IF (PRESENT(h2osoi_vol9)) THEN
+!$acc update self(h2osoi_vol9)
+          END IF
+          IF (PRESENT(h2osoi_vol10)) THEN
+!$acc update self(h2osoi_vol10)
+          END IF
+          IF (PRESENT(albedosubgrid)) THEN
+!$acc update self(albedosubgrid)
+          END IF
+          IF (PRESENT(lhsubgrid)) THEN
+!$acc update self(lhsubgrid)
+          END IF
+          IF (PRESENT(hfxsubgrid)) THEN
+!$acc update self(hfxsubgrid)
+          END IF
+          IF (PRESENT(lwupsubgrid)) THEN
+!$acc update self(lwupsubgrid)
+          END IF
+          IF (PRESENT(q2subgrid)) THEN
+!$acc update self(q2subgrid)
+          END IF
+          IF (PRESENT(sabvsubgrid)) THEN
+!$acc update self(sabvsubgrid)
+          END IF
+          IF (PRESENT(sabgsubgrid)) THEN
+!$acc update self(sabgsubgrid)
+          END IF
+          IF (PRESENT(nrasubgrid)) THEN
+!$acc update self(nrasubgrid)
+          END IF
+          IF (PRESENT(swupsubgrid)) THEN
+!$acc update self(swupsubgrid)
+          END IF
+          IF (PRESENT(lhsoi)) THEN
+!$acc update self(lhsoi)
+          END IF
+          IF (PRESENT(lhveg)) THEN
+!$acc update self(lhveg)
+          END IF
+          IF (PRESENT(lhtran)) THEN
+!$acc update self(lhtran)
+          END IF
+          IF (PRESENT(t_veg24)) THEN
+!$acc update self(t_veg24)
+          END IF
+          IF (PRESENT(t_veg240)) THEN
+!$acc update self(t_veg240)
+          END IF
+          IF (PRESENT(fsun24)) THEN
+!$acc update self(fsun24)
+          END IF
+          IF (PRESENT(fsun240)) THEN
+!$acc update self(fsun240)
+          END IF
+          IF (PRESENT(fsd24)) THEN
+!$acc update self(fsd24)
+          END IF
+          IF (PRESENT(fsd240)) THEN
+!$acc update self(fsd240)
+          END IF
+          IF (PRESENT(fsi24)) THEN
+!$acc update self(fsi24)
+          END IF
+          IF (PRESENT(fsi240)) THEN
+!$acc update self(fsi240)
+          END IF
+          IF (PRESENT(laip)) THEN
+!$acc update self(laip)
+          END IF
+#ifdef CN
+          IF (PRESENT(dyntlai)) THEN
+!$acc update self(dyntlai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntsai)) THEN
+!$acc update self(dyntsai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntop)) THEN
+!$acc update self(dyntop)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dynbot)) THEN
+!$acc update self(dynbot)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(htmx)) THEN
+!$acc update self(htmx)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(croplive)) THEN
+!$acc update self(croplive)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd1020)) THEN
+!$acc update self(gdd1020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd820)) THEN
+!$acc update self(gdd820)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd020)) THEN
+!$acc update self(gdd020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc)) THEN
+!$acc update self(grainc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_storage)) THEN
+!$acc update self(grainc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_xfer)) THEN
+!$acc update self(grainc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn)) THEN
+!$acc update self(grainn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_storage)) THEN
+!$acc update self(grainn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_xfer)) THEN
+!$acc update self(grainn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(days_active)) THEN
+!$acc update self(days_active)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_flag)) THEN
+!$acc update self(onset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_counter)) THEN
+!$acc update self(onset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gddflag)) THEN
+!$acc update self(onset_gddflag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_fdd)) THEN
+!$acc update self(onset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gdd)) THEN
+!$acc update self(onset_gdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_swi)) THEN
+!$acc update self(onset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_flag)) THEN
+!$acc update self(offset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_counter)) THEN
+!$acc update self(offset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_fdd)) THEN
+!$acc update self(offset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_swi)) THEN
+!$acc update self(offset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dayl)) THEN
+!$acc update self(dayl)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annavg_t2m)) THEN
+!$acc update self(annavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempavg_t2m)) THEN
+!$acc update self(tempavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_potential_gpp)) THEN
+!$acc update self(tempsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_potential_gpp)) THEN
+!$acc update self(annsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempmax_retransn)) THEN
+!$acc update self(tempmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annmax_retransn)) THEN
+!$acc update self(annmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_leafc_to_litter)) THEN
+!$acc update self(prev_leafc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_frootc_to_litter)) THEN
+!$acc update self(prev_frootc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_npp)) THEN
+!$acc update self(tempsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_npp)) THEN
+!$acc update self(annsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc)) THEN
+!$acc update self(leafc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_storage)) THEN
+!$acc update self(leafc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_xfer)) THEN
+!$acc update self(leafc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc)) THEN
+!$acc update self(frootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_storage)) THEN
+!$acc update self(frootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_xfer)) THEN
+!$acc update self(frootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc)) THEN
+!$acc update self(livestemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_storage)) THEN
+!$acc update self(livestemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_xfer)) THEN
+!$acc update self(livestemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc)) THEN
+!$acc update self(deadstemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_storage)) THEN
+!$acc update self(deadstemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_xfer)) THEN
+!$acc update self(deadstemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc)) THEN
+!$acc update self(livecrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_storage)) THEN
+!$acc update self(livecrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_xfer)) THEN
+!$acc update self(livecrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc)) THEN
+!$acc update self(deadcrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_storage)) THEN
+!$acc update self(deadcrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_xfer)) THEN
+!$acc update self(deadcrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cpool)) THEN
+!$acc update self(cpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ctrunc)) THEN
+!$acc update self(pft_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn)) THEN
+!$acc update self(leafn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_storage)) THEN
+!$acc update self(leafn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_xfer)) THEN
+!$acc update self(leafn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn)) THEN
+!$acc update self(frootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_storage)) THEN
+!$acc update self(frootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_xfer)) THEN
+!$acc update self(frootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn)) THEN
+!$acc update self(livestemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_storage)) THEN
+!$acc update self(livestemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_xfer)) THEN
+!$acc update self(livestemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn)) THEN
+!$acc update self(deadstemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_storage)) THEN
+!$acc update self(deadstemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_xfer)) THEN
+!$acc update self(deadstemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn)) THEN
+!$acc update self(livecrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_storage)) THEN
+!$acc update self(livecrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_xfer)) THEN
+!$acc update self(livecrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn)) THEN
+!$acc update self(deadcrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_storage)) THEN
+!$acc update self(deadcrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_xfer)) THEN
+!$acc update self(deadcrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(npool)) THEN
+!$acc update self(npool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ntrunc)) THEN
+!$acc update self(pft_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_storage)) THEN
+!$acc update self(gresp_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_xfer)) THEN
+!$acc update self(gresp_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(xsmrpool)) THEN
+!$acc update self(xsmrpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_counter)) THEN
+!$acc update self(annsum_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannsum_npp)) THEN
+!$acc update self(cannsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannavg_t2m)) THEN
+!$acc update self(cannavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(wf)) THEN
+!$acc update self(wf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(me)) THEN
+!$acc update self(me)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(mean_fire_prob)) THEN
+!$acc update self(mean_fire_prob)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdc)) THEN
+!$acc update self(cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1c)) THEN
+!$acc update self(litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2c)) THEN
+!$acc update self(litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3c)) THEN
+!$acc update self(litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1c)) THEN
+!$acc update self(soil1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2c)) THEN
+!$acc update self(soil2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3c)) THEN
+!$acc update self(soil3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4c)) THEN
+!$acc update self(soil4c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedc)) THEN
+!$acc update self(seedc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ctrunc)) THEN
+!$acc update self(col_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10c)) THEN
+!$acc update self(prod10c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c)) THEN
+!$acc update self(prod100c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdn)) THEN
+!$acc update self(cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1n)) THEN
+!$acc update self(litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2n)) THEN
+!$acc update self(litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3n)) THEN
+!$acc update self(litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1n)) THEN
+!$acc update self(soil1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2n)) THEN
+!$acc update self(soil2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3n)) THEN
+!$acc update self(soil3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4n)) THEN
+!$acc update self(soil4n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedn)) THEN
+!$acc update self(seedn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ntrunc)) THEN
+!$acc update self(col_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10n)) THEN
+!$acc update self(prod10n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n)) THEN
+!$acc update self(prod100n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(sminn)) THEN
+!$acc update self(sminn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(totlitc)) THEN
+!$acc update self(totlitc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_leaf)) THEN
+!$acc update self(dwt_seedc_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_deadstem)) THEN
+!$acc update self(dwt_seedc_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_cflux)) THEN
+!$acc update self(dwt_conv_cflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10c_gain)) THEN
+!$acc update self(dwt_prod10c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100c_gain)) THEN
+!$acc update self(dwt_prod100c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c_loss)) THEN
+!$acc update self(prod100c_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr1c)) THEN
+!$acc update self(dwt_frootc_to_litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr2c)) THEN
+!$acc update self(dwt_frootc_to_litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr3c)) THEN
+!$acc update self(dwt_frootc_to_litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootc_to_cwdc)) THEN
+!$acc update self(dwt_livecrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootc_to_cwdc)) THEN
+!$acc update self(dwt_deadcrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_leaf)) THEN
+!$acc update self(dwt_seedn_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_deadstem)) THEN
+!$acc update self(dwt_seedn_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_nflux)) THEN
+!$acc update self(dwt_conv_nflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10n_gain)) THEN
+!$acc update self(dwt_prod10n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100n_gain)) THEN
+!$acc update self(dwt_prod100n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n_loss)) THEN
+!$acc update self(prod100n_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr1n)) THEN
+!$acc update self(dwt_frootn_to_litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr2n)) THEN
+!$acc update self(dwt_frootn_to_litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr3n)) THEN
+!$acc update self(dwt_frootn_to_litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootn_to_cwdn)) THEN
+!$acc update self(dwt_livecrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootn_to_cwdn)) THEN
+!$acc update self(dwt_deadcrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(retransn)) THEN
+!$acc update self(retransn)
+          END IF
+#endif
+          IF (PRESENT(pct_pft_input)) THEN
+!$acc update self(pct_pft_input)
+          END IF
+          IF (PRESENT(shadowmask)) THEN
+!$acc update self(shadowmask)
+          END IF
+          IF (PRESENT(swnorm)) THEN
+!$acc update self(swnorm)
+          END IF
+          IF (PRESENT(slope)) THEN
+!$acc update self(slope)
+          END IF
+          IF (PRESENT(slp_azi)) THEN
+!$acc update self(slp_azi)
+          END IF
+          IF (PRESENT(diffuse_frac)) THEN
+!$acc update self(diffuse_frac)
+          END IF
+          IF (PRESENT(coszen)) THEN
+!$acc update self(coszen)
+          END IF
+          IF (PRESENT(hrang)) THEN
+!$acc update self(hrang)
+          END IF
+          IF (PRESENT(xlat_urb2d)) THEN
+!$acc update self(xlat_urb2d)
+          END IF
+          IF (PRESENT(dzr)) THEN
+!$acc update self(dzr)
+          END IF
+          IF (PRESENT(dzb)) THEN
+!$acc update self(dzb)
+          END IF
+          IF (PRESENT(dzg)) THEN
+!$acc update self(dzg)
+          END IF
+          IF (PRESENT(tr_urb2d)) THEN
+!$acc update self(tr_urb2d)
+          END IF
+          IF (PRESENT(tb_urb2d)) THEN
+!$acc update self(tb_urb2d)
+          END IF
+          IF (PRESENT(tg_urb2d)) THEN
+!$acc update self(tg_urb2d)
+          END IF
+          IF (PRESENT(tc_urb2d)) THEN
+!$acc update self(tc_urb2d)
+          END IF
+          IF (PRESENT(qc_urb2d)) THEN
+!$acc update self(qc_urb2d)
+          END IF
+          IF (PRESENT(uc_urb2d)) THEN
+!$acc update self(uc_urb2d)
+          END IF
+          IF (PRESENT(xxxr_urb2d)) THEN
+!$acc update self(xxxr_urb2d)
+          END IF
+          IF (PRESENT(xxxb_urb2d)) THEN
+!$acc update self(xxxb_urb2d)
+          END IF
+          IF (PRESENT(xxxg_urb2d)) THEN
+!$acc update self(xxxg_urb2d)
+          END IF
+          IF (PRESENT(xxxc_urb2d)) THEN
+!$acc update self(xxxc_urb2d)
+          END IF
+          IF (PRESENT(cmcr_urb2d)) THEN
+!$acc update self(cmcr_urb2d)
+          END IF
+          IF (PRESENT(tgr_urb2d)) THEN
+!$acc update self(tgr_urb2d)
+          END IF
+          IF (PRESENT(tgrl_urb3d)) THEN
+!$acc update self(tgrl_urb3d)
+          END IF
+          IF (PRESENT(smr_urb3d)) THEN
+!$acc update self(smr_urb3d)
+          END IF
+          IF (PRESENT(drelr_urb2d)) THEN
+!$acc update self(drelr_urb2d)
+          END IF
+          IF (PRESENT(drelb_urb2d)) THEN
+!$acc update self(drelb_urb2d)
+          END IF
+          IF (PRESENT(drelg_urb2d)) THEN
+!$acc update self(drelg_urb2d)
+          END IF
+          IF (PRESENT(flxhumr_urb2d)) THEN
+!$acc update self(flxhumr_urb2d)
+          END IF
+          IF (PRESENT(flxhumb_urb2d)) THEN
+!$acc update self(flxhumb_urb2d)
+          END IF
+          IF (PRESENT(flxhumg_urb2d)) THEN
+!$acc update self(flxhumg_urb2d)
+          END IF
+          IF (PRESENT(trl_urb3d)) THEN
+!$acc update self(trl_urb3d)
+          END IF
+          IF (PRESENT(tbl_urb3d)) THEN
+!$acc update self(tbl_urb3d)
+          END IF
+          IF (PRESENT(tgl_urb3d)) THEN
+!$acc update self(tgl_urb3d)
+          END IF
+          IF (PRESENT(sh_urb2d)) THEN
+!$acc update self(sh_urb2d)
+          END IF
+          IF (PRESENT(lh_urb2d)) THEN
+!$acc update self(lh_urb2d)
+          END IF
+          IF (PRESENT(g_urb2d)) THEN
+!$acc update self(g_urb2d)
+          END IF
+          IF (PRESENT(rn_urb2d)) THEN
+!$acc update self(rn_urb2d)
+          END IF
+          IF (PRESENT(ts_urb2d)) THEN
+!$acc update self(ts_urb2d)
+          END IF
+          IF (PRESENT(frc_urb2d)) THEN
+!$acc update self(frc_urb2d)
+          END IF
+          IF (PRESENT(utype_urb2d)) THEN
+!$acc update self(utype_urb2d)
+          END IF
+          IF (PRESENT(cmr_sfcdif)) THEN
+!$acc update self(cmr_sfcdif)
+          END IF
+          IF (PRESENT(chr_sfcdif)) THEN
+!$acc update self(chr_sfcdif)
+          END IF
+          IF (PRESENT(cmc_sfcdif)) THEN
+!$acc update self(cmc_sfcdif)
+          END IF
+          IF (PRESENT(chc_sfcdif)) THEN
+!$acc update self(chc_sfcdif)
+          END IF
+          IF (PRESENT(cmgr_sfcdif)) THEN
+!$acc update self(cmgr_sfcdif)
+          END IF
+          IF (PRESENT(chgr_sfcdif)) THEN
+!$acc update self(chgr_sfcdif)
+          END IF
+          IF (PRESENT(alswvisdir)) THEN
+!$acc update self(alswvisdir)
+          END IF
+          IF (PRESENT(alswvisdif)) THEN
+!$acc update self(alswvisdif)
+          END IF
+          IF (PRESENT(alswnirdir)) THEN
+!$acc update self(alswnirdir)
+          END IF
+          IF (PRESENT(alswnirdif)) THEN
+!$acc update self(alswnirdif)
+          END IF
+          IF (PRESENT(swvisdir)) THEN
+!$acc update self(swvisdir)
+          END IF
+          IF (PRESENT(swvisdif)) THEN
+!$acc update self(swvisdif)
+          END IF
+          IF (PRESENT(swnirdir)) THEN
+!$acc update self(swnirdir)
+          END IF
+          IF (PRESENT(swnirdif)) THEN
+!$acc update self(swnirdif)
+          END IF
+          IF (PRESENT(ssib_br)) THEN
+!$acc update self(ssib_br)
+          END IF
+          IF (PRESENT(ssib_fm)) THEN
+!$acc update self(ssib_fm)
+          END IF
+          IF (PRESENT(ssib_fh)) THEN
+!$acc update self(ssib_fh)
+          END IF
+          IF (PRESENT(ssib_cm)) THEN
+!$acc update self(ssib_cm)
+          END IF
+          IF (PRESENT(ssibxdd)) THEN
+!$acc update self(ssibxdd)
+          END IF
+          IF (PRESENT(ssib_lhf)) THEN
+!$acc update self(ssib_lhf)
+          END IF
+          IF (PRESENT(ssib_shf)) THEN
+!$acc update self(ssib_shf)
+          END IF
+          IF (PRESENT(ssib_ghf)) THEN
+!$acc update self(ssib_ghf)
+          END IF
+          IF (PRESENT(ssib_egs)) THEN
+!$acc update self(ssib_egs)
+          END IF
+          IF (PRESENT(ssib_eci)) THEN
+!$acc update self(ssib_eci)
+          END IF
+          IF (PRESENT(ssib_ect)) THEN
+!$acc update self(ssib_ect)
+          END IF
+          IF (PRESENT(ssib_egi)) THEN
+!$acc update self(ssib_egi)
+          END IF
+          IF (PRESENT(ssib_egt)) THEN
+!$acc update self(ssib_egt)
+          END IF
+          IF (PRESENT(ssib_sdn)) THEN
+!$acc update self(ssib_sdn)
+          END IF
+          IF (PRESENT(ssib_sup)) THEN
+!$acc update self(ssib_sup)
+          END IF
+          IF (PRESENT(ssib_ldn)) THEN
+!$acc update self(ssib_ldn)
+          END IF
+          IF (PRESENT(ssib_lup)) THEN
+!$acc update self(ssib_lup)
+          END IF
+          IF (PRESENT(ssib_wat)) THEN
+!$acc update self(ssib_wat)
+          END IF
+          IF (PRESENT(ssib_shc)) THEN
+!$acc update self(ssib_shc)
+          END IF
+          IF (PRESENT(ssib_shg)) THEN
+!$acc update self(ssib_shg)
+          END IF
+          IF (PRESENT(ssib_lai)) THEN
+!$acc update self(ssib_lai)
+          END IF
+          IF (PRESENT(ssib_vcf)) THEN
+!$acc update self(ssib_vcf)
+          END IF
+          IF (PRESENT(ssib_z00)) THEN
+!$acc update self(ssib_z00)
+          END IF
+          IF (PRESENT(ssib_veg)) THEN
+!$acc update self(ssib_veg)
+          END IF
+          IF (PRESENT(isnow)) THEN
+!$acc update self(isnow)
+          END IF
+          IF (PRESENT(swe)) THEN
+!$acc update self(swe)
+          END IF
+          IF (PRESENT(snowden)) THEN
+!$acc update self(snowden)
+          END IF
+          IF (PRESENT(snowdepth)) THEN
+!$acc update self(snowdepth)
+          END IF
+          IF (PRESENT(tkair)) THEN
+!$acc update self(tkair)
+          END IF
+          IF (PRESENT(dzo1)) THEN
+!$acc update self(dzo1)
+          END IF
+          IF (PRESENT(wo1)) THEN
+!$acc update self(wo1)
+          END IF
+          IF (PRESENT(tssn1)) THEN
+!$acc update self(tssn1)
+          END IF
+          IF (PRESENT(tssno1)) THEN
+!$acc update self(tssno1)
+          END IF
+          IF (PRESENT(bwo1)) THEN
+!$acc update self(bwo1)
+          END IF
+          IF (PRESENT(bto1)) THEN
+!$acc update self(bto1)
+          END IF
+          IF (PRESENT(cto1)) THEN
+!$acc update self(cto1)
+          END IF
+          IF (PRESENT(fio1)) THEN
+!$acc update self(fio1)
+          END IF
+          IF (PRESENT(flo1)) THEN
+!$acc update self(flo1)
+          END IF
+          IF (PRESENT(bio1)) THEN
+!$acc update self(bio1)
+          END IF
+          IF (PRESENT(blo1)) THEN
+!$acc update self(blo1)
+          END IF
+          IF (PRESENT(ho1)) THEN
+!$acc update self(ho1)
+          END IF
+          IF (PRESENT(dzo2)) THEN
+!$acc update self(dzo2)
+          END IF
+          IF (PRESENT(wo2)) THEN
+!$acc update self(wo2)
+          END IF
+          IF (PRESENT(tssn2)) THEN
+!$acc update self(tssn2)
+          END IF
+          IF (PRESENT(tssno2)) THEN
+!$acc update self(tssno2)
+          END IF
+          IF (PRESENT(bwo2)) THEN
+!$acc update self(bwo2)
+          END IF
+          IF (PRESENT(bto2)) THEN
+!$acc update self(bto2)
+          END IF
+          IF (PRESENT(cto2)) THEN
+!$acc update self(cto2)
+          END IF
+          IF (PRESENT(fio2)) THEN
+!$acc update self(fio2)
+          END IF
+          IF (PRESENT(flo2)) THEN
+!$acc update self(flo2)
+          END IF
+          IF (PRESENT(bio2)) THEN
+!$acc update self(bio2)
+          END IF
+          IF (PRESENT(blo2)) THEN
+!$acc update self(blo2)
+          END IF
+          IF (PRESENT(ho2)) THEN
+!$acc update self(ho2)
+          END IF
+          IF (PRESENT(dzo3)) THEN
+!$acc update self(dzo3)
+          END IF
+          IF (PRESENT(wo3)) THEN
+!$acc update self(wo3)
+          END IF
+          IF (PRESENT(tssn3)) THEN
+!$acc update self(tssn3)
+          END IF
+          IF (PRESENT(tssno3)) THEN
+!$acc update self(tssno3)
+          END IF
+          IF (PRESENT(bwo3)) THEN
+!$acc update self(bwo3)
+          END IF
+          IF (PRESENT(bto3)) THEN
+!$acc update self(bto3)
+          END IF
+          IF (PRESENT(cto3)) THEN
+!$acc update self(cto3)
+          END IF
+          IF (PRESENT(fio3)) THEN
+!$acc update self(fio3)
+          END IF
+          IF (PRESENT(flo3)) THEN
+!$acc update self(flo3)
+          END IF
+          IF (PRESENT(bio3)) THEN
+!$acc update self(bio3)
+          END IF
+          IF (PRESENT(blo3)) THEN
+!$acc update self(blo3)
+          END IF
+          IF (PRESENT(ho3)) THEN
+!$acc update self(ho3)
+          END IF
+          IF (PRESENT(dzo4)) THEN
+!$acc update self(dzo4)
+          END IF
+          IF (PRESENT(wo4)) THEN
+!$acc update self(wo4)
+          END IF
+          IF (PRESENT(tssn4)) THEN
+!$acc update self(tssn4)
+          END IF
+          IF (PRESENT(tssno4)) THEN
+!$acc update self(tssno4)
+          END IF
+          IF (PRESENT(bwo4)) THEN
+!$acc update self(bwo4)
+          END IF
+          IF (PRESENT(bto4)) THEN
+!$acc update self(bto4)
+          END IF
+          IF (PRESENT(cto4)) THEN
+!$acc update self(cto4)
+          END IF
+          IF (PRESENT(fio4)) THEN
+!$acc update self(fio4)
+          END IF
+          IF (PRESENT(flo4)) THEN
+!$acc update self(flo4)
+          END IF
+          IF (PRESENT(bio4)) THEN
+!$acc update self(bio4)
+          END IF
+          IF (PRESENT(blo4)) THEN
+!$acc update self(blo4)
+          END IF
+          IF (PRESENT(ho4)) THEN
+!$acc update self(ho4)
+          END IF
+          IF (PRESENT(qv_curr)) THEN
+!$acc update self(qv_curr)
+          END IF
+          IF (PRESENT(qc_curr)) THEN
+!$acc update self(qc_curr)
+          END IF
+          IF (PRESENT(qr_curr)) THEN
+!$acc update self(qr_curr)
+          END IF
+          IF (PRESENT(qi_curr)) THEN
+!$acc update self(qi_curr)
+          END IF
+          IF (PRESENT(qs_curr)) THEN
+!$acc update self(qs_curr)
+          END IF
+          IF (PRESENT(qg_curr)) THEN
+!$acc update self(qg_curr)
+          END IF
+          IF (PRESENT(capg)) THEN
+!$acc update self(capg)
+          END IF
+          IF (PRESENT(hol)) THEN
+!$acc update self(hol)
+          END IF
+          IF (PRESENT(mol)) THEN
+!$acc update self(mol)
+          END IF
+          IF (PRESENT(rainncv)) THEN
+!$acc update self(rainncv)
+          END IF
+          IF (PRESENT(rainshv)) THEN
+!$acc update self(rainshv)
+          END IF
+          IF (PRESENT(rainbl)) THEN
+!$acc update self(rainbl)
+          END IF
+          IF (PRESENT(regime)) THEN
+!$acc update self(regime)
+          END IF
+          IF (PRESENT(thc)) THEN
+!$acc update self(thc)
+          END IF
+          IF (PRESENT(graupelncv)) THEN
+!$acc update self(graupelncv)
+          END IF
+          IF (PRESENT(hailncv)) THEN
+!$acc update self(hailncv)
+          END IF
+          IF (PRESENT(qsg)) THEN
+!$acc update self(qsg)
+          END IF
+          IF (PRESENT(qvg)) THEN
+!$acc update self(qvg)
+          END IF
+          IF (PRESENT(qcg)) THEN
+!$acc update self(qcg)
+          END IF
+          IF (PRESENT(soilt1)) THEN
+!$acc update self(soilt1)
+          END IF
+          IF (PRESENT(tsnav)) THEN
+!$acc update self(tsnav)
+          END IF
+          IF (PRESENT(smfr3d)) THEN
+!$acc update self(smfr3d)
+          END IF
+          IF (PRESENT(keepfr3dflag)) THEN
+!$acc update self(keepfr3dflag)
+          END IF
+          IF (PRESENT(dew)) THEN
+!$acc update self(dew)
+          END IF
+          IF (PRESENT(rhosnf)) THEN
+!$acc update self(rhosnf)
+          END IF
+          IF (PRESENT(precipfr)) THEN
+!$acc update self(precipfr)
+          END IF
+          IF (PRESENT(potevp)) THEN
+!$acc update self(potevp)
+          END IF
+          IF (PRESENT(snopcx)) THEN
+!$acc update self(snopcx)
+          END IF
+          IF (PRESENT(soiltb)) THEN
+!$acc update self(soiltb)
+          END IF
+          IF (PRESENT(sr)) THEN
+!$acc update self(sr)
+          END IF
+          IF (PRESENT(t2_ndg_old)) THEN
+!$acc update self(t2_ndg_old)
+          END IF
+          IF (PRESENT(q2_ndg_old)) THEN
+!$acc update self(q2_ndg_old)
+          END IF
+          IF (PRESENT(t2_ndg_new)) THEN
+!$acc update self(t2_ndg_new)
+          END IF
+          IF (PRESENT(q2_ndg_new)) THEN
+!$acc update self(q2_ndg_new)
+          END IF
+          IF (PRESENT(sn_ndg_old)) THEN
+!$acc update self(sn_ndg_old)
+          END IF
+          IF (PRESENT(sn_ndg_new)) THEN
+!$acc update self(sn_ndg_new)
+          END IF
+          IF (PRESENT(t2obs)) THEN
+!$acc update self(t2obs)
+          END IF
+          IF (PRESENT(q2obs)) THEN
+!$acc update self(q2obs)
+          END IF
+          IF (PRESENT(hd_temf)) THEN
+!$acc update self(hd_temf)
+          END IF
+          IF (PRESENT(te_temf)) THEN
+!$acc update self(te_temf)
+          END IF
+          IF (PRESENT(fcor)) THEN
+!$acc update self(fcor)
+          END IF
+          IF (PRESENT(exch_temf)) THEN
+!$acc update self(exch_temf)
+          END IF
+          IF (PRESENT(wm_temf)) THEN
+!$acc update self(wm_temf)
+          END IF
+          IF (PRESENT(uratx)) THEN
+!$acc update self(uratx)
+          END IF
+          IF (PRESENT(vratx)) THEN
+!$acc update self(vratx)
+          END IF
+          IF (PRESENT(tratx)) THEN
+!$acc update self(tratx)
+          END IF
+          IF (PRESENT(tml)) THEN
+!$acc update self(tml)
+          END IF
+          IF (PRESENT(t0ml)) THEN
+!$acc update self(t0ml)
+          END IF
+          IF (PRESENT(hml)) THEN
+!$acc update self(hml)
+          END IF
+          IF (PRESENT(h0ml)) THEN
+!$acc update self(h0ml)
+          END IF
+          IF (PRESENT(huml)) THEN
+!$acc update self(huml)
+          END IF
+          IF (PRESENT(hvml)) THEN
+!$acc update self(hvml)
+          END IF
+          IF (PRESENT(f)) THEN
+!$acc update self(f)
+          END IF
+          IF (PRESENT(tmoml)) THEN
+!$acc update self(tmoml)
+          END IF
+          IF (PRESENT(ustm)) THEN
+!$acc update self(ustm)
+          END IF
+          IF (PRESENT(ck)) THEN
+!$acc update self(ck)
+          END IF
+          IF (PRESENT(cka)) THEN
+!$acc update self(cka)
+          END IF
+          IF (PRESENT(cd)) THEN
+!$acc update self(cd)
+          END IF
+          IF (PRESENT(cda)) THEN
+!$acc update self(cda)
+          END IF
+          IF (PRESENT(snotime)) THEN
+!$acc update self(snotime)
+          END IF
+          IF (PRESENT(noahres)) THEN
+!$acc update self(noahres)
+          END IF
+          IF (PRESENT(xlat)) THEN
+!$acc update self(xlat)
+          END IF
+          IF (PRESENT(xlong)) THEN
+!$acc update self(xlong)
+          END IF
+          IF (PRESENT(ahe)) THEN
+!$acc update self(ahe)
+          END IF
+          IF (PRESENT(tsk_rural)) THEN
+!$acc update self(tsk_rural)
+          END IF
+          IF (PRESENT(trb_urb4d)) THEN
+!$acc update self(trb_urb4d)
+          END IF
+          IF (PRESENT(tw1_urb4d)) THEN
+!$acc update self(tw1_urb4d)
+          END IF
+          IF (PRESENT(tw2_urb4d)) THEN
+!$acc update self(tw2_urb4d)
+          END IF
+          IF (PRESENT(tgb_urb4d)) THEN
+!$acc update self(tgb_urb4d)
+          END IF
+          IF (PRESENT(tlev_urb3d)) THEN
+!$acc update self(tlev_urb3d)
+          END IF
+          IF (PRESENT(qlev_urb3d)) THEN
+!$acc update self(qlev_urb3d)
+          END IF
+          IF (PRESENT(tw1lev_urb3d)) THEN
+!$acc update self(tw1lev_urb3d)
+          END IF
+          IF (PRESENT(tw2lev_urb3d)) THEN
+!$acc update self(tw2lev_urb3d)
+          END IF
+          IF (PRESENT(tglev_urb3d)) THEN
+!$acc update self(tglev_urb3d)
+          END IF
+          IF (PRESENT(tflev_urb3d)) THEN
+!$acc update self(tflev_urb3d)
+          END IF
+          IF (PRESENT(sf_ac_urb3d)) THEN
+!$acc update self(sf_ac_urb3d)
+          END IF
+          IF (PRESENT(lf_ac_urb3d)) THEN
+!$acc update self(lf_ac_urb3d)
+          END IF
+          IF (PRESENT(cm_ac_urb3d)) THEN
+!$acc update self(cm_ac_urb3d)
+          END IF
+          IF (PRESENT(sfvent_urb3d)) THEN
+!$acc update self(sfvent_urb3d)
+          END IF
+          IF (PRESENT(lfvent_urb3d)) THEN
+!$acc update self(lfvent_urb3d)
+          END IF
+          IF (PRESENT(sfwin1_urb3d)) THEN
+!$acc update self(sfwin1_urb3d)
+          END IF
+          IF (PRESENT(sfwin2_urb3d)) THEN
+!$acc update self(sfwin2_urb3d)
+          END IF
+          IF (PRESENT(sfw1_urb3d)) THEN
+!$acc update self(sfw1_urb3d)
+          END IF
+          IF (PRESENT(sfw2_urb3d)) THEN
+!$acc update self(sfw2_urb3d)
+          END IF
+          IF (PRESENT(sfr_urb3d)) THEN
+!$acc update self(sfr_urb3d)
+          END IF
+          IF (PRESENT(sfg_urb3d)) THEN
+!$acc update self(sfg_urb3d)
+          END IF
+          IF (PRESENT(ep_pv_urb3d)) THEN
+!$acc update self(ep_pv_urb3d)
+          END IF
+          IF (PRESENT(t_pv_urb3d)) THEN
+!$acc update self(t_pv_urb3d)
+          END IF
+          IF (PRESENT(trv_urb4d)) THEN
+!$acc update self(trv_urb4d)
+          END IF
+          IF (PRESENT(qr_urb4d)) THEN
+!$acc update self(qr_urb4d)
+          END IF
+          IF (PRESENT(qgr_urb3d)) THEN
+!$acc update self(qgr_urb3d)
+          END IF
+          IF (PRESENT(tgr_urb3d)) THEN
+!$acc update self(tgr_urb3d)
+          END IF
+          IF (PRESENT(drain_urb4d)) THEN
+!$acc update self(drain_urb4d)
+          END IF
+          IF (PRESENT(draingr_urb3d)) THEN
+!$acc update self(draingr_urb3d)
+          END IF
+          IF (PRESENT(sfrv_urb3d)) THEN
+!$acc update self(sfrv_urb3d)
+          END IF
+          IF (PRESENT(lfrv_urb3d)) THEN
+!$acc update self(lfrv_urb3d)
+          END IF
+          IF (PRESENT(dgr_urb3d)) THEN
+!$acc update self(dgr_urb3d)
+          END IF
+          IF (PRESENT(dg_urb3d)) THEN
+!$acc update self(dg_urb3d)
+          END IF
+          IF (PRESENT(lfr_urb3d)) THEN
+!$acc update self(lfr_urb3d)
+          END IF
+          IF (PRESENT(lfg_urb3d)) THEN
+!$acc update self(lfg_urb3d)
+          END IF
+          IF (PRESENT(swddir)) THEN
+!$acc update self(swddir)
+          END IF
+          IF (PRESENT(swddif)) THEN
+!$acc update self(swddif)
+          END IF
+          IF (PRESENT(lp_urb2d)) THEN
+!$acc update self(lp_urb2d)
+          END IF
+          IF (PRESENT(hi_urb2d)) THEN
+!$acc update self(hi_urb2d)
+          END IF
+          IF (PRESENT(lb_urb2d)) THEN
+!$acc update self(lb_urb2d)
+          END IF
+          IF (PRESENT(hgt_urb2d)) THEN
+!$acc update self(hgt_urb2d)
+          END IF
+          IF (PRESENT(mh_urb2d)) THEN
+!$acc update self(mh_urb2d)
+          END IF
+          IF (PRESENT(stdh_urb2d)) THEN
+!$acc update self(stdh_urb2d)
+          END IF
+          IF (PRESENT(lf_urb2d)) THEN
+!$acc update self(lf_urb2d)
+          END IF
+          IF (PRESENT(lf_urb2d_s)) THEN
+!$acc update self(lf_urb2d_s)
+          END IF
+          IF (PRESENT(z0_urb2d)) THEN
+!$acc update self(z0_urb2d)
+          END IF
+          IF (PRESENT(a_u_bep)) THEN
+!$acc update self(a_u_bep)
+          END IF
+          IF (PRESENT(a_v_bep)) THEN
+!$acc update self(a_v_bep)
+          END IF
+          IF (PRESENT(a_t_bep)) THEN
+!$acc update self(a_t_bep)
+          END IF
+          IF (PRESENT(a_q_bep)) THEN
+!$acc update self(a_q_bep)
+          END IF
+          IF (PRESENT(b_u_bep)) THEN
+!$acc update self(b_u_bep)
+          END IF
+          IF (PRESENT(b_v_bep)) THEN
+!$acc update self(b_v_bep)
+          END IF
+          IF (PRESENT(b_t_bep)) THEN
+!$acc update self(b_t_bep)
+          END IF
+          IF (PRESENT(b_q_bep)) THEN
+!$acc update self(b_q_bep)
+          END IF
+          IF (PRESENT(sf_bep)) THEN
+!$acc update self(sf_bep)
+          END IF
+          IF (PRESENT(vl_bep)) THEN
+!$acc update self(vl_bep)
+          END IF
+          IF (PRESENT(a_e_bep)) THEN
+!$acc update self(a_e_bep)
+          END IF
+          IF (PRESENT(b_e_bep)) THEN
+!$acc update self(b_e_bep)
+          END IF
+          IF (PRESENT(dlg_bep)) THEN
+!$acc update self(dlg_bep)
+          END IF
+          IF (PRESENT(dl_u_bep)) THEN
+!$acc update self(dl_u_bep)
+          END IF
+          IF (PRESENT(tsk_save)) THEN
+!$acc update self(tsk_save)
+          END IF
+          IF (PRESENT(cldfra)) THEN
+!$acc update self(cldfra)
+          END IF
+          IF (PRESENT(mosaic_cat_index)) THEN
+!$acc update self(mosaic_cat_index)
+          END IF
+          IF (PRESENT(landusef2)) THEN
+!$acc update self(landusef2)
+          END IF
+          IF (PRESENT(tsk_mosaic)) THEN
+!$acc update self(tsk_mosaic)
+          END IF
+          IF (PRESENT(qsfc_mosaic)) THEN
+!$acc update self(qsfc_mosaic)
+          END IF
+          IF (PRESENT(tslb_mosaic)) THEN
+!$acc update self(tslb_mosaic)
+          END IF
+          IF (PRESENT(smois_mosaic)) THEN
+!$acc update self(smois_mosaic)
+          END IF
+          IF (PRESENT(sh2o_mosaic)) THEN
+!$acc update self(sh2o_mosaic)
+          END IF
+          IF (PRESENT(canwat_mosaic)) THEN
+!$acc update self(canwat_mosaic)
+          END IF
+          IF (PRESENT(snow_mosaic)) THEN
+!$acc update self(snow_mosaic)
+          END IF
+          IF (PRESENT(snowh_mosaic)) THEN
+!$acc update self(snowh_mosaic)
+          END IF
+          IF (PRESENT(snowc_mosaic)) THEN
+!$acc update self(snowc_mosaic)
+          END IF
+          IF (PRESENT(albedo_mosaic)) THEN
+!$acc update self(albedo_mosaic)
+          END IF
+          IF (PRESENT(albbck_mosaic)) THEN
+!$acc update self(albbck_mosaic)
+          END IF
+          IF (PRESENT(emiss_mosaic)) THEN
+!$acc update self(emiss_mosaic)
+          END IF
+          IF (PRESENT(embck_mosaic)) THEN
+!$acc update self(embck_mosaic)
+          END IF
+          IF (PRESENT(znt_mosaic)) THEN
+!$acc update self(znt_mosaic)
+          END IF
+          IF (PRESENT(z0_mosaic)) THEN
+!$acc update self(z0_mosaic)
+          END IF
+          IF (PRESENT(hfx_mosaic)) THEN
+!$acc update self(hfx_mosaic)
+          END IF
+          IF (PRESENT(qfx_mosaic)) THEN
+!$acc update self(qfx_mosaic)
+          END IF
+          IF (PRESENT(lh_mosaic)) THEN
+!$acc update self(lh_mosaic)
+          END IF
+          IF (PRESENT(grdflx_mosaic)) THEN
+!$acc update self(grdflx_mosaic)
+          END IF
+          IF (PRESENT(snotime_mosaic)) THEN
+!$acc update self(snotime_mosaic)
+          END IF
+          IF (PRESENT(rs_mosaic)) THEN
+!$acc update self(rs_mosaic)
+          END IF
+          IF (PRESENT(lai_mosaic)) THEN
+!$acc update self(lai_mosaic)
+          END IF
+          IF (PRESENT(tr_urb2d_mosaic)) THEN
+!$acc update self(tr_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tb_urb2d_mosaic)) THEN
+!$acc update self(tb_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tg_urb2d_mosaic)) THEN
+!$acc update self(tg_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tc_urb2d_mosaic)) THEN
+!$acc update self(tc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(qc_urb2d_mosaic)) THEN
+!$acc update self(qc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(uc_urb2d_mosaic)) THEN
+!$acc update self(uc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(trl_urb3d_mosaic)) THEN
+!$acc update self(trl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tbl_urb3d_mosaic)) THEN
+!$acc update self(tbl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tgl_urb3d_mosaic)) THEN
+!$acc update self(tgl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(sh_urb2d_mosaic)) THEN
+!$acc update self(sh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(lh_urb2d_mosaic)) THEN
+!$acc update self(lh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(g_urb2d_mosaic)) THEN
+!$acc update self(g_urb2d_mosaic)
+          END IF
+          IF (PRESENT(rn_urb2d_mosaic)) THEN
+!$acc update self(rn_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_urb2d_mosaic)) THEN
+!$acc update self(ts_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_rul2d_mosaic)) THEN
+!$acc update self(ts_rul2d_mosaic)
+          END IF
+          IF (PRESENT(sda_hfx)) THEN
+!$acc update self(sda_hfx)
+          END IF
+          IF (PRESENT(sda_qfx)) THEN
+!$acc update self(sda_qfx)
+          END IF
+          IF (PRESENT(hfx_both)) THEN
+!$acc update self(hfx_both)
+          END IF
+          IF (PRESENT(qfx_both)) THEN
+!$acc update self(qfx_both)
+          END IF
+          IF (PRESENT(qnorm)) THEN
+!$acc update self(qnorm)
+          END IF
+          IF (PRESENT(pattern_spp_lsm)) THEN
+!$acc update self(pattern_spp_lsm)
+          END IF
+          IF (PRESENT(field_sf)) THEN
+!$acc update self(field_sf)
+          END IF
+          IF (PRESENT(pattern_spp_pbl)) THEN
+!$acc update self(pattern_spp_pbl)
+          END IF
+          IF (PRESENT(xlaidyn)) THEN
+!$acc update self(xlaidyn)
+          END IF
+          IF (PRESENT(perts_qvapor)) THEN
+!$acc update self(perts_qvapor)
+          END IF
+          IF (PRESENT(perts_th)) THEN
+!$acc update self(perts_th)
+          END IF
+          IF (PRESENT(perts_smois)) THEN
+!$acc update self(perts_smois)
+          END IF
+          IF (PRESENT(perts_tsoil)) THEN
+!$acc update self(perts_tsoil)
+          END IF
+          IF (PRESENT(irrigation)) THEN
+!$acc update self(irrigation)
+          END IF
+          IF (PRESENT(irr_rand_field)) THEN
+!$acc update self(irr_rand_field)
+          END IF
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
 
   if ( fractional_seaice == 0 ) then
      xice_threshold = 0.5
@@ -1513,6 +7945,9 @@ CONTAINS
   endif
 
   IF ( coupler_on .and. present(cplmask) .and. present(sst_input) ) THEN
+#ifdef WRF_GPU
+    CALL wrf_error_fatal('surface_driver: coupler_on not ported to the GPU')
+#endif
      
      CALL cpl_rcv( id, 'SST',            &
         &              ids, ide, jds, jde, kds, kde, &
@@ -1541,6 +7976,32 @@ CONTAINS
 #endif
 
   
+#ifdef WRF_GPU
+  DO ij = 1, num_tiles
+     its = i_start_h(ij)
+     ite = i_end_h(ij)
+     jts = j_start_h(ij)
+     jte = j_end_h(ij)
+! K-SD-1: zero u_phytmp v_phytmp QGH CHS CPM CHS2 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(v_phytmp, u_phytmp, qgh, chs, cpm, chs2) &
+!$acc& firstprivate(its, ite, jts, jte, kms, kme) &
+!$acc& private(i, j, k)
+     DO j = jts, jte
+     DO i = its, ite
+        !$acc loop seq
+        DO k = kms, kme
+          v_phytmp(i, k, j) = 0.
+          u_phytmp(i, k, j) = 0.
+        ENDDO
+         QGH(i,j) = 0.
+         CHS(i,j) = 0.
+         CPM(i,j) = 0.
+         CHS2(i,j) = 0.
+     ENDDO
+     ENDDO
+  ENDDO
+#else
 !$OMP PARALLEL DO &
 !$OMP PRIVATE (ij, i, j, k)
   DO ij = 1,num_tiles
@@ -1559,12 +8020,39 @@ CONTAINS
       ENDDO
     ENDDO
   ENDDO
+#endif
   DTMIN = 0.
   DTBL = 0.
 
 ! RAINBL in mm (Accumulation between PBL calls)
 
   IF ( PRESENT( rainncv ) .AND. PRESENT( rainbl ) ) THEN
+#ifdef WRF_GPU
+  DO ij = 1, num_tiles
+     its = i_start_h(ij)
+     ite = i_end_h(ij)
+     jts = j_start_h(ij)
+     jte = j_end_h(ij)
+    IF (.NOT. PRESENT(rainshv)) THEN
+       CALL wrf_error_fatal('surface_driver: rainshv not present')
+    END IF
+! K-SD-2: RAINBL accumulation (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(rainbl, raincv, rainncv, rainshv, irrigation_channel) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+      DO j = jts, jte
+      DO i = its, ite
+         RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j) + RAINNCV(i,j)
+         RAINBL(i,j) = RAINBL(i,j) + RAINSHV(i,j)
+         RAINBL(i,j) = MAX (RAINBL(i,j), 0.0)
+#if (EM_CORE==1)
+         IRRIGATION_CHANNEL(i,j) = 0.
+#endif
+      ENDDO
+      ENDDO
+  ENDDO
+#else
     !$OMP PARALLEL DO   &
     !$OMP PRIVATE ( ij, i, j, k )
     DO ij = 1 , num_tiles
@@ -1600,7 +8088,11 @@ CONTAINS
       ENDDO
     ENDDO
     !$OMP END PARALLEL DO
+#endif
   ELSE IF ( PRESENT( rainbl ) ) THEN
+#ifdef WRF_GPU
+    CALL wrf_error_fatal('surface_driver: rainbl without rainncv not ported to the GPU')
+#endif
     !$OMP PARALLEL DO   &
     !$OMP PRIVATE ( ij, i, j, k )
     DO ij = 1 , num_tiles
@@ -1641,6 +8133,9 @@ CONTAINS
   ENDIF
 ! Update SST
   IF (sst_update .EQ. 1) THEN
+#ifdef WRF_GPU
+    CALL wrf_error_fatal('surface_driver: sst_update not ported to the GPU')
+#endif
     CALL wrf_debug( 100, 'SST_UPDATE is on' )
     !$OMP PARALLEL DO   &
     !$OMP PRIVATE ( ij, i, j, k )
@@ -1669,6 +8164,9 @@ CONTAINS
          XICE_save(I,J) = XICEM(I,J) 
 
          IF ( FRACTIONAL_SEAICE == 1 ) then
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             IF ( ( XICE(I,J) .NE. XICEM(I,J) ) .AND. ( XICEM(I,J) .GT. XICE_THRESHOLD ) ) THEN
                ! Fractional values of ALBEDO and EMISSIVITY are valid according to the 
                ! earlier fractional seaice value, XICEM.  Recompute them for the new 
@@ -1799,6 +8297,9 @@ CONTAINS
 
   IF(PRESENT(SST_SKIN))THEN
     IF (sst_skin .EQ. 1) THEN
+#ifdef WRF_GPU
+      CALL wrf_error_fatal('surface_driver: sst_skin not ported to the GPU')
+#endif
 ! Calculate skin sst based on Zeng and Beljaars (2005)
       CALL wrf_debug( 100, 'in SST_SKIN_UPDATE' )
       !$OMP PARALLEL DO   &
@@ -1829,6 +8330,9 @@ CONTAINS
 
   IF(PRESENT(TMN_UPDATE))THEN
   IF (tmn_update .EQ. 1) THEN
+#ifdef WRF_GPU
+    CALL wrf_error_fatal('surface_driver: tmn_update not ported to the GPU')
+#endif
       CALL wrf_debug( 100, 'in TMN_UPDATE' )
       CALL tmnupdate(tsk,tmn,tlag,tyr,tyra,tdly,nday,nyear,lagday, &
                 julian_in, dt, yr,                                  &
@@ -1926,6 +8430,9 @@ CONTAINS
   IF( PRESENT(slope_rad).AND. radiation )THEN
 ! topographic slope effects modify SWDOWN and GSW here
     IF (slope_rad .EQ. 1) THEN
+#ifdef WRF_GPU
+      CALL wrf_error_fatal('surface_driver: slope_rad not ported to the GPU')
+#endif
     !$OMP PARALLEL DO   &
     !$OMP PRIVATE ( ij, i, j, k )
     DO ij = 1 , num_tiles
@@ -1984,6 +8491,34 @@ CONTAINS
 ! SAVE OLD VALUES
 
 
+#ifdef WRF_GPU
+  DO ij = 1, num_tiles
+     its = i_start_h(ij)
+     ite = i_end_h(ij)
+     jts = j_start_h(ij)
+     jte = j_end_h(ij)
+! K-SD-3: PSFC and u v copies (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(psfc, p8w, v_phytmp, u_phytmp, v_phy, u_phy, uoce, voce) &
+!$acc& firstprivate(its, ite, jts, jte, kts, kte, v_frame, u_frame) &
+!$acc& private(i, j, k)
+       DO j=jts,jte
+       DO i=its,ite
+! PSFC : in Pa
+          PSFC(I,J)=p8w(I,kts,J)
+! REVERSE ORDER IN THE VERTICAL DIRECTION
+          !$acc loop seq
+          DO k=kts,kte
+            v_phytmp(i,k,j)=v_phy(i,k,j)+v_frame
+            u_phytmp(i,k,j)=u_phy(i,k,j)+u_frame
+          ENDDO
+! remove surface currents for atmospheric low-level winds
+          u_phytmp(i,kts,j)=u_phytmp(i,kts,j)-uoce(i,j)
+          v_phytmp(i,kts,j)=v_phytmp(i,kts,j)-voce(i,j)
+       ENDDO
+       ENDDO
+  ENDDO
+#else
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij, i, j, k )
      DO ij = 1 , num_tiles
@@ -2003,13 +8538,23 @@ CONTAINS
        ENDDO
      ENDDO
      !$OMP END PARALLEL DO
+#endif
 
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij, i, j, k )
      DO ij = 1 , num_tiles
+#ifdef WRF_GPU
+       its = i_start_h(ij)
+       ite = i_end_h(ij)
+       jts = j_start_h(ij)
+       jte = j_end_h(ij)
+#endif
      sfclay_select: SELECT CASE(sf_sfclay_physics)
 
      CASE (SFCLAYSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: SFCLAYSCHEME not ported to the GPU')
+#endif
 ! DX varies spatially in NMM, therefore, SFCLAY cannot be called
 ! because it takes a scalar DX. NMM passes in a dummy value for this
 ! scalar.  NEEDS FURTHER ATTENTION. JM 20050215
@@ -2048,6 +8593,9 @@ CONTAINS
                                                       .TRUE. ) THEN
          CALL wrf_debug( 100, 'in SFCLAY' )
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             CALL SFCLAY_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr,&
                  p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
                  znt,ust,pblh,mavail,zol,mol,regime,psim,psih,fm,fhh, &
@@ -2101,6 +8649,9 @@ CONTAINS
          CALL wrf_debug( 100, 'in SFCLAY' )
 
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             CALL SFCLAYREV_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr,&
                  p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
                  znt,ust,pblh,mavail,zol,mol,regime,psim,psih,fm,fhh, &
@@ -2135,6 +8686,22 @@ CONTAINS
                shalwater_z0,water_depth,                           & 
                scm_force_flux,errmsg,errflg                        ) 
 #if ( EM_CORE==1)
+#ifdef WRF_GPU
+! K-SD-4: ch = chs (Template A)
+           IF (.NOT. PRESENT(ch)) THEN
+              CALL wrf_error_fatal('surface_driver: ch not present')
+           END IF
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(ch, chs) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+           DO j = jts,jte
+           DO i = its,ite
+             ch(i,j) = chs (i,j)
+!!             ch(i,j) = flhc(i,j)/( cpm(i,j)*rho(i,kts,j) )
+           end do
+           end do
+#else
            DO j = j_start(ij),j_end(ij)
            DO i = i_start(ij),i_end(ij)
              ch(i,j) = chs (i,j)
@@ -2142,17 +8709,24 @@ CONTAINS
            end do
            end do
 #endif
+#endif
          ENDIF
        ELSE
          CALL wrf_error_fatal('Lacking arguments for SFCLAY in surface driver')
        ENDIF
 
      CASE (PXSFCSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: PXSFCSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr)                            .AND.    &
            PRESENT(mol)        .AND.  PRESENT(regime)  .AND.    &
                                                       .TRUE. ) THEN
          CALL wrf_debug( 100, 'in PX Surface Layer scheme' )
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             CALL PXSFCLAY_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,th_phy,qv_curr,&
                  p_phy,dz8w,cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm, &
                  znt,ust,pblh,mavail,zol,mol,regime,psim,psih,       &
@@ -2188,6 +8762,9 @@ CONTAINS
 
         CALL wrf_debug(100,'in MYJSFC')
         IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+          CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
            CALL MYJSFC_SEAICE_WRAPPER(itimestep,ht,dz8w,             &
                 p_phy,p8w,th_phy,t_phy,                              &
                 qv_curr,qc_curr,                                     &
@@ -2270,6 +8847,9 @@ CONTAINS
                                                       .TRUE. ) THEN
             CALL wrf_debug(100,'in QNSESFC')
              IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+               CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
            CALL QNSESFC_SEAICE_WRAPPER(itimestep,ht,dz8w,             &
                 p_phy,p8w,th_phy,t_phy,                              &
                 qv_curr,qc_curr,                                     &
@@ -2326,9 +8906,15 @@ CONTAINS
        ENDIF
 
      CASE (GFSSFCSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: GFSSFCSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr) .AND. .TRUE. ) THEN
        CALL wrf_debug( 100, 'in GFSSFC' )
        IF (FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+         CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
           CALL SF_GFS_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr, &
                p_phy,CP,RCP,R_d,XLV,PSFC,CHS,CHS2,CQS2,CPM,        &
                ZNT,UST,PSIM,PSIH,                                  &
@@ -2371,6 +8957,9 @@ CONTAINS
           CALL wrf_debug(100,'in MYNNSFC')
 
          IF (FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
           CALL MYNN_SEAICE_WRAPPER(u_phytmp,v_phytmp,t_phy,qv_curr,&
                p_phy,dz8w,th_phy,rho,                              &
                cp,g,rcp,r_d,xlv,psfc,chs,chs2,cqs2,cpm,            &
@@ -2412,6 +9001,9 @@ CONTAINS
 
 #if ( EM_CORE==1)
      CASE (TEMFSFCSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: TEMFSFCSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr).and.PRESENT(hd_temf)) THEN
          CALL wrf_debug( 100, 'in TEMFSFCLAY' )
 ! WA 9/7/09 must initialize Z0 and ZNT for TEMF in ideal cases
@@ -2441,6 +9033,9 @@ CONTAINS
        ENDIF
 
      CASE (IDEALSCMSFCSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: IDEALSCMSFCSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr)) THEN
          CALL wrf_debug( 100, 'in IDEALSCMSFCLAY' )
          CALL IDEALSCMSFCLAY(u3d=u_phytmp,v3d=v_phytmp,th3d=th_phy,    &
@@ -2477,6 +9072,30 @@ CONTAINS
 
 !  Compute uratx, vratx, tratx for obs nudging
      IF(PRESENT(uratx) .and. PRESENT(vratx) .and. PRESENT(tratx))THEN
+#ifdef WRF_GPU
+! K-SD-5: uratx vratx tratx (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(uratx, vratx, tratx, u10, v10, u_phytmp, v_phytmp, t_phy, p_phy, th2) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+        DO J=jts,jte
+        DO I=its,ite
+           IF(ABS(U10(I,J)) .GT. 1.E-10) THEN
+              uratx(I,J) = U_PHYTMP(I,1,J)/U10(I,J)
+           ELSE
+              uratx(I,J) = 1.2
+           END IF
+           IF(ABS(V10(I,J)) .GT. 1.E-10) THEN
+              vratx(I,J) = V_PHYTMP(I,1,J)/V10(I,J)
+           ELSE
+              vratx(I,J) = 1.2
+           END IF
+! (Quotient P1000mb/P_PHY must be conditioned due to large value of P1000mb)
+           tratx(I,J) = (T_PHY(I,1,J)*rp_pow((P1000mb*0.001/(P_PHY(I,1,J)/1000.)), RCP))  &
+                        /TH2(I,J)
+        ENDDO
+        ENDDO
+#else
         DO J=j_start(ij),j_end(ij)
         DO I=i_start(ij),i_end(ij)
            IF(ABS(U10(I,J)) .GT. 1.E-10) THEN
@@ -2494,18 +9113,38 @@ CONTAINS
                         /TH2(I,J)
         ENDDO
         ENDDO
+#endif
      ENDIF
 
 #if ( EM_CORE==1)
 !Katata-added - fog (cloud) water deposition calculation
      IF ( grav_settling .EQ. 0 ) THEN
+#ifdef WRF_GPU
+        IF (.NOT. PRESENT(vdfg)) THEN
+           CALL wrf_error_fatal('surface_driver: vdfg not present')
+        END IF
+! K-SD-6: vdfg = 0 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(vdfg) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+        DO j=jts,jte
+        DO i=its,ite
+           vdfg(i,j)=0.
+        ENDDO
+        ENDDO
+#else
         !vdfg = 0.
         DO j=j_start(ij),j_end(ij)
         DO i=i_start(ij),i_end(ij)
            vdfg(i,j)=0.
         ENDDO
         ENDDO
+#endif
      ELSE
+#ifdef WRF_GPU
+        CALL wrf_error_fatal('surface_driver: grav_settling not ported to the GPU')
+#endif
         IF ( PRESENT(dfgdp) .AND. PRESENT(fgdp) .AND. &
            & PRESENT(rainbl) .AND. PRESENT(vdfg)) THEN
            DO j=j_start(ij),j_end(ij)
@@ -2540,14 +9179,26 @@ CONTAINS
      ENDDO
      !$OMP END PARALLEL DO
 
+#ifdef WRF_GPU
+     IF (ISFFLX.EQ.0 ) CALL wrf_error_fatal('surface_driver: isfflx=0 not ported to the GPU')
+#endif
      IF (ISFFLX.EQ.0 ) GOTO 430
      !$OMP PARALLEL DO   &
      !$OMP PRIVATE ( ij, i, j, k ) firstprivate(frpcpn)
      DO ij = 1 , num_tiles
 
+#ifdef WRF_GPU
+       its = i_start_h(ij)
+       ite = i_end_h(ij)
+       jts = j_start_h(ij)
+       jte = j_end_h(ij)
+#endif
      sfc_select: SELECT CASE(sf_surface_physics)
 
      CASE (SLABSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: SLABSCHEME not ported to the GPU')
+#endif
 
        IF (PRESENT(qv_curr)                            .AND.    &
            PRESENT(capg)        .AND.    &
@@ -2613,6 +9264,9 @@ CONTAINS
            frpcpn=.true.
          ENDIF
          IF ( FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! The fields passed to LSM need to represent the full ice values, not
             ! the fractional values.  Convert ALBEDO and EMISS from the blended value 
             ! to a value representing only the sea-ice portion.   Albedo over open 
@@ -2656,16 +9310,32 @@ CONTAINS
 ! added RA population for WRF/Noah-CMAQ RS Consistency
 ! following Garland et al. (1977) and Nemitz et al., 2009
          IF ( PRESENT(RA) ) THEN
+#ifdef WRF_GPU
+! K-SD-7: RA = WSPD/UST**2 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(ra, wspd, ust) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+         DO j=jts,jte
+         DO i=its,ite
+            RA(I,J) = WSPD(I,J)/UST(I,J)**2
+         ENDDO
+         ENDDO
+#else
          DO j=j_start(ij),j_end(ij)
          DO i=i_start(ij),i_end(ij)
             RA(I,J) = WSPD(I,J)/UST(I,J)**2
          ENDDO
          ENDDO
+#endif
          END IF
 
          CALL wrf_debug(100,'in NOAH DRV')
                 
          IF (sf_surface_mosaic == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: sf_surface_mosaic not ported to the GPU')
+#endif
           
            IF ( PRESENT( TSK_mosaic ) .AND. PRESENT( HFX_mosaic ) ) THEN
              CALL lsm_mosaic(dz8w,qv_curr,p8w,t_phy,tsk,                 &
@@ -2787,6 +9457,9 @@ CONTAINS
 !  FASDAS
 !
              IF( fasdas == 1 ) THEN
+#ifdef WRF_GPU
+               CALL wrf_error_fatal('surface_driver: fasdas not ported to the GPU')
+#endif
                DO j=j_start(ij),j_end(ij)
                DO i=i_start(ij),i_end(ij)
 
@@ -2814,6 +9487,9 @@ CONTAINS
 !  END FASDAS
 !
                if (pert_noah .and. multi_perturb == 1) then
+#ifdef WRF_GPU
+                 CALL wrf_error_fatal('surface_driver: pert_noah not ported to the GPU')
+#endif
                  allocate (tslb_tmp(i_start(ij):i_end(ij), 1:num_soil_layers, j_start(ij):j_end(ij)))
                  allocate (smois_tmp(i_start(ij):i_end(ij), 1:num_soil_layers, j_start(ij):j_end(ij)))
 
@@ -2913,6 +9589,9 @@ CONTAINS
          ENDIF
 
          if (pert_noah .and. multi_perturb == 1) then
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: pert_noah not ported to the GPU')
+#endif
            call Remove_multi_perturb_lsm_perturbations (perts_qvapor, perts_th, perts_smois, perts_tsoil, &
                pert_noah_qv, pert_noah_t, pert_noah_smois, pert_noah_tslb, t_phy, qv_curr, tslb, smois, &
                tslb_tmp, smois_tmp, num_soil_layers, i_start(ij), i_end(ij), j_start(ij), j_end(ij), ims, &
@@ -2937,6 +9616,9 @@ CONTAINS
               &            i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte )
 
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! LSM Returns full land/ice values, no fractional values.
             ! We return to a fractional component here.  SFLX currently hard-wires
             ! emissivity over sea ice to 0.98, the same value as over open water, so
@@ -2987,6 +9669,26 @@ CONTAINS
                ENDDO
             ENDIF
          ENDIF
+#ifdef WRF_GPU
+           IF (.NOT. PRESENT(ACHFX) .OR. .NOT. PRESENT(ACLHF) .OR. .NOT. PRESENT(ACGRDFLX)) THEN
+              CALL wrf_error_fatal('surface_driver: ACHFX ACLHF ACGRDFLX not present')
+           END IF
+! K-SD-8: SFCEVP SFCEXC ACHFX ACLHF ACGRDFLX (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(sfcevp, qfx, sfcexc, chs, achfx, aclhf, hfx, lh, acgrdflx, grdflx) &
+!$acc& firstprivate(its, ite, jts, jte, dtbl, dt) &
+!$acc& private(i, j)
+           DO j=jts,jte
+           DO i=its,ite
+!              CHKLOWQ(I,J)= 1.0
+               SFCEVP(I,J)= SFCEVP(I,J) + QFX(I,J)*DTBL
+               SFCEXC(I,J)= CHS(I,J)
+               ACHFX(I,J)=ACHFX(I,J) + HFX(I,J)*DT
+               ACLHF(I,J)=ACLHF(I,J) + LH(I,J)*DT
+               ACGRDFLX(I,J)=ACGRDFLX(I,J) + GRDFLX(I,J)*DT
+           ENDDO
+           ENDDO
+#else
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
 !              CHKLOWQ(I,J)= 1.0
@@ -2997,6 +9699,7 @@ CONTAINS
                IF(PRESENT(ACGRDFLX))ACGRDFLX(I,J)=ACGRDFLX(I,J) + GRDFLX(I,J)*DT
            ENDDO
            ENDDO
+#endif
 
           CALL SFCDIAGS(HFX,QFX,TSK,QSFC,CHS2,CQS2,T2,TH2,Q2,      &
                      PSFC,CP,R_d,RCP,CHS,t_phy,qv_curr,ua_phys,    &
@@ -3005,6 +9708,9 @@ CONTAINS
              i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 !urban
      IF(SF_URBAN_PHYSICS.eq.1) THEN
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: sf_urban_physics not ported to the GPU')
+#endif
        DO j=j_start(ij),j_end(ij)                             !urban
          DO i=i_start(ij),i_end(ij)                           !urban
            IF(IVGTYP(I,J) == ISURBAN   .or. IVGTYP(I,J) == LCZ_1 .or. IVGTYP(I,J) == LCZ_2 .or. &
@@ -3048,6 +9754,9 @@ CONTAINS
        ENDIF
 
      CASE (NOAHMPSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: NOAHMPSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr)    .AND.  PRESENT(rainbl)        .AND.    &
 !          PRESENT(emiss)      .AND.  PRESENT(t2)            .AND.    &
 !          PRESENT(declin) .AND.  PRESENT(coszen)    .AND.    &
@@ -3089,6 +9798,9 @@ CONTAINS
 
 
          IF ( FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! The fields passed to LSM need to represent the full ice values, not
             ! the fractional values.  Convert ALBEDO and EMISS from the blended value 
             ! to a value representing only the sea-ice portion.   Albedo over open 
@@ -3281,6 +9993,9 @@ CONTAINS
               &            i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte )
 
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! LSM Returns full land/ice values, no fractional values.
             ! We return to a fractional component here.  SFLX currently hard-wires
             ! emissivity over sea ice to 0.98, the same value as over open water, so
@@ -3387,6 +10102,9 @@ CONTAINS
 !jref: sfc diagnostics end
 
          IF(SF_URBAN_PHYSICS.eq.1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: sf_urban_physics not ported to the GPU')
+#endif
            DO j=j_start(ij),j_end(ij)                             !urban
              DO i=i_start(ij),i_end(ij)                           !urban
                IF( IVGTYP(I,J) == ISURBAN    .or. IVGTYP(I,J) == LCZ_1 .or. IVGTYP(I,J) == LCZ_2 .or. &
@@ -3443,6 +10161,9 @@ CONTAINS
        ENDIF
 
      CASE (RUCLSMSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: RUCLSMSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
 !           PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
            PRESENT(qsg)        .AND.  PRESENT(qvg)     .AND.    &
@@ -3466,6 +10187,9 @@ CONTAINS
               ENDDO
            ENDDO
            IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+             CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
               ! The fields passed to LSMRUC need to represent the full ice values, not
               ! the fractional values.  Convert ALBEDO and EMISS from the blended value 
               ! to a value representing only the sea-ice portion.   Albedo over open 
@@ -3535,6 +10259,9 @@ CONTAINS
                 i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte    )
 
            IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+             CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
               ! LSMRUC Returns full land/ice values, no fractional values.
               ! We return to a fractional component here.
               DO j=j_start(ij),j_end(ij)
@@ -3603,11 +10330,17 @@ CONTAINS
        ENDIF
 
      CASE (PXLSMSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: PXLSMSCHEME not ported to the GPU')
+#endif
        IF (PRESENT(qv_curr)    .AND.  PRESENT(qc_curr) .AND.    &
            PRESENT(emiss)      .AND.  PRESENT(t2)      .AND.    &
            PRESENT(rainbl) .AND.    &
                                                       .TRUE. ) THEN
           IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+            CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
 
              IF ( isisfc ) THEN
                 !
@@ -3652,6 +10385,9 @@ CONTAINS
                      ims,ime, jms,jme, kms,kme,                      &
                      i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte)
           IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+            CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
              IF ( isisfc ) THEN
                 !
                 !  back to ice and ocean average
@@ -3707,6 +10443,9 @@ CONTAINS
 ! CLM coupling currently version 4 added by Yaqiong Lu and Jiming Jin
 
      CASE (CLMSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: CLMSCHEME not ported to the GPU')
+#endif
      CALL wrf_debug(100,'in CLM')
 
      IF (MYJ) call wrf_error_fatal('CLM is not currently compatible with MYJ.  Please pick different PBL Schemes')
@@ -3720,6 +10459,9 @@ CONTAINS
            frpcpn=.true.
          ENDIF
          IF ( FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! The fields passed to LSM need to represent the full ice values, not
             ! the fractional values.  Convert ALBEDO and EMISS from the blended value 
             ! to a value representing only the sea-ice portion.   Albedo over open 
@@ -3882,6 +10624,9 @@ CONTAINS
                  )
 
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             DO j=j_start(ij),j_end(ij)
                DO i=i_start(ij),i_end(ij)
                   IF ( ( XICE(I,J) .GE. XICE_THRESHOLD) .AND. ( XICE(i,j) .LE.  1.0 ) ) THEN
@@ -3960,6 +10705,9 @@ CONTAINS
 
 #ifdef WRF_USE_CTSM
      CASE (CTSMSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: CTSMSCHEME not ported to the GPU')
+#endif
 
      IF (MYJ) call wrf_error_fatal('CTSM is not currently compatible with MYJ.  Please pick a different PBL scheme,')
 
@@ -3998,6 +10746,9 @@ CONTAINS
          ENDDO
 
          IF ( FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! The fields passed to LSM need to represent the full ice values, not
             ! the fractional values.  Convert ALBEDO and EMISS from the blended value 
             ! to a value representing only the sea-ice portion.   Albedo over open 
@@ -4094,6 +10845,9 @@ CONTAINS
               &            i_start(ij),i_end(ij), j_start(ij),j_end(ij), kts,kte )
 
          IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+           CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
             ! LSM Returns full land/ice values, no fractional values.
             ! We return to a fractional component here.  SFLX currently hard-wires
             ! emissivity over sea ice to 0.98, the same value as over open water, so
@@ -4161,11 +10915,17 @@ CONTAINS
 #endif
 
      CASE (SSIBSCHEME)
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: SSIBSCHEME not ported to the GPU')
+#endif
      IF(PRESENT(alswvisdir))THEN
 !---Fernando De Sales (fds 06/2010)--------------------------------------
      CALL wrf_debug(100,'in SSIB')
 !
        IF ( FRACTIONAL_SEAICE == 1) THEN
+#ifdef WRF_GPU
+         CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
           ! The fields passed to SSIB need to represent the full ice values, not
           ! the fractional values.  Convert ALBEDO from the blended value
           ! to a value representing only the sea-ice portion.   Albedo over open
@@ -4316,6 +11076,9 @@ CONTAINS
        ENDDO
 !
        IF ( FRACTIONAL_SEAICE == 1 ) THEN
+#ifdef WRF_GPU
+         CALL wrf_error_fatal('surface_driver: fractional_seaice not ported to the GPU')
+#endif
           ! SSIB_seaice returns full land/ice albedo values, no fractional values.
           ! We return to a fractional component here. 
           DO j=j_start(ij),j_end(ij)
@@ -4374,6 +11137,9 @@ CONTAINS
 
 #if ( EM_CORE==1)
    IF (sf_ocean_physics .EQ. OMLSCHEME .or. sf_ocean_physics .EQ. PWP3DSCHEME) THEN
+#ifdef WRF_GPU
+     CALL wrf_error_fatal('surface_driver: sf_ocean_physics not ported to the GPU')
+#endif
 ! simple ocean mixed layer model based Pollard, Rhines and Thompson (1973)
      CALL wrf_debug( 100, 'Call OCEANML' )
      !$OMP PARALLEL DO   &
@@ -4399,6 +11165,9 @@ CONTAINS
 #endif
 ! adding a lake model -- 07/02/2010
    IF ( LakeModel == 1 ) THEN
+#ifdef WRF_GPU
+     CALL wrf_error_fatal('surface_driver: LakeModel not ported to the GPU')
+#endif
  
       CALL wrf_debug( 100, 'Call LakeModel' )
  
@@ -4435,6 +11204,24 @@ CONTAINS
 ! Reset RAINBL in mm (Accumulation between PBL calls)
 
      IF ( PRESENT( rainbl ) ) THEN
+#ifdef WRF_GPU
+  DO ij = 1, num_tiles
+     its = i_start_h(ij)
+     ite = i_end_h(ij)
+     jts = j_start_h(ij)
+     jte = j_end_h(ij)
+! K-SD-1..8: RAINBL reset (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(rainbl) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+         DO j=jts,jte
+         DO i=its,ite
+            RAINBL(i,j) = 0.
+         ENDDO
+         ENDDO
+  ENDDO
+#else
        !$OMP PARALLEL DO   &
        !$OMP PRIVATE ( ij, i, j, k )
        DO ij = 1 , num_tiles
@@ -4445,12 +11232,36 @@ CONTAINS
          ENDDO
        ENDDO
        !$OMP END PARALLEL DO
+#endif
      ENDIF
 
 ! Limit Q2 diagnostic to no more than 5 per cent higher than lowest level value
 !     This prevents unrealistic values when QFX is not mostly surface flux 
 !          because calculation is based on surface flux only
 !     Problems occurred in transition periods and weak winds and vegetation source
+#ifdef WRF_GPU
+  DO ij = 1, num_tiles
+     its = i_start_h(ij)
+     ite = i_end_h(ij)
+     jts = j_start_h(ij)
+     jte = j_end_h(ij)
+       IF (.NOT. PRESENT(qv_curr)) THEN
+          CALL wrf_error_fatal('surface_driver: qv_curr not present')
+       END IF
+! K-SD-1..8: Q2 cap (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_SURFACE_DRIVER)) default(none) &
+!$acc& present(q2, xland, qv_curr) &
+!$acc& firstprivate(its, ite, jts, jte) &
+!$acc& private(i, j)
+         DO j=jts,jte
+         DO i=its,ite
+            IF (XLAND(I,J).LT.1.5) THEN
+            Q2(i,j) = MIN(Q2(i,j),1.05*QV_CURR(i,1,j))
+            END IF
+         ENDDO
+         ENDDO
+  ENDDO
+#else
        !$OMP PARALLEL DO   &
        !$OMP PRIVATE ( ij, i, j, k )
        DO ij = 1 , num_tiles
@@ -4463,10 +11274,14 @@ CONTAINS
          ENDDO
        ENDDO
        !$OMP END PARALLEL DO
+#endif
 
      IF( PRESENT(slope_rad).AND. radiation )THEN
 ! topographic slope effects removed from SWDOWN and GSW here for output
        IF (slope_rad .EQ. 1) THEN
+#ifdef WRF_GPU
+         CALL wrf_error_fatal('surface_driver: slope_rad not ported to the GPU')
+#endif
 
        !$OMP PARALLEL DO   &
        !$OMP PRIVATE ( ij, i, j, k )
@@ -4490,6 +11305,9 @@ CONTAINS
      ENDIF
 
      IF (distributed_ahe_opt == 2) THEN
+#ifdef WRF_GPU
+       CALL wrf_error_fatal('surface_driver: distributed_ahe_opt not ported to the GPU')
+#endif
        call cal_mon_day(julday, julyr, jmonth, jday)
        ihour = (jmonth - 1) * 24 + rp_mod(INT(gmt + xtime / 60.0), 24)
        !$OMP PARALLEL DO   &
@@ -4506,6 +11324,6782 @@ CONTAINS
 
    ENDIF run_param_if
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(sfcheadrt, infxsrt, soldrain, qtiledrain, zwatble2d, acsnom, acsnow, akhs, akms, &
+!$acc&   albedo, br, canwat, chklowq, grdflx, gsw, swdown, gz1oz0, hfx, isltyp, ivgtyp, mavail, &
+!$acc&   rmol, pblh, pshltr, fm, fhh, psih, psim, q10, q2, qfx, qsfc, qshltr, qz0, sfcevp, sfcexc, &
+!$acc&   sfcrunoff, acrunoff, smois, smstav, smstot, snoalb, snow, snowc, snowh, smcrel, th10, th2, &
+!$acc&   thz0, tmn, tshltr, tsk, tslb, t_phy, u10, udrunoff, ust, uz0, v10, vegfra, u10e, v10e, &
+!$acc&   uoce, voce, vz0, wspd, xice, xland, znt, albsi, icedepth, snowsi, xicem, ct, tke_pbl, &
+!$acc&   albbck, embck, lh, sh2o, z0, flqc, flhc, psfc, sst, flx4, fvb, fbur, fgsn, water_depth, &
+!$acc&   savedtke12d, snowdp2d, h2osno2d, snl2d, t_grnd2d, t_lake3d, lake_icefrac3d, t_soisno3d, &
+!$acc&   h2osoi_ice3d, h2osoi_liq3d, h2osoi_vol3d, z3d, dz3d, zi3d, lakemask, zol)
+          IF (PRESENT(acgrdflx)) THEN
+!$acc update self(acgrdflx)
+          END IF
+          IF (PRESENT(achfx)) THEN
+!$acc update self(achfx)
+          END IF
+          IF (PRESENT(aclhf)) THEN
+!$acc update self(aclhf)
+          END IF
+          IF (PRESENT(snowfallac)) THEN
+!$acc update self(snowfallac)
+          END IF
+          IF (PRESENT(tyr)) THEN
+!$acc update self(tyr)
+          END IF
+          IF (PRESENT(tyra)) THEN
+!$acc update self(tyra)
+          END IF
+          IF (PRESENT(tdly)) THEN
+!$acc update self(tdly)
+          END IF
+          IF (PRESENT(tlag)) THEN
+!$acc update self(tlag)
+          END IF
+          IF (PRESENT(sstsk)) THEN
+!$acc update self(sstsk)
+          END IF
+          IF (PRESENT(dtw)) THEN
+!$acc update self(dtw)
+          END IF
+          IF (PRESENT(t2)) THEN
+!$acc update self(t2)
+          END IF
+          IF (PRESENT(emiss)) THEN
+!$acc update self(emiss)
+          END IF
+          IF (PRESENT(landusef)) THEN
+!$acc update self(landusef)
+          END IF
+          IF (PRESENT(soilctop)) THEN
+!$acc update self(soilctop)
+          END IF
+          IF (PRESENT(soilcbot)) THEN
+!$acc update self(soilcbot)
+          END IF
+          IF (PRESENT(ra)) THEN
+!$acc update self(ra)
+          END IF
+          IF (PRESENT(rs)) THEN
+!$acc update self(rs)
+          END IF
+          IF (PRESENT(vegf_px)) THEN
+!$acc update self(vegf_px)
+          END IF
+          IF (PRESENT(lai)) THEN
+!$acc update self(lai)
+          END IF
+          IF (PRESENT(imperv)) THEN
+!$acc update self(imperv)
+          END IF
+          IF (PRESENT(canfra)) THEN
+!$acc update self(canfra)
+          END IF
+          IF (PRESENT(lai_px)) THEN
+!$acc update self(lai_px)
+          END IF
+          IF (PRESENT(wwlt_px)) THEN
+!$acc update self(wwlt_px)
+          END IF
+          IF (PRESENT(wfc_px)) THEN
+!$acc update self(wfc_px)
+          END IF
+          IF (PRESENT(wsat_px)) THEN
+!$acc update self(wsat_px)
+          END IF
+          IF (PRESENT(clay_px)) THEN
+!$acc update self(clay_px)
+          END IF
+          IF (PRESENT(csand_px)) THEN
+!$acc update self(csand_px)
+          END IF
+          IF (PRESENT(fmsand_px)) THEN
+!$acc update self(fmsand_px)
+          END IF
+          IF (PRESENT(isnowxy)) THEN
+!$acc update self(isnowxy)
+          END IF
+          IF (PRESENT(tvxy)) THEN
+!$acc update self(tvxy)
+          END IF
+          IF (PRESENT(tgxy)) THEN
+!$acc update self(tgxy)
+          END IF
+          IF (PRESENT(canicexy)) THEN
+!$acc update self(canicexy)
+          END IF
+          IF (PRESENT(canliqxy)) THEN
+!$acc update self(canliqxy)
+          END IF
+          IF (PRESENT(eahxy)) THEN
+!$acc update self(eahxy)
+          END IF
+          IF (PRESENT(tahxy)) THEN
+!$acc update self(tahxy)
+          END IF
+          IF (PRESENT(cmxy)) THEN
+!$acc update self(cmxy)
+          END IF
+          IF (PRESENT(chxy)) THEN
+!$acc update self(chxy)
+          END IF
+          IF (PRESENT(fwetxy)) THEN
+!$acc update self(fwetxy)
+          END IF
+          IF (PRESENT(sneqvoxy)) THEN
+!$acc update self(sneqvoxy)
+          END IF
+          IF (PRESENT(alboldxy)) THEN
+!$acc update self(alboldxy)
+          END IF
+          IF (PRESENT(qsnowxy)) THEN
+!$acc update self(qsnowxy)
+          END IF
+          IF (PRESENT(qrainxy)) THEN
+!$acc update self(qrainxy)
+          END IF
+          IF (PRESENT(wslakexy)) THEN
+!$acc update self(wslakexy)
+          END IF
+          IF (PRESENT(zwtxy)) THEN
+!$acc update self(zwtxy)
+          END IF
+          IF (PRESENT(waxy)) THEN
+!$acc update self(waxy)
+          END IF
+          IF (PRESENT(wtxy)) THEN
+!$acc update self(wtxy)
+          END IF
+          IF (PRESENT(tsnoxy)) THEN
+!$acc update self(tsnoxy)
+          END IF
+          IF (PRESENT(zsnsoxy)) THEN
+!$acc update self(zsnsoxy)
+          END IF
+          IF (PRESENT(snicexy)) THEN
+!$acc update self(snicexy)
+          END IF
+          IF (PRESENT(snliqxy)) THEN
+!$acc update self(snliqxy)
+          END IF
+          IF (PRESENT(lfmassxy)) THEN
+!$acc update self(lfmassxy)
+          END IF
+          IF (PRESENT(rtmassxy)) THEN
+!$acc update self(rtmassxy)
+          END IF
+          IF (PRESENT(stmassxy)) THEN
+!$acc update self(stmassxy)
+          END IF
+          IF (PRESENT(woodxy)) THEN
+!$acc update self(woodxy)
+          END IF
+          IF (PRESENT(stblcpxy)) THEN
+!$acc update self(stblcpxy)
+          END IF
+          IF (PRESENT(fastcpxy)) THEN
+!$acc update self(fastcpxy)
+          END IF
+          IF (PRESENT(xsaixy)) THEN
+!$acc update self(xsaixy)
+          END IF
+          IF (PRESENT(taussxy)) THEN
+!$acc update self(taussxy)
+          END IF
+          IF (PRESENT(grainxy)) THEN
+!$acc update self(grainxy)
+          END IF
+          IF (PRESENT(gddxy)) THEN
+!$acc update self(gddxy)
+          END IF
+          IF (PRESENT(pgsxy)) THEN
+!$acc update self(pgsxy)
+          END IF
+          IF (PRESENT(t2mvxy)) THEN
+!$acc update self(t2mvxy)
+          END IF
+          IF (PRESENT(t2mbxy)) THEN
+!$acc update self(t2mbxy)
+          END IF
+          IF (PRESENT(q2mvxy)) THEN
+!$acc update self(q2mvxy)
+          END IF
+          IF (PRESENT(q2mbxy)) THEN
+!$acc update self(q2mbxy)
+          END IF
+          IF (PRESENT(tradxy)) THEN
+!$acc update self(tradxy)
+          END IF
+          IF (PRESENT(neexy)) THEN
+!$acc update self(neexy)
+          END IF
+          IF (PRESENT(gppxy)) THEN
+!$acc update self(gppxy)
+          END IF
+          IF (PRESENT(nppxy)) THEN
+!$acc update self(nppxy)
+          END IF
+          IF (PRESENT(fvegxy)) THEN
+!$acc update self(fvegxy)
+          END IF
+          IF (PRESENT(runsfxy)) THEN
+!$acc update self(runsfxy)
+          END IF
+          IF (PRESENT(runsbxy)) THEN
+!$acc update self(runsbxy)
+          END IF
+          IF (PRESENT(ecanxy)) THEN
+!$acc update self(ecanxy)
+          END IF
+          IF (PRESENT(edirxy)) THEN
+!$acc update self(edirxy)
+          END IF
+          IF (PRESENT(etranxy)) THEN
+!$acc update self(etranxy)
+          END IF
+          IF (PRESENT(fsaxy)) THEN
+!$acc update self(fsaxy)
+          END IF
+          IF (PRESENT(firaxy)) THEN
+!$acc update self(firaxy)
+          END IF
+          IF (PRESENT(aparxy)) THEN
+!$acc update self(aparxy)
+          END IF
+          IF (PRESENT(psnxy)) THEN
+!$acc update self(psnxy)
+          END IF
+          IF (PRESENT(savxy)) THEN
+!$acc update self(savxy)
+          END IF
+          IF (PRESENT(sagxy)) THEN
+!$acc update self(sagxy)
+          END IF
+          IF (PRESENT(rssunxy)) THEN
+!$acc update self(rssunxy)
+          END IF
+          IF (PRESENT(rsshaxy)) THEN
+!$acc update self(rsshaxy)
+          END IF
+          IF (PRESENT(bgapxy)) THEN
+!$acc update self(bgapxy)
+          END IF
+          IF (PRESENT(wgapxy)) THEN
+!$acc update self(wgapxy)
+          END IF
+          IF (PRESENT(tgvxy)) THEN
+!$acc update self(tgvxy)
+          END IF
+          IF (PRESENT(tgbxy)) THEN
+!$acc update self(tgbxy)
+          END IF
+          IF (PRESENT(chvxy)) THEN
+!$acc update self(chvxy)
+          END IF
+          IF (PRESENT(chbxy)) THEN
+!$acc update self(chbxy)
+          END IF
+          IF (PRESENT(shgxy)) THEN
+!$acc update self(shgxy)
+          END IF
+          IF (PRESENT(shcxy)) THEN
+!$acc update self(shcxy)
+          END IF
+          IF (PRESENT(shbxy)) THEN
+!$acc update self(shbxy)
+          END IF
+          IF (PRESENT(evgxy)) THEN
+!$acc update self(evgxy)
+          END IF
+          IF (PRESENT(evbxy)) THEN
+!$acc update self(evbxy)
+          END IF
+          IF (PRESENT(ghvxy)) THEN
+!$acc update self(ghvxy)
+          END IF
+          IF (PRESENT(ghbxy)) THEN
+!$acc update self(ghbxy)
+          END IF
+          IF (PRESENT(irgxy)) THEN
+!$acc update self(irgxy)
+          END IF
+          IF (PRESENT(ircxy)) THEN
+!$acc update self(ircxy)
+          END IF
+          IF (PRESENT(irbxy)) THEN
+!$acc update self(irbxy)
+          END IF
+          IF (PRESENT(trxy)) THEN
+!$acc update self(trxy)
+          END IF
+          IF (PRESENT(evcxy)) THEN
+!$acc update self(evcxy)
+          END IF
+          IF (PRESENT(chleafxy)) THEN
+!$acc update self(chleafxy)
+          END IF
+          IF (PRESENT(chucxy)) THEN
+!$acc update self(chucxy)
+          END IF
+          IF (PRESENT(chv2xy)) THEN
+!$acc update self(chv2xy)
+          END IF
+          IF (PRESENT(chb2xy)) THEN
+!$acc update self(chb2xy)
+          END IF
+          IF (PRESENT(chstarxy)) THEN
+!$acc update self(chstarxy)
+          END IF
+          IF (PRESENT(qintsxy)) THEN
+!$acc update self(qintsxy)
+          END IF
+          IF (PRESENT(qintrxy)) THEN
+!$acc update self(qintrxy)
+          END IF
+          IF (PRESENT(qdripsxy)) THEN
+!$acc update self(qdripsxy)
+          END IF
+          IF (PRESENT(qdriprxy)) THEN
+!$acc update self(qdriprxy)
+          END IF
+          IF (PRESENT(qthrosxy)) THEN
+!$acc update self(qthrosxy)
+          END IF
+          IF (PRESENT(qthrorxy)) THEN
+!$acc update self(qthrorxy)
+          END IF
+          IF (PRESENT(qsnsubxy)) THEN
+!$acc update self(qsnsubxy)
+          END IF
+          IF (PRESENT(qsnfroxy)) THEN
+!$acc update self(qsnfroxy)
+          END IF
+          IF (PRESENT(qsubcxy)) THEN
+!$acc update self(qsubcxy)
+          END IF
+          IF (PRESENT(qfrocxy)) THEN
+!$acc update self(qfrocxy)
+          END IF
+          IF (PRESENT(qevacxy)) THEN
+!$acc update self(qevacxy)
+          END IF
+          IF (PRESENT(qdewcxy)) THEN
+!$acc update self(qdewcxy)
+          END IF
+          IF (PRESENT(qfrzcxy)) THEN
+!$acc update self(qfrzcxy)
+          END IF
+          IF (PRESENT(qmeltcxy)) THEN
+!$acc update self(qmeltcxy)
+          END IF
+          IF (PRESENT(qsnbotxy)) THEN
+!$acc update self(qsnbotxy)
+          END IF
+          IF (PRESENT(pondingxy)) THEN
+!$acc update self(pondingxy)
+          END IF
+          IF (PRESENT(pahxy)) THEN
+!$acc update self(pahxy)
+          END IF
+          IF (PRESENT(pahgxy)) THEN
+!$acc update self(pahgxy)
+          END IF
+          IF (PRESENT(pahvxy)) THEN
+!$acc update self(pahvxy)
+          END IF
+          IF (PRESENT(pahbxy)) THEN
+!$acc update self(pahbxy)
+          END IF
+          IF (PRESENT(qmeltxy)) THEN
+!$acc update self(qmeltxy)
+          END IF
+          IF (PRESENT(fpicexy)) THEN
+!$acc update self(fpicexy)
+          END IF
+          IF (PRESENT(rainlsm)) THEN
+!$acc update self(rainlsm)
+          END IF
+          IF (PRESENT(snowlsm)) THEN
+!$acc update self(snowlsm)
+          END IF
+          IF (PRESENT(forctlsm)) THEN
+!$acc update self(forctlsm)
+          END IF
+          IF (PRESENT(forcqlsm)) THEN
+!$acc update self(forcqlsm)
+          END IF
+          IF (PRESENT(forcplsm)) THEN
+!$acc update self(forcplsm)
+          END IF
+          IF (PRESENT(forczlsm)) THEN
+!$acc update self(forczlsm)
+          END IF
+          IF (PRESENT(forcwlsm)) THEN
+!$acc update self(forcwlsm)
+          END IF
+          IF (PRESENT(acc_ssoil)) THEN
+!$acc update self(acc_ssoil)
+          END IF
+          IF (PRESENT(acc_qinsur)) THEN
+!$acc update self(acc_qinsur)
+          END IF
+          IF (PRESENT(acc_qseva)) THEN
+!$acc update self(acc_qseva)
+          END IF
+          IF (PRESENT(acc_etrani)) THEN
+!$acc update self(acc_etrani)
+          END IF
+          IF (PRESENT(eflxbxy)) THEN
+!$acc update self(eflxbxy)
+          END IF
+          IF (PRESENT(soilenergy)) THEN
+!$acc update self(soilenergy)
+          END IF
+          IF (PRESENT(snowenergy)) THEN
+!$acc update self(snowenergy)
+          END IF
+          IF (PRESENT(canhsxy)) THEN
+!$acc update self(canhsxy)
+          END IF
+          IF (PRESENT(acc_dwaterxy)) THEN
+!$acc update self(acc_dwaterxy)
+          END IF
+          IF (PRESENT(acc_prcpxy)) THEN
+!$acc update self(acc_prcpxy)
+          END IF
+          IF (PRESENT(acc_ecanxy)) THEN
+!$acc update self(acc_ecanxy)
+          END IF
+          IF (PRESENT(acc_etranxy)) THEN
+!$acc update self(acc_etranxy)
+          END IF
+          IF (PRESENT(acc_edirxy)) THEN
+!$acc update self(acc_edirxy)
+          END IF
+          IF (PRESENT(irnumsi)) THEN
+!$acc update self(irnumsi)
+          END IF
+          IF (PRESENT(irnummi)) THEN
+!$acc update self(irnummi)
+          END IF
+          IF (PRESENT(irnumfi)) THEN
+!$acc update self(irnumfi)
+          END IF
+          IF (PRESENT(irwatsi)) THEN
+!$acc update self(irwatsi)
+          END IF
+          IF (PRESENT(irwatmi)) THEN
+!$acc update self(irwatmi)
+          END IF
+          IF (PRESENT(irwatfi)) THEN
+!$acc update self(irwatfi)
+          END IF
+          IF (PRESENT(ireloss)) THEN
+!$acc update self(ireloss)
+          END IF
+          IF (PRESENT(irsivol)) THEN
+!$acc update self(irsivol)
+          END IF
+          IF (PRESENT(irmivol)) THEN
+!$acc update self(irmivol)
+          END IF
+          IF (PRESENT(irfivol)) THEN
+!$acc update self(irfivol)
+          END IF
+          IF (PRESENT(irrsplh)) THEN
+!$acc update self(irrsplh)
+          END IF
+          IF (PRESENT(qtdrain)) THEN
+!$acc update self(qtdrain)
+          END IF
+          IF (PRESENT(smcwtdxy)) THEN
+!$acc update self(smcwtdxy)
+          END IF
+          IF (PRESENT(rechxy)) THEN
+!$acc update self(rechxy)
+          END IF
+          IF (PRESENT(deeprechxy)) THEN
+!$acc update self(deeprechxy)
+          END IF
+          IF (PRESENT(fdepthxy)) THEN
+!$acc update self(fdepthxy)
+          END IF
+          IF (PRESENT(areaxy)) THEN
+!$acc update self(areaxy)
+          END IF
+          IF (PRESENT(rivercondxy)) THEN
+!$acc update self(rivercondxy)
+          END IF
+          IF (PRESENT(riverbedxy)) THEN
+!$acc update self(riverbedxy)
+          END IF
+          IF (PRESENT(eqzwt)) THEN
+!$acc update self(eqzwt)
+          END IF
+          IF (PRESENT(pexpxy)) THEN
+!$acc update self(pexpxy)
+          END IF
+          IF (PRESENT(qrfxy)) THEN
+!$acc update self(qrfxy)
+          END IF
+          IF (PRESENT(qspringxy)) THEN
+!$acc update self(qspringxy)
+          END IF
+          IF (PRESENT(qslatxy)) THEN
+!$acc update self(qslatxy)
+          END IF
+          IF (PRESENT(qrfsxy)) THEN
+!$acc update self(qrfsxy)
+          END IF
+          IF (PRESENT(qlatxy)) THEN
+!$acc update self(qlatxy)
+          END IF
+          IF (PRESENT(qspringsxy)) THEN
+!$acc update self(qspringsxy)
+          END IF
+          IF (PRESENT(smoiseq)) THEN
+!$acc update self(smoiseq)
+          END IF
+          IF (PRESENT(gecros_state)) THEN
+!$acc update self(gecros_state)
+          END IF
+          IF (PRESENT(ch)) THEN
+!$acc update self(ch)
+          END IF
+          IF (PRESENT(fgdp)) THEN
+!$acc update self(fgdp)
+          END IF
+          IF (PRESENT(dfgdp)) THEN
+!$acc update self(dfgdp)
+          END IF
+          IF (PRESENT(vdfg)) THEN
+!$acc update self(vdfg)
+          END IF
+          IF (PRESENT(om_tmp)) THEN
+!$acc update self(om_tmp)
+          END IF
+          IF (PRESENT(om_s)) THEN
+!$acc update self(om_s)
+          END IF
+          IF (PRESENT(om_u)) THEN
+!$acc update self(om_u)
+          END IF
+          IF (PRESENT(om_v)) THEN
+!$acc update self(om_v)
+          END IF
+          IF (PRESENT(om_depth)) THEN
+!$acc update self(om_depth)
+          END IF
+          IF (PRESENT(om_ml)) THEN
+!$acc update self(om_ml)
+          END IF
+          IF (PRESENT(om_lon)) THEN
+!$acc update self(om_lon)
+          END IF
+          IF (PRESENT(om_lat)) THEN
+!$acc update self(om_lat)
+          END IF
+#if (WRF_CHEM == 1)
+          IF (PRESENT(e_bio)) THEN
+!$acc update self(e_bio)
+          END IF
+#endif
+          IF (PRESENT(numc)) THEN
+!$acc update self(numc)
+          END IF
+          IF (PRESENT(nump)) THEN
+!$acc update self(nump)
+          END IF
+          IF (PRESENT(sabv)) THEN
+!$acc update self(sabv)
+          END IF
+          IF (PRESENT(sabg)) THEN
+!$acc update self(sabg)
+          END IF
+          IF (PRESENT(lwup)) THEN
+!$acc update self(lwup)
+          END IF
+          IF (PRESENT(snl)) THEN
+!$acc update self(snl)
+          END IF
+          IF (PRESENT(snowdp)) THEN
+!$acc update self(snowdp)
+          END IF
+          IF (PRESENT(wtc)) THEN
+!$acc update self(wtc)
+          END IF
+          IF (PRESENT(wtp)) THEN
+!$acc update self(wtp)
+          END IF
+          IF (PRESENT(h2osno)) THEN
+!$acc update self(h2osno)
+          END IF
+          IF (PRESENT(t_grnd)) THEN
+!$acc update self(t_grnd)
+          END IF
+          IF (PRESENT(t_veg)) THEN
+!$acc update self(t_veg)
+          END IF
+          IF (PRESENT(h2ocan)) THEN
+!$acc update self(h2ocan)
+          END IF
+          IF (PRESENT(h2ocan_col)) THEN
+!$acc update self(h2ocan_col)
+          END IF
+          IF (PRESENT(t2m_max)) THEN
+!$acc update self(t2m_max)
+          END IF
+          IF (PRESENT(t2m_min)) THEN
+!$acc update self(t2m_min)
+          END IF
+          IF (PRESENT(t2clm)) THEN
+!$acc update self(t2clm)
+          END IF
+          IF (PRESENT(t_ref2m)) THEN
+!$acc update self(t_ref2m)
+          END IF
+          IF (PRESENT(h2osoi_liq_s1)) THEN
+!$acc update self(h2osoi_liq_s1)
+          END IF
+          IF (PRESENT(h2osoi_liq_s2)) THEN
+!$acc update self(h2osoi_liq_s2)
+          END IF
+          IF (PRESENT(h2osoi_liq_s3)) THEN
+!$acc update self(h2osoi_liq_s3)
+          END IF
+          IF (PRESENT(h2osoi_liq_s4)) THEN
+!$acc update self(h2osoi_liq_s4)
+          END IF
+          IF (PRESENT(h2osoi_liq_s5)) THEN
+!$acc update self(h2osoi_liq_s5)
+          END IF
+          IF (PRESENT(h2osoi_liq1)) THEN
+!$acc update self(h2osoi_liq1)
+          END IF
+          IF (PRESENT(h2osoi_liq2)) THEN
+!$acc update self(h2osoi_liq2)
+          END IF
+          IF (PRESENT(h2osoi_liq3)) THEN
+!$acc update self(h2osoi_liq3)
+          END IF
+          IF (PRESENT(h2osoi_liq4)) THEN
+!$acc update self(h2osoi_liq4)
+          END IF
+          IF (PRESENT(h2osoi_liq5)) THEN
+!$acc update self(h2osoi_liq5)
+          END IF
+          IF (PRESENT(h2osoi_liq6)) THEN
+!$acc update self(h2osoi_liq6)
+          END IF
+          IF (PRESENT(h2osoi_liq7)) THEN
+!$acc update self(h2osoi_liq7)
+          END IF
+          IF (PRESENT(h2osoi_liq8)) THEN
+!$acc update self(h2osoi_liq8)
+          END IF
+          IF (PRESENT(h2osoi_liq9)) THEN
+!$acc update self(h2osoi_liq9)
+          END IF
+          IF (PRESENT(h2osoi_liq10)) THEN
+!$acc update self(h2osoi_liq10)
+          END IF
+          IF (PRESENT(h2osoi_ice_s1)) THEN
+!$acc update self(h2osoi_ice_s1)
+          END IF
+          IF (PRESENT(h2osoi_ice_s2)) THEN
+!$acc update self(h2osoi_ice_s2)
+          END IF
+          IF (PRESENT(h2osoi_ice_s3)) THEN
+!$acc update self(h2osoi_ice_s3)
+          END IF
+          IF (PRESENT(h2osoi_ice_s4)) THEN
+!$acc update self(h2osoi_ice_s4)
+          END IF
+          IF (PRESENT(h2osoi_ice_s5)) THEN
+!$acc update self(h2osoi_ice_s5)
+          END IF
+          IF (PRESENT(h2osoi_ice1)) THEN
+!$acc update self(h2osoi_ice1)
+          END IF
+          IF (PRESENT(h2osoi_ice2)) THEN
+!$acc update self(h2osoi_ice2)
+          END IF
+          IF (PRESENT(h2osoi_ice3)) THEN
+!$acc update self(h2osoi_ice3)
+          END IF
+          IF (PRESENT(h2osoi_ice4)) THEN
+!$acc update self(h2osoi_ice4)
+          END IF
+          IF (PRESENT(h2osoi_ice5)) THEN
+!$acc update self(h2osoi_ice5)
+          END IF
+          IF (PRESENT(h2osoi_ice6)) THEN
+!$acc update self(h2osoi_ice6)
+          END IF
+          IF (PRESENT(h2osoi_ice7)) THEN
+!$acc update self(h2osoi_ice7)
+          END IF
+          IF (PRESENT(h2osoi_ice8)) THEN
+!$acc update self(h2osoi_ice8)
+          END IF
+          IF (PRESENT(h2osoi_ice9)) THEN
+!$acc update self(h2osoi_ice9)
+          END IF
+          IF (PRESENT(h2osoi_ice10)) THEN
+!$acc update self(h2osoi_ice10)
+          END IF
+          IF (PRESENT(t_soisno_s1)) THEN
+!$acc update self(t_soisno_s1)
+          END IF
+          IF (PRESENT(t_soisno_s2)) THEN
+!$acc update self(t_soisno_s2)
+          END IF
+          IF (PRESENT(t_soisno_s3)) THEN
+!$acc update self(t_soisno_s3)
+          END IF
+          IF (PRESENT(t_soisno_s4)) THEN
+!$acc update self(t_soisno_s4)
+          END IF
+          IF (PRESENT(t_soisno_s5)) THEN
+!$acc update self(t_soisno_s5)
+          END IF
+          IF (PRESENT(t_soisno1)) THEN
+!$acc update self(t_soisno1)
+          END IF
+          IF (PRESENT(t_soisno2)) THEN
+!$acc update self(t_soisno2)
+          END IF
+          IF (PRESENT(t_soisno3)) THEN
+!$acc update self(t_soisno3)
+          END IF
+          IF (PRESENT(t_soisno4)) THEN
+!$acc update self(t_soisno4)
+          END IF
+          IF (PRESENT(t_soisno5)) THEN
+!$acc update self(t_soisno5)
+          END IF
+          IF (PRESENT(t_soisno6)) THEN
+!$acc update self(t_soisno6)
+          END IF
+          IF (PRESENT(t_soisno7)) THEN
+!$acc update self(t_soisno7)
+          END IF
+          IF (PRESENT(t_soisno8)) THEN
+!$acc update self(t_soisno8)
+          END IF
+          IF (PRESENT(t_soisno9)) THEN
+!$acc update self(t_soisno9)
+          END IF
+          IF (PRESENT(t_soisno10)) THEN
+!$acc update self(t_soisno10)
+          END IF
+          IF (PRESENT(dzsnow1)) THEN
+!$acc update self(dzsnow1)
+          END IF
+          IF (PRESENT(dzsnow2)) THEN
+!$acc update self(dzsnow2)
+          END IF
+          IF (PRESENT(dzsnow3)) THEN
+!$acc update self(dzsnow3)
+          END IF
+          IF (PRESENT(dzsnow4)) THEN
+!$acc update self(dzsnow4)
+          END IF
+          IF (PRESENT(dzsnow5)) THEN
+!$acc update self(dzsnow5)
+          END IF
+          IF (PRESENT(snowrds1)) THEN
+!$acc update self(snowrds1)
+          END IF
+          IF (PRESENT(snowrds2)) THEN
+!$acc update self(snowrds2)
+          END IF
+          IF (PRESENT(snowrds3)) THEN
+!$acc update self(snowrds3)
+          END IF
+          IF (PRESENT(snowrds4)) THEN
+!$acc update self(snowrds4)
+          END IF
+          IF (PRESENT(snowrds5)) THEN
+!$acc update self(snowrds5)
+          END IF
+          IF (PRESENT(t_lake1)) THEN
+!$acc update self(t_lake1)
+          END IF
+          IF (PRESENT(t_lake2)) THEN
+!$acc update self(t_lake2)
+          END IF
+          IF (PRESENT(t_lake3)) THEN
+!$acc update self(t_lake3)
+          END IF
+          IF (PRESENT(t_lake4)) THEN
+!$acc update self(t_lake4)
+          END IF
+          IF (PRESENT(t_lake5)) THEN
+!$acc update self(t_lake5)
+          END IF
+          IF (PRESENT(t_lake6)) THEN
+!$acc update self(t_lake6)
+          END IF
+          IF (PRESENT(t_lake7)) THEN
+!$acc update self(t_lake7)
+          END IF
+          IF (PRESENT(t_lake8)) THEN
+!$acc update self(t_lake8)
+          END IF
+          IF (PRESENT(t_lake9)) THEN
+!$acc update self(t_lake9)
+          END IF
+          IF (PRESENT(t_lake10)) THEN
+!$acc update self(t_lake10)
+          END IF
+          IF (PRESENT(h2osoi_vol1)) THEN
+!$acc update self(h2osoi_vol1)
+          END IF
+          IF (PRESENT(h2osoi_vol2)) THEN
+!$acc update self(h2osoi_vol2)
+          END IF
+          IF (PRESENT(h2osoi_vol3)) THEN
+!$acc update self(h2osoi_vol3)
+          END IF
+          IF (PRESENT(h2osoi_vol4)) THEN
+!$acc update self(h2osoi_vol4)
+          END IF
+          IF (PRESENT(h2osoi_vol5)) THEN
+!$acc update self(h2osoi_vol5)
+          END IF
+          IF (PRESENT(h2osoi_vol6)) THEN
+!$acc update self(h2osoi_vol6)
+          END IF
+          IF (PRESENT(h2osoi_vol7)) THEN
+!$acc update self(h2osoi_vol7)
+          END IF
+          IF (PRESENT(h2osoi_vol8)) THEN
+!$acc update self(h2osoi_vol8)
+          END IF
+          IF (PRESENT(h2osoi_vol9)) THEN
+!$acc update self(h2osoi_vol9)
+          END IF
+          IF (PRESENT(h2osoi_vol10)) THEN
+!$acc update self(h2osoi_vol10)
+          END IF
+          IF (PRESENT(albedosubgrid)) THEN
+!$acc update self(albedosubgrid)
+          END IF
+          IF (PRESENT(lhsubgrid)) THEN
+!$acc update self(lhsubgrid)
+          END IF
+          IF (PRESENT(hfxsubgrid)) THEN
+!$acc update self(hfxsubgrid)
+          END IF
+          IF (PRESENT(lwupsubgrid)) THEN
+!$acc update self(lwupsubgrid)
+          END IF
+          IF (PRESENT(q2subgrid)) THEN
+!$acc update self(q2subgrid)
+          END IF
+          IF (PRESENT(sabvsubgrid)) THEN
+!$acc update self(sabvsubgrid)
+          END IF
+          IF (PRESENT(sabgsubgrid)) THEN
+!$acc update self(sabgsubgrid)
+          END IF
+          IF (PRESENT(nrasubgrid)) THEN
+!$acc update self(nrasubgrid)
+          END IF
+          IF (PRESENT(swupsubgrid)) THEN
+!$acc update self(swupsubgrid)
+          END IF
+          IF (PRESENT(lhsoi)) THEN
+!$acc update self(lhsoi)
+          END IF
+          IF (PRESENT(lhveg)) THEN
+!$acc update self(lhveg)
+          END IF
+          IF (PRESENT(lhtran)) THEN
+!$acc update self(lhtran)
+          END IF
+          IF (PRESENT(t_veg24)) THEN
+!$acc update self(t_veg24)
+          END IF
+          IF (PRESENT(t_veg240)) THEN
+!$acc update self(t_veg240)
+          END IF
+          IF (PRESENT(fsun24)) THEN
+!$acc update self(fsun24)
+          END IF
+          IF (PRESENT(fsun240)) THEN
+!$acc update self(fsun240)
+          END IF
+          IF (PRESENT(fsd24)) THEN
+!$acc update self(fsd24)
+          END IF
+          IF (PRESENT(fsd240)) THEN
+!$acc update self(fsd240)
+          END IF
+          IF (PRESENT(fsi24)) THEN
+!$acc update self(fsi24)
+          END IF
+          IF (PRESENT(fsi240)) THEN
+!$acc update self(fsi240)
+          END IF
+          IF (PRESENT(laip)) THEN
+!$acc update self(laip)
+          END IF
+#ifdef CN
+          IF (PRESENT(dyntlai)) THEN
+!$acc update self(dyntlai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntsai)) THEN
+!$acc update self(dyntsai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntop)) THEN
+!$acc update self(dyntop)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dynbot)) THEN
+!$acc update self(dynbot)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(htmx)) THEN
+!$acc update self(htmx)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(croplive)) THEN
+!$acc update self(croplive)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd1020)) THEN
+!$acc update self(gdd1020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd820)) THEN
+!$acc update self(gdd820)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd020)) THEN
+!$acc update self(gdd020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc)) THEN
+!$acc update self(grainc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_storage)) THEN
+!$acc update self(grainc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_xfer)) THEN
+!$acc update self(grainc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn)) THEN
+!$acc update self(grainn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_storage)) THEN
+!$acc update self(grainn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_xfer)) THEN
+!$acc update self(grainn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(days_active)) THEN
+!$acc update self(days_active)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_flag)) THEN
+!$acc update self(onset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_counter)) THEN
+!$acc update self(onset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gddflag)) THEN
+!$acc update self(onset_gddflag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_fdd)) THEN
+!$acc update self(onset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gdd)) THEN
+!$acc update self(onset_gdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_swi)) THEN
+!$acc update self(onset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_flag)) THEN
+!$acc update self(offset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_counter)) THEN
+!$acc update self(offset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_fdd)) THEN
+!$acc update self(offset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_swi)) THEN
+!$acc update self(offset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dayl)) THEN
+!$acc update self(dayl)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annavg_t2m)) THEN
+!$acc update self(annavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempavg_t2m)) THEN
+!$acc update self(tempavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_potential_gpp)) THEN
+!$acc update self(tempsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_potential_gpp)) THEN
+!$acc update self(annsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempmax_retransn)) THEN
+!$acc update self(tempmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annmax_retransn)) THEN
+!$acc update self(annmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_leafc_to_litter)) THEN
+!$acc update self(prev_leafc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_frootc_to_litter)) THEN
+!$acc update self(prev_frootc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_npp)) THEN
+!$acc update self(tempsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_npp)) THEN
+!$acc update self(annsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc)) THEN
+!$acc update self(leafc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_storage)) THEN
+!$acc update self(leafc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_xfer)) THEN
+!$acc update self(leafc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc)) THEN
+!$acc update self(frootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_storage)) THEN
+!$acc update self(frootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_xfer)) THEN
+!$acc update self(frootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc)) THEN
+!$acc update self(livestemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_storage)) THEN
+!$acc update self(livestemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_xfer)) THEN
+!$acc update self(livestemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc)) THEN
+!$acc update self(deadstemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_storage)) THEN
+!$acc update self(deadstemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_xfer)) THEN
+!$acc update self(deadstemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc)) THEN
+!$acc update self(livecrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_storage)) THEN
+!$acc update self(livecrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_xfer)) THEN
+!$acc update self(livecrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc)) THEN
+!$acc update self(deadcrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_storage)) THEN
+!$acc update self(deadcrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_xfer)) THEN
+!$acc update self(deadcrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cpool)) THEN
+!$acc update self(cpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ctrunc)) THEN
+!$acc update self(pft_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn)) THEN
+!$acc update self(leafn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_storage)) THEN
+!$acc update self(leafn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_xfer)) THEN
+!$acc update self(leafn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn)) THEN
+!$acc update self(frootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_storage)) THEN
+!$acc update self(frootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_xfer)) THEN
+!$acc update self(frootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn)) THEN
+!$acc update self(livestemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_storage)) THEN
+!$acc update self(livestemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_xfer)) THEN
+!$acc update self(livestemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn)) THEN
+!$acc update self(deadstemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_storage)) THEN
+!$acc update self(deadstemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_xfer)) THEN
+!$acc update self(deadstemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn)) THEN
+!$acc update self(livecrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_storage)) THEN
+!$acc update self(livecrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_xfer)) THEN
+!$acc update self(livecrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn)) THEN
+!$acc update self(deadcrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_storage)) THEN
+!$acc update self(deadcrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_xfer)) THEN
+!$acc update self(deadcrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(npool)) THEN
+!$acc update self(npool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ntrunc)) THEN
+!$acc update self(pft_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_storage)) THEN
+!$acc update self(gresp_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_xfer)) THEN
+!$acc update self(gresp_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(xsmrpool)) THEN
+!$acc update self(xsmrpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_counter)) THEN
+!$acc update self(annsum_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannsum_npp)) THEN
+!$acc update self(cannsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannavg_t2m)) THEN
+!$acc update self(cannavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(wf)) THEN
+!$acc update self(wf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(me)) THEN
+!$acc update self(me)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(mean_fire_prob)) THEN
+!$acc update self(mean_fire_prob)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdc)) THEN
+!$acc update self(cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1c)) THEN
+!$acc update self(litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2c)) THEN
+!$acc update self(litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3c)) THEN
+!$acc update self(litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1c)) THEN
+!$acc update self(soil1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2c)) THEN
+!$acc update self(soil2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3c)) THEN
+!$acc update self(soil3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4c)) THEN
+!$acc update self(soil4c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedc)) THEN
+!$acc update self(seedc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ctrunc)) THEN
+!$acc update self(col_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10c)) THEN
+!$acc update self(prod10c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c)) THEN
+!$acc update self(prod100c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdn)) THEN
+!$acc update self(cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1n)) THEN
+!$acc update self(litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2n)) THEN
+!$acc update self(litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3n)) THEN
+!$acc update self(litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1n)) THEN
+!$acc update self(soil1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2n)) THEN
+!$acc update self(soil2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3n)) THEN
+!$acc update self(soil3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4n)) THEN
+!$acc update self(soil4n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedn)) THEN
+!$acc update self(seedn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ntrunc)) THEN
+!$acc update self(col_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10n)) THEN
+!$acc update self(prod10n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n)) THEN
+!$acc update self(prod100n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(sminn)) THEN
+!$acc update self(sminn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(totlitc)) THEN
+!$acc update self(totlitc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_leaf)) THEN
+!$acc update self(dwt_seedc_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_deadstem)) THEN
+!$acc update self(dwt_seedc_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_cflux)) THEN
+!$acc update self(dwt_conv_cflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10c_gain)) THEN
+!$acc update self(dwt_prod10c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100c_gain)) THEN
+!$acc update self(dwt_prod100c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c_loss)) THEN
+!$acc update self(prod100c_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr1c)) THEN
+!$acc update self(dwt_frootc_to_litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr2c)) THEN
+!$acc update self(dwt_frootc_to_litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr3c)) THEN
+!$acc update self(dwt_frootc_to_litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootc_to_cwdc)) THEN
+!$acc update self(dwt_livecrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootc_to_cwdc)) THEN
+!$acc update self(dwt_deadcrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_leaf)) THEN
+!$acc update self(dwt_seedn_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_deadstem)) THEN
+!$acc update self(dwt_seedn_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_nflux)) THEN
+!$acc update self(dwt_conv_nflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10n_gain)) THEN
+!$acc update self(dwt_prod10n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100n_gain)) THEN
+!$acc update self(dwt_prod100n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n_loss)) THEN
+!$acc update self(prod100n_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr1n)) THEN
+!$acc update self(dwt_frootn_to_litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr2n)) THEN
+!$acc update self(dwt_frootn_to_litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr3n)) THEN
+!$acc update self(dwt_frootn_to_litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootn_to_cwdn)) THEN
+!$acc update self(dwt_livecrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootn_to_cwdn)) THEN
+!$acc update self(dwt_deadcrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(retransn)) THEN
+!$acc update self(retransn)
+          END IF
+#endif
+          IF (PRESENT(swnorm)) THEN
+!$acc update self(swnorm)
+          END IF
+          IF (PRESENT(tr_urb2d)) THEN
+!$acc update self(tr_urb2d)
+          END IF
+          IF (PRESENT(tb_urb2d)) THEN
+!$acc update self(tb_urb2d)
+          END IF
+          IF (PRESENT(tg_urb2d)) THEN
+!$acc update self(tg_urb2d)
+          END IF
+          IF (PRESENT(tc_urb2d)) THEN
+!$acc update self(tc_urb2d)
+          END IF
+          IF (PRESENT(qc_urb2d)) THEN
+!$acc update self(qc_urb2d)
+          END IF
+          IF (PRESENT(uc_urb2d)) THEN
+!$acc update self(uc_urb2d)
+          END IF
+          IF (PRESENT(xxxr_urb2d)) THEN
+!$acc update self(xxxr_urb2d)
+          END IF
+          IF (PRESENT(xxxb_urb2d)) THEN
+!$acc update self(xxxb_urb2d)
+          END IF
+          IF (PRESENT(xxxg_urb2d)) THEN
+!$acc update self(xxxg_urb2d)
+          END IF
+          IF (PRESENT(xxxc_urb2d)) THEN
+!$acc update self(xxxc_urb2d)
+          END IF
+          IF (PRESENT(cmcr_urb2d)) THEN
+!$acc update self(cmcr_urb2d)
+          END IF
+          IF (PRESENT(tgr_urb2d)) THEN
+!$acc update self(tgr_urb2d)
+          END IF
+          IF (PRESENT(tgrl_urb3d)) THEN
+!$acc update self(tgrl_urb3d)
+          END IF
+          IF (PRESENT(smr_urb3d)) THEN
+!$acc update self(smr_urb3d)
+          END IF
+          IF (PRESENT(drelr_urb2d)) THEN
+!$acc update self(drelr_urb2d)
+          END IF
+          IF (PRESENT(drelb_urb2d)) THEN
+!$acc update self(drelb_urb2d)
+          END IF
+          IF (PRESENT(drelg_urb2d)) THEN
+!$acc update self(drelg_urb2d)
+          END IF
+          IF (PRESENT(flxhumr_urb2d)) THEN
+!$acc update self(flxhumr_urb2d)
+          END IF
+          IF (PRESENT(flxhumb_urb2d)) THEN
+!$acc update self(flxhumb_urb2d)
+          END IF
+          IF (PRESENT(flxhumg_urb2d)) THEN
+!$acc update self(flxhumg_urb2d)
+          END IF
+          IF (PRESENT(trl_urb3d)) THEN
+!$acc update self(trl_urb3d)
+          END IF
+          IF (PRESENT(tbl_urb3d)) THEN
+!$acc update self(tbl_urb3d)
+          END IF
+          IF (PRESENT(tgl_urb3d)) THEN
+!$acc update self(tgl_urb3d)
+          END IF
+          IF (PRESENT(sh_urb2d)) THEN
+!$acc update self(sh_urb2d)
+          END IF
+          IF (PRESENT(lh_urb2d)) THEN
+!$acc update self(lh_urb2d)
+          END IF
+          IF (PRESENT(g_urb2d)) THEN
+!$acc update self(g_urb2d)
+          END IF
+          IF (PRESENT(rn_urb2d)) THEN
+!$acc update self(rn_urb2d)
+          END IF
+          IF (PRESENT(ts_urb2d)) THEN
+!$acc update self(ts_urb2d)
+          END IF
+          IF (PRESENT(frc_urb2d)) THEN
+!$acc update self(frc_urb2d)
+          END IF
+          IF (PRESENT(utype_urb2d)) THEN
+!$acc update self(utype_urb2d)
+          END IF
+          IF (PRESENT(cmr_sfcdif)) THEN
+!$acc update self(cmr_sfcdif)
+          END IF
+          IF (PRESENT(chr_sfcdif)) THEN
+!$acc update self(chr_sfcdif)
+          END IF
+          IF (PRESENT(cmc_sfcdif)) THEN
+!$acc update self(cmc_sfcdif)
+          END IF
+          IF (PRESENT(chc_sfcdif)) THEN
+!$acc update self(chc_sfcdif)
+          END IF
+          IF (PRESENT(cmgr_sfcdif)) THEN
+!$acc update self(cmgr_sfcdif)
+          END IF
+          IF (PRESENT(chgr_sfcdif)) THEN
+!$acc update self(chgr_sfcdif)
+          END IF
+          IF (PRESENT(alswvisdir)) THEN
+!$acc update self(alswvisdir)
+          END IF
+          IF (PRESENT(alswvisdif)) THEN
+!$acc update self(alswvisdif)
+          END IF
+          IF (PRESENT(alswnirdir)) THEN
+!$acc update self(alswnirdir)
+          END IF
+          IF (PRESENT(alswnirdif)) THEN
+!$acc update self(alswnirdif)
+          END IF
+          IF (PRESENT(ssib_br)) THEN
+!$acc update self(ssib_br)
+          END IF
+          IF (PRESENT(ssib_fm)) THEN
+!$acc update self(ssib_fm)
+          END IF
+          IF (PRESENT(ssib_fh)) THEN
+!$acc update self(ssib_fh)
+          END IF
+          IF (PRESENT(ssib_cm)) THEN
+!$acc update self(ssib_cm)
+          END IF
+          IF (PRESENT(ssibxdd)) THEN
+!$acc update self(ssibxdd)
+          END IF
+          IF (PRESENT(ssib_lhf)) THEN
+!$acc update self(ssib_lhf)
+          END IF
+          IF (PRESENT(ssib_shf)) THEN
+!$acc update self(ssib_shf)
+          END IF
+          IF (PRESENT(ssib_ghf)) THEN
+!$acc update self(ssib_ghf)
+          END IF
+          IF (PRESENT(ssib_egs)) THEN
+!$acc update self(ssib_egs)
+          END IF
+          IF (PRESENT(ssib_eci)) THEN
+!$acc update self(ssib_eci)
+          END IF
+          IF (PRESENT(ssib_ect)) THEN
+!$acc update self(ssib_ect)
+          END IF
+          IF (PRESENT(ssib_egi)) THEN
+!$acc update self(ssib_egi)
+          END IF
+          IF (PRESENT(ssib_egt)) THEN
+!$acc update self(ssib_egt)
+          END IF
+          IF (PRESENT(ssib_sdn)) THEN
+!$acc update self(ssib_sdn)
+          END IF
+          IF (PRESENT(ssib_sup)) THEN
+!$acc update self(ssib_sup)
+          END IF
+          IF (PRESENT(ssib_ldn)) THEN
+!$acc update self(ssib_ldn)
+          END IF
+          IF (PRESENT(ssib_lup)) THEN
+!$acc update self(ssib_lup)
+          END IF
+          IF (PRESENT(ssib_wat)) THEN
+!$acc update self(ssib_wat)
+          END IF
+          IF (PRESENT(ssib_shc)) THEN
+!$acc update self(ssib_shc)
+          END IF
+          IF (PRESENT(ssib_shg)) THEN
+!$acc update self(ssib_shg)
+          END IF
+          IF (PRESENT(ssib_lai)) THEN
+!$acc update self(ssib_lai)
+          END IF
+          IF (PRESENT(ssib_vcf)) THEN
+!$acc update self(ssib_vcf)
+          END IF
+          IF (PRESENT(ssib_z00)) THEN
+!$acc update self(ssib_z00)
+          END IF
+          IF (PRESENT(ssib_veg)) THEN
+!$acc update self(ssib_veg)
+          END IF
+          IF (PRESENT(isnow)) THEN
+!$acc update self(isnow)
+          END IF
+          IF (PRESENT(swe)) THEN
+!$acc update self(swe)
+          END IF
+          IF (PRESENT(snowden)) THEN
+!$acc update self(snowden)
+          END IF
+          IF (PRESENT(snowdepth)) THEN
+!$acc update self(snowdepth)
+          END IF
+          IF (PRESENT(tkair)) THEN
+!$acc update self(tkair)
+          END IF
+          IF (PRESENT(dzo1)) THEN
+!$acc update self(dzo1)
+          END IF
+          IF (PRESENT(wo1)) THEN
+!$acc update self(wo1)
+          END IF
+          IF (PRESENT(tssn1)) THEN
+!$acc update self(tssn1)
+          END IF
+          IF (PRESENT(tssno1)) THEN
+!$acc update self(tssno1)
+          END IF
+          IF (PRESENT(bwo1)) THEN
+!$acc update self(bwo1)
+          END IF
+          IF (PRESENT(bto1)) THEN
+!$acc update self(bto1)
+          END IF
+          IF (PRESENT(cto1)) THEN
+!$acc update self(cto1)
+          END IF
+          IF (PRESENT(fio1)) THEN
+!$acc update self(fio1)
+          END IF
+          IF (PRESENT(flo1)) THEN
+!$acc update self(flo1)
+          END IF
+          IF (PRESENT(bio1)) THEN
+!$acc update self(bio1)
+          END IF
+          IF (PRESENT(blo1)) THEN
+!$acc update self(blo1)
+          END IF
+          IF (PRESENT(ho1)) THEN
+!$acc update self(ho1)
+          END IF
+          IF (PRESENT(dzo2)) THEN
+!$acc update self(dzo2)
+          END IF
+          IF (PRESENT(wo2)) THEN
+!$acc update self(wo2)
+          END IF
+          IF (PRESENT(tssn2)) THEN
+!$acc update self(tssn2)
+          END IF
+          IF (PRESENT(tssno2)) THEN
+!$acc update self(tssno2)
+          END IF
+          IF (PRESENT(bwo2)) THEN
+!$acc update self(bwo2)
+          END IF
+          IF (PRESENT(bto2)) THEN
+!$acc update self(bto2)
+          END IF
+          IF (PRESENT(cto2)) THEN
+!$acc update self(cto2)
+          END IF
+          IF (PRESENT(fio2)) THEN
+!$acc update self(fio2)
+          END IF
+          IF (PRESENT(flo2)) THEN
+!$acc update self(flo2)
+          END IF
+          IF (PRESENT(bio2)) THEN
+!$acc update self(bio2)
+          END IF
+          IF (PRESENT(blo2)) THEN
+!$acc update self(blo2)
+          END IF
+          IF (PRESENT(ho2)) THEN
+!$acc update self(ho2)
+          END IF
+          IF (PRESENT(dzo3)) THEN
+!$acc update self(dzo3)
+          END IF
+          IF (PRESENT(wo3)) THEN
+!$acc update self(wo3)
+          END IF
+          IF (PRESENT(tssn3)) THEN
+!$acc update self(tssn3)
+          END IF
+          IF (PRESENT(tssno3)) THEN
+!$acc update self(tssno3)
+          END IF
+          IF (PRESENT(bwo3)) THEN
+!$acc update self(bwo3)
+          END IF
+          IF (PRESENT(bto3)) THEN
+!$acc update self(bto3)
+          END IF
+          IF (PRESENT(cto3)) THEN
+!$acc update self(cto3)
+          END IF
+          IF (PRESENT(fio3)) THEN
+!$acc update self(fio3)
+          END IF
+          IF (PRESENT(flo3)) THEN
+!$acc update self(flo3)
+          END IF
+          IF (PRESENT(bio3)) THEN
+!$acc update self(bio3)
+          END IF
+          IF (PRESENT(blo3)) THEN
+!$acc update self(blo3)
+          END IF
+          IF (PRESENT(ho3)) THEN
+!$acc update self(ho3)
+          END IF
+          IF (PRESENT(dzo4)) THEN
+!$acc update self(dzo4)
+          END IF
+          IF (PRESENT(wo4)) THEN
+!$acc update self(wo4)
+          END IF
+          IF (PRESENT(tssn4)) THEN
+!$acc update self(tssn4)
+          END IF
+          IF (PRESENT(tssno4)) THEN
+!$acc update self(tssno4)
+          END IF
+          IF (PRESENT(bwo4)) THEN
+!$acc update self(bwo4)
+          END IF
+          IF (PRESENT(bto4)) THEN
+!$acc update self(bto4)
+          END IF
+          IF (PRESENT(cto4)) THEN
+!$acc update self(cto4)
+          END IF
+          IF (PRESENT(fio4)) THEN
+!$acc update self(fio4)
+          END IF
+          IF (PRESENT(flo4)) THEN
+!$acc update self(flo4)
+          END IF
+          IF (PRESENT(bio4)) THEN
+!$acc update self(bio4)
+          END IF
+          IF (PRESENT(blo4)) THEN
+!$acc update self(blo4)
+          END IF
+          IF (PRESENT(ho4)) THEN
+!$acc update self(ho4)
+          END IF
+          IF (PRESENT(qv_curr)) THEN
+!$acc update self(qv_curr)
+          END IF
+          IF (PRESENT(qc_curr)) THEN
+!$acc update self(qc_curr)
+          END IF
+          IF (PRESENT(qr_curr)) THEN
+!$acc update self(qr_curr)
+          END IF
+          IF (PRESENT(qi_curr)) THEN
+!$acc update self(qi_curr)
+          END IF
+          IF (PRESENT(qs_curr)) THEN
+!$acc update self(qs_curr)
+          END IF
+          IF (PRESENT(qg_curr)) THEN
+!$acc update self(qg_curr)
+          END IF
+          IF (PRESENT(capg)) THEN
+!$acc update self(capg)
+          END IF
+          IF (PRESENT(hol)) THEN
+!$acc update self(hol)
+          END IF
+          IF (PRESENT(mol)) THEN
+!$acc update self(mol)
+          END IF
+          IF (PRESENT(rainbl)) THEN
+!$acc update self(rainbl)
+          END IF
+          IF (PRESENT(regime)) THEN
+!$acc update self(regime)
+          END IF
+          IF (PRESENT(qsg)) THEN
+!$acc update self(qsg)
+          END IF
+          IF (PRESENT(qvg)) THEN
+!$acc update self(qvg)
+          END IF
+          IF (PRESENT(qcg)) THEN
+!$acc update self(qcg)
+          END IF
+          IF (PRESENT(soilt1)) THEN
+!$acc update self(soilt1)
+          END IF
+          IF (PRESENT(tsnav)) THEN
+!$acc update self(tsnav)
+          END IF
+          IF (PRESENT(smfr3d)) THEN
+!$acc update self(smfr3d)
+          END IF
+          IF (PRESENT(keepfr3dflag)) THEN
+!$acc update self(keepfr3dflag)
+          END IF
+          IF (PRESENT(dew)) THEN
+!$acc update self(dew)
+          END IF
+          IF (PRESENT(rhosnf)) THEN
+!$acc update self(rhosnf)
+          END IF
+          IF (PRESENT(precipfr)) THEN
+!$acc update self(precipfr)
+          END IF
+          IF (PRESENT(potevp)) THEN
+!$acc update self(potevp)
+          END IF
+          IF (PRESENT(snopcx)) THEN
+!$acc update self(snopcx)
+          END IF
+          IF (PRESENT(soiltb)) THEN
+!$acc update self(soiltb)
+          END IF
+          IF (PRESENT(sr)) THEN
+!$acc update self(sr)
+          END IF
+          IF (PRESENT(t2_ndg_old)) THEN
+!$acc update self(t2_ndg_old)
+          END IF
+          IF (PRESENT(q2_ndg_old)) THEN
+!$acc update self(q2_ndg_old)
+          END IF
+          IF (PRESENT(t2_ndg_new)) THEN
+!$acc update self(t2_ndg_new)
+          END IF
+          IF (PRESENT(q2_ndg_new)) THEN
+!$acc update self(q2_ndg_new)
+          END IF
+          IF (PRESENT(sn_ndg_old)) THEN
+!$acc update self(sn_ndg_old)
+          END IF
+          IF (PRESENT(sn_ndg_new)) THEN
+!$acc update self(sn_ndg_new)
+          END IF
+          IF (PRESENT(t2obs)) THEN
+!$acc update self(t2obs)
+          END IF
+          IF (PRESENT(q2obs)) THEN
+!$acc update self(q2obs)
+          END IF
+          IF (PRESENT(hd_temf)) THEN
+!$acc update self(hd_temf)
+          END IF
+          IF (PRESENT(te_temf)) THEN
+!$acc update self(te_temf)
+          END IF
+          IF (PRESENT(exch_temf)) THEN
+!$acc update self(exch_temf)
+          END IF
+          IF (PRESENT(wm_temf)) THEN
+!$acc update self(wm_temf)
+          END IF
+          IF (PRESENT(uratx)) THEN
+!$acc update self(uratx)
+          END IF
+          IF (PRESENT(vratx)) THEN
+!$acc update self(vratx)
+          END IF
+          IF (PRESENT(tratx)) THEN
+!$acc update self(tratx)
+          END IF
+          IF (PRESENT(tml)) THEN
+!$acc update self(tml)
+          END IF
+          IF (PRESENT(t0ml)) THEN
+!$acc update self(t0ml)
+          END IF
+          IF (PRESENT(hml)) THEN
+!$acc update self(hml)
+          END IF
+          IF (PRESENT(h0ml)) THEN
+!$acc update self(h0ml)
+          END IF
+          IF (PRESENT(huml)) THEN
+!$acc update self(huml)
+          END IF
+          IF (PRESENT(hvml)) THEN
+!$acc update self(hvml)
+          END IF
+          IF (PRESENT(ustm)) THEN
+!$acc update self(ustm)
+          END IF
+          IF (PRESENT(ck)) THEN
+!$acc update self(ck)
+          END IF
+          IF (PRESENT(cka)) THEN
+!$acc update self(cka)
+          END IF
+          IF (PRESENT(cd)) THEN
+!$acc update self(cd)
+          END IF
+          IF (PRESENT(cda)) THEN
+!$acc update self(cda)
+          END IF
+          IF (PRESENT(snotime)) THEN
+!$acc update self(snotime)
+          END IF
+          IF (PRESENT(noahres)) THEN
+!$acc update self(noahres)
+          END IF
+          IF (PRESENT(tsk_rural)) THEN
+!$acc update self(tsk_rural)
+          END IF
+          IF (PRESENT(trb_urb4d)) THEN
+!$acc update self(trb_urb4d)
+          END IF
+          IF (PRESENT(tw1_urb4d)) THEN
+!$acc update self(tw1_urb4d)
+          END IF
+          IF (PRESENT(tw2_urb4d)) THEN
+!$acc update self(tw2_urb4d)
+          END IF
+          IF (PRESENT(tgb_urb4d)) THEN
+!$acc update self(tgb_urb4d)
+          END IF
+          IF (PRESENT(tlev_urb3d)) THEN
+!$acc update self(tlev_urb3d)
+          END IF
+          IF (PRESENT(qlev_urb3d)) THEN
+!$acc update self(qlev_urb3d)
+          END IF
+          IF (PRESENT(tw1lev_urb3d)) THEN
+!$acc update self(tw1lev_urb3d)
+          END IF
+          IF (PRESENT(tw2lev_urb3d)) THEN
+!$acc update self(tw2lev_urb3d)
+          END IF
+          IF (PRESENT(tglev_urb3d)) THEN
+!$acc update self(tglev_urb3d)
+          END IF
+          IF (PRESENT(tflev_urb3d)) THEN
+!$acc update self(tflev_urb3d)
+          END IF
+          IF (PRESENT(sf_ac_urb3d)) THEN
+!$acc update self(sf_ac_urb3d)
+          END IF
+          IF (PRESENT(lf_ac_urb3d)) THEN
+!$acc update self(lf_ac_urb3d)
+          END IF
+          IF (PRESENT(cm_ac_urb3d)) THEN
+!$acc update self(cm_ac_urb3d)
+          END IF
+          IF (PRESENT(sfvent_urb3d)) THEN
+!$acc update self(sfvent_urb3d)
+          END IF
+          IF (PRESENT(lfvent_urb3d)) THEN
+!$acc update self(lfvent_urb3d)
+          END IF
+          IF (PRESENT(sfwin1_urb3d)) THEN
+!$acc update self(sfwin1_urb3d)
+          END IF
+          IF (PRESENT(sfwin2_urb3d)) THEN
+!$acc update self(sfwin2_urb3d)
+          END IF
+          IF (PRESENT(sfw1_urb3d)) THEN
+!$acc update self(sfw1_urb3d)
+          END IF
+          IF (PRESENT(sfw2_urb3d)) THEN
+!$acc update self(sfw2_urb3d)
+          END IF
+          IF (PRESENT(sfr_urb3d)) THEN
+!$acc update self(sfr_urb3d)
+          END IF
+          IF (PRESENT(sfg_urb3d)) THEN
+!$acc update self(sfg_urb3d)
+          END IF
+          IF (PRESENT(ep_pv_urb3d)) THEN
+!$acc update self(ep_pv_urb3d)
+          END IF
+          IF (PRESENT(t_pv_urb3d)) THEN
+!$acc update self(t_pv_urb3d)
+          END IF
+          IF (PRESENT(trv_urb4d)) THEN
+!$acc update self(trv_urb4d)
+          END IF
+          IF (PRESENT(qr_urb4d)) THEN
+!$acc update self(qr_urb4d)
+          END IF
+          IF (PRESENT(qgr_urb3d)) THEN
+!$acc update self(qgr_urb3d)
+          END IF
+          IF (PRESENT(tgr_urb3d)) THEN
+!$acc update self(tgr_urb3d)
+          END IF
+          IF (PRESENT(drain_urb4d)) THEN
+!$acc update self(drain_urb4d)
+          END IF
+          IF (PRESENT(draingr_urb3d)) THEN
+!$acc update self(draingr_urb3d)
+          END IF
+          IF (PRESENT(sfrv_urb3d)) THEN
+!$acc update self(sfrv_urb3d)
+          END IF
+          IF (PRESENT(lfrv_urb3d)) THEN
+!$acc update self(lfrv_urb3d)
+          END IF
+          IF (PRESENT(dgr_urb3d)) THEN
+!$acc update self(dgr_urb3d)
+          END IF
+          IF (PRESENT(dg_urb3d)) THEN
+!$acc update self(dg_urb3d)
+          END IF
+          IF (PRESENT(lfr_urb3d)) THEN
+!$acc update self(lfr_urb3d)
+          END IF
+          IF (PRESENT(lfg_urb3d)) THEN
+!$acc update self(lfg_urb3d)
+          END IF
+          IF (PRESENT(a_u_bep)) THEN
+!$acc update self(a_u_bep)
+          END IF
+          IF (PRESENT(a_v_bep)) THEN
+!$acc update self(a_v_bep)
+          END IF
+          IF (PRESENT(a_t_bep)) THEN
+!$acc update self(a_t_bep)
+          END IF
+          IF (PRESENT(a_q_bep)) THEN
+!$acc update self(a_q_bep)
+          END IF
+          IF (PRESENT(b_u_bep)) THEN
+!$acc update self(b_u_bep)
+          END IF
+          IF (PRESENT(b_v_bep)) THEN
+!$acc update self(b_v_bep)
+          END IF
+          IF (PRESENT(b_t_bep)) THEN
+!$acc update self(b_t_bep)
+          END IF
+          IF (PRESENT(b_q_bep)) THEN
+!$acc update self(b_q_bep)
+          END IF
+          IF (PRESENT(sf_bep)) THEN
+!$acc update self(sf_bep)
+          END IF
+          IF (PRESENT(vl_bep)) THEN
+!$acc update self(vl_bep)
+          END IF
+          IF (PRESENT(a_e_bep)) THEN
+!$acc update self(a_e_bep)
+          END IF
+          IF (PRESENT(b_e_bep)) THEN
+!$acc update self(b_e_bep)
+          END IF
+          IF (PRESENT(dlg_bep)) THEN
+!$acc update self(dlg_bep)
+          END IF
+          IF (PRESENT(dl_u_bep)) THEN
+!$acc update self(dl_u_bep)
+          END IF
+          IF (PRESENT(tsk_save)) THEN
+!$acc update self(tsk_save)
+          END IF
+          IF (PRESENT(mosaic_cat_index)) THEN
+!$acc update self(mosaic_cat_index)
+          END IF
+          IF (PRESENT(landusef2)) THEN
+!$acc update self(landusef2)
+          END IF
+          IF (PRESENT(tsk_mosaic)) THEN
+!$acc update self(tsk_mosaic)
+          END IF
+          IF (PRESENT(qsfc_mosaic)) THEN
+!$acc update self(qsfc_mosaic)
+          END IF
+          IF (PRESENT(tslb_mosaic)) THEN
+!$acc update self(tslb_mosaic)
+          END IF
+          IF (PRESENT(smois_mosaic)) THEN
+!$acc update self(smois_mosaic)
+          END IF
+          IF (PRESENT(sh2o_mosaic)) THEN
+!$acc update self(sh2o_mosaic)
+          END IF
+          IF (PRESENT(canwat_mosaic)) THEN
+!$acc update self(canwat_mosaic)
+          END IF
+          IF (PRESENT(snow_mosaic)) THEN
+!$acc update self(snow_mosaic)
+          END IF
+          IF (PRESENT(snowh_mosaic)) THEN
+!$acc update self(snowh_mosaic)
+          END IF
+          IF (PRESENT(snowc_mosaic)) THEN
+!$acc update self(snowc_mosaic)
+          END IF
+          IF (PRESENT(albedo_mosaic)) THEN
+!$acc update self(albedo_mosaic)
+          END IF
+          IF (PRESENT(albbck_mosaic)) THEN
+!$acc update self(albbck_mosaic)
+          END IF
+          IF (PRESENT(emiss_mosaic)) THEN
+!$acc update self(emiss_mosaic)
+          END IF
+          IF (PRESENT(embck_mosaic)) THEN
+!$acc update self(embck_mosaic)
+          END IF
+          IF (PRESENT(znt_mosaic)) THEN
+!$acc update self(znt_mosaic)
+          END IF
+          IF (PRESENT(z0_mosaic)) THEN
+!$acc update self(z0_mosaic)
+          END IF
+          IF (PRESENT(hfx_mosaic)) THEN
+!$acc update self(hfx_mosaic)
+          END IF
+          IF (PRESENT(qfx_mosaic)) THEN
+!$acc update self(qfx_mosaic)
+          END IF
+          IF (PRESENT(lh_mosaic)) THEN
+!$acc update self(lh_mosaic)
+          END IF
+          IF (PRESENT(grdflx_mosaic)) THEN
+!$acc update self(grdflx_mosaic)
+          END IF
+          IF (PRESENT(snotime_mosaic)) THEN
+!$acc update self(snotime_mosaic)
+          END IF
+          IF (PRESENT(rs_mosaic)) THEN
+!$acc update self(rs_mosaic)
+          END IF
+          IF (PRESENT(lai_mosaic)) THEN
+!$acc update self(lai_mosaic)
+          END IF
+          IF (PRESENT(tr_urb2d_mosaic)) THEN
+!$acc update self(tr_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tb_urb2d_mosaic)) THEN
+!$acc update self(tb_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tg_urb2d_mosaic)) THEN
+!$acc update self(tg_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tc_urb2d_mosaic)) THEN
+!$acc update self(tc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(qc_urb2d_mosaic)) THEN
+!$acc update self(qc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(uc_urb2d_mosaic)) THEN
+!$acc update self(uc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(trl_urb3d_mosaic)) THEN
+!$acc update self(trl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tbl_urb3d_mosaic)) THEN
+!$acc update self(tbl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tgl_urb3d_mosaic)) THEN
+!$acc update self(tgl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(sh_urb2d_mosaic)) THEN
+!$acc update self(sh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(lh_urb2d_mosaic)) THEN
+!$acc update self(lh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(g_urb2d_mosaic)) THEN
+!$acc update self(g_urb2d_mosaic)
+          END IF
+          IF (PRESENT(rn_urb2d_mosaic)) THEN
+!$acc update self(rn_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_urb2d_mosaic)) THEN
+!$acc update self(ts_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_rul2d_mosaic)) THEN
+!$acc update self(ts_rul2d_mosaic)
+          END IF
+          IF (PRESENT(sda_hfx)) THEN
+!$acc update self(sda_hfx)
+          END IF
+          IF (PRESENT(sda_qfx)) THEN
+!$acc update self(sda_qfx)
+          END IF
+          IF (PRESENT(hfx_both)) THEN
+!$acc update self(hfx_both)
+          END IF
+          IF (PRESENT(qfx_both)) THEN
+!$acc update self(qfx_both)
+          END IF
+          IF (PRESENT(qnorm)) THEN
+!$acc update self(qnorm)
+          END IF
+          IF (PRESENT(pattern_spp_lsm)) THEN
+!$acc update self(pattern_spp_lsm)
+          END IF
+          IF (PRESENT(field_sf)) THEN
+!$acc update self(field_sf)
+          END IF
+          IF (PRESENT(pattern_spp_pbl)) THEN
+!$acc update self(pattern_spp_pbl)
+          END IF
+          IF (PRESENT(xlaidyn)) THEN
+!$acc update self(xlaidyn)
+          END IF
+          IF (PRESENT(perts_qvapor)) THEN
+!$acc update self(perts_qvapor)
+          END IF
+          IF (PRESENT(perts_th)) THEN
+!$acc update self(perts_th)
+          END IF
+          IF (PRESENT(perts_smois)) THEN
+!$acc update self(perts_smois)
+          END IF
+          IF (PRESENT(perts_tsoil)) THEN
+!$acc update self(perts_tsoil)
+          END IF
+          IF (PRESENT(irr_rand_field)) THEN
+!$acc update self(irr_rand_field)
+          END IF
+        ELSE
+!$acc update device(sfcheadrt, infxsrt, soldrain, qtiledrain, zwatble2d, acsnom, acsnow, akhs, &
+!$acc&   akms, albedo, br, canwat, chklowq, grdflx, gsw, swdown, gz1oz0, hfx, isltyp, ivgtyp, &
+!$acc&   mavail, rmol, pblh, pshltr, fm, fhh, psih, psim, q10, q2, qfx, qsfc, qshltr, qz0, sfcevp, &
+!$acc&   sfcexc, sfcrunoff, acrunoff, smois, smstav, smstot, snoalb, snow, snowc, snowh, smcrel, &
+!$acc&   th10, th2, thz0, tmn, tshltr, tsk, tslb, t_phy, u10, udrunoff, ust, uz0, v10, vegfra, &
+!$acc&   u10e, v10e, uoce, voce, vz0, wspd, xice, xland, znt, albsi, icedepth, snowsi, xicem, ct, &
+!$acc&   tke_pbl, albbck, embck, lh, sh2o, z0, flqc, flhc, psfc, sst, flx4, fvb, fbur, fgsn, &
+!$acc&   water_depth, savedtke12d, snowdp2d, h2osno2d, snl2d, t_grnd2d, t_lake3d, lake_icefrac3d, &
+!$acc&   t_soisno3d, h2osoi_ice3d, h2osoi_liq3d, h2osoi_vol3d, z3d, dz3d, zi3d, lakemask, zol)
+          IF (PRESENT(acgrdflx)) THEN
+!$acc update device(acgrdflx)
+          END IF
+          IF (PRESENT(achfx)) THEN
+!$acc update device(achfx)
+          END IF
+          IF (PRESENT(aclhf)) THEN
+!$acc update device(aclhf)
+          END IF
+          IF (PRESENT(snowfallac)) THEN
+!$acc update device(snowfallac)
+          END IF
+          IF (PRESENT(tyr)) THEN
+!$acc update device(tyr)
+          END IF
+          IF (PRESENT(tyra)) THEN
+!$acc update device(tyra)
+          END IF
+          IF (PRESENT(tdly)) THEN
+!$acc update device(tdly)
+          END IF
+          IF (PRESENT(tlag)) THEN
+!$acc update device(tlag)
+          END IF
+          IF (PRESENT(sstsk)) THEN
+!$acc update device(sstsk)
+          END IF
+          IF (PRESENT(dtw)) THEN
+!$acc update device(dtw)
+          END IF
+          IF (PRESENT(t2)) THEN
+!$acc update device(t2)
+          END IF
+          IF (PRESENT(emiss)) THEN
+!$acc update device(emiss)
+          END IF
+          IF (PRESENT(landusef)) THEN
+!$acc update device(landusef)
+          END IF
+          IF (PRESENT(soilctop)) THEN
+!$acc update device(soilctop)
+          END IF
+          IF (PRESENT(soilcbot)) THEN
+!$acc update device(soilcbot)
+          END IF
+          IF (PRESENT(ra)) THEN
+!$acc update device(ra)
+          END IF
+          IF (PRESENT(rs)) THEN
+!$acc update device(rs)
+          END IF
+          IF (PRESENT(vegf_px)) THEN
+!$acc update device(vegf_px)
+          END IF
+          IF (PRESENT(lai)) THEN
+!$acc update device(lai)
+          END IF
+          IF (PRESENT(imperv)) THEN
+!$acc update device(imperv)
+          END IF
+          IF (PRESENT(canfra)) THEN
+!$acc update device(canfra)
+          END IF
+          IF (PRESENT(lai_px)) THEN
+!$acc update device(lai_px)
+          END IF
+          IF (PRESENT(wwlt_px)) THEN
+!$acc update device(wwlt_px)
+          END IF
+          IF (PRESENT(wfc_px)) THEN
+!$acc update device(wfc_px)
+          END IF
+          IF (PRESENT(wsat_px)) THEN
+!$acc update device(wsat_px)
+          END IF
+          IF (PRESENT(clay_px)) THEN
+!$acc update device(clay_px)
+          END IF
+          IF (PRESENT(csand_px)) THEN
+!$acc update device(csand_px)
+          END IF
+          IF (PRESENT(fmsand_px)) THEN
+!$acc update device(fmsand_px)
+          END IF
+          IF (PRESENT(isnowxy)) THEN
+!$acc update device(isnowxy)
+          END IF
+          IF (PRESENT(tvxy)) THEN
+!$acc update device(tvxy)
+          END IF
+          IF (PRESENT(tgxy)) THEN
+!$acc update device(tgxy)
+          END IF
+          IF (PRESENT(canicexy)) THEN
+!$acc update device(canicexy)
+          END IF
+          IF (PRESENT(canliqxy)) THEN
+!$acc update device(canliqxy)
+          END IF
+          IF (PRESENT(eahxy)) THEN
+!$acc update device(eahxy)
+          END IF
+          IF (PRESENT(tahxy)) THEN
+!$acc update device(tahxy)
+          END IF
+          IF (PRESENT(cmxy)) THEN
+!$acc update device(cmxy)
+          END IF
+          IF (PRESENT(chxy)) THEN
+!$acc update device(chxy)
+          END IF
+          IF (PRESENT(fwetxy)) THEN
+!$acc update device(fwetxy)
+          END IF
+          IF (PRESENT(sneqvoxy)) THEN
+!$acc update device(sneqvoxy)
+          END IF
+          IF (PRESENT(alboldxy)) THEN
+!$acc update device(alboldxy)
+          END IF
+          IF (PRESENT(qsnowxy)) THEN
+!$acc update device(qsnowxy)
+          END IF
+          IF (PRESENT(qrainxy)) THEN
+!$acc update device(qrainxy)
+          END IF
+          IF (PRESENT(wslakexy)) THEN
+!$acc update device(wslakexy)
+          END IF
+          IF (PRESENT(zwtxy)) THEN
+!$acc update device(zwtxy)
+          END IF
+          IF (PRESENT(waxy)) THEN
+!$acc update device(waxy)
+          END IF
+          IF (PRESENT(wtxy)) THEN
+!$acc update device(wtxy)
+          END IF
+          IF (PRESENT(tsnoxy)) THEN
+!$acc update device(tsnoxy)
+          END IF
+          IF (PRESENT(zsnsoxy)) THEN
+!$acc update device(zsnsoxy)
+          END IF
+          IF (PRESENT(snicexy)) THEN
+!$acc update device(snicexy)
+          END IF
+          IF (PRESENT(snliqxy)) THEN
+!$acc update device(snliqxy)
+          END IF
+          IF (PRESENT(lfmassxy)) THEN
+!$acc update device(lfmassxy)
+          END IF
+          IF (PRESENT(rtmassxy)) THEN
+!$acc update device(rtmassxy)
+          END IF
+          IF (PRESENT(stmassxy)) THEN
+!$acc update device(stmassxy)
+          END IF
+          IF (PRESENT(woodxy)) THEN
+!$acc update device(woodxy)
+          END IF
+          IF (PRESENT(stblcpxy)) THEN
+!$acc update device(stblcpxy)
+          END IF
+          IF (PRESENT(fastcpxy)) THEN
+!$acc update device(fastcpxy)
+          END IF
+          IF (PRESENT(xsaixy)) THEN
+!$acc update device(xsaixy)
+          END IF
+          IF (PRESENT(taussxy)) THEN
+!$acc update device(taussxy)
+          END IF
+          IF (PRESENT(grainxy)) THEN
+!$acc update device(grainxy)
+          END IF
+          IF (PRESENT(gddxy)) THEN
+!$acc update device(gddxy)
+          END IF
+          IF (PRESENT(pgsxy)) THEN
+!$acc update device(pgsxy)
+          END IF
+          IF (PRESENT(t2mvxy)) THEN
+!$acc update device(t2mvxy)
+          END IF
+          IF (PRESENT(t2mbxy)) THEN
+!$acc update device(t2mbxy)
+          END IF
+          IF (PRESENT(q2mvxy)) THEN
+!$acc update device(q2mvxy)
+          END IF
+          IF (PRESENT(q2mbxy)) THEN
+!$acc update device(q2mbxy)
+          END IF
+          IF (PRESENT(tradxy)) THEN
+!$acc update device(tradxy)
+          END IF
+          IF (PRESENT(neexy)) THEN
+!$acc update device(neexy)
+          END IF
+          IF (PRESENT(gppxy)) THEN
+!$acc update device(gppxy)
+          END IF
+          IF (PRESENT(nppxy)) THEN
+!$acc update device(nppxy)
+          END IF
+          IF (PRESENT(fvegxy)) THEN
+!$acc update device(fvegxy)
+          END IF
+          IF (PRESENT(runsfxy)) THEN
+!$acc update device(runsfxy)
+          END IF
+          IF (PRESENT(runsbxy)) THEN
+!$acc update device(runsbxy)
+          END IF
+          IF (PRESENT(ecanxy)) THEN
+!$acc update device(ecanxy)
+          END IF
+          IF (PRESENT(edirxy)) THEN
+!$acc update device(edirxy)
+          END IF
+          IF (PRESENT(etranxy)) THEN
+!$acc update device(etranxy)
+          END IF
+          IF (PRESENT(fsaxy)) THEN
+!$acc update device(fsaxy)
+          END IF
+          IF (PRESENT(firaxy)) THEN
+!$acc update device(firaxy)
+          END IF
+          IF (PRESENT(aparxy)) THEN
+!$acc update device(aparxy)
+          END IF
+          IF (PRESENT(psnxy)) THEN
+!$acc update device(psnxy)
+          END IF
+          IF (PRESENT(savxy)) THEN
+!$acc update device(savxy)
+          END IF
+          IF (PRESENT(sagxy)) THEN
+!$acc update device(sagxy)
+          END IF
+          IF (PRESENT(rssunxy)) THEN
+!$acc update device(rssunxy)
+          END IF
+          IF (PRESENT(rsshaxy)) THEN
+!$acc update device(rsshaxy)
+          END IF
+          IF (PRESENT(bgapxy)) THEN
+!$acc update device(bgapxy)
+          END IF
+          IF (PRESENT(wgapxy)) THEN
+!$acc update device(wgapxy)
+          END IF
+          IF (PRESENT(tgvxy)) THEN
+!$acc update device(tgvxy)
+          END IF
+          IF (PRESENT(tgbxy)) THEN
+!$acc update device(tgbxy)
+          END IF
+          IF (PRESENT(chvxy)) THEN
+!$acc update device(chvxy)
+          END IF
+          IF (PRESENT(chbxy)) THEN
+!$acc update device(chbxy)
+          END IF
+          IF (PRESENT(shgxy)) THEN
+!$acc update device(shgxy)
+          END IF
+          IF (PRESENT(shcxy)) THEN
+!$acc update device(shcxy)
+          END IF
+          IF (PRESENT(shbxy)) THEN
+!$acc update device(shbxy)
+          END IF
+          IF (PRESENT(evgxy)) THEN
+!$acc update device(evgxy)
+          END IF
+          IF (PRESENT(evbxy)) THEN
+!$acc update device(evbxy)
+          END IF
+          IF (PRESENT(ghvxy)) THEN
+!$acc update device(ghvxy)
+          END IF
+          IF (PRESENT(ghbxy)) THEN
+!$acc update device(ghbxy)
+          END IF
+          IF (PRESENT(irgxy)) THEN
+!$acc update device(irgxy)
+          END IF
+          IF (PRESENT(ircxy)) THEN
+!$acc update device(ircxy)
+          END IF
+          IF (PRESENT(irbxy)) THEN
+!$acc update device(irbxy)
+          END IF
+          IF (PRESENT(trxy)) THEN
+!$acc update device(trxy)
+          END IF
+          IF (PRESENT(evcxy)) THEN
+!$acc update device(evcxy)
+          END IF
+          IF (PRESENT(chleafxy)) THEN
+!$acc update device(chleafxy)
+          END IF
+          IF (PRESENT(chucxy)) THEN
+!$acc update device(chucxy)
+          END IF
+          IF (PRESENT(chv2xy)) THEN
+!$acc update device(chv2xy)
+          END IF
+          IF (PRESENT(chb2xy)) THEN
+!$acc update device(chb2xy)
+          END IF
+          IF (PRESENT(chstarxy)) THEN
+!$acc update device(chstarxy)
+          END IF
+          IF (PRESENT(qintsxy)) THEN
+!$acc update device(qintsxy)
+          END IF
+          IF (PRESENT(qintrxy)) THEN
+!$acc update device(qintrxy)
+          END IF
+          IF (PRESENT(qdripsxy)) THEN
+!$acc update device(qdripsxy)
+          END IF
+          IF (PRESENT(qdriprxy)) THEN
+!$acc update device(qdriprxy)
+          END IF
+          IF (PRESENT(qthrosxy)) THEN
+!$acc update device(qthrosxy)
+          END IF
+          IF (PRESENT(qthrorxy)) THEN
+!$acc update device(qthrorxy)
+          END IF
+          IF (PRESENT(qsnsubxy)) THEN
+!$acc update device(qsnsubxy)
+          END IF
+          IF (PRESENT(qsnfroxy)) THEN
+!$acc update device(qsnfroxy)
+          END IF
+          IF (PRESENT(qsubcxy)) THEN
+!$acc update device(qsubcxy)
+          END IF
+          IF (PRESENT(qfrocxy)) THEN
+!$acc update device(qfrocxy)
+          END IF
+          IF (PRESENT(qevacxy)) THEN
+!$acc update device(qevacxy)
+          END IF
+          IF (PRESENT(qdewcxy)) THEN
+!$acc update device(qdewcxy)
+          END IF
+          IF (PRESENT(qfrzcxy)) THEN
+!$acc update device(qfrzcxy)
+          END IF
+          IF (PRESENT(qmeltcxy)) THEN
+!$acc update device(qmeltcxy)
+          END IF
+          IF (PRESENT(qsnbotxy)) THEN
+!$acc update device(qsnbotxy)
+          END IF
+          IF (PRESENT(pondingxy)) THEN
+!$acc update device(pondingxy)
+          END IF
+          IF (PRESENT(pahxy)) THEN
+!$acc update device(pahxy)
+          END IF
+          IF (PRESENT(pahgxy)) THEN
+!$acc update device(pahgxy)
+          END IF
+          IF (PRESENT(pahvxy)) THEN
+!$acc update device(pahvxy)
+          END IF
+          IF (PRESENT(pahbxy)) THEN
+!$acc update device(pahbxy)
+          END IF
+          IF (PRESENT(qmeltxy)) THEN
+!$acc update device(qmeltxy)
+          END IF
+          IF (PRESENT(fpicexy)) THEN
+!$acc update device(fpicexy)
+          END IF
+          IF (PRESENT(rainlsm)) THEN
+!$acc update device(rainlsm)
+          END IF
+          IF (PRESENT(snowlsm)) THEN
+!$acc update device(snowlsm)
+          END IF
+          IF (PRESENT(forctlsm)) THEN
+!$acc update device(forctlsm)
+          END IF
+          IF (PRESENT(forcqlsm)) THEN
+!$acc update device(forcqlsm)
+          END IF
+          IF (PRESENT(forcplsm)) THEN
+!$acc update device(forcplsm)
+          END IF
+          IF (PRESENT(forczlsm)) THEN
+!$acc update device(forczlsm)
+          END IF
+          IF (PRESENT(forcwlsm)) THEN
+!$acc update device(forcwlsm)
+          END IF
+          IF (PRESENT(acc_ssoil)) THEN
+!$acc update device(acc_ssoil)
+          END IF
+          IF (PRESENT(acc_qinsur)) THEN
+!$acc update device(acc_qinsur)
+          END IF
+          IF (PRESENT(acc_qseva)) THEN
+!$acc update device(acc_qseva)
+          END IF
+          IF (PRESENT(acc_etrani)) THEN
+!$acc update device(acc_etrani)
+          END IF
+          IF (PRESENT(eflxbxy)) THEN
+!$acc update device(eflxbxy)
+          END IF
+          IF (PRESENT(soilenergy)) THEN
+!$acc update device(soilenergy)
+          END IF
+          IF (PRESENT(snowenergy)) THEN
+!$acc update device(snowenergy)
+          END IF
+          IF (PRESENT(canhsxy)) THEN
+!$acc update device(canhsxy)
+          END IF
+          IF (PRESENT(acc_dwaterxy)) THEN
+!$acc update device(acc_dwaterxy)
+          END IF
+          IF (PRESENT(acc_prcpxy)) THEN
+!$acc update device(acc_prcpxy)
+          END IF
+          IF (PRESENT(acc_ecanxy)) THEN
+!$acc update device(acc_ecanxy)
+          END IF
+          IF (PRESENT(acc_etranxy)) THEN
+!$acc update device(acc_etranxy)
+          END IF
+          IF (PRESENT(acc_edirxy)) THEN
+!$acc update device(acc_edirxy)
+          END IF
+          IF (PRESENT(irnumsi)) THEN
+!$acc update device(irnumsi)
+          END IF
+          IF (PRESENT(irnummi)) THEN
+!$acc update device(irnummi)
+          END IF
+          IF (PRESENT(irnumfi)) THEN
+!$acc update device(irnumfi)
+          END IF
+          IF (PRESENT(irwatsi)) THEN
+!$acc update device(irwatsi)
+          END IF
+          IF (PRESENT(irwatmi)) THEN
+!$acc update device(irwatmi)
+          END IF
+          IF (PRESENT(irwatfi)) THEN
+!$acc update device(irwatfi)
+          END IF
+          IF (PRESENT(ireloss)) THEN
+!$acc update device(ireloss)
+          END IF
+          IF (PRESENT(irsivol)) THEN
+!$acc update device(irsivol)
+          END IF
+          IF (PRESENT(irmivol)) THEN
+!$acc update device(irmivol)
+          END IF
+          IF (PRESENT(irfivol)) THEN
+!$acc update device(irfivol)
+          END IF
+          IF (PRESENT(irrsplh)) THEN
+!$acc update device(irrsplh)
+          END IF
+          IF (PRESENT(qtdrain)) THEN
+!$acc update device(qtdrain)
+          END IF
+          IF (PRESENT(smcwtdxy)) THEN
+!$acc update device(smcwtdxy)
+          END IF
+          IF (PRESENT(rechxy)) THEN
+!$acc update device(rechxy)
+          END IF
+          IF (PRESENT(deeprechxy)) THEN
+!$acc update device(deeprechxy)
+          END IF
+          IF (PRESENT(fdepthxy)) THEN
+!$acc update device(fdepthxy)
+          END IF
+          IF (PRESENT(areaxy)) THEN
+!$acc update device(areaxy)
+          END IF
+          IF (PRESENT(rivercondxy)) THEN
+!$acc update device(rivercondxy)
+          END IF
+          IF (PRESENT(riverbedxy)) THEN
+!$acc update device(riverbedxy)
+          END IF
+          IF (PRESENT(eqzwt)) THEN
+!$acc update device(eqzwt)
+          END IF
+          IF (PRESENT(pexpxy)) THEN
+!$acc update device(pexpxy)
+          END IF
+          IF (PRESENT(qrfxy)) THEN
+!$acc update device(qrfxy)
+          END IF
+          IF (PRESENT(qspringxy)) THEN
+!$acc update device(qspringxy)
+          END IF
+          IF (PRESENT(qslatxy)) THEN
+!$acc update device(qslatxy)
+          END IF
+          IF (PRESENT(qrfsxy)) THEN
+!$acc update device(qrfsxy)
+          END IF
+          IF (PRESENT(qlatxy)) THEN
+!$acc update device(qlatxy)
+          END IF
+          IF (PRESENT(qspringsxy)) THEN
+!$acc update device(qspringsxy)
+          END IF
+          IF (PRESENT(smoiseq)) THEN
+!$acc update device(smoiseq)
+          END IF
+          IF (PRESENT(gecros_state)) THEN
+!$acc update device(gecros_state)
+          END IF
+          IF (PRESENT(ch)) THEN
+!$acc update device(ch)
+          END IF
+          IF (PRESENT(fgdp)) THEN
+!$acc update device(fgdp)
+          END IF
+          IF (PRESENT(dfgdp)) THEN
+!$acc update device(dfgdp)
+          END IF
+          IF (PRESENT(vdfg)) THEN
+!$acc update device(vdfg)
+          END IF
+          IF (PRESENT(om_tmp)) THEN
+!$acc update device(om_tmp)
+          END IF
+          IF (PRESENT(om_s)) THEN
+!$acc update device(om_s)
+          END IF
+          IF (PRESENT(om_u)) THEN
+!$acc update device(om_u)
+          END IF
+          IF (PRESENT(om_v)) THEN
+!$acc update device(om_v)
+          END IF
+          IF (PRESENT(om_depth)) THEN
+!$acc update device(om_depth)
+          END IF
+          IF (PRESENT(om_ml)) THEN
+!$acc update device(om_ml)
+          END IF
+          IF (PRESENT(om_lon)) THEN
+!$acc update device(om_lon)
+          END IF
+          IF (PRESENT(om_lat)) THEN
+!$acc update device(om_lat)
+          END IF
+#if (WRF_CHEM == 1)
+          IF (PRESENT(e_bio)) THEN
+!$acc update device(e_bio)
+          END IF
+#endif
+          IF (PRESENT(numc)) THEN
+!$acc update device(numc)
+          END IF
+          IF (PRESENT(nump)) THEN
+!$acc update device(nump)
+          END IF
+          IF (PRESENT(sabv)) THEN
+!$acc update device(sabv)
+          END IF
+          IF (PRESENT(sabg)) THEN
+!$acc update device(sabg)
+          END IF
+          IF (PRESENT(lwup)) THEN
+!$acc update device(lwup)
+          END IF
+          IF (PRESENT(snl)) THEN
+!$acc update device(snl)
+          END IF
+          IF (PRESENT(snowdp)) THEN
+!$acc update device(snowdp)
+          END IF
+          IF (PRESENT(wtc)) THEN
+!$acc update device(wtc)
+          END IF
+          IF (PRESENT(wtp)) THEN
+!$acc update device(wtp)
+          END IF
+          IF (PRESENT(h2osno)) THEN
+!$acc update device(h2osno)
+          END IF
+          IF (PRESENT(t_grnd)) THEN
+!$acc update device(t_grnd)
+          END IF
+          IF (PRESENT(t_veg)) THEN
+!$acc update device(t_veg)
+          END IF
+          IF (PRESENT(h2ocan)) THEN
+!$acc update device(h2ocan)
+          END IF
+          IF (PRESENT(h2ocan_col)) THEN
+!$acc update device(h2ocan_col)
+          END IF
+          IF (PRESENT(t2m_max)) THEN
+!$acc update device(t2m_max)
+          END IF
+          IF (PRESENT(t2m_min)) THEN
+!$acc update device(t2m_min)
+          END IF
+          IF (PRESENT(t2clm)) THEN
+!$acc update device(t2clm)
+          END IF
+          IF (PRESENT(t_ref2m)) THEN
+!$acc update device(t_ref2m)
+          END IF
+          IF (PRESENT(h2osoi_liq_s1)) THEN
+!$acc update device(h2osoi_liq_s1)
+          END IF
+          IF (PRESENT(h2osoi_liq_s2)) THEN
+!$acc update device(h2osoi_liq_s2)
+          END IF
+          IF (PRESENT(h2osoi_liq_s3)) THEN
+!$acc update device(h2osoi_liq_s3)
+          END IF
+          IF (PRESENT(h2osoi_liq_s4)) THEN
+!$acc update device(h2osoi_liq_s4)
+          END IF
+          IF (PRESENT(h2osoi_liq_s5)) THEN
+!$acc update device(h2osoi_liq_s5)
+          END IF
+          IF (PRESENT(h2osoi_liq1)) THEN
+!$acc update device(h2osoi_liq1)
+          END IF
+          IF (PRESENT(h2osoi_liq2)) THEN
+!$acc update device(h2osoi_liq2)
+          END IF
+          IF (PRESENT(h2osoi_liq3)) THEN
+!$acc update device(h2osoi_liq3)
+          END IF
+          IF (PRESENT(h2osoi_liq4)) THEN
+!$acc update device(h2osoi_liq4)
+          END IF
+          IF (PRESENT(h2osoi_liq5)) THEN
+!$acc update device(h2osoi_liq5)
+          END IF
+          IF (PRESENT(h2osoi_liq6)) THEN
+!$acc update device(h2osoi_liq6)
+          END IF
+          IF (PRESENT(h2osoi_liq7)) THEN
+!$acc update device(h2osoi_liq7)
+          END IF
+          IF (PRESENT(h2osoi_liq8)) THEN
+!$acc update device(h2osoi_liq8)
+          END IF
+          IF (PRESENT(h2osoi_liq9)) THEN
+!$acc update device(h2osoi_liq9)
+          END IF
+          IF (PRESENT(h2osoi_liq10)) THEN
+!$acc update device(h2osoi_liq10)
+          END IF
+          IF (PRESENT(h2osoi_ice_s1)) THEN
+!$acc update device(h2osoi_ice_s1)
+          END IF
+          IF (PRESENT(h2osoi_ice_s2)) THEN
+!$acc update device(h2osoi_ice_s2)
+          END IF
+          IF (PRESENT(h2osoi_ice_s3)) THEN
+!$acc update device(h2osoi_ice_s3)
+          END IF
+          IF (PRESENT(h2osoi_ice_s4)) THEN
+!$acc update device(h2osoi_ice_s4)
+          END IF
+          IF (PRESENT(h2osoi_ice_s5)) THEN
+!$acc update device(h2osoi_ice_s5)
+          END IF
+          IF (PRESENT(h2osoi_ice1)) THEN
+!$acc update device(h2osoi_ice1)
+          END IF
+          IF (PRESENT(h2osoi_ice2)) THEN
+!$acc update device(h2osoi_ice2)
+          END IF
+          IF (PRESENT(h2osoi_ice3)) THEN
+!$acc update device(h2osoi_ice3)
+          END IF
+          IF (PRESENT(h2osoi_ice4)) THEN
+!$acc update device(h2osoi_ice4)
+          END IF
+          IF (PRESENT(h2osoi_ice5)) THEN
+!$acc update device(h2osoi_ice5)
+          END IF
+          IF (PRESENT(h2osoi_ice6)) THEN
+!$acc update device(h2osoi_ice6)
+          END IF
+          IF (PRESENT(h2osoi_ice7)) THEN
+!$acc update device(h2osoi_ice7)
+          END IF
+          IF (PRESENT(h2osoi_ice8)) THEN
+!$acc update device(h2osoi_ice8)
+          END IF
+          IF (PRESENT(h2osoi_ice9)) THEN
+!$acc update device(h2osoi_ice9)
+          END IF
+          IF (PRESENT(h2osoi_ice10)) THEN
+!$acc update device(h2osoi_ice10)
+          END IF
+          IF (PRESENT(t_soisno_s1)) THEN
+!$acc update device(t_soisno_s1)
+          END IF
+          IF (PRESENT(t_soisno_s2)) THEN
+!$acc update device(t_soisno_s2)
+          END IF
+          IF (PRESENT(t_soisno_s3)) THEN
+!$acc update device(t_soisno_s3)
+          END IF
+          IF (PRESENT(t_soisno_s4)) THEN
+!$acc update device(t_soisno_s4)
+          END IF
+          IF (PRESENT(t_soisno_s5)) THEN
+!$acc update device(t_soisno_s5)
+          END IF
+          IF (PRESENT(t_soisno1)) THEN
+!$acc update device(t_soisno1)
+          END IF
+          IF (PRESENT(t_soisno2)) THEN
+!$acc update device(t_soisno2)
+          END IF
+          IF (PRESENT(t_soisno3)) THEN
+!$acc update device(t_soisno3)
+          END IF
+          IF (PRESENT(t_soisno4)) THEN
+!$acc update device(t_soisno4)
+          END IF
+          IF (PRESENT(t_soisno5)) THEN
+!$acc update device(t_soisno5)
+          END IF
+          IF (PRESENT(t_soisno6)) THEN
+!$acc update device(t_soisno6)
+          END IF
+          IF (PRESENT(t_soisno7)) THEN
+!$acc update device(t_soisno7)
+          END IF
+          IF (PRESENT(t_soisno8)) THEN
+!$acc update device(t_soisno8)
+          END IF
+          IF (PRESENT(t_soisno9)) THEN
+!$acc update device(t_soisno9)
+          END IF
+          IF (PRESENT(t_soisno10)) THEN
+!$acc update device(t_soisno10)
+          END IF
+          IF (PRESENT(dzsnow1)) THEN
+!$acc update device(dzsnow1)
+          END IF
+          IF (PRESENT(dzsnow2)) THEN
+!$acc update device(dzsnow2)
+          END IF
+          IF (PRESENT(dzsnow3)) THEN
+!$acc update device(dzsnow3)
+          END IF
+          IF (PRESENT(dzsnow4)) THEN
+!$acc update device(dzsnow4)
+          END IF
+          IF (PRESENT(dzsnow5)) THEN
+!$acc update device(dzsnow5)
+          END IF
+          IF (PRESENT(snowrds1)) THEN
+!$acc update device(snowrds1)
+          END IF
+          IF (PRESENT(snowrds2)) THEN
+!$acc update device(snowrds2)
+          END IF
+          IF (PRESENT(snowrds3)) THEN
+!$acc update device(snowrds3)
+          END IF
+          IF (PRESENT(snowrds4)) THEN
+!$acc update device(snowrds4)
+          END IF
+          IF (PRESENT(snowrds5)) THEN
+!$acc update device(snowrds5)
+          END IF
+          IF (PRESENT(t_lake1)) THEN
+!$acc update device(t_lake1)
+          END IF
+          IF (PRESENT(t_lake2)) THEN
+!$acc update device(t_lake2)
+          END IF
+          IF (PRESENT(t_lake3)) THEN
+!$acc update device(t_lake3)
+          END IF
+          IF (PRESENT(t_lake4)) THEN
+!$acc update device(t_lake4)
+          END IF
+          IF (PRESENT(t_lake5)) THEN
+!$acc update device(t_lake5)
+          END IF
+          IF (PRESENT(t_lake6)) THEN
+!$acc update device(t_lake6)
+          END IF
+          IF (PRESENT(t_lake7)) THEN
+!$acc update device(t_lake7)
+          END IF
+          IF (PRESENT(t_lake8)) THEN
+!$acc update device(t_lake8)
+          END IF
+          IF (PRESENT(t_lake9)) THEN
+!$acc update device(t_lake9)
+          END IF
+          IF (PRESENT(t_lake10)) THEN
+!$acc update device(t_lake10)
+          END IF
+          IF (PRESENT(h2osoi_vol1)) THEN
+!$acc update device(h2osoi_vol1)
+          END IF
+          IF (PRESENT(h2osoi_vol2)) THEN
+!$acc update device(h2osoi_vol2)
+          END IF
+          IF (PRESENT(h2osoi_vol3)) THEN
+!$acc update device(h2osoi_vol3)
+          END IF
+          IF (PRESENT(h2osoi_vol4)) THEN
+!$acc update device(h2osoi_vol4)
+          END IF
+          IF (PRESENT(h2osoi_vol5)) THEN
+!$acc update device(h2osoi_vol5)
+          END IF
+          IF (PRESENT(h2osoi_vol6)) THEN
+!$acc update device(h2osoi_vol6)
+          END IF
+          IF (PRESENT(h2osoi_vol7)) THEN
+!$acc update device(h2osoi_vol7)
+          END IF
+          IF (PRESENT(h2osoi_vol8)) THEN
+!$acc update device(h2osoi_vol8)
+          END IF
+          IF (PRESENT(h2osoi_vol9)) THEN
+!$acc update device(h2osoi_vol9)
+          END IF
+          IF (PRESENT(h2osoi_vol10)) THEN
+!$acc update device(h2osoi_vol10)
+          END IF
+          IF (PRESENT(albedosubgrid)) THEN
+!$acc update device(albedosubgrid)
+          END IF
+          IF (PRESENT(lhsubgrid)) THEN
+!$acc update device(lhsubgrid)
+          END IF
+          IF (PRESENT(hfxsubgrid)) THEN
+!$acc update device(hfxsubgrid)
+          END IF
+          IF (PRESENT(lwupsubgrid)) THEN
+!$acc update device(lwupsubgrid)
+          END IF
+          IF (PRESENT(q2subgrid)) THEN
+!$acc update device(q2subgrid)
+          END IF
+          IF (PRESENT(sabvsubgrid)) THEN
+!$acc update device(sabvsubgrid)
+          END IF
+          IF (PRESENT(sabgsubgrid)) THEN
+!$acc update device(sabgsubgrid)
+          END IF
+          IF (PRESENT(nrasubgrid)) THEN
+!$acc update device(nrasubgrid)
+          END IF
+          IF (PRESENT(swupsubgrid)) THEN
+!$acc update device(swupsubgrid)
+          END IF
+          IF (PRESENT(lhsoi)) THEN
+!$acc update device(lhsoi)
+          END IF
+          IF (PRESENT(lhveg)) THEN
+!$acc update device(lhveg)
+          END IF
+          IF (PRESENT(lhtran)) THEN
+!$acc update device(lhtran)
+          END IF
+          IF (PRESENT(t_veg24)) THEN
+!$acc update device(t_veg24)
+          END IF
+          IF (PRESENT(t_veg240)) THEN
+!$acc update device(t_veg240)
+          END IF
+          IF (PRESENT(fsun24)) THEN
+!$acc update device(fsun24)
+          END IF
+          IF (PRESENT(fsun240)) THEN
+!$acc update device(fsun240)
+          END IF
+          IF (PRESENT(fsd24)) THEN
+!$acc update device(fsd24)
+          END IF
+          IF (PRESENT(fsd240)) THEN
+!$acc update device(fsd240)
+          END IF
+          IF (PRESENT(fsi24)) THEN
+!$acc update device(fsi24)
+          END IF
+          IF (PRESENT(fsi240)) THEN
+!$acc update device(fsi240)
+          END IF
+          IF (PRESENT(laip)) THEN
+!$acc update device(laip)
+          END IF
+#ifdef CN
+          IF (PRESENT(dyntlai)) THEN
+!$acc update device(dyntlai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntsai)) THEN
+!$acc update device(dyntsai)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dyntop)) THEN
+!$acc update device(dyntop)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dynbot)) THEN
+!$acc update device(dynbot)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(htmx)) THEN
+!$acc update device(htmx)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(croplive)) THEN
+!$acc update device(croplive)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd1020)) THEN
+!$acc update device(gdd1020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd820)) THEN
+!$acc update device(gdd820)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gdd020)) THEN
+!$acc update device(gdd020)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc)) THEN
+!$acc update device(grainc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_storage)) THEN
+!$acc update device(grainc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainc_xfer)) THEN
+!$acc update device(grainc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn)) THEN
+!$acc update device(grainn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_storage)) THEN
+!$acc update device(grainn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(grainn_xfer)) THEN
+!$acc update device(grainn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(days_active)) THEN
+!$acc update device(days_active)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_flag)) THEN
+!$acc update device(onset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_counter)) THEN
+!$acc update device(onset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gddflag)) THEN
+!$acc update device(onset_gddflag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_fdd)) THEN
+!$acc update device(onset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_gdd)) THEN
+!$acc update device(onset_gdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(onset_swi)) THEN
+!$acc update device(onset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_flag)) THEN
+!$acc update device(offset_flag)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_counter)) THEN
+!$acc update device(offset_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_fdd)) THEN
+!$acc update device(offset_fdd)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(offset_swi)) THEN
+!$acc update device(offset_swi)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dayl)) THEN
+!$acc update device(dayl)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annavg_t2m)) THEN
+!$acc update device(annavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempavg_t2m)) THEN
+!$acc update device(tempavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_potential_gpp)) THEN
+!$acc update device(tempsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_potential_gpp)) THEN
+!$acc update device(annsum_potential_gpp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempmax_retransn)) THEN
+!$acc update device(tempmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annmax_retransn)) THEN
+!$acc update device(annmax_retransn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_leafc_to_litter)) THEN
+!$acc update device(prev_leafc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prev_frootc_to_litter)) THEN
+!$acc update device(prev_frootc_to_litter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(tempsum_npp)) THEN
+!$acc update device(tempsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_npp)) THEN
+!$acc update device(annsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc)) THEN
+!$acc update device(leafc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_storage)) THEN
+!$acc update device(leafc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafc_xfer)) THEN
+!$acc update device(leafc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc)) THEN
+!$acc update device(frootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_storage)) THEN
+!$acc update device(frootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootc_xfer)) THEN
+!$acc update device(frootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc)) THEN
+!$acc update device(livestemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_storage)) THEN
+!$acc update device(livestemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemc_xfer)) THEN
+!$acc update device(livestemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc)) THEN
+!$acc update device(deadstemc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_storage)) THEN
+!$acc update device(deadstemc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemc_xfer)) THEN
+!$acc update device(deadstemc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc)) THEN
+!$acc update device(livecrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_storage)) THEN
+!$acc update device(livecrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootc_xfer)) THEN
+!$acc update device(livecrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc)) THEN
+!$acc update device(deadcrootc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_storage)) THEN
+!$acc update device(deadcrootc_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootc_xfer)) THEN
+!$acc update device(deadcrootc_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cpool)) THEN
+!$acc update device(cpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ctrunc)) THEN
+!$acc update device(pft_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn)) THEN
+!$acc update device(leafn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_storage)) THEN
+!$acc update device(leafn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(leafn_xfer)) THEN
+!$acc update device(leafn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn)) THEN
+!$acc update device(frootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_storage)) THEN
+!$acc update device(frootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(frootn_xfer)) THEN
+!$acc update device(frootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn)) THEN
+!$acc update device(livestemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_storage)) THEN
+!$acc update device(livestemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livestemn_xfer)) THEN
+!$acc update device(livestemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn)) THEN
+!$acc update device(deadstemn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_storage)) THEN
+!$acc update device(deadstemn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadstemn_xfer)) THEN
+!$acc update device(deadstemn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn)) THEN
+!$acc update device(livecrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_storage)) THEN
+!$acc update device(livecrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(livecrootn_xfer)) THEN
+!$acc update device(livecrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn)) THEN
+!$acc update device(deadcrootn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_storage)) THEN
+!$acc update device(deadcrootn_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(deadcrootn_xfer)) THEN
+!$acc update device(deadcrootn_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(npool)) THEN
+!$acc update device(npool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(pft_ntrunc)) THEN
+!$acc update device(pft_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_storage)) THEN
+!$acc update device(gresp_storage)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(gresp_xfer)) THEN
+!$acc update device(gresp_xfer)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(xsmrpool)) THEN
+!$acc update device(xsmrpool)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(annsum_counter)) THEN
+!$acc update device(annsum_counter)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannsum_npp)) THEN
+!$acc update device(cannsum_npp)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cannavg_t2m)) THEN
+!$acc update device(cannavg_t2m)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(wf)) THEN
+!$acc update device(wf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(me)) THEN
+!$acc update device(me)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(mean_fire_prob)) THEN
+!$acc update device(mean_fire_prob)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdc)) THEN
+!$acc update device(cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1c)) THEN
+!$acc update device(litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2c)) THEN
+!$acc update device(litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3c)) THEN
+!$acc update device(litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1c)) THEN
+!$acc update device(soil1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2c)) THEN
+!$acc update device(soil2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3c)) THEN
+!$acc update device(soil3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4c)) THEN
+!$acc update device(soil4c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedc)) THEN
+!$acc update device(seedc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ctrunc)) THEN
+!$acc update device(col_ctrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10c)) THEN
+!$acc update device(prod10c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c)) THEN
+!$acc update device(prod100c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(cwdn)) THEN
+!$acc update device(cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr1n)) THEN
+!$acc update device(litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr2n)) THEN
+!$acc update device(litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(litr3n)) THEN
+!$acc update device(litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil1n)) THEN
+!$acc update device(soil1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil2n)) THEN
+!$acc update device(soil2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil3n)) THEN
+!$acc update device(soil3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(soil4n)) THEN
+!$acc update device(soil4n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(seedn)) THEN
+!$acc update device(seedn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(col_ntrunc)) THEN
+!$acc update device(col_ntrunc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod10n)) THEN
+!$acc update device(prod10n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n)) THEN
+!$acc update device(prod100n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(sminn)) THEN
+!$acc update device(sminn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(totlitc)) THEN
+!$acc update device(totlitc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_leaf)) THEN
+!$acc update device(dwt_seedc_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedc_to_deadstem)) THEN
+!$acc update device(dwt_seedc_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_cflux)) THEN
+!$acc update device(dwt_conv_cflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10c_gain)) THEN
+!$acc update device(dwt_prod10c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100c_gain)) THEN
+!$acc update device(dwt_prod100c_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100c_loss)) THEN
+!$acc update device(prod100c_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr1c)) THEN
+!$acc update device(dwt_frootc_to_litr1c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr2c)) THEN
+!$acc update device(dwt_frootc_to_litr2c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootc_to_litr3c)) THEN
+!$acc update device(dwt_frootc_to_litr3c)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootc_to_cwdc)) THEN
+!$acc update device(dwt_livecrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootc_to_cwdc)) THEN
+!$acc update device(dwt_deadcrootc_to_cwdc)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_leaf)) THEN
+!$acc update device(dwt_seedn_to_leaf)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_seedn_to_deadstem)) THEN
+!$acc update device(dwt_seedn_to_deadstem)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_conv_nflux)) THEN
+!$acc update device(dwt_conv_nflux)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod10n_gain)) THEN
+!$acc update device(dwt_prod10n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_prod100n_gain)) THEN
+!$acc update device(dwt_prod100n_gain)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(prod100n_loss)) THEN
+!$acc update device(prod100n_loss)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr1n)) THEN
+!$acc update device(dwt_frootn_to_litr1n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr2n)) THEN
+!$acc update device(dwt_frootn_to_litr2n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_frootn_to_litr3n)) THEN
+!$acc update device(dwt_frootn_to_litr3n)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_livecrootn_to_cwdn)) THEN
+!$acc update device(dwt_livecrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(dwt_deadcrootn_to_cwdn)) THEN
+!$acc update device(dwt_deadcrootn_to_cwdn)
+          END IF
+#endif
+#ifdef CN
+          IF (PRESENT(retransn)) THEN
+!$acc update device(retransn)
+          END IF
+#endif
+          IF (PRESENT(swnorm)) THEN
+!$acc update device(swnorm)
+          END IF
+          IF (PRESENT(tr_urb2d)) THEN
+!$acc update device(tr_urb2d)
+          END IF
+          IF (PRESENT(tb_urb2d)) THEN
+!$acc update device(tb_urb2d)
+          END IF
+          IF (PRESENT(tg_urb2d)) THEN
+!$acc update device(tg_urb2d)
+          END IF
+          IF (PRESENT(tc_urb2d)) THEN
+!$acc update device(tc_urb2d)
+          END IF
+          IF (PRESENT(qc_urb2d)) THEN
+!$acc update device(qc_urb2d)
+          END IF
+          IF (PRESENT(uc_urb2d)) THEN
+!$acc update device(uc_urb2d)
+          END IF
+          IF (PRESENT(xxxr_urb2d)) THEN
+!$acc update device(xxxr_urb2d)
+          END IF
+          IF (PRESENT(xxxb_urb2d)) THEN
+!$acc update device(xxxb_urb2d)
+          END IF
+          IF (PRESENT(xxxg_urb2d)) THEN
+!$acc update device(xxxg_urb2d)
+          END IF
+          IF (PRESENT(xxxc_urb2d)) THEN
+!$acc update device(xxxc_urb2d)
+          END IF
+          IF (PRESENT(cmcr_urb2d)) THEN
+!$acc update device(cmcr_urb2d)
+          END IF
+          IF (PRESENT(tgr_urb2d)) THEN
+!$acc update device(tgr_urb2d)
+          END IF
+          IF (PRESENT(tgrl_urb3d)) THEN
+!$acc update device(tgrl_urb3d)
+          END IF
+          IF (PRESENT(smr_urb3d)) THEN
+!$acc update device(smr_urb3d)
+          END IF
+          IF (PRESENT(drelr_urb2d)) THEN
+!$acc update device(drelr_urb2d)
+          END IF
+          IF (PRESENT(drelb_urb2d)) THEN
+!$acc update device(drelb_urb2d)
+          END IF
+          IF (PRESENT(drelg_urb2d)) THEN
+!$acc update device(drelg_urb2d)
+          END IF
+          IF (PRESENT(flxhumr_urb2d)) THEN
+!$acc update device(flxhumr_urb2d)
+          END IF
+          IF (PRESENT(flxhumb_urb2d)) THEN
+!$acc update device(flxhumb_urb2d)
+          END IF
+          IF (PRESENT(flxhumg_urb2d)) THEN
+!$acc update device(flxhumg_urb2d)
+          END IF
+          IF (PRESENT(trl_urb3d)) THEN
+!$acc update device(trl_urb3d)
+          END IF
+          IF (PRESENT(tbl_urb3d)) THEN
+!$acc update device(tbl_urb3d)
+          END IF
+          IF (PRESENT(tgl_urb3d)) THEN
+!$acc update device(tgl_urb3d)
+          END IF
+          IF (PRESENT(sh_urb2d)) THEN
+!$acc update device(sh_urb2d)
+          END IF
+          IF (PRESENT(lh_urb2d)) THEN
+!$acc update device(lh_urb2d)
+          END IF
+          IF (PRESENT(g_urb2d)) THEN
+!$acc update device(g_urb2d)
+          END IF
+          IF (PRESENT(rn_urb2d)) THEN
+!$acc update device(rn_urb2d)
+          END IF
+          IF (PRESENT(ts_urb2d)) THEN
+!$acc update device(ts_urb2d)
+          END IF
+          IF (PRESENT(frc_urb2d)) THEN
+!$acc update device(frc_urb2d)
+          END IF
+          IF (PRESENT(utype_urb2d)) THEN
+!$acc update device(utype_urb2d)
+          END IF
+          IF (PRESENT(cmr_sfcdif)) THEN
+!$acc update device(cmr_sfcdif)
+          END IF
+          IF (PRESENT(chr_sfcdif)) THEN
+!$acc update device(chr_sfcdif)
+          END IF
+          IF (PRESENT(cmc_sfcdif)) THEN
+!$acc update device(cmc_sfcdif)
+          END IF
+          IF (PRESENT(chc_sfcdif)) THEN
+!$acc update device(chc_sfcdif)
+          END IF
+          IF (PRESENT(cmgr_sfcdif)) THEN
+!$acc update device(cmgr_sfcdif)
+          END IF
+          IF (PRESENT(chgr_sfcdif)) THEN
+!$acc update device(chgr_sfcdif)
+          END IF
+          IF (PRESENT(alswvisdir)) THEN
+!$acc update device(alswvisdir)
+          END IF
+          IF (PRESENT(alswvisdif)) THEN
+!$acc update device(alswvisdif)
+          END IF
+          IF (PRESENT(alswnirdir)) THEN
+!$acc update device(alswnirdir)
+          END IF
+          IF (PRESENT(alswnirdif)) THEN
+!$acc update device(alswnirdif)
+          END IF
+          IF (PRESENT(ssib_br)) THEN
+!$acc update device(ssib_br)
+          END IF
+          IF (PRESENT(ssib_fm)) THEN
+!$acc update device(ssib_fm)
+          END IF
+          IF (PRESENT(ssib_fh)) THEN
+!$acc update device(ssib_fh)
+          END IF
+          IF (PRESENT(ssib_cm)) THEN
+!$acc update device(ssib_cm)
+          END IF
+          IF (PRESENT(ssibxdd)) THEN
+!$acc update device(ssibxdd)
+          END IF
+          IF (PRESENT(ssib_lhf)) THEN
+!$acc update device(ssib_lhf)
+          END IF
+          IF (PRESENT(ssib_shf)) THEN
+!$acc update device(ssib_shf)
+          END IF
+          IF (PRESENT(ssib_ghf)) THEN
+!$acc update device(ssib_ghf)
+          END IF
+          IF (PRESENT(ssib_egs)) THEN
+!$acc update device(ssib_egs)
+          END IF
+          IF (PRESENT(ssib_eci)) THEN
+!$acc update device(ssib_eci)
+          END IF
+          IF (PRESENT(ssib_ect)) THEN
+!$acc update device(ssib_ect)
+          END IF
+          IF (PRESENT(ssib_egi)) THEN
+!$acc update device(ssib_egi)
+          END IF
+          IF (PRESENT(ssib_egt)) THEN
+!$acc update device(ssib_egt)
+          END IF
+          IF (PRESENT(ssib_sdn)) THEN
+!$acc update device(ssib_sdn)
+          END IF
+          IF (PRESENT(ssib_sup)) THEN
+!$acc update device(ssib_sup)
+          END IF
+          IF (PRESENT(ssib_ldn)) THEN
+!$acc update device(ssib_ldn)
+          END IF
+          IF (PRESENT(ssib_lup)) THEN
+!$acc update device(ssib_lup)
+          END IF
+          IF (PRESENT(ssib_wat)) THEN
+!$acc update device(ssib_wat)
+          END IF
+          IF (PRESENT(ssib_shc)) THEN
+!$acc update device(ssib_shc)
+          END IF
+          IF (PRESENT(ssib_shg)) THEN
+!$acc update device(ssib_shg)
+          END IF
+          IF (PRESENT(ssib_lai)) THEN
+!$acc update device(ssib_lai)
+          END IF
+          IF (PRESENT(ssib_vcf)) THEN
+!$acc update device(ssib_vcf)
+          END IF
+          IF (PRESENT(ssib_z00)) THEN
+!$acc update device(ssib_z00)
+          END IF
+          IF (PRESENT(ssib_veg)) THEN
+!$acc update device(ssib_veg)
+          END IF
+          IF (PRESENT(isnow)) THEN
+!$acc update device(isnow)
+          END IF
+          IF (PRESENT(swe)) THEN
+!$acc update device(swe)
+          END IF
+          IF (PRESENT(snowden)) THEN
+!$acc update device(snowden)
+          END IF
+          IF (PRESENT(snowdepth)) THEN
+!$acc update device(snowdepth)
+          END IF
+          IF (PRESENT(tkair)) THEN
+!$acc update device(tkair)
+          END IF
+          IF (PRESENT(dzo1)) THEN
+!$acc update device(dzo1)
+          END IF
+          IF (PRESENT(wo1)) THEN
+!$acc update device(wo1)
+          END IF
+          IF (PRESENT(tssn1)) THEN
+!$acc update device(tssn1)
+          END IF
+          IF (PRESENT(tssno1)) THEN
+!$acc update device(tssno1)
+          END IF
+          IF (PRESENT(bwo1)) THEN
+!$acc update device(bwo1)
+          END IF
+          IF (PRESENT(bto1)) THEN
+!$acc update device(bto1)
+          END IF
+          IF (PRESENT(cto1)) THEN
+!$acc update device(cto1)
+          END IF
+          IF (PRESENT(fio1)) THEN
+!$acc update device(fio1)
+          END IF
+          IF (PRESENT(flo1)) THEN
+!$acc update device(flo1)
+          END IF
+          IF (PRESENT(bio1)) THEN
+!$acc update device(bio1)
+          END IF
+          IF (PRESENT(blo1)) THEN
+!$acc update device(blo1)
+          END IF
+          IF (PRESENT(ho1)) THEN
+!$acc update device(ho1)
+          END IF
+          IF (PRESENT(dzo2)) THEN
+!$acc update device(dzo2)
+          END IF
+          IF (PRESENT(wo2)) THEN
+!$acc update device(wo2)
+          END IF
+          IF (PRESENT(tssn2)) THEN
+!$acc update device(tssn2)
+          END IF
+          IF (PRESENT(tssno2)) THEN
+!$acc update device(tssno2)
+          END IF
+          IF (PRESENT(bwo2)) THEN
+!$acc update device(bwo2)
+          END IF
+          IF (PRESENT(bto2)) THEN
+!$acc update device(bto2)
+          END IF
+          IF (PRESENT(cto2)) THEN
+!$acc update device(cto2)
+          END IF
+          IF (PRESENT(fio2)) THEN
+!$acc update device(fio2)
+          END IF
+          IF (PRESENT(flo2)) THEN
+!$acc update device(flo2)
+          END IF
+          IF (PRESENT(bio2)) THEN
+!$acc update device(bio2)
+          END IF
+          IF (PRESENT(blo2)) THEN
+!$acc update device(blo2)
+          END IF
+          IF (PRESENT(ho2)) THEN
+!$acc update device(ho2)
+          END IF
+          IF (PRESENT(dzo3)) THEN
+!$acc update device(dzo3)
+          END IF
+          IF (PRESENT(wo3)) THEN
+!$acc update device(wo3)
+          END IF
+          IF (PRESENT(tssn3)) THEN
+!$acc update device(tssn3)
+          END IF
+          IF (PRESENT(tssno3)) THEN
+!$acc update device(tssno3)
+          END IF
+          IF (PRESENT(bwo3)) THEN
+!$acc update device(bwo3)
+          END IF
+          IF (PRESENT(bto3)) THEN
+!$acc update device(bto3)
+          END IF
+          IF (PRESENT(cto3)) THEN
+!$acc update device(cto3)
+          END IF
+          IF (PRESENT(fio3)) THEN
+!$acc update device(fio3)
+          END IF
+          IF (PRESENT(flo3)) THEN
+!$acc update device(flo3)
+          END IF
+          IF (PRESENT(bio3)) THEN
+!$acc update device(bio3)
+          END IF
+          IF (PRESENT(blo3)) THEN
+!$acc update device(blo3)
+          END IF
+          IF (PRESENT(ho3)) THEN
+!$acc update device(ho3)
+          END IF
+          IF (PRESENT(dzo4)) THEN
+!$acc update device(dzo4)
+          END IF
+          IF (PRESENT(wo4)) THEN
+!$acc update device(wo4)
+          END IF
+          IF (PRESENT(tssn4)) THEN
+!$acc update device(tssn4)
+          END IF
+          IF (PRESENT(tssno4)) THEN
+!$acc update device(tssno4)
+          END IF
+          IF (PRESENT(bwo4)) THEN
+!$acc update device(bwo4)
+          END IF
+          IF (PRESENT(bto4)) THEN
+!$acc update device(bto4)
+          END IF
+          IF (PRESENT(cto4)) THEN
+!$acc update device(cto4)
+          END IF
+          IF (PRESENT(fio4)) THEN
+!$acc update device(fio4)
+          END IF
+          IF (PRESENT(flo4)) THEN
+!$acc update device(flo4)
+          END IF
+          IF (PRESENT(bio4)) THEN
+!$acc update device(bio4)
+          END IF
+          IF (PRESENT(blo4)) THEN
+!$acc update device(blo4)
+          END IF
+          IF (PRESENT(ho4)) THEN
+!$acc update device(ho4)
+          END IF
+          IF (PRESENT(qv_curr)) THEN
+!$acc update device(qv_curr)
+          END IF
+          IF (PRESENT(qc_curr)) THEN
+!$acc update device(qc_curr)
+          END IF
+          IF (PRESENT(qr_curr)) THEN
+!$acc update device(qr_curr)
+          END IF
+          IF (PRESENT(qi_curr)) THEN
+!$acc update device(qi_curr)
+          END IF
+          IF (PRESENT(qs_curr)) THEN
+!$acc update device(qs_curr)
+          END IF
+          IF (PRESENT(qg_curr)) THEN
+!$acc update device(qg_curr)
+          END IF
+          IF (PRESENT(capg)) THEN
+!$acc update device(capg)
+          END IF
+          IF (PRESENT(hol)) THEN
+!$acc update device(hol)
+          END IF
+          IF (PRESENT(mol)) THEN
+!$acc update device(mol)
+          END IF
+          IF (PRESENT(rainbl)) THEN
+!$acc update device(rainbl)
+          END IF
+          IF (PRESENT(regime)) THEN
+!$acc update device(regime)
+          END IF
+          IF (PRESENT(qsg)) THEN
+!$acc update device(qsg)
+          END IF
+          IF (PRESENT(qvg)) THEN
+!$acc update device(qvg)
+          END IF
+          IF (PRESENT(qcg)) THEN
+!$acc update device(qcg)
+          END IF
+          IF (PRESENT(soilt1)) THEN
+!$acc update device(soilt1)
+          END IF
+          IF (PRESENT(tsnav)) THEN
+!$acc update device(tsnav)
+          END IF
+          IF (PRESENT(smfr3d)) THEN
+!$acc update device(smfr3d)
+          END IF
+          IF (PRESENT(keepfr3dflag)) THEN
+!$acc update device(keepfr3dflag)
+          END IF
+          IF (PRESENT(dew)) THEN
+!$acc update device(dew)
+          END IF
+          IF (PRESENT(rhosnf)) THEN
+!$acc update device(rhosnf)
+          END IF
+          IF (PRESENT(precipfr)) THEN
+!$acc update device(precipfr)
+          END IF
+          IF (PRESENT(potevp)) THEN
+!$acc update device(potevp)
+          END IF
+          IF (PRESENT(snopcx)) THEN
+!$acc update device(snopcx)
+          END IF
+          IF (PRESENT(soiltb)) THEN
+!$acc update device(soiltb)
+          END IF
+          IF (PRESENT(sr)) THEN
+!$acc update device(sr)
+          END IF
+          IF (PRESENT(t2_ndg_old)) THEN
+!$acc update device(t2_ndg_old)
+          END IF
+          IF (PRESENT(q2_ndg_old)) THEN
+!$acc update device(q2_ndg_old)
+          END IF
+          IF (PRESENT(t2_ndg_new)) THEN
+!$acc update device(t2_ndg_new)
+          END IF
+          IF (PRESENT(q2_ndg_new)) THEN
+!$acc update device(q2_ndg_new)
+          END IF
+          IF (PRESENT(sn_ndg_old)) THEN
+!$acc update device(sn_ndg_old)
+          END IF
+          IF (PRESENT(sn_ndg_new)) THEN
+!$acc update device(sn_ndg_new)
+          END IF
+          IF (PRESENT(t2obs)) THEN
+!$acc update device(t2obs)
+          END IF
+          IF (PRESENT(q2obs)) THEN
+!$acc update device(q2obs)
+          END IF
+          IF (PRESENT(hd_temf)) THEN
+!$acc update device(hd_temf)
+          END IF
+          IF (PRESENT(te_temf)) THEN
+!$acc update device(te_temf)
+          END IF
+          IF (PRESENT(exch_temf)) THEN
+!$acc update device(exch_temf)
+          END IF
+          IF (PRESENT(wm_temf)) THEN
+!$acc update device(wm_temf)
+          END IF
+          IF (PRESENT(uratx)) THEN
+!$acc update device(uratx)
+          END IF
+          IF (PRESENT(vratx)) THEN
+!$acc update device(vratx)
+          END IF
+          IF (PRESENT(tratx)) THEN
+!$acc update device(tratx)
+          END IF
+          IF (PRESENT(tml)) THEN
+!$acc update device(tml)
+          END IF
+          IF (PRESENT(t0ml)) THEN
+!$acc update device(t0ml)
+          END IF
+          IF (PRESENT(hml)) THEN
+!$acc update device(hml)
+          END IF
+          IF (PRESENT(h0ml)) THEN
+!$acc update device(h0ml)
+          END IF
+          IF (PRESENT(huml)) THEN
+!$acc update device(huml)
+          END IF
+          IF (PRESENT(hvml)) THEN
+!$acc update device(hvml)
+          END IF
+          IF (PRESENT(ustm)) THEN
+!$acc update device(ustm)
+          END IF
+          IF (PRESENT(ck)) THEN
+!$acc update device(ck)
+          END IF
+          IF (PRESENT(cka)) THEN
+!$acc update device(cka)
+          END IF
+          IF (PRESENT(cd)) THEN
+!$acc update device(cd)
+          END IF
+          IF (PRESENT(cda)) THEN
+!$acc update device(cda)
+          END IF
+          IF (PRESENT(snotime)) THEN
+!$acc update device(snotime)
+          END IF
+          IF (PRESENT(noahres)) THEN
+!$acc update device(noahres)
+          END IF
+          IF (PRESENT(tsk_rural)) THEN
+!$acc update device(tsk_rural)
+          END IF
+          IF (PRESENT(trb_urb4d)) THEN
+!$acc update device(trb_urb4d)
+          END IF
+          IF (PRESENT(tw1_urb4d)) THEN
+!$acc update device(tw1_urb4d)
+          END IF
+          IF (PRESENT(tw2_urb4d)) THEN
+!$acc update device(tw2_urb4d)
+          END IF
+          IF (PRESENT(tgb_urb4d)) THEN
+!$acc update device(tgb_urb4d)
+          END IF
+          IF (PRESENT(tlev_urb3d)) THEN
+!$acc update device(tlev_urb3d)
+          END IF
+          IF (PRESENT(qlev_urb3d)) THEN
+!$acc update device(qlev_urb3d)
+          END IF
+          IF (PRESENT(tw1lev_urb3d)) THEN
+!$acc update device(tw1lev_urb3d)
+          END IF
+          IF (PRESENT(tw2lev_urb3d)) THEN
+!$acc update device(tw2lev_urb3d)
+          END IF
+          IF (PRESENT(tglev_urb3d)) THEN
+!$acc update device(tglev_urb3d)
+          END IF
+          IF (PRESENT(tflev_urb3d)) THEN
+!$acc update device(tflev_urb3d)
+          END IF
+          IF (PRESENT(sf_ac_urb3d)) THEN
+!$acc update device(sf_ac_urb3d)
+          END IF
+          IF (PRESENT(lf_ac_urb3d)) THEN
+!$acc update device(lf_ac_urb3d)
+          END IF
+          IF (PRESENT(cm_ac_urb3d)) THEN
+!$acc update device(cm_ac_urb3d)
+          END IF
+          IF (PRESENT(sfvent_urb3d)) THEN
+!$acc update device(sfvent_urb3d)
+          END IF
+          IF (PRESENT(lfvent_urb3d)) THEN
+!$acc update device(lfvent_urb3d)
+          END IF
+          IF (PRESENT(sfwin1_urb3d)) THEN
+!$acc update device(sfwin1_urb3d)
+          END IF
+          IF (PRESENT(sfwin2_urb3d)) THEN
+!$acc update device(sfwin2_urb3d)
+          END IF
+          IF (PRESENT(sfw1_urb3d)) THEN
+!$acc update device(sfw1_urb3d)
+          END IF
+          IF (PRESENT(sfw2_urb3d)) THEN
+!$acc update device(sfw2_urb3d)
+          END IF
+          IF (PRESENT(sfr_urb3d)) THEN
+!$acc update device(sfr_urb3d)
+          END IF
+          IF (PRESENT(sfg_urb3d)) THEN
+!$acc update device(sfg_urb3d)
+          END IF
+          IF (PRESENT(ep_pv_urb3d)) THEN
+!$acc update device(ep_pv_urb3d)
+          END IF
+          IF (PRESENT(t_pv_urb3d)) THEN
+!$acc update device(t_pv_urb3d)
+          END IF
+          IF (PRESENT(trv_urb4d)) THEN
+!$acc update device(trv_urb4d)
+          END IF
+          IF (PRESENT(qr_urb4d)) THEN
+!$acc update device(qr_urb4d)
+          END IF
+          IF (PRESENT(qgr_urb3d)) THEN
+!$acc update device(qgr_urb3d)
+          END IF
+          IF (PRESENT(tgr_urb3d)) THEN
+!$acc update device(tgr_urb3d)
+          END IF
+          IF (PRESENT(drain_urb4d)) THEN
+!$acc update device(drain_urb4d)
+          END IF
+          IF (PRESENT(draingr_urb3d)) THEN
+!$acc update device(draingr_urb3d)
+          END IF
+          IF (PRESENT(sfrv_urb3d)) THEN
+!$acc update device(sfrv_urb3d)
+          END IF
+          IF (PRESENT(lfrv_urb3d)) THEN
+!$acc update device(lfrv_urb3d)
+          END IF
+          IF (PRESENT(dgr_urb3d)) THEN
+!$acc update device(dgr_urb3d)
+          END IF
+          IF (PRESENT(dg_urb3d)) THEN
+!$acc update device(dg_urb3d)
+          END IF
+          IF (PRESENT(lfr_urb3d)) THEN
+!$acc update device(lfr_urb3d)
+          END IF
+          IF (PRESENT(lfg_urb3d)) THEN
+!$acc update device(lfg_urb3d)
+          END IF
+          IF (PRESENT(a_u_bep)) THEN
+!$acc update device(a_u_bep)
+          END IF
+          IF (PRESENT(a_v_bep)) THEN
+!$acc update device(a_v_bep)
+          END IF
+          IF (PRESENT(a_t_bep)) THEN
+!$acc update device(a_t_bep)
+          END IF
+          IF (PRESENT(a_q_bep)) THEN
+!$acc update device(a_q_bep)
+          END IF
+          IF (PRESENT(b_u_bep)) THEN
+!$acc update device(b_u_bep)
+          END IF
+          IF (PRESENT(b_v_bep)) THEN
+!$acc update device(b_v_bep)
+          END IF
+          IF (PRESENT(b_t_bep)) THEN
+!$acc update device(b_t_bep)
+          END IF
+          IF (PRESENT(b_q_bep)) THEN
+!$acc update device(b_q_bep)
+          END IF
+          IF (PRESENT(sf_bep)) THEN
+!$acc update device(sf_bep)
+          END IF
+          IF (PRESENT(vl_bep)) THEN
+!$acc update device(vl_bep)
+          END IF
+          IF (PRESENT(a_e_bep)) THEN
+!$acc update device(a_e_bep)
+          END IF
+          IF (PRESENT(b_e_bep)) THEN
+!$acc update device(b_e_bep)
+          END IF
+          IF (PRESENT(dlg_bep)) THEN
+!$acc update device(dlg_bep)
+          END IF
+          IF (PRESENT(dl_u_bep)) THEN
+!$acc update device(dl_u_bep)
+          END IF
+          IF (PRESENT(tsk_save)) THEN
+!$acc update device(tsk_save)
+          END IF
+          IF (PRESENT(mosaic_cat_index)) THEN
+!$acc update device(mosaic_cat_index)
+          END IF
+          IF (PRESENT(landusef2)) THEN
+!$acc update device(landusef2)
+          END IF
+          IF (PRESENT(tsk_mosaic)) THEN
+!$acc update device(tsk_mosaic)
+          END IF
+          IF (PRESENT(qsfc_mosaic)) THEN
+!$acc update device(qsfc_mosaic)
+          END IF
+          IF (PRESENT(tslb_mosaic)) THEN
+!$acc update device(tslb_mosaic)
+          END IF
+          IF (PRESENT(smois_mosaic)) THEN
+!$acc update device(smois_mosaic)
+          END IF
+          IF (PRESENT(sh2o_mosaic)) THEN
+!$acc update device(sh2o_mosaic)
+          END IF
+          IF (PRESENT(canwat_mosaic)) THEN
+!$acc update device(canwat_mosaic)
+          END IF
+          IF (PRESENT(snow_mosaic)) THEN
+!$acc update device(snow_mosaic)
+          END IF
+          IF (PRESENT(snowh_mosaic)) THEN
+!$acc update device(snowh_mosaic)
+          END IF
+          IF (PRESENT(snowc_mosaic)) THEN
+!$acc update device(snowc_mosaic)
+          END IF
+          IF (PRESENT(albedo_mosaic)) THEN
+!$acc update device(albedo_mosaic)
+          END IF
+          IF (PRESENT(albbck_mosaic)) THEN
+!$acc update device(albbck_mosaic)
+          END IF
+          IF (PRESENT(emiss_mosaic)) THEN
+!$acc update device(emiss_mosaic)
+          END IF
+          IF (PRESENT(embck_mosaic)) THEN
+!$acc update device(embck_mosaic)
+          END IF
+          IF (PRESENT(znt_mosaic)) THEN
+!$acc update device(znt_mosaic)
+          END IF
+          IF (PRESENT(z0_mosaic)) THEN
+!$acc update device(z0_mosaic)
+          END IF
+          IF (PRESENT(hfx_mosaic)) THEN
+!$acc update device(hfx_mosaic)
+          END IF
+          IF (PRESENT(qfx_mosaic)) THEN
+!$acc update device(qfx_mosaic)
+          END IF
+          IF (PRESENT(lh_mosaic)) THEN
+!$acc update device(lh_mosaic)
+          END IF
+          IF (PRESENT(grdflx_mosaic)) THEN
+!$acc update device(grdflx_mosaic)
+          END IF
+          IF (PRESENT(snotime_mosaic)) THEN
+!$acc update device(snotime_mosaic)
+          END IF
+          IF (PRESENT(rs_mosaic)) THEN
+!$acc update device(rs_mosaic)
+          END IF
+          IF (PRESENT(lai_mosaic)) THEN
+!$acc update device(lai_mosaic)
+          END IF
+          IF (PRESENT(tr_urb2d_mosaic)) THEN
+!$acc update device(tr_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tb_urb2d_mosaic)) THEN
+!$acc update device(tb_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tg_urb2d_mosaic)) THEN
+!$acc update device(tg_urb2d_mosaic)
+          END IF
+          IF (PRESENT(tc_urb2d_mosaic)) THEN
+!$acc update device(tc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(qc_urb2d_mosaic)) THEN
+!$acc update device(qc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(uc_urb2d_mosaic)) THEN
+!$acc update device(uc_urb2d_mosaic)
+          END IF
+          IF (PRESENT(trl_urb3d_mosaic)) THEN
+!$acc update device(trl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tbl_urb3d_mosaic)) THEN
+!$acc update device(tbl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(tgl_urb3d_mosaic)) THEN
+!$acc update device(tgl_urb3d_mosaic)
+          END IF
+          IF (PRESENT(sh_urb2d_mosaic)) THEN
+!$acc update device(sh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(lh_urb2d_mosaic)) THEN
+!$acc update device(lh_urb2d_mosaic)
+          END IF
+          IF (PRESENT(g_urb2d_mosaic)) THEN
+!$acc update device(g_urb2d_mosaic)
+          END IF
+          IF (PRESENT(rn_urb2d_mosaic)) THEN
+!$acc update device(rn_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_urb2d_mosaic)) THEN
+!$acc update device(ts_urb2d_mosaic)
+          END IF
+          IF (PRESENT(ts_rul2d_mosaic)) THEN
+!$acc update device(ts_rul2d_mosaic)
+          END IF
+          IF (PRESENT(sda_hfx)) THEN
+!$acc update device(sda_hfx)
+          END IF
+          IF (PRESENT(sda_qfx)) THEN
+!$acc update device(sda_qfx)
+          END IF
+          IF (PRESENT(hfx_both)) THEN
+!$acc update device(hfx_both)
+          END IF
+          IF (PRESENT(qfx_both)) THEN
+!$acc update device(qfx_both)
+          END IF
+          IF (PRESENT(qnorm)) THEN
+!$acc update device(qnorm)
+          END IF
+          IF (PRESENT(pattern_spp_lsm)) THEN
+!$acc update device(pattern_spp_lsm)
+          END IF
+          IF (PRESENT(field_sf)) THEN
+!$acc update device(field_sf)
+          END IF
+          IF (PRESENT(pattern_spp_pbl)) THEN
+!$acc update device(pattern_spp_pbl)
+          END IF
+          IF (PRESENT(xlaidyn)) THEN
+!$acc update device(xlaidyn)
+          END IF
+          IF (PRESENT(perts_qvapor)) THEN
+!$acc update device(perts_qvapor)
+          END IF
+          IF (PRESENT(perts_th)) THEN
+!$acc update device(perts_th)
+          END IF
+          IF (PRESENT(perts_smois)) THEN
+!$acc update device(perts_smois)
+          END IF
+          IF (PRESENT(perts_tsoil)) THEN
+!$acc update device(perts_tsoil)
+          END IF
+          IF (PRESENT(irr_rand_field)) THEN
+!$acc update device(irr_rand_field)
+          END IF
+        END IF
+      END IF
+      IF (gpu_cc_active(R_SURFACE_DRIVER)) THEN
+        CALL gpu_cc_done_r0(1, hydro_dt, 'hydro_dt')
+        CALL gpu_cc_done_r(2, sfcheadrt, SIZE(sfcheadrt,KIND=8), 'sfcheadrt', &
+          LBOUND(sfcheadrt), UBOUND(sfcheadrt))
+        CALL gpu_cc_done_r(3, infxsrt, SIZE(infxsrt,KIND=8), 'infxsrt', &
+          LBOUND(infxsrt), UBOUND(infxsrt))
+        CALL gpu_cc_done_r(4, soldrain, SIZE(soldrain,KIND=8), 'soldrain', &
+          LBOUND(soldrain), UBOUND(soldrain))
+        CALL gpu_cc_done_r(5, qtiledrain, SIZE(qtiledrain,KIND=8), 'qtiledrain', &
+          LBOUND(qtiledrain), UBOUND(qtiledrain))
+        CALL gpu_cc_done_r(6, zwatble2d, SIZE(zwatble2d,KIND=8), 'zwatble2d', &
+          LBOUND(zwatble2d), UBOUND(zwatble2d))
+        IF (PRESENT(acgrdflx)) CALL gpu_cc_done_r(7, acgrdflx, SIZE(acgrdflx,KIND=8), 'acgrdflx', &
+          LBOUND(acgrdflx), UBOUND(acgrdflx))
+        IF (PRESENT(achfx)) CALL gpu_cc_done_r(8, achfx, SIZE(achfx,KIND=8), 'achfx', &
+          LBOUND(achfx), UBOUND(achfx))
+        IF (PRESENT(aclhf)) CALL gpu_cc_done_r(9, aclhf, SIZE(aclhf,KIND=8), 'aclhf', &
+          LBOUND(aclhf), UBOUND(aclhf))
+        CALL gpu_cc_done_r(10, acsnom, SIZE(acsnom,KIND=8), 'acsnom', &
+          LBOUND(acsnom), UBOUND(acsnom))
+        CALL gpu_cc_done_r(11, acsnow, SIZE(acsnow,KIND=8), 'acsnow', &
+          LBOUND(acsnow), UBOUND(acsnow))
+        IF (PRESENT(snowfallac)) CALL gpu_cc_done_r(12, snowfallac, SIZE(snowfallac,KIND=8), 'snowfallac', &
+          LBOUND(snowfallac), UBOUND(snowfallac))
+        CALL gpu_cc_done_r(13, akhs, SIZE(akhs,KIND=8), 'akhs', &
+          LBOUND(akhs), UBOUND(akhs))
+        CALL gpu_cc_done_r(14, akms, SIZE(akms,KIND=8), 'akms', &
+          LBOUND(akms), UBOUND(akms))
+        CALL gpu_cc_done_r(15, albedo, SIZE(albedo,KIND=8), 'albedo', &
+          LBOUND(albedo), UBOUND(albedo))
+        CALL gpu_cc_done_r(16, br, SIZE(br,KIND=8), 'br', &
+          LBOUND(br), UBOUND(br))
+        CALL gpu_cc_done_r(17, canwat, SIZE(canwat,KIND=8), 'canwat', &
+          LBOUND(canwat), UBOUND(canwat))
+        CALL gpu_cc_done_r(18, chklowq, SIZE(chklowq,KIND=8), 'chklowq', &
+          LBOUND(chklowq), UBOUND(chklowq))
+        CALL gpu_cc_done_r(19, grdflx, SIZE(grdflx,KIND=8), 'grdflx', &
+          LBOUND(grdflx), UBOUND(grdflx))
+        CALL gpu_cc_done_r(20, gsw, SIZE(gsw,KIND=8), 'gsw', &
+          LBOUND(gsw), UBOUND(gsw))
+        CALL gpu_cc_done_r(21, swdown, SIZE(swdown,KIND=8), 'swdown', &
+          LBOUND(swdown), UBOUND(swdown))
+        CALL gpu_cc_done_r(22, gz1oz0, SIZE(gz1oz0,KIND=8), 'gz1oz0', &
+          LBOUND(gz1oz0), UBOUND(gz1oz0))
+        CALL gpu_cc_done_r(23, hfx, SIZE(hfx,KIND=8), 'hfx', &
+          LBOUND(hfx), UBOUND(hfx))
+        CALL gpu_cc_done_i(24, isltyp, SIZE(isltyp,KIND=8), 'isltyp', &
+          LBOUND(isltyp), UBOUND(isltyp))
+        CALL gpu_cc_done_i(25, ivgtyp, SIZE(ivgtyp,KIND=8), 'ivgtyp', &
+          LBOUND(ivgtyp), UBOUND(ivgtyp))
+        CALL gpu_cc_done_r(26, mavail, SIZE(mavail,KIND=8), 'mavail', &
+          LBOUND(mavail), UBOUND(mavail))
+        CALL gpu_cc_done_r(27, rmol, SIZE(rmol,KIND=8), 'rmol', &
+          LBOUND(rmol), UBOUND(rmol))
+        CALL gpu_cc_done_r(28, pblh, SIZE(pblh,KIND=8), 'pblh', &
+          LBOUND(pblh), UBOUND(pblh))
+        CALL gpu_cc_done_r(29, pshltr, SIZE(pshltr,KIND=8), 'pshltr', &
+          LBOUND(pshltr), UBOUND(pshltr))
+        CALL gpu_cc_done_r(30, fm, SIZE(fm,KIND=8), 'fm', &
+          LBOUND(fm), UBOUND(fm))
+        CALL gpu_cc_done_r(31, fhh, SIZE(fhh,KIND=8), 'fhh', &
+          LBOUND(fhh), UBOUND(fhh))
+        CALL gpu_cc_done_r(32, psih, SIZE(psih,KIND=8), 'psih', &
+          LBOUND(psih), UBOUND(psih))
+        CALL gpu_cc_done_r(33, psim, SIZE(psim,KIND=8), 'psim', &
+          LBOUND(psim), UBOUND(psim))
+        CALL gpu_cc_done_r(34, q10, SIZE(q10,KIND=8), 'q10', &
+          LBOUND(q10), UBOUND(q10))
+        CALL gpu_cc_done_r(35, q2, SIZE(q2,KIND=8), 'q2', &
+          LBOUND(q2), UBOUND(q2))
+        CALL gpu_cc_done_r(36, qfx, SIZE(qfx,KIND=8), 'qfx', &
+          LBOUND(qfx), UBOUND(qfx))
+        CALL gpu_cc_done_r(37, qsfc, SIZE(qsfc,KIND=8), 'qsfc', &
+          LBOUND(qsfc), UBOUND(qsfc))
+        CALL gpu_cc_done_r(38, qshltr, SIZE(qshltr,KIND=8), 'qshltr', &
+          LBOUND(qshltr), UBOUND(qshltr))
+        CALL gpu_cc_done_r(39, qz0, SIZE(qz0,KIND=8), 'qz0', &
+          LBOUND(qz0), UBOUND(qz0))
+        CALL gpu_cc_done_r(40, sfcevp, SIZE(sfcevp,KIND=8), 'sfcevp', &
+          LBOUND(sfcevp), UBOUND(sfcevp))
+        CALL gpu_cc_done_r(41, sfcexc, SIZE(sfcexc,KIND=8), 'sfcexc', &
+          LBOUND(sfcexc), UBOUND(sfcexc))
+        CALL gpu_cc_done_r(42, sfcrunoff, SIZE(sfcrunoff,KIND=8), 'sfcrunoff', &
+          LBOUND(sfcrunoff), UBOUND(sfcrunoff))
+        CALL gpu_cc_done_r(43, acrunoff, SIZE(acrunoff,KIND=8), 'acrunoff', &
+          LBOUND(acrunoff), UBOUND(acrunoff))
+        CALL gpu_cc_done_r(44, smois, SIZE(smois,KIND=8), 'smois', &
+          LBOUND(smois), UBOUND(smois))
+        CALL gpu_cc_done_r(45, smstav, SIZE(smstav,KIND=8), 'smstav', &
+          LBOUND(smstav), UBOUND(smstav))
+        CALL gpu_cc_done_r(46, smstot, SIZE(smstot,KIND=8), 'smstot', &
+          LBOUND(smstot), UBOUND(smstot))
+        CALL gpu_cc_done_r(47, snoalb, SIZE(snoalb,KIND=8), 'snoalb', &
+          LBOUND(snoalb), UBOUND(snoalb))
+        CALL gpu_cc_done_r(48, snow, SIZE(snow,KIND=8), 'snow', &
+          LBOUND(snow), UBOUND(snow))
+        CALL gpu_cc_done_r(49, snowc, SIZE(snowc,KIND=8), 'snowc', &
+          LBOUND(snowc), UBOUND(snowc))
+        CALL gpu_cc_done_r(50, snowh, SIZE(snowh,KIND=8), 'snowh', &
+          LBOUND(snowh), UBOUND(snowh))
+        CALL gpu_cc_done_r(51, smcrel, SIZE(smcrel,KIND=8), 'smcrel', &
+          LBOUND(smcrel), UBOUND(smcrel))
+        CALL gpu_cc_done_r(52, th10, SIZE(th10,KIND=8), 'th10', &
+          LBOUND(th10), UBOUND(th10))
+        CALL gpu_cc_done_r(53, th2, SIZE(th2,KIND=8), 'th2', &
+          LBOUND(th2), UBOUND(th2))
+        CALL gpu_cc_done_r(54, thz0, SIZE(thz0,KIND=8), 'thz0', &
+          LBOUND(thz0), UBOUND(thz0))
+        CALL gpu_cc_done_r(55, tmn, SIZE(tmn,KIND=8), 'tmn', &
+          LBOUND(tmn), UBOUND(tmn))
+        CALL gpu_cc_done_r(56, tshltr, SIZE(tshltr,KIND=8), 'tshltr', &
+          LBOUND(tshltr), UBOUND(tshltr))
+        CALL gpu_cc_done_r(57, tsk, SIZE(tsk,KIND=8), 'tsk', &
+          LBOUND(tsk), UBOUND(tsk))
+        CALL gpu_cc_done_r(58, tslb, SIZE(tslb,KIND=8), 'tslb', &
+          LBOUND(tslb), UBOUND(tslb))
+        IF (PRESENT(tyr)) CALL gpu_cc_done_r(59, tyr, SIZE(tyr,KIND=8), 'tyr', &
+          LBOUND(tyr), UBOUND(tyr))
+        IF (PRESENT(tyra)) CALL gpu_cc_done_r(60, tyra, SIZE(tyra,KIND=8), 'tyra', &
+          LBOUND(tyra), UBOUND(tyra))
+        IF (PRESENT(tdly)) CALL gpu_cc_done_r(61, tdly, SIZE(tdly,KIND=8), 'tdly', &
+          LBOUND(tdly), UBOUND(tdly))
+        IF (PRESENT(tlag)) CALL gpu_cc_done_r(62, tlag, SIZE(tlag,KIND=8), 'tlag', &
+          LBOUND(tlag), UBOUND(tlag))
+        IF (PRESENT(nyear)) CALL gpu_cc_done_i0(63, nyear, 'nyear')
+        IF (PRESENT(nday)) CALL gpu_cc_done_r0(64, nday, 'nday')
+        CALL gpu_cc_done_r(65, t_phy, SIZE(t_phy,KIND=8), 't_phy', &
+          LBOUND(t_phy), UBOUND(t_phy))
+        CALL gpu_cc_done_r(66, u10, SIZE(u10,KIND=8), 'u10', &
+          LBOUND(u10), UBOUND(u10))
+        CALL gpu_cc_done_r(67, udrunoff, SIZE(udrunoff,KIND=8), 'udrunoff', &
+          LBOUND(udrunoff), UBOUND(udrunoff))
+        CALL gpu_cc_done_r(68, ust, SIZE(ust,KIND=8), 'ust', &
+          LBOUND(ust), UBOUND(ust))
+        CALL gpu_cc_done_r(69, uz0, SIZE(uz0,KIND=8), 'uz0', &
+          LBOUND(uz0), UBOUND(uz0))
+        CALL gpu_cc_done_r(70, v10, SIZE(v10,KIND=8), 'v10', &
+          LBOUND(v10), UBOUND(v10))
+        CALL gpu_cc_done_r(71, vegfra, SIZE(vegfra,KIND=8), 'vegfra', &
+          LBOUND(vegfra), UBOUND(vegfra))
+        CALL gpu_cc_done_r(72, u10e, SIZE(u10e,KIND=8), 'u10e', &
+          LBOUND(u10e), UBOUND(u10e))
+        CALL gpu_cc_done_r(73, v10e, SIZE(v10e,KIND=8), 'v10e', &
+          LBOUND(v10e), UBOUND(v10e))
+        CALL gpu_cc_done_r(74, uoce, SIZE(uoce,KIND=8), 'uoce', &
+          LBOUND(uoce), UBOUND(uoce))
+        CALL gpu_cc_done_r(75, voce, SIZE(voce,KIND=8), 'voce', &
+          LBOUND(voce), UBOUND(voce))
+        CALL gpu_cc_done_r(76, vz0, SIZE(vz0,KIND=8), 'vz0', &
+          LBOUND(vz0), UBOUND(vz0))
+        CALL gpu_cc_done_r(77, wspd, SIZE(wspd,KIND=8), 'wspd', &
+          LBOUND(wspd), UBOUND(wspd))
+        CALL gpu_cc_done_r(78, xice, SIZE(xice,KIND=8), 'xice', &
+          LBOUND(xice), UBOUND(xice))
+        CALL gpu_cc_done_r(79, xland, SIZE(xland,KIND=8), 'xland', &
+          LBOUND(xland), UBOUND(xland))
+        CALL gpu_cc_done_r(80, znt, SIZE(znt,KIND=8), 'znt', &
+          LBOUND(znt), UBOUND(znt))
+        CALL gpu_cc_done_r(81, albsi, SIZE(albsi,KIND=8), 'albsi', &
+          LBOUND(albsi), UBOUND(albsi))
+        CALL gpu_cc_done_r(82, icedepth, SIZE(icedepth,KIND=8), 'icedepth', &
+          LBOUND(icedepth), UBOUND(icedepth))
+        CALL gpu_cc_done_r(83, snowsi, SIZE(snowsi,KIND=8), 'snowsi', &
+          LBOUND(snowsi), UBOUND(snowsi))
+        CALL gpu_cc_done_r(84, xicem, SIZE(xicem,KIND=8), 'xicem', &
+          LBOUND(xicem), UBOUND(xicem))
+        CALL gpu_cc_done_r(85, ct, SIZE(ct,KIND=8), 'ct', &
+          LBOUND(ct), UBOUND(ct))
+        CALL gpu_cc_done_r(86, tke_pbl, SIZE(tke_pbl,KIND=8), 'tke_pbl', &
+          LBOUND(tke_pbl), UBOUND(tke_pbl))
+        CALL gpu_cc_done_r(87, albbck, SIZE(albbck,KIND=8), 'albbck', &
+          LBOUND(albbck), UBOUND(albbck))
+        CALL gpu_cc_done_r(88, embck, SIZE(embck,KIND=8), 'embck', &
+          LBOUND(embck), UBOUND(embck))
+        CALL gpu_cc_done_r(89, lh, SIZE(lh,KIND=8), 'lh', &
+          LBOUND(lh), UBOUND(lh))
+        CALL gpu_cc_done_r(90, sh2o, SIZE(sh2o,KIND=8), 'sh2o', &
+          LBOUND(sh2o), UBOUND(sh2o))
+        CALL gpu_cc_done_r(91, z0, SIZE(z0,KIND=8), 'z0', &
+          LBOUND(z0), UBOUND(z0))
+        CALL gpu_cc_done_r(92, flqc, SIZE(flqc,KIND=8), 'flqc', &
+          LBOUND(flqc), UBOUND(flqc))
+        CALL gpu_cc_done_r(93, flhc, SIZE(flhc,KIND=8), 'flhc', &
+          LBOUND(flhc), UBOUND(flhc))
+        CALL gpu_cc_done_r(94, psfc, SIZE(psfc,KIND=8), 'psfc', &
+          LBOUND(psfc), UBOUND(psfc))
+        CALL gpu_cc_done_r(95, sst, SIZE(sst,KIND=8), 'sst', &
+          LBOUND(sst), UBOUND(sst))
+        IF (PRESENT(sstsk)) CALL gpu_cc_done_r(96, sstsk, SIZE(sstsk,KIND=8), 'sstsk', &
+          LBOUND(sstsk), UBOUND(sstsk))
+        IF (PRESENT(dtw)) CALL gpu_cc_done_r(97, dtw, SIZE(dtw,KIND=8), 'dtw', &
+          LBOUND(dtw), UBOUND(dtw))
+        IF (PRESENT(t2)) CALL gpu_cc_done_r(98, t2, SIZE(t2,KIND=8), 't2', &
+          LBOUND(t2), UBOUND(t2))
+        IF (PRESENT(emiss)) CALL gpu_cc_done_r(99, emiss, SIZE(emiss,KIND=8), 'emiss', &
+          LBOUND(emiss), UBOUND(emiss))
+        IF (PRESENT(landusef)) CALL gpu_cc_done_r(100, landusef, SIZE(landusef,KIND=8), 'landusef', &
+          LBOUND(landusef), UBOUND(landusef))
+        IF (PRESENT(soilctop)) CALL gpu_cc_done_r(101, soilctop, SIZE(soilctop,KIND=8), 'soilctop', &
+          LBOUND(soilctop), UBOUND(soilctop))
+        IF (PRESENT(soilcbot)) CALL gpu_cc_done_r(102, soilcbot, SIZE(soilcbot,KIND=8), 'soilcbot', &
+          LBOUND(soilcbot), UBOUND(soilcbot))
+        IF (PRESENT(ra)) CALL gpu_cc_done_r(103, ra, SIZE(ra,KIND=8), 'ra', &
+          LBOUND(ra), UBOUND(ra))
+        IF (PRESENT(rs)) CALL gpu_cc_done_r(104, rs, SIZE(rs,KIND=8), 'rs', &
+          LBOUND(rs), UBOUND(rs))
+        IF (PRESENT(vegf_px)) CALL gpu_cc_done_r(105, vegf_px, SIZE(vegf_px,KIND=8), 'vegf_px', &
+          LBOUND(vegf_px), UBOUND(vegf_px))
+        IF (PRESENT(lai)) CALL gpu_cc_done_r(106, lai, SIZE(lai,KIND=8), 'lai', &
+          LBOUND(lai), UBOUND(lai))
+        IF (PRESENT(imperv)) CALL gpu_cc_done_r(107, imperv, SIZE(imperv,KIND=8), 'imperv', &
+          LBOUND(imperv), UBOUND(imperv))
+        IF (PRESENT(canfra)) CALL gpu_cc_done_r(108, canfra, SIZE(canfra,KIND=8), 'canfra', &
+          LBOUND(canfra), UBOUND(canfra))
+        IF (PRESENT(lai_px)) CALL gpu_cc_done_r(109, lai_px, SIZE(lai_px,KIND=8), 'lai_px', &
+          LBOUND(lai_px), UBOUND(lai_px))
+        IF (PRESENT(wwlt_px)) CALL gpu_cc_done_r(110, wwlt_px, SIZE(wwlt_px,KIND=8), 'wwlt_px', &
+          LBOUND(wwlt_px), UBOUND(wwlt_px))
+        IF (PRESENT(wfc_px)) CALL gpu_cc_done_r(111, wfc_px, SIZE(wfc_px,KIND=8), 'wfc_px', &
+          LBOUND(wfc_px), UBOUND(wfc_px))
+        IF (PRESENT(wsat_px)) CALL gpu_cc_done_r(112, wsat_px, SIZE(wsat_px,KIND=8), 'wsat_px', &
+          LBOUND(wsat_px), UBOUND(wsat_px))
+        IF (PRESENT(clay_px)) CALL gpu_cc_done_r(113, clay_px, SIZE(clay_px,KIND=8), 'clay_px', &
+          LBOUND(clay_px), UBOUND(clay_px))
+        IF (PRESENT(csand_px)) CALL gpu_cc_done_r(114, csand_px, SIZE(csand_px,KIND=8), 'csand_px', &
+          LBOUND(csand_px), UBOUND(csand_px))
+        IF (PRESENT(fmsand_px)) CALL gpu_cc_done_r(115, fmsand_px, SIZE(fmsand_px,KIND=8), 'fmsand_px', &
+          LBOUND(fmsand_px), UBOUND(fmsand_px))
+        IF (PRESENT(isnowxy)) CALL gpu_cc_done_i(116, isnowxy, SIZE(isnowxy,KIND=8), 'isnowxy', &
+          LBOUND(isnowxy), UBOUND(isnowxy))
+        IF (PRESENT(tvxy)) CALL gpu_cc_done_r(117, tvxy, SIZE(tvxy,KIND=8), 'tvxy', &
+          LBOUND(tvxy), UBOUND(tvxy))
+        IF (PRESENT(tgxy)) CALL gpu_cc_done_r(118, tgxy, SIZE(tgxy,KIND=8), 'tgxy', &
+          LBOUND(tgxy), UBOUND(tgxy))
+        IF (PRESENT(canicexy)) CALL gpu_cc_done_r(119, canicexy, SIZE(canicexy,KIND=8), 'canicexy', &
+          LBOUND(canicexy), UBOUND(canicexy))
+        IF (PRESENT(canliqxy)) CALL gpu_cc_done_r(120, canliqxy, SIZE(canliqxy,KIND=8), 'canliqxy', &
+          LBOUND(canliqxy), UBOUND(canliqxy))
+        IF (PRESENT(eahxy)) CALL gpu_cc_done_r(121, eahxy, SIZE(eahxy,KIND=8), 'eahxy', &
+          LBOUND(eahxy), UBOUND(eahxy))
+        IF (PRESENT(tahxy)) CALL gpu_cc_done_r(122, tahxy, SIZE(tahxy,KIND=8), 'tahxy', &
+          LBOUND(tahxy), UBOUND(tahxy))
+        IF (PRESENT(cmxy)) CALL gpu_cc_done_r(123, cmxy, SIZE(cmxy,KIND=8), 'cmxy', &
+          LBOUND(cmxy), UBOUND(cmxy))
+        IF (PRESENT(chxy)) CALL gpu_cc_done_r(124, chxy, SIZE(chxy,KIND=8), 'chxy', &
+          LBOUND(chxy), UBOUND(chxy))
+        IF (PRESENT(fwetxy)) CALL gpu_cc_done_r(125, fwetxy, SIZE(fwetxy,KIND=8), 'fwetxy', &
+          LBOUND(fwetxy), UBOUND(fwetxy))
+        IF (PRESENT(sneqvoxy)) CALL gpu_cc_done_r(126, sneqvoxy, SIZE(sneqvoxy,KIND=8), 'sneqvoxy', &
+          LBOUND(sneqvoxy), UBOUND(sneqvoxy))
+        IF (PRESENT(alboldxy)) CALL gpu_cc_done_r(127, alboldxy, SIZE(alboldxy,KIND=8), 'alboldxy', &
+          LBOUND(alboldxy), UBOUND(alboldxy))
+        IF (PRESENT(qsnowxy)) CALL gpu_cc_done_r(128, qsnowxy, SIZE(qsnowxy,KIND=8), 'qsnowxy', &
+          LBOUND(qsnowxy), UBOUND(qsnowxy))
+        IF (PRESENT(qrainxy)) CALL gpu_cc_done_r(129, qrainxy, SIZE(qrainxy,KIND=8), 'qrainxy', &
+          LBOUND(qrainxy), UBOUND(qrainxy))
+        IF (PRESENT(wslakexy)) CALL gpu_cc_done_r(130, wslakexy, SIZE(wslakexy,KIND=8), 'wslakexy', &
+          LBOUND(wslakexy), UBOUND(wslakexy))
+        IF (PRESENT(zwtxy)) CALL gpu_cc_done_r(131, zwtxy, SIZE(zwtxy,KIND=8), 'zwtxy', &
+          LBOUND(zwtxy), UBOUND(zwtxy))
+        IF (PRESENT(waxy)) CALL gpu_cc_done_r(132, waxy, SIZE(waxy,KIND=8), 'waxy', &
+          LBOUND(waxy), UBOUND(waxy))
+        IF (PRESENT(wtxy)) CALL gpu_cc_done_r(133, wtxy, SIZE(wtxy,KIND=8), 'wtxy', &
+          LBOUND(wtxy), UBOUND(wtxy))
+        IF (PRESENT(tsnoxy)) CALL gpu_cc_done_r(134, tsnoxy, SIZE(tsnoxy,KIND=8), 'tsnoxy', &
+          LBOUND(tsnoxy), UBOUND(tsnoxy))
+        IF (PRESENT(zsnsoxy)) CALL gpu_cc_done_r(135, zsnsoxy, SIZE(zsnsoxy,KIND=8), 'zsnsoxy', &
+          LBOUND(zsnsoxy), UBOUND(zsnsoxy))
+        IF (PRESENT(snicexy)) CALL gpu_cc_done_r(136, snicexy, SIZE(snicexy,KIND=8), 'snicexy', &
+          LBOUND(snicexy), UBOUND(snicexy))
+        IF (PRESENT(snliqxy)) CALL gpu_cc_done_r(137, snliqxy, SIZE(snliqxy,KIND=8), 'snliqxy', &
+          LBOUND(snliqxy), UBOUND(snliqxy))
+        IF (PRESENT(lfmassxy)) CALL gpu_cc_done_r(138, lfmassxy, SIZE(lfmassxy,KIND=8), 'lfmassxy', &
+          LBOUND(lfmassxy), UBOUND(lfmassxy))
+        IF (PRESENT(rtmassxy)) CALL gpu_cc_done_r(139, rtmassxy, SIZE(rtmassxy,KIND=8), 'rtmassxy', &
+          LBOUND(rtmassxy), UBOUND(rtmassxy))
+        IF (PRESENT(stmassxy)) CALL gpu_cc_done_r(140, stmassxy, SIZE(stmassxy,KIND=8), 'stmassxy', &
+          LBOUND(stmassxy), UBOUND(stmassxy))
+        IF (PRESENT(woodxy)) CALL gpu_cc_done_r(141, woodxy, SIZE(woodxy,KIND=8), 'woodxy', &
+          LBOUND(woodxy), UBOUND(woodxy))
+        IF (PRESENT(stblcpxy)) CALL gpu_cc_done_r(142, stblcpxy, SIZE(stblcpxy,KIND=8), 'stblcpxy', &
+          LBOUND(stblcpxy), UBOUND(stblcpxy))
+        IF (PRESENT(fastcpxy)) CALL gpu_cc_done_r(143, fastcpxy, SIZE(fastcpxy,KIND=8), 'fastcpxy', &
+          LBOUND(fastcpxy), UBOUND(fastcpxy))
+        IF (PRESENT(xsaixy)) CALL gpu_cc_done_r(144, xsaixy, SIZE(xsaixy,KIND=8), 'xsaixy', &
+          LBOUND(xsaixy), UBOUND(xsaixy))
+        IF (PRESENT(taussxy)) CALL gpu_cc_done_r(145, taussxy, SIZE(taussxy,KIND=8), 'taussxy', &
+          LBOUND(taussxy), UBOUND(taussxy))
+        IF (PRESENT(grainxy)) CALL gpu_cc_done_r(146, grainxy, SIZE(grainxy,KIND=8), 'grainxy', &
+          LBOUND(grainxy), UBOUND(grainxy))
+        IF (PRESENT(gddxy)) CALL gpu_cc_done_r(147, gddxy, SIZE(gddxy,KIND=8), 'gddxy', &
+          LBOUND(gddxy), UBOUND(gddxy))
+        IF (PRESENT(pgsxy)) CALL gpu_cc_done_i(148, pgsxy, SIZE(pgsxy,KIND=8), 'pgsxy', &
+          LBOUND(pgsxy), UBOUND(pgsxy))
+        IF (PRESENT(t2mvxy)) CALL gpu_cc_done_r(149, t2mvxy, SIZE(t2mvxy,KIND=8), 't2mvxy', &
+          LBOUND(t2mvxy), UBOUND(t2mvxy))
+        IF (PRESENT(t2mbxy)) CALL gpu_cc_done_r(150, t2mbxy, SIZE(t2mbxy,KIND=8), 't2mbxy', &
+          LBOUND(t2mbxy), UBOUND(t2mbxy))
+        IF (PRESENT(q2mvxy)) CALL gpu_cc_done_r(151, q2mvxy, SIZE(q2mvxy,KIND=8), 'q2mvxy', &
+          LBOUND(q2mvxy), UBOUND(q2mvxy))
+        IF (PRESENT(q2mbxy)) CALL gpu_cc_done_r(152, q2mbxy, SIZE(q2mbxy,KIND=8), 'q2mbxy', &
+          LBOUND(q2mbxy), UBOUND(q2mbxy))
+        IF (PRESENT(tradxy)) CALL gpu_cc_done_r(153, tradxy, SIZE(tradxy,KIND=8), 'tradxy', &
+          LBOUND(tradxy), UBOUND(tradxy))
+        IF (PRESENT(neexy)) CALL gpu_cc_done_r(154, neexy, SIZE(neexy,KIND=8), 'neexy', &
+          LBOUND(neexy), UBOUND(neexy))
+        IF (PRESENT(gppxy)) CALL gpu_cc_done_r(155, gppxy, SIZE(gppxy,KIND=8), 'gppxy', &
+          LBOUND(gppxy), UBOUND(gppxy))
+        IF (PRESENT(nppxy)) CALL gpu_cc_done_r(156, nppxy, SIZE(nppxy,KIND=8), 'nppxy', &
+          LBOUND(nppxy), UBOUND(nppxy))
+        IF (PRESENT(fvegxy)) CALL gpu_cc_done_r(157, fvegxy, SIZE(fvegxy,KIND=8), 'fvegxy', &
+          LBOUND(fvegxy), UBOUND(fvegxy))
+        IF (PRESENT(runsfxy)) CALL gpu_cc_done_r(158, runsfxy, SIZE(runsfxy,KIND=8), 'runsfxy', &
+          LBOUND(runsfxy), UBOUND(runsfxy))
+        IF (PRESENT(runsbxy)) CALL gpu_cc_done_r(159, runsbxy, SIZE(runsbxy,KIND=8), 'runsbxy', &
+          LBOUND(runsbxy), UBOUND(runsbxy))
+        IF (PRESENT(ecanxy)) CALL gpu_cc_done_r(160, ecanxy, SIZE(ecanxy,KIND=8), 'ecanxy', &
+          LBOUND(ecanxy), UBOUND(ecanxy))
+        IF (PRESENT(edirxy)) CALL gpu_cc_done_r(161, edirxy, SIZE(edirxy,KIND=8), 'edirxy', &
+          LBOUND(edirxy), UBOUND(edirxy))
+        IF (PRESENT(etranxy)) CALL gpu_cc_done_r(162, etranxy, SIZE(etranxy,KIND=8), 'etranxy', &
+          LBOUND(etranxy), UBOUND(etranxy))
+        IF (PRESENT(fsaxy)) CALL gpu_cc_done_r(163, fsaxy, SIZE(fsaxy,KIND=8), 'fsaxy', &
+          LBOUND(fsaxy), UBOUND(fsaxy))
+        IF (PRESENT(firaxy)) CALL gpu_cc_done_r(164, firaxy, SIZE(firaxy,KIND=8), 'firaxy', &
+          LBOUND(firaxy), UBOUND(firaxy))
+        IF (PRESENT(aparxy)) CALL gpu_cc_done_r(165, aparxy, SIZE(aparxy,KIND=8), 'aparxy', &
+          LBOUND(aparxy), UBOUND(aparxy))
+        IF (PRESENT(psnxy)) CALL gpu_cc_done_r(166, psnxy, SIZE(psnxy,KIND=8), 'psnxy', &
+          LBOUND(psnxy), UBOUND(psnxy))
+        IF (PRESENT(savxy)) CALL gpu_cc_done_r(167, savxy, SIZE(savxy,KIND=8), 'savxy', &
+          LBOUND(savxy), UBOUND(savxy))
+        IF (PRESENT(sagxy)) CALL gpu_cc_done_r(168, sagxy, SIZE(sagxy,KIND=8), 'sagxy', &
+          LBOUND(sagxy), UBOUND(sagxy))
+        IF (PRESENT(rssunxy)) CALL gpu_cc_done_r(169, rssunxy, SIZE(rssunxy,KIND=8), 'rssunxy', &
+          LBOUND(rssunxy), UBOUND(rssunxy))
+        IF (PRESENT(rsshaxy)) CALL gpu_cc_done_r(170, rsshaxy, SIZE(rsshaxy,KIND=8), 'rsshaxy', &
+          LBOUND(rsshaxy), UBOUND(rsshaxy))
+        IF (PRESENT(bgapxy)) CALL gpu_cc_done_r(171, bgapxy, SIZE(bgapxy,KIND=8), 'bgapxy', &
+          LBOUND(bgapxy), UBOUND(bgapxy))
+        IF (PRESENT(wgapxy)) CALL gpu_cc_done_r(172, wgapxy, SIZE(wgapxy,KIND=8), 'wgapxy', &
+          LBOUND(wgapxy), UBOUND(wgapxy))
+        IF (PRESENT(tgvxy)) CALL gpu_cc_done_r(173, tgvxy, SIZE(tgvxy,KIND=8), 'tgvxy', &
+          LBOUND(tgvxy), UBOUND(tgvxy))
+        IF (PRESENT(tgbxy)) CALL gpu_cc_done_r(174, tgbxy, SIZE(tgbxy,KIND=8), 'tgbxy', &
+          LBOUND(tgbxy), UBOUND(tgbxy))
+        IF (PRESENT(chvxy)) CALL gpu_cc_done_r(175, chvxy, SIZE(chvxy,KIND=8), 'chvxy', &
+          LBOUND(chvxy), UBOUND(chvxy))
+        IF (PRESENT(chbxy)) CALL gpu_cc_done_r(176, chbxy, SIZE(chbxy,KIND=8), 'chbxy', &
+          LBOUND(chbxy), UBOUND(chbxy))
+        IF (PRESENT(shgxy)) CALL gpu_cc_done_r(177, shgxy, SIZE(shgxy,KIND=8), 'shgxy', &
+          LBOUND(shgxy), UBOUND(shgxy))
+        IF (PRESENT(shcxy)) CALL gpu_cc_done_r(178, shcxy, SIZE(shcxy,KIND=8), 'shcxy', &
+          LBOUND(shcxy), UBOUND(shcxy))
+        IF (PRESENT(shbxy)) CALL gpu_cc_done_r(179, shbxy, SIZE(shbxy,KIND=8), 'shbxy', &
+          LBOUND(shbxy), UBOUND(shbxy))
+        IF (PRESENT(evgxy)) CALL gpu_cc_done_r(180, evgxy, SIZE(evgxy,KIND=8), 'evgxy', &
+          LBOUND(evgxy), UBOUND(evgxy))
+        IF (PRESENT(evbxy)) CALL gpu_cc_done_r(181, evbxy, SIZE(evbxy,KIND=8), 'evbxy', &
+          LBOUND(evbxy), UBOUND(evbxy))
+        IF (PRESENT(ghvxy)) CALL gpu_cc_done_r(182, ghvxy, SIZE(ghvxy,KIND=8), 'ghvxy', &
+          LBOUND(ghvxy), UBOUND(ghvxy))
+        IF (PRESENT(ghbxy)) CALL gpu_cc_done_r(183, ghbxy, SIZE(ghbxy,KIND=8), 'ghbxy', &
+          LBOUND(ghbxy), UBOUND(ghbxy))
+        IF (PRESENT(irgxy)) CALL gpu_cc_done_r(184, irgxy, SIZE(irgxy,KIND=8), 'irgxy', &
+          LBOUND(irgxy), UBOUND(irgxy))
+        IF (PRESENT(ircxy)) CALL gpu_cc_done_r(185, ircxy, SIZE(ircxy,KIND=8), 'ircxy', &
+          LBOUND(ircxy), UBOUND(ircxy))
+        IF (PRESENT(irbxy)) CALL gpu_cc_done_r(186, irbxy, SIZE(irbxy,KIND=8), 'irbxy', &
+          LBOUND(irbxy), UBOUND(irbxy))
+        IF (PRESENT(trxy)) CALL gpu_cc_done_r(187, trxy, SIZE(trxy,KIND=8), 'trxy', &
+          LBOUND(trxy), UBOUND(trxy))
+        IF (PRESENT(evcxy)) CALL gpu_cc_done_r(188, evcxy, SIZE(evcxy,KIND=8), 'evcxy', &
+          LBOUND(evcxy), UBOUND(evcxy))
+        IF (PRESENT(chleafxy)) CALL gpu_cc_done_r(189, chleafxy, SIZE(chleafxy,KIND=8), 'chleafxy', &
+          LBOUND(chleafxy), UBOUND(chleafxy))
+        IF (PRESENT(chucxy)) CALL gpu_cc_done_r(190, chucxy, SIZE(chucxy,KIND=8), 'chucxy', &
+          LBOUND(chucxy), UBOUND(chucxy))
+        IF (PRESENT(chv2xy)) CALL gpu_cc_done_r(191, chv2xy, SIZE(chv2xy,KIND=8), 'chv2xy', &
+          LBOUND(chv2xy), UBOUND(chv2xy))
+        IF (PRESENT(chb2xy)) CALL gpu_cc_done_r(192, chb2xy, SIZE(chb2xy,KIND=8), 'chb2xy', &
+          LBOUND(chb2xy), UBOUND(chb2xy))
+        IF (PRESENT(chstarxy)) CALL gpu_cc_done_r(193, chstarxy, SIZE(chstarxy,KIND=8), 'chstarxy', &
+          LBOUND(chstarxy), UBOUND(chstarxy))
+        IF (PRESENT(qintsxy)) CALL gpu_cc_done_r(194, qintsxy, SIZE(qintsxy,KIND=8), 'qintsxy', &
+          LBOUND(qintsxy), UBOUND(qintsxy))
+        IF (PRESENT(qintrxy)) CALL gpu_cc_done_r(195, qintrxy, SIZE(qintrxy,KIND=8), 'qintrxy', &
+          LBOUND(qintrxy), UBOUND(qintrxy))
+        IF (PRESENT(qdripsxy)) CALL gpu_cc_done_r(196, qdripsxy, SIZE(qdripsxy,KIND=8), 'qdripsxy', &
+          LBOUND(qdripsxy), UBOUND(qdripsxy))
+        IF (PRESENT(qdriprxy)) CALL gpu_cc_done_r(197, qdriprxy, SIZE(qdriprxy,KIND=8), 'qdriprxy', &
+          LBOUND(qdriprxy), UBOUND(qdriprxy))
+        IF (PRESENT(qthrosxy)) CALL gpu_cc_done_r(198, qthrosxy, SIZE(qthrosxy,KIND=8), 'qthrosxy', &
+          LBOUND(qthrosxy), UBOUND(qthrosxy))
+        IF (PRESENT(qthrorxy)) CALL gpu_cc_done_r(199, qthrorxy, SIZE(qthrorxy,KIND=8), 'qthrorxy', &
+          LBOUND(qthrorxy), UBOUND(qthrorxy))
+        IF (PRESENT(qsnsubxy)) CALL gpu_cc_done_r(200, qsnsubxy, SIZE(qsnsubxy,KIND=8), 'qsnsubxy', &
+          LBOUND(qsnsubxy), UBOUND(qsnsubxy))
+        IF (PRESENT(qsnfroxy)) CALL gpu_cc_done_r(201, qsnfroxy, SIZE(qsnfroxy,KIND=8), 'qsnfroxy', &
+          LBOUND(qsnfroxy), UBOUND(qsnfroxy))
+        IF (PRESENT(qsubcxy)) CALL gpu_cc_done_r(202, qsubcxy, SIZE(qsubcxy,KIND=8), 'qsubcxy', &
+          LBOUND(qsubcxy), UBOUND(qsubcxy))
+        IF (PRESENT(qfrocxy)) CALL gpu_cc_done_r(203, qfrocxy, SIZE(qfrocxy,KIND=8), 'qfrocxy', &
+          LBOUND(qfrocxy), UBOUND(qfrocxy))
+        IF (PRESENT(qevacxy)) CALL gpu_cc_done_r(204, qevacxy, SIZE(qevacxy,KIND=8), 'qevacxy', &
+          LBOUND(qevacxy), UBOUND(qevacxy))
+        IF (PRESENT(qdewcxy)) CALL gpu_cc_done_r(205, qdewcxy, SIZE(qdewcxy,KIND=8), 'qdewcxy', &
+          LBOUND(qdewcxy), UBOUND(qdewcxy))
+        IF (PRESENT(qfrzcxy)) CALL gpu_cc_done_r(206, qfrzcxy, SIZE(qfrzcxy,KIND=8), 'qfrzcxy', &
+          LBOUND(qfrzcxy), UBOUND(qfrzcxy))
+        IF (PRESENT(qmeltcxy)) CALL gpu_cc_done_r(207, qmeltcxy, SIZE(qmeltcxy,KIND=8), 'qmeltcxy', &
+          LBOUND(qmeltcxy), UBOUND(qmeltcxy))
+        IF (PRESENT(qsnbotxy)) CALL gpu_cc_done_r(208, qsnbotxy, SIZE(qsnbotxy,KIND=8), 'qsnbotxy', &
+          LBOUND(qsnbotxy), UBOUND(qsnbotxy))
+        IF (PRESENT(pondingxy)) CALL gpu_cc_done_r(209, pondingxy, SIZE(pondingxy,KIND=8), 'pondingxy', &
+          LBOUND(pondingxy), UBOUND(pondingxy))
+        IF (PRESENT(pahxy)) CALL gpu_cc_done_r(210, pahxy, SIZE(pahxy,KIND=8), 'pahxy', &
+          LBOUND(pahxy), UBOUND(pahxy))
+        IF (PRESENT(pahgxy)) CALL gpu_cc_done_r(211, pahgxy, SIZE(pahgxy,KIND=8), 'pahgxy', &
+          LBOUND(pahgxy), UBOUND(pahgxy))
+        IF (PRESENT(pahvxy)) CALL gpu_cc_done_r(212, pahvxy, SIZE(pahvxy,KIND=8), 'pahvxy', &
+          LBOUND(pahvxy), UBOUND(pahvxy))
+        IF (PRESENT(pahbxy)) CALL gpu_cc_done_r(213, pahbxy, SIZE(pahbxy,KIND=8), 'pahbxy', &
+          LBOUND(pahbxy), UBOUND(pahbxy))
+        IF (PRESENT(qmeltxy)) CALL gpu_cc_done_r(214, qmeltxy, SIZE(qmeltxy,KIND=8), 'qmeltxy', &
+          LBOUND(qmeltxy), UBOUND(qmeltxy))
+        IF (PRESENT(fpicexy)) CALL gpu_cc_done_r(215, fpicexy, SIZE(fpicexy,KIND=8), 'fpicexy', &
+          LBOUND(fpicexy), UBOUND(fpicexy))
+        IF (PRESENT(rainlsm)) CALL gpu_cc_done_r(216, rainlsm, SIZE(rainlsm,KIND=8), 'rainlsm', &
+          LBOUND(rainlsm), UBOUND(rainlsm))
+        IF (PRESENT(snowlsm)) CALL gpu_cc_done_r(217, snowlsm, SIZE(snowlsm,KIND=8), 'snowlsm', &
+          LBOUND(snowlsm), UBOUND(snowlsm))
+        IF (PRESENT(forctlsm)) CALL gpu_cc_done_r(218, forctlsm, SIZE(forctlsm,KIND=8), 'forctlsm', &
+          LBOUND(forctlsm), UBOUND(forctlsm))
+        IF (PRESENT(forcqlsm)) CALL gpu_cc_done_r(219, forcqlsm, SIZE(forcqlsm,KIND=8), 'forcqlsm', &
+          LBOUND(forcqlsm), UBOUND(forcqlsm))
+        IF (PRESENT(forcplsm)) CALL gpu_cc_done_r(220, forcplsm, SIZE(forcplsm,KIND=8), 'forcplsm', &
+          LBOUND(forcplsm), UBOUND(forcplsm))
+        IF (PRESENT(forczlsm)) CALL gpu_cc_done_r(221, forczlsm, SIZE(forczlsm,KIND=8), 'forczlsm', &
+          LBOUND(forczlsm), UBOUND(forczlsm))
+        IF (PRESENT(forcwlsm)) CALL gpu_cc_done_r(222, forcwlsm, SIZE(forcwlsm,KIND=8), 'forcwlsm', &
+          LBOUND(forcwlsm), UBOUND(forcwlsm))
+        IF (PRESENT(acc_ssoil)) CALL gpu_cc_done_r(223, acc_ssoil, SIZE(acc_ssoil,KIND=8), 'acc_ssoil', &
+          LBOUND(acc_ssoil), UBOUND(acc_ssoil))
+        IF (PRESENT(acc_qinsur)) CALL gpu_cc_done_r(224, acc_qinsur, SIZE(acc_qinsur,KIND=8), 'acc_qinsur', &
+          LBOUND(acc_qinsur), UBOUND(acc_qinsur))
+        IF (PRESENT(acc_qseva)) CALL gpu_cc_done_r(225, acc_qseva, SIZE(acc_qseva,KIND=8), 'acc_qseva', &
+          LBOUND(acc_qseva), UBOUND(acc_qseva))
+        IF (PRESENT(acc_etrani)) CALL gpu_cc_done_r(226, acc_etrani, SIZE(acc_etrani,KIND=8), 'acc_etrani', &
+          LBOUND(acc_etrani), UBOUND(acc_etrani))
+        IF (PRESENT(eflxbxy)) CALL gpu_cc_done_r(227, eflxbxy, SIZE(eflxbxy,KIND=8), 'eflxbxy', &
+          LBOUND(eflxbxy), UBOUND(eflxbxy))
+        IF (PRESENT(soilenergy)) CALL gpu_cc_done_r(228, soilenergy, SIZE(soilenergy,KIND=8), 'soilenergy', &
+          LBOUND(soilenergy), UBOUND(soilenergy))
+        IF (PRESENT(snowenergy)) CALL gpu_cc_done_r(229, snowenergy, SIZE(snowenergy,KIND=8), 'snowenergy', &
+          LBOUND(snowenergy), UBOUND(snowenergy))
+        IF (PRESENT(canhsxy)) CALL gpu_cc_done_r(230, canhsxy, SIZE(canhsxy,KIND=8), 'canhsxy', &
+          LBOUND(canhsxy), UBOUND(canhsxy))
+        IF (PRESENT(acc_dwaterxy)) CALL gpu_cc_done_r(231, acc_dwaterxy, SIZE(acc_dwaterxy,KIND=8), 'acc_dwaterxy', &
+          LBOUND(acc_dwaterxy), UBOUND(acc_dwaterxy))
+        IF (PRESENT(acc_prcpxy)) CALL gpu_cc_done_r(232, acc_prcpxy, SIZE(acc_prcpxy,KIND=8), 'acc_prcpxy', &
+          LBOUND(acc_prcpxy), UBOUND(acc_prcpxy))
+        IF (PRESENT(acc_ecanxy)) CALL gpu_cc_done_r(233, acc_ecanxy, SIZE(acc_ecanxy,KIND=8), 'acc_ecanxy', &
+          LBOUND(acc_ecanxy), UBOUND(acc_ecanxy))
+        IF (PRESENT(acc_etranxy)) CALL gpu_cc_done_r(234, acc_etranxy, SIZE(acc_etranxy,KIND=8), 'acc_etranxy', &
+          LBOUND(acc_etranxy), UBOUND(acc_etranxy))
+        IF (PRESENT(acc_edirxy)) CALL gpu_cc_done_r(235, acc_edirxy, SIZE(acc_edirxy,KIND=8), 'acc_edirxy', &
+          LBOUND(acc_edirxy), UBOUND(acc_edirxy))
+        IF (PRESENT(irnumsi)) CALL gpu_cc_done_i(236, irnumsi, SIZE(irnumsi,KIND=8), 'irnumsi', &
+          LBOUND(irnumsi), UBOUND(irnumsi))
+        IF (PRESENT(irnummi)) CALL gpu_cc_done_i(237, irnummi, SIZE(irnummi,KIND=8), 'irnummi', &
+          LBOUND(irnummi), UBOUND(irnummi))
+        IF (PRESENT(irnumfi)) CALL gpu_cc_done_i(238, irnumfi, SIZE(irnumfi,KIND=8), 'irnumfi', &
+          LBOUND(irnumfi), UBOUND(irnumfi))
+        IF (PRESENT(irwatsi)) CALL gpu_cc_done_r(239, irwatsi, SIZE(irwatsi,KIND=8), 'irwatsi', &
+          LBOUND(irwatsi), UBOUND(irwatsi))
+        IF (PRESENT(irwatmi)) CALL gpu_cc_done_r(240, irwatmi, SIZE(irwatmi,KIND=8), 'irwatmi', &
+          LBOUND(irwatmi), UBOUND(irwatmi))
+        IF (PRESENT(irwatfi)) CALL gpu_cc_done_r(241, irwatfi, SIZE(irwatfi,KIND=8), 'irwatfi', &
+          LBOUND(irwatfi), UBOUND(irwatfi))
+        IF (PRESENT(ireloss)) CALL gpu_cc_done_r(242, ireloss, SIZE(ireloss,KIND=8), 'ireloss', &
+          LBOUND(ireloss), UBOUND(ireloss))
+        IF (PRESENT(irsivol)) CALL gpu_cc_done_r(243, irsivol, SIZE(irsivol,KIND=8), 'irsivol', &
+          LBOUND(irsivol), UBOUND(irsivol))
+        IF (PRESENT(irmivol)) CALL gpu_cc_done_r(244, irmivol, SIZE(irmivol,KIND=8), 'irmivol', &
+          LBOUND(irmivol), UBOUND(irmivol))
+        IF (PRESENT(irfivol)) CALL gpu_cc_done_r(245, irfivol, SIZE(irfivol,KIND=8), 'irfivol', &
+          LBOUND(irfivol), UBOUND(irfivol))
+        IF (PRESENT(irrsplh)) CALL gpu_cc_done_r(246, irrsplh, SIZE(irrsplh,KIND=8), 'irrsplh', &
+          LBOUND(irrsplh), UBOUND(irrsplh))
+        IF (PRESENT(qtdrain)) CALL gpu_cc_done_r(247, qtdrain, SIZE(qtdrain,KIND=8), 'qtdrain', &
+          LBOUND(qtdrain), UBOUND(qtdrain))
+        IF (PRESENT(smcwtdxy)) CALL gpu_cc_done_r(248, smcwtdxy, SIZE(smcwtdxy,KIND=8), 'smcwtdxy', &
+          LBOUND(smcwtdxy), UBOUND(smcwtdxy))
+        IF (PRESENT(rechxy)) CALL gpu_cc_done_r(249, rechxy, SIZE(rechxy,KIND=8), 'rechxy', &
+          LBOUND(rechxy), UBOUND(rechxy))
+        IF (PRESENT(deeprechxy)) CALL gpu_cc_done_r(250, deeprechxy, SIZE(deeprechxy,KIND=8), 'deeprechxy', &
+          LBOUND(deeprechxy), UBOUND(deeprechxy))
+        IF (PRESENT(fdepthxy)) CALL gpu_cc_done_r(251, fdepthxy, SIZE(fdepthxy,KIND=8), 'fdepthxy', &
+          LBOUND(fdepthxy), UBOUND(fdepthxy))
+        IF (PRESENT(areaxy)) CALL gpu_cc_done_r(252, areaxy, SIZE(areaxy,KIND=8), 'areaxy', &
+          LBOUND(areaxy), UBOUND(areaxy))
+        IF (PRESENT(rivercondxy)) CALL gpu_cc_done_r(253, rivercondxy, SIZE(rivercondxy,KIND=8), 'rivercondxy', &
+          LBOUND(rivercondxy), UBOUND(rivercondxy))
+        IF (PRESENT(riverbedxy)) CALL gpu_cc_done_r(254, riverbedxy, SIZE(riverbedxy,KIND=8), 'riverbedxy', &
+          LBOUND(riverbedxy), UBOUND(riverbedxy))
+        IF (PRESENT(eqzwt)) CALL gpu_cc_done_r(255, eqzwt, SIZE(eqzwt,KIND=8), 'eqzwt', &
+          LBOUND(eqzwt), UBOUND(eqzwt))
+        IF (PRESENT(pexpxy)) CALL gpu_cc_done_r(256, pexpxy, SIZE(pexpxy,KIND=8), 'pexpxy', &
+          LBOUND(pexpxy), UBOUND(pexpxy))
+        IF (PRESENT(qrfxy)) CALL gpu_cc_done_r(257, qrfxy, SIZE(qrfxy,KIND=8), 'qrfxy', &
+          LBOUND(qrfxy), UBOUND(qrfxy))
+        IF (PRESENT(qspringxy)) CALL gpu_cc_done_r(258, qspringxy, SIZE(qspringxy,KIND=8), 'qspringxy', &
+          LBOUND(qspringxy), UBOUND(qspringxy))
+        IF (PRESENT(qslatxy)) CALL gpu_cc_done_r(259, qslatxy, SIZE(qslatxy,KIND=8), 'qslatxy', &
+          LBOUND(qslatxy), UBOUND(qslatxy))
+        IF (PRESENT(qrfsxy)) CALL gpu_cc_done_r(260, qrfsxy, SIZE(qrfsxy,KIND=8), 'qrfsxy', &
+          LBOUND(qrfsxy), UBOUND(qrfsxy))
+        IF (PRESENT(qlatxy)) CALL gpu_cc_done_r(261, qlatxy, SIZE(qlatxy,KIND=8), 'qlatxy', &
+          LBOUND(qlatxy), UBOUND(qlatxy))
+        IF (PRESENT(qspringsxy)) CALL gpu_cc_done_r(262, qspringsxy, SIZE(qspringsxy,KIND=8), 'qspringsxy', &
+          LBOUND(qspringsxy), UBOUND(qspringsxy))
+        IF (PRESENT(smoiseq)) CALL gpu_cc_done_r(263, smoiseq, SIZE(smoiseq,KIND=8), 'smoiseq', &
+          LBOUND(smoiseq), UBOUND(smoiseq))
+        IF (PRESENT(gecros_state)) CALL gpu_cc_done_r(264, gecros_state, SIZE(gecros_state,KIND=8), 'gecros_state', &
+          LBOUND(gecros_state), UBOUND(gecros_state))
+        CALL gpu_cc_done_r(265, flx4, SIZE(flx4,KIND=8), 'flx4', &
+          LBOUND(flx4), UBOUND(flx4))
+        CALL gpu_cc_done_r(266, fvb, SIZE(fvb,KIND=8), 'fvb', &
+          LBOUND(fvb), UBOUND(fvb))
+        CALL gpu_cc_done_r(267, fbur, SIZE(fbur,KIND=8), 'fbur', &
+          LBOUND(fbur), UBOUND(fbur))
+        CALL gpu_cc_done_r(268, fgsn, SIZE(fgsn,KIND=8), 'fgsn', &
+          LBOUND(fgsn), UBOUND(fgsn))
+        IF (PRESENT(ch)) CALL gpu_cc_done_r(269, ch, SIZE(ch,KIND=8), 'ch', &
+          LBOUND(ch), UBOUND(ch))
+        IF (PRESENT(fgdp)) CALL gpu_cc_done_r(270, fgdp, SIZE(fgdp,KIND=8), 'fgdp', &
+          LBOUND(fgdp), UBOUND(fgdp))
+        IF (PRESENT(dfgdp)) CALL gpu_cc_done_r(271, dfgdp, SIZE(dfgdp,KIND=8), 'dfgdp', &
+          LBOUND(dfgdp), UBOUND(dfgdp))
+        IF (PRESENT(vdfg)) CALL gpu_cc_done_r(272, vdfg, SIZE(vdfg,KIND=8), 'vdfg', &
+          LBOUND(vdfg), UBOUND(vdfg))
+        CALL gpu_cc_done_r(273, water_depth, SIZE(water_depth,KIND=8), 'water_depth', &
+          LBOUND(water_depth), UBOUND(water_depth))
+        CALL gpu_cc_done_r(274, savedtke12d, SIZE(savedtke12d,KIND=8), 'savedtke12d', &
+          LBOUND(savedtke12d), UBOUND(savedtke12d))
+        CALL gpu_cc_done_r(275, snowdp2d, SIZE(snowdp2d,KIND=8), 'snowdp2d', &
+          LBOUND(snowdp2d), UBOUND(snowdp2d))
+        CALL gpu_cc_done_r(276, h2osno2d, SIZE(h2osno2d,KIND=8), 'h2osno2d', &
+          LBOUND(h2osno2d), UBOUND(h2osno2d))
+        CALL gpu_cc_done_r(277, snl2d, SIZE(snl2d,KIND=8), 'snl2d', &
+          LBOUND(snl2d), UBOUND(snl2d))
+        CALL gpu_cc_done_r(278, t_grnd2d, SIZE(t_grnd2d,KIND=8), 't_grnd2d', &
+          LBOUND(t_grnd2d), UBOUND(t_grnd2d))
+        CALL gpu_cc_done_r(279, t_lake3d, SIZE(t_lake3d,KIND=8), 't_lake3d', &
+          LBOUND(t_lake3d), UBOUND(t_lake3d))
+        CALL gpu_cc_done_r(280, lake_icefrac3d, SIZE(lake_icefrac3d,KIND=8), 'lake_icefrac3d', &
+          LBOUND(lake_icefrac3d), UBOUND(lake_icefrac3d))
+        CALL gpu_cc_done_r(281, t_soisno3d, SIZE(t_soisno3d,KIND=8), 't_soisno3d', &
+          LBOUND(t_soisno3d), UBOUND(t_soisno3d))
+        CALL gpu_cc_done_r(282, h2osoi_ice3d, SIZE(h2osoi_ice3d,KIND=8), 'h2osoi_ice3d', &
+          LBOUND(h2osoi_ice3d), UBOUND(h2osoi_ice3d))
+        CALL gpu_cc_done_r(283, h2osoi_liq3d, SIZE(h2osoi_liq3d,KIND=8), 'h2osoi_liq3d', &
+          LBOUND(h2osoi_liq3d), UBOUND(h2osoi_liq3d))
+        CALL gpu_cc_done_r(284, h2osoi_vol3d, SIZE(h2osoi_vol3d,KIND=8), 'h2osoi_vol3d', &
+          LBOUND(h2osoi_vol3d), UBOUND(h2osoi_vol3d))
+        CALL gpu_cc_done_r(285, z3d, SIZE(z3d,KIND=8), 'z3d', &
+          LBOUND(z3d), UBOUND(z3d))
+        CALL gpu_cc_done_r(286, dz3d, SIZE(dz3d,KIND=8), 'dz3d', &
+          LBOUND(dz3d), UBOUND(dz3d))
+        CALL gpu_cc_done_r(287, zi3d, SIZE(zi3d,KIND=8), 'zi3d', &
+          LBOUND(zi3d), UBOUND(zi3d))
+        CALL gpu_cc_done_r(288, lakemask, SIZE(lakemask,KIND=8), 'lakemask', &
+          LBOUND(lakemask), UBOUND(lakemask))
+        IF (PRESENT(om_tmp)) CALL gpu_cc_done_r(289, om_tmp, SIZE(om_tmp,KIND=8), 'om_tmp', &
+          LBOUND(om_tmp), UBOUND(om_tmp))
+        IF (PRESENT(om_s)) CALL gpu_cc_done_r(290, om_s, SIZE(om_s,KIND=8), 'om_s', &
+          LBOUND(om_s), UBOUND(om_s))
+        IF (PRESENT(om_u)) CALL gpu_cc_done_r(291, om_u, SIZE(om_u,KIND=8), 'om_u', &
+          LBOUND(om_u), UBOUND(om_u))
+        IF (PRESENT(om_v)) CALL gpu_cc_done_r(292, om_v, SIZE(om_v,KIND=8), 'om_v', &
+          LBOUND(om_v), UBOUND(om_v))
+        IF (PRESENT(om_depth)) CALL gpu_cc_done_r(293, om_depth, SIZE(om_depth,KIND=8), 'om_depth', &
+          LBOUND(om_depth), UBOUND(om_depth))
+        IF (PRESENT(om_ml)) CALL gpu_cc_done_r(294, om_ml, SIZE(om_ml,KIND=8), 'om_ml', &
+          LBOUND(om_ml), UBOUND(om_ml))
+        IF (PRESENT(om_lon)) CALL gpu_cc_done_r(295, om_lon, SIZE(om_lon,KIND=8), 'om_lon', &
+          LBOUND(om_lon), UBOUND(om_lon))
+        IF (PRESENT(om_lat)) CALL gpu_cc_done_r(296, om_lat, SIZE(om_lat,KIND=8), 'om_lat', &
+          LBOUND(om_lat), UBOUND(om_lat))
+        CALL gpu_cc_done_i0(297, okms, 'okms')
+        CALL gpu_cc_done_i0(298, okme, 'okme')
+#if (WRF_CHEM == 1)
+        IF (PRESENT(e_bio)) CALL gpu_cc_done_r(299, e_bio, SIZE(e_bio,KIND=8), 'e_bio', &
+          LBOUND(e_bio), UBOUND(e_bio))
+#endif
+        IF (PRESENT(numc)) CALL gpu_cc_done_i(300, numc, SIZE(numc,KIND=8), 'numc', &
+          LBOUND(numc), UBOUND(numc))
+        IF (PRESENT(nump)) CALL gpu_cc_done_i(301, nump, SIZE(nump,KIND=8), 'nump', &
+          LBOUND(nump), UBOUND(nump))
+        IF (PRESENT(sabv)) CALL gpu_cc_done_r(302, sabv, SIZE(sabv,KIND=8), 'sabv', &
+          LBOUND(sabv), UBOUND(sabv))
+        IF (PRESENT(sabg)) CALL gpu_cc_done_r(303, sabg, SIZE(sabg,KIND=8), 'sabg', &
+          LBOUND(sabg), UBOUND(sabg))
+        IF (PRESENT(lwup)) CALL gpu_cc_done_r(304, lwup, SIZE(lwup,KIND=8), 'lwup', &
+          LBOUND(lwup), UBOUND(lwup))
+        IF (PRESENT(snl)) CALL gpu_cc_done_i(305, snl, SIZE(snl,KIND=8), 'snl', &
+          LBOUND(snl), UBOUND(snl))
+        IF (PRESENT(snowdp)) CALL gpu_cc_done_r(306, snowdp, SIZE(snowdp,KIND=8), 'snowdp', &
+          LBOUND(snowdp), UBOUND(snowdp))
+        IF (PRESENT(wtc)) CALL gpu_cc_done_r(307, wtc, SIZE(wtc,KIND=8), 'wtc', &
+          LBOUND(wtc), UBOUND(wtc))
+        IF (PRESENT(wtp)) CALL gpu_cc_done_r(308, wtp, SIZE(wtp,KIND=8), 'wtp', &
+          LBOUND(wtp), UBOUND(wtp))
+        IF (PRESENT(h2osno)) CALL gpu_cc_done_r(309, h2osno, SIZE(h2osno,KIND=8), 'h2osno', &
+          LBOUND(h2osno), UBOUND(h2osno))
+        IF (PRESENT(t_grnd)) CALL gpu_cc_done_r(310, t_grnd, SIZE(t_grnd,KIND=8), 't_grnd', &
+          LBOUND(t_grnd), UBOUND(t_grnd))
+        IF (PRESENT(t_veg)) CALL gpu_cc_done_r(311, t_veg, SIZE(t_veg,KIND=8), 't_veg', &
+          LBOUND(t_veg), UBOUND(t_veg))
+        IF (PRESENT(h2ocan)) CALL gpu_cc_done_r(312, h2ocan, SIZE(h2ocan,KIND=8), 'h2ocan', &
+          LBOUND(h2ocan), UBOUND(h2ocan))
+        IF (PRESENT(h2ocan_col)) CALL gpu_cc_done_r(313, h2ocan_col, SIZE(h2ocan_col,KIND=8), 'h2ocan_col', &
+          LBOUND(h2ocan_col), UBOUND(h2ocan_col))
+        IF (PRESENT(t2m_max)) CALL gpu_cc_done_r(314, t2m_max, SIZE(t2m_max,KIND=8), 't2m_max', &
+          LBOUND(t2m_max), UBOUND(t2m_max))
+        IF (PRESENT(t2m_min)) CALL gpu_cc_done_r(315, t2m_min, SIZE(t2m_min,KIND=8), 't2m_min', &
+          LBOUND(t2m_min), UBOUND(t2m_min))
+        IF (PRESENT(t2clm)) CALL gpu_cc_done_r(316, t2clm, SIZE(t2clm,KIND=8), 't2clm', &
+          LBOUND(t2clm), UBOUND(t2clm))
+        IF (PRESENT(t_ref2m)) CALL gpu_cc_done_r(317, t_ref2m, SIZE(t_ref2m,KIND=8), 't_ref2m', &
+          LBOUND(t_ref2m), UBOUND(t_ref2m))
+        IF (PRESENT(h2osoi_liq_s1)) CALL gpu_cc_done_r(318, h2osoi_liq_s1, SIZE(h2osoi_liq_s1,KIND=8), 'h2osoi_liq_s1', &
+          LBOUND(h2osoi_liq_s1), UBOUND(h2osoi_liq_s1))
+        IF (PRESENT(h2osoi_liq_s2)) CALL gpu_cc_done_r(319, h2osoi_liq_s2, SIZE(h2osoi_liq_s2,KIND=8), 'h2osoi_liq_s2', &
+          LBOUND(h2osoi_liq_s2), UBOUND(h2osoi_liq_s2))
+        IF (PRESENT(h2osoi_liq_s3)) CALL gpu_cc_done_r(320, h2osoi_liq_s3, SIZE(h2osoi_liq_s3,KIND=8), 'h2osoi_liq_s3', &
+          LBOUND(h2osoi_liq_s3), UBOUND(h2osoi_liq_s3))
+        IF (PRESENT(h2osoi_liq_s4)) CALL gpu_cc_done_r(321, h2osoi_liq_s4, SIZE(h2osoi_liq_s4,KIND=8), 'h2osoi_liq_s4', &
+          LBOUND(h2osoi_liq_s4), UBOUND(h2osoi_liq_s4))
+        IF (PRESENT(h2osoi_liq_s5)) CALL gpu_cc_done_r(322, h2osoi_liq_s5, SIZE(h2osoi_liq_s5,KIND=8), 'h2osoi_liq_s5', &
+          LBOUND(h2osoi_liq_s5), UBOUND(h2osoi_liq_s5))
+        IF (PRESENT(h2osoi_liq1)) CALL gpu_cc_done_r(323, h2osoi_liq1, SIZE(h2osoi_liq1,KIND=8), 'h2osoi_liq1', &
+          LBOUND(h2osoi_liq1), UBOUND(h2osoi_liq1))
+        IF (PRESENT(h2osoi_liq2)) CALL gpu_cc_done_r(324, h2osoi_liq2, SIZE(h2osoi_liq2,KIND=8), 'h2osoi_liq2', &
+          LBOUND(h2osoi_liq2), UBOUND(h2osoi_liq2))
+        IF (PRESENT(h2osoi_liq3)) CALL gpu_cc_done_r(325, h2osoi_liq3, SIZE(h2osoi_liq3,KIND=8), 'h2osoi_liq3', &
+          LBOUND(h2osoi_liq3), UBOUND(h2osoi_liq3))
+        IF (PRESENT(h2osoi_liq4)) CALL gpu_cc_done_r(326, h2osoi_liq4, SIZE(h2osoi_liq4,KIND=8), 'h2osoi_liq4', &
+          LBOUND(h2osoi_liq4), UBOUND(h2osoi_liq4))
+        IF (PRESENT(h2osoi_liq5)) CALL gpu_cc_done_r(327, h2osoi_liq5, SIZE(h2osoi_liq5,KIND=8), 'h2osoi_liq5', &
+          LBOUND(h2osoi_liq5), UBOUND(h2osoi_liq5))
+        IF (PRESENT(h2osoi_liq6)) CALL gpu_cc_done_r(328, h2osoi_liq6, SIZE(h2osoi_liq6,KIND=8), 'h2osoi_liq6', &
+          LBOUND(h2osoi_liq6), UBOUND(h2osoi_liq6))
+        IF (PRESENT(h2osoi_liq7)) CALL gpu_cc_done_r(329, h2osoi_liq7, SIZE(h2osoi_liq7,KIND=8), 'h2osoi_liq7', &
+          LBOUND(h2osoi_liq7), UBOUND(h2osoi_liq7))
+        IF (PRESENT(h2osoi_liq8)) CALL gpu_cc_done_r(330, h2osoi_liq8, SIZE(h2osoi_liq8,KIND=8), 'h2osoi_liq8', &
+          LBOUND(h2osoi_liq8), UBOUND(h2osoi_liq8))
+        IF (PRESENT(h2osoi_liq9)) CALL gpu_cc_done_r(331, h2osoi_liq9, SIZE(h2osoi_liq9,KIND=8), 'h2osoi_liq9', &
+          LBOUND(h2osoi_liq9), UBOUND(h2osoi_liq9))
+        IF (PRESENT(h2osoi_liq10)) CALL gpu_cc_done_r(332, h2osoi_liq10, SIZE(h2osoi_liq10,KIND=8), 'h2osoi_liq10', &
+          LBOUND(h2osoi_liq10), UBOUND(h2osoi_liq10))
+        IF (PRESENT(h2osoi_ice_s1)) CALL gpu_cc_done_r(333, h2osoi_ice_s1, SIZE(h2osoi_ice_s1,KIND=8), 'h2osoi_ice_s1', &
+          LBOUND(h2osoi_ice_s1), UBOUND(h2osoi_ice_s1))
+        IF (PRESENT(h2osoi_ice_s2)) CALL gpu_cc_done_r(334, h2osoi_ice_s2, SIZE(h2osoi_ice_s2,KIND=8), 'h2osoi_ice_s2', &
+          LBOUND(h2osoi_ice_s2), UBOUND(h2osoi_ice_s2))
+        IF (PRESENT(h2osoi_ice_s3)) CALL gpu_cc_done_r(335, h2osoi_ice_s3, SIZE(h2osoi_ice_s3,KIND=8), 'h2osoi_ice_s3', &
+          LBOUND(h2osoi_ice_s3), UBOUND(h2osoi_ice_s3))
+        IF (PRESENT(h2osoi_ice_s4)) CALL gpu_cc_done_r(336, h2osoi_ice_s4, SIZE(h2osoi_ice_s4,KIND=8), 'h2osoi_ice_s4', &
+          LBOUND(h2osoi_ice_s4), UBOUND(h2osoi_ice_s4))
+        IF (PRESENT(h2osoi_ice_s5)) CALL gpu_cc_done_r(337, h2osoi_ice_s5, SIZE(h2osoi_ice_s5,KIND=8), 'h2osoi_ice_s5', &
+          LBOUND(h2osoi_ice_s5), UBOUND(h2osoi_ice_s5))
+        IF (PRESENT(h2osoi_ice1)) CALL gpu_cc_done_r(338, h2osoi_ice1, SIZE(h2osoi_ice1,KIND=8), 'h2osoi_ice1', &
+          LBOUND(h2osoi_ice1), UBOUND(h2osoi_ice1))
+        IF (PRESENT(h2osoi_ice2)) CALL gpu_cc_done_r(339, h2osoi_ice2, SIZE(h2osoi_ice2,KIND=8), 'h2osoi_ice2', &
+          LBOUND(h2osoi_ice2), UBOUND(h2osoi_ice2))
+        IF (PRESENT(h2osoi_ice3)) CALL gpu_cc_done_r(340, h2osoi_ice3, SIZE(h2osoi_ice3,KIND=8), 'h2osoi_ice3', &
+          LBOUND(h2osoi_ice3), UBOUND(h2osoi_ice3))
+        IF (PRESENT(h2osoi_ice4)) CALL gpu_cc_done_r(341, h2osoi_ice4, SIZE(h2osoi_ice4,KIND=8), 'h2osoi_ice4', &
+          LBOUND(h2osoi_ice4), UBOUND(h2osoi_ice4))
+        IF (PRESENT(h2osoi_ice5)) CALL gpu_cc_done_r(342, h2osoi_ice5, SIZE(h2osoi_ice5,KIND=8), 'h2osoi_ice5', &
+          LBOUND(h2osoi_ice5), UBOUND(h2osoi_ice5))
+        IF (PRESENT(h2osoi_ice6)) CALL gpu_cc_done_r(343, h2osoi_ice6, SIZE(h2osoi_ice6,KIND=8), 'h2osoi_ice6', &
+          LBOUND(h2osoi_ice6), UBOUND(h2osoi_ice6))
+        IF (PRESENT(h2osoi_ice7)) CALL gpu_cc_done_r(344, h2osoi_ice7, SIZE(h2osoi_ice7,KIND=8), 'h2osoi_ice7', &
+          LBOUND(h2osoi_ice7), UBOUND(h2osoi_ice7))
+        IF (PRESENT(h2osoi_ice8)) CALL gpu_cc_done_r(345, h2osoi_ice8, SIZE(h2osoi_ice8,KIND=8), 'h2osoi_ice8', &
+          LBOUND(h2osoi_ice8), UBOUND(h2osoi_ice8))
+        IF (PRESENT(h2osoi_ice9)) CALL gpu_cc_done_r(346, h2osoi_ice9, SIZE(h2osoi_ice9,KIND=8), 'h2osoi_ice9', &
+          LBOUND(h2osoi_ice9), UBOUND(h2osoi_ice9))
+        IF (PRESENT(h2osoi_ice10)) CALL gpu_cc_done_r(347, h2osoi_ice10, SIZE(h2osoi_ice10,KIND=8), 'h2osoi_ice10', &
+          LBOUND(h2osoi_ice10), UBOUND(h2osoi_ice10))
+        IF (PRESENT(t_soisno_s1)) CALL gpu_cc_done_r(348, t_soisno_s1, SIZE(t_soisno_s1,KIND=8), 't_soisno_s1', &
+          LBOUND(t_soisno_s1), UBOUND(t_soisno_s1))
+        IF (PRESENT(t_soisno_s2)) CALL gpu_cc_done_r(349, t_soisno_s2, SIZE(t_soisno_s2,KIND=8), 't_soisno_s2', &
+          LBOUND(t_soisno_s2), UBOUND(t_soisno_s2))
+        IF (PRESENT(t_soisno_s3)) CALL gpu_cc_done_r(350, t_soisno_s3, SIZE(t_soisno_s3,KIND=8), 't_soisno_s3', &
+          LBOUND(t_soisno_s3), UBOUND(t_soisno_s3))
+        IF (PRESENT(t_soisno_s4)) CALL gpu_cc_done_r(351, t_soisno_s4, SIZE(t_soisno_s4,KIND=8), 't_soisno_s4', &
+          LBOUND(t_soisno_s4), UBOUND(t_soisno_s4))
+        IF (PRESENT(t_soisno_s5)) CALL gpu_cc_done_r(352, t_soisno_s5, SIZE(t_soisno_s5,KIND=8), 't_soisno_s5', &
+          LBOUND(t_soisno_s5), UBOUND(t_soisno_s5))
+        IF (PRESENT(t_soisno1)) CALL gpu_cc_done_r(353, t_soisno1, SIZE(t_soisno1,KIND=8), 't_soisno1', &
+          LBOUND(t_soisno1), UBOUND(t_soisno1))
+        IF (PRESENT(t_soisno2)) CALL gpu_cc_done_r(354, t_soisno2, SIZE(t_soisno2,KIND=8), 't_soisno2', &
+          LBOUND(t_soisno2), UBOUND(t_soisno2))
+        IF (PRESENT(t_soisno3)) CALL gpu_cc_done_r(355, t_soisno3, SIZE(t_soisno3,KIND=8), 't_soisno3', &
+          LBOUND(t_soisno3), UBOUND(t_soisno3))
+        IF (PRESENT(t_soisno4)) CALL gpu_cc_done_r(356, t_soisno4, SIZE(t_soisno4,KIND=8), 't_soisno4', &
+          LBOUND(t_soisno4), UBOUND(t_soisno4))
+        IF (PRESENT(t_soisno5)) CALL gpu_cc_done_r(357, t_soisno5, SIZE(t_soisno5,KIND=8), 't_soisno5', &
+          LBOUND(t_soisno5), UBOUND(t_soisno5))
+        IF (PRESENT(t_soisno6)) CALL gpu_cc_done_r(358, t_soisno6, SIZE(t_soisno6,KIND=8), 't_soisno6', &
+          LBOUND(t_soisno6), UBOUND(t_soisno6))
+        IF (PRESENT(t_soisno7)) CALL gpu_cc_done_r(359, t_soisno7, SIZE(t_soisno7,KIND=8), 't_soisno7', &
+          LBOUND(t_soisno7), UBOUND(t_soisno7))
+        IF (PRESENT(t_soisno8)) CALL gpu_cc_done_r(360, t_soisno8, SIZE(t_soisno8,KIND=8), 't_soisno8', &
+          LBOUND(t_soisno8), UBOUND(t_soisno8))
+        IF (PRESENT(t_soisno9)) CALL gpu_cc_done_r(361, t_soisno9, SIZE(t_soisno9,KIND=8), 't_soisno9', &
+          LBOUND(t_soisno9), UBOUND(t_soisno9))
+        IF (PRESENT(t_soisno10)) CALL gpu_cc_done_r(362, t_soisno10, SIZE(t_soisno10,KIND=8), 't_soisno10', &
+          LBOUND(t_soisno10), UBOUND(t_soisno10))
+        IF (PRESENT(dzsnow1)) CALL gpu_cc_done_r(363, dzsnow1, SIZE(dzsnow1,KIND=8), 'dzsnow1', &
+          LBOUND(dzsnow1), UBOUND(dzsnow1))
+        IF (PRESENT(dzsnow2)) CALL gpu_cc_done_r(364, dzsnow2, SIZE(dzsnow2,KIND=8), 'dzsnow2', &
+          LBOUND(dzsnow2), UBOUND(dzsnow2))
+        IF (PRESENT(dzsnow3)) CALL gpu_cc_done_r(365, dzsnow3, SIZE(dzsnow3,KIND=8), 'dzsnow3', &
+          LBOUND(dzsnow3), UBOUND(dzsnow3))
+        IF (PRESENT(dzsnow4)) CALL gpu_cc_done_r(366, dzsnow4, SIZE(dzsnow4,KIND=8), 'dzsnow4', &
+          LBOUND(dzsnow4), UBOUND(dzsnow4))
+        IF (PRESENT(dzsnow5)) CALL gpu_cc_done_r(367, dzsnow5, SIZE(dzsnow5,KIND=8), 'dzsnow5', &
+          LBOUND(dzsnow5), UBOUND(dzsnow5))
+        IF (PRESENT(snowrds1)) CALL gpu_cc_done_r(368, snowrds1, SIZE(snowrds1,KIND=8), 'snowrds1', &
+          LBOUND(snowrds1), UBOUND(snowrds1))
+        IF (PRESENT(snowrds2)) CALL gpu_cc_done_r(369, snowrds2, SIZE(snowrds2,KIND=8), 'snowrds2', &
+          LBOUND(snowrds2), UBOUND(snowrds2))
+        IF (PRESENT(snowrds3)) CALL gpu_cc_done_r(370, snowrds3, SIZE(snowrds3,KIND=8), 'snowrds3', &
+          LBOUND(snowrds3), UBOUND(snowrds3))
+        IF (PRESENT(snowrds4)) CALL gpu_cc_done_r(371, snowrds4, SIZE(snowrds4,KIND=8), 'snowrds4', &
+          LBOUND(snowrds4), UBOUND(snowrds4))
+        IF (PRESENT(snowrds5)) CALL gpu_cc_done_r(372, snowrds5, SIZE(snowrds5,KIND=8), 'snowrds5', &
+          LBOUND(snowrds5), UBOUND(snowrds5))
+        IF (PRESENT(t_lake1)) CALL gpu_cc_done_r(373, t_lake1, SIZE(t_lake1,KIND=8), 't_lake1', &
+          LBOUND(t_lake1), UBOUND(t_lake1))
+        IF (PRESENT(t_lake2)) CALL gpu_cc_done_r(374, t_lake2, SIZE(t_lake2,KIND=8), 't_lake2', &
+          LBOUND(t_lake2), UBOUND(t_lake2))
+        IF (PRESENT(t_lake3)) CALL gpu_cc_done_r(375, t_lake3, SIZE(t_lake3,KIND=8), 't_lake3', &
+          LBOUND(t_lake3), UBOUND(t_lake3))
+        IF (PRESENT(t_lake4)) CALL gpu_cc_done_r(376, t_lake4, SIZE(t_lake4,KIND=8), 't_lake4', &
+          LBOUND(t_lake4), UBOUND(t_lake4))
+        IF (PRESENT(t_lake5)) CALL gpu_cc_done_r(377, t_lake5, SIZE(t_lake5,KIND=8), 't_lake5', &
+          LBOUND(t_lake5), UBOUND(t_lake5))
+        IF (PRESENT(t_lake6)) CALL gpu_cc_done_r(378, t_lake6, SIZE(t_lake6,KIND=8), 't_lake6', &
+          LBOUND(t_lake6), UBOUND(t_lake6))
+        IF (PRESENT(t_lake7)) CALL gpu_cc_done_r(379, t_lake7, SIZE(t_lake7,KIND=8), 't_lake7', &
+          LBOUND(t_lake7), UBOUND(t_lake7))
+        IF (PRESENT(t_lake8)) CALL gpu_cc_done_r(380, t_lake8, SIZE(t_lake8,KIND=8), 't_lake8', &
+          LBOUND(t_lake8), UBOUND(t_lake8))
+        IF (PRESENT(t_lake9)) CALL gpu_cc_done_r(381, t_lake9, SIZE(t_lake9,KIND=8), 't_lake9', &
+          LBOUND(t_lake9), UBOUND(t_lake9))
+        IF (PRESENT(t_lake10)) CALL gpu_cc_done_r(382, t_lake10, SIZE(t_lake10,KIND=8), 't_lake10', &
+          LBOUND(t_lake10), UBOUND(t_lake10))
+        IF (PRESENT(h2osoi_vol1)) CALL gpu_cc_done_r(383, h2osoi_vol1, SIZE(h2osoi_vol1,KIND=8), 'h2osoi_vol1', &
+          LBOUND(h2osoi_vol1), UBOUND(h2osoi_vol1))
+        IF (PRESENT(h2osoi_vol2)) CALL gpu_cc_done_r(384, h2osoi_vol2, SIZE(h2osoi_vol2,KIND=8), 'h2osoi_vol2', &
+          LBOUND(h2osoi_vol2), UBOUND(h2osoi_vol2))
+        IF (PRESENT(h2osoi_vol3)) CALL gpu_cc_done_r(385, h2osoi_vol3, SIZE(h2osoi_vol3,KIND=8), 'h2osoi_vol3', &
+          LBOUND(h2osoi_vol3), UBOUND(h2osoi_vol3))
+        IF (PRESENT(h2osoi_vol4)) CALL gpu_cc_done_r(386, h2osoi_vol4, SIZE(h2osoi_vol4,KIND=8), 'h2osoi_vol4', &
+          LBOUND(h2osoi_vol4), UBOUND(h2osoi_vol4))
+        IF (PRESENT(h2osoi_vol5)) CALL gpu_cc_done_r(387, h2osoi_vol5, SIZE(h2osoi_vol5,KIND=8), 'h2osoi_vol5', &
+          LBOUND(h2osoi_vol5), UBOUND(h2osoi_vol5))
+        IF (PRESENT(h2osoi_vol6)) CALL gpu_cc_done_r(388, h2osoi_vol6, SIZE(h2osoi_vol6,KIND=8), 'h2osoi_vol6', &
+          LBOUND(h2osoi_vol6), UBOUND(h2osoi_vol6))
+        IF (PRESENT(h2osoi_vol7)) CALL gpu_cc_done_r(389, h2osoi_vol7, SIZE(h2osoi_vol7,KIND=8), 'h2osoi_vol7', &
+          LBOUND(h2osoi_vol7), UBOUND(h2osoi_vol7))
+        IF (PRESENT(h2osoi_vol8)) CALL gpu_cc_done_r(390, h2osoi_vol8, SIZE(h2osoi_vol8,KIND=8), 'h2osoi_vol8', &
+          LBOUND(h2osoi_vol8), UBOUND(h2osoi_vol8))
+        IF (PRESENT(h2osoi_vol9)) CALL gpu_cc_done_r(391, h2osoi_vol9, SIZE(h2osoi_vol9,KIND=8), 'h2osoi_vol9', &
+          LBOUND(h2osoi_vol9), UBOUND(h2osoi_vol9))
+        IF (PRESENT(h2osoi_vol10)) CALL gpu_cc_done_r(392, h2osoi_vol10, SIZE(h2osoi_vol10,KIND=8), 'h2osoi_vol10', &
+          LBOUND(h2osoi_vol10), UBOUND(h2osoi_vol10))
+        IF (PRESENT(albedosubgrid)) CALL gpu_cc_done_r(393, albedosubgrid, SIZE(albedosubgrid,KIND=8), 'albedosubgrid', &
+          LBOUND(albedosubgrid), UBOUND(albedosubgrid))
+        IF (PRESENT(lhsubgrid)) CALL gpu_cc_done_r(394, lhsubgrid, SIZE(lhsubgrid,KIND=8), 'lhsubgrid', &
+          LBOUND(lhsubgrid), UBOUND(lhsubgrid))
+        IF (PRESENT(hfxsubgrid)) CALL gpu_cc_done_r(395, hfxsubgrid, SIZE(hfxsubgrid,KIND=8), 'hfxsubgrid', &
+          LBOUND(hfxsubgrid), UBOUND(hfxsubgrid))
+        IF (PRESENT(lwupsubgrid)) CALL gpu_cc_done_r(396, lwupsubgrid, SIZE(lwupsubgrid,KIND=8), 'lwupsubgrid', &
+          LBOUND(lwupsubgrid), UBOUND(lwupsubgrid))
+        IF (PRESENT(q2subgrid)) CALL gpu_cc_done_r(397, q2subgrid, SIZE(q2subgrid,KIND=8), 'q2subgrid', &
+          LBOUND(q2subgrid), UBOUND(q2subgrid))
+        IF (PRESENT(sabvsubgrid)) CALL gpu_cc_done_r(398, sabvsubgrid, SIZE(sabvsubgrid,KIND=8), 'sabvsubgrid', &
+          LBOUND(sabvsubgrid), UBOUND(sabvsubgrid))
+        IF (PRESENT(sabgsubgrid)) CALL gpu_cc_done_r(399, sabgsubgrid, SIZE(sabgsubgrid,KIND=8), 'sabgsubgrid', &
+          LBOUND(sabgsubgrid), UBOUND(sabgsubgrid))
+        IF (PRESENT(nrasubgrid)) CALL gpu_cc_done_r(400, nrasubgrid, SIZE(nrasubgrid,KIND=8), 'nrasubgrid', &
+          LBOUND(nrasubgrid), UBOUND(nrasubgrid))
+        IF (PRESENT(swupsubgrid)) CALL gpu_cc_done_r(401, swupsubgrid, SIZE(swupsubgrid,KIND=8), 'swupsubgrid', &
+          LBOUND(swupsubgrid), UBOUND(swupsubgrid))
+        IF (PRESENT(lhsoi)) CALL gpu_cc_done_r(402, lhsoi, SIZE(lhsoi,KIND=8), 'lhsoi', &
+          LBOUND(lhsoi), UBOUND(lhsoi))
+        IF (PRESENT(lhveg)) CALL gpu_cc_done_r(403, lhveg, SIZE(lhveg,KIND=8), 'lhveg', &
+          LBOUND(lhveg), UBOUND(lhveg))
+        IF (PRESENT(lhtran)) CALL gpu_cc_done_r(404, lhtran, SIZE(lhtran,KIND=8), 'lhtran', &
+          LBOUND(lhtran), UBOUND(lhtran))
+        IF (PRESENT(t_veg24)) CALL gpu_cc_done_r(405, t_veg24, SIZE(t_veg24,KIND=8), 't_veg24', &
+          LBOUND(t_veg24), UBOUND(t_veg24))
+        IF (PRESENT(t_veg240)) CALL gpu_cc_done_r(406, t_veg240, SIZE(t_veg240,KIND=8), 't_veg240', &
+          LBOUND(t_veg240), UBOUND(t_veg240))
+        IF (PRESENT(fsun24)) CALL gpu_cc_done_r(407, fsun24, SIZE(fsun24,KIND=8), 'fsun24', &
+          LBOUND(fsun24), UBOUND(fsun24))
+        IF (PRESENT(fsun240)) CALL gpu_cc_done_r(408, fsun240, SIZE(fsun240,KIND=8), 'fsun240', &
+          LBOUND(fsun240), UBOUND(fsun240))
+        IF (PRESENT(fsd24)) CALL gpu_cc_done_r(409, fsd24, SIZE(fsd24,KIND=8), 'fsd24', &
+          LBOUND(fsd24), UBOUND(fsd24))
+        IF (PRESENT(fsd240)) CALL gpu_cc_done_r(410, fsd240, SIZE(fsd240,KIND=8), 'fsd240', &
+          LBOUND(fsd240), UBOUND(fsd240))
+        IF (PRESENT(fsi24)) CALL gpu_cc_done_r(411, fsi24, SIZE(fsi24,KIND=8), 'fsi24', &
+          LBOUND(fsi24), UBOUND(fsi24))
+        IF (PRESENT(fsi240)) CALL gpu_cc_done_r(412, fsi240, SIZE(fsi240,KIND=8), 'fsi240', &
+          LBOUND(fsi240), UBOUND(fsi240))
+        IF (PRESENT(laip)) CALL gpu_cc_done_r(413, laip, SIZE(laip,KIND=8), 'laip', &
+          LBOUND(laip), UBOUND(laip))
+#ifdef CN
+        IF (PRESENT(dyntlai)) CALL gpu_cc_done_r(414, dyntlai, SIZE(dyntlai,KIND=8), 'dyntlai', &
+          LBOUND(dyntlai), UBOUND(dyntlai))
+#endif
+#ifdef CN
+        IF (PRESENT(dyntsai)) CALL gpu_cc_done_r(415, dyntsai, SIZE(dyntsai,KIND=8), 'dyntsai', &
+          LBOUND(dyntsai), UBOUND(dyntsai))
+#endif
+#ifdef CN
+        IF (PRESENT(dyntop)) CALL gpu_cc_done_r(416, dyntop, SIZE(dyntop,KIND=8), 'dyntop', &
+          LBOUND(dyntop), UBOUND(dyntop))
+#endif
+#ifdef CN
+        IF (PRESENT(dynbot)) CALL gpu_cc_done_r(417, dynbot, SIZE(dynbot,KIND=8), 'dynbot', &
+          LBOUND(dynbot), UBOUND(dynbot))
+#endif
+#ifdef CN
+        IF (PRESENT(htmx)) CALL gpu_cc_done_r(418, htmx, SIZE(htmx,KIND=8), 'htmx', &
+          LBOUND(htmx), UBOUND(htmx))
+#endif
+#ifdef CN
+        IF (PRESENT(croplive)) CALL gpu_cc_done_i(419, croplive, SIZE(croplive,KIND=8), 'croplive', &
+          LBOUND(croplive), UBOUND(croplive))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd1020)) CALL gpu_cc_done_r(420, gdd1020, SIZE(gdd1020,KIND=8), 'gdd1020', &
+          LBOUND(gdd1020), UBOUND(gdd1020))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd820)) CALL gpu_cc_done_r(421, gdd820, SIZE(gdd820,KIND=8), 'gdd820', &
+          LBOUND(gdd820), UBOUND(gdd820))
+#endif
+#ifdef CN
+        IF (PRESENT(gdd020)) CALL gpu_cc_done_r(422, gdd020, SIZE(gdd020,KIND=8), 'gdd020', &
+          LBOUND(gdd020), UBOUND(gdd020))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc)) CALL gpu_cc_done_r(423, grainc, SIZE(grainc,KIND=8), 'grainc', &
+          LBOUND(grainc), UBOUND(grainc))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc_storage)) CALL gpu_cc_done_r(424, grainc_storage, SIZE(grainc_storage,KIND=8), 'grainc_storage', &
+          LBOUND(grainc_storage), UBOUND(grainc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(grainc_xfer)) CALL gpu_cc_done_r(425, grainc_xfer, SIZE(grainc_xfer,KIND=8), 'grainc_xfer', &
+          LBOUND(grainc_xfer), UBOUND(grainc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn)) CALL gpu_cc_done_r(426, grainn, SIZE(grainn,KIND=8), 'grainn', &
+          LBOUND(grainn), UBOUND(grainn))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn_storage)) CALL gpu_cc_done_r(427, grainn_storage, SIZE(grainn_storage,KIND=8), 'grainn_storage', &
+          LBOUND(grainn_storage), UBOUND(grainn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(grainn_xfer)) CALL gpu_cc_done_r(428, grainn_xfer, SIZE(grainn_xfer,KIND=8), 'grainn_xfer', &
+          LBOUND(grainn_xfer), UBOUND(grainn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(days_active)) CALL gpu_cc_done_r(429, days_active, SIZE(days_active,KIND=8), 'days_active', &
+          LBOUND(days_active), UBOUND(days_active))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_flag)) CALL gpu_cc_done_r(430, onset_flag, SIZE(onset_flag,KIND=8), 'onset_flag', &
+          LBOUND(onset_flag), UBOUND(onset_flag))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_counter)) CALL gpu_cc_done_r(431, onset_counter, SIZE(onset_counter,KIND=8), 'onset_counter', &
+          LBOUND(onset_counter), UBOUND(onset_counter))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_gddflag)) CALL gpu_cc_done_r(432, onset_gddflag, SIZE(onset_gddflag,KIND=8), 'onset_gddflag', &
+          LBOUND(onset_gddflag), UBOUND(onset_gddflag))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_fdd)) CALL gpu_cc_done_r(433, onset_fdd, SIZE(onset_fdd,KIND=8), 'onset_fdd', &
+          LBOUND(onset_fdd), UBOUND(onset_fdd))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_gdd)) CALL gpu_cc_done_r(434, onset_gdd, SIZE(onset_gdd,KIND=8), 'onset_gdd', &
+          LBOUND(onset_gdd), UBOUND(onset_gdd))
+#endif
+#ifdef CN
+        IF (PRESENT(onset_swi)) CALL gpu_cc_done_r(435, onset_swi, SIZE(onset_swi,KIND=8), 'onset_swi', &
+          LBOUND(onset_swi), UBOUND(onset_swi))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_flag)) CALL gpu_cc_done_r(436, offset_flag, SIZE(offset_flag,KIND=8), 'offset_flag', &
+          LBOUND(offset_flag), UBOUND(offset_flag))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_counter)) CALL gpu_cc_done_r(437, offset_counter, SIZE(offset_counter,KIND=8), 'offset_counter', &
+          LBOUND(offset_counter), UBOUND(offset_counter))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_fdd)) CALL gpu_cc_done_r(438, offset_fdd, SIZE(offset_fdd,KIND=8), 'offset_fdd', &
+          LBOUND(offset_fdd), UBOUND(offset_fdd))
+#endif
+#ifdef CN
+        IF (PRESENT(offset_swi)) CALL gpu_cc_done_r(439, offset_swi, SIZE(offset_swi,KIND=8), 'offset_swi', &
+          LBOUND(offset_swi), UBOUND(offset_swi))
+#endif
+#ifdef CN
+        IF (PRESENT(dayl)) CALL gpu_cc_done_r(440, dayl, SIZE(dayl,KIND=8), 'dayl', &
+          LBOUND(dayl), UBOUND(dayl))
+#endif
+#ifdef CN
+        IF (PRESENT(annavg_t2m)) CALL gpu_cc_done_r(441, annavg_t2m, SIZE(annavg_t2m,KIND=8), 'annavg_t2m', &
+          LBOUND(annavg_t2m), UBOUND(annavg_t2m))
+#endif
+#ifdef CN
+        IF (PRESENT(tempavg_t2m)) CALL gpu_cc_done_r(442, tempavg_t2m, SIZE(tempavg_t2m,KIND=8), 'tempavg_t2m', &
+          LBOUND(tempavg_t2m), UBOUND(tempavg_t2m))
+#endif
+#ifdef CN
+        IF (PRESENT(tempsum_potential_gpp)) CALL gpu_cc_done_r(443, tempsum_potential_gpp, SIZE(tempsum_potential_gpp,KIND=8), 'tempsum_potential_gpp', &
+          LBOUND(tempsum_potential_gpp), UBOUND(tempsum_potential_gpp))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_potential_gpp)) CALL gpu_cc_done_r(444, annsum_potential_gpp, SIZE(annsum_potential_gpp,KIND=8), 'annsum_potential_gpp', &
+          LBOUND(annsum_potential_gpp), UBOUND(annsum_potential_gpp))
+#endif
+#ifdef CN
+        IF (PRESENT(tempmax_retransn)) CALL gpu_cc_done_r(445, tempmax_retransn, SIZE(tempmax_retransn,KIND=8), 'tempmax_retransn', &
+          LBOUND(tempmax_retransn), UBOUND(tempmax_retransn))
+#endif
+#ifdef CN
+        IF (PRESENT(annmax_retransn)) CALL gpu_cc_done_r(446, annmax_retransn, SIZE(annmax_retransn,KIND=8), 'annmax_retransn', &
+          LBOUND(annmax_retransn), UBOUND(annmax_retransn))
+#endif
+#ifdef CN
+        IF (PRESENT(prev_leafc_to_litter)) CALL gpu_cc_done_r(447, prev_leafc_to_litter, SIZE(prev_leafc_to_litter,KIND=8), 'prev_leafc_to_litter', &
+          LBOUND(prev_leafc_to_litter), UBOUND(prev_leafc_to_litter))
+#endif
+#ifdef CN
+        IF (PRESENT(prev_frootc_to_litter)) CALL gpu_cc_done_r(448, prev_frootc_to_litter, SIZE(prev_frootc_to_litter,KIND=8), 'prev_frootc_to_litter', &
+          LBOUND(prev_frootc_to_litter), UBOUND(prev_frootc_to_litter))
+#endif
+#ifdef CN
+        IF (PRESENT(tempsum_npp)) CALL gpu_cc_done_r(449, tempsum_npp, SIZE(tempsum_npp,KIND=8), 'tempsum_npp', &
+          LBOUND(tempsum_npp), UBOUND(tempsum_npp))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_npp)) CALL gpu_cc_done_r(450, annsum_npp, SIZE(annsum_npp,KIND=8), 'annsum_npp', &
+          LBOUND(annsum_npp), UBOUND(annsum_npp))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc)) CALL gpu_cc_done_r(451, leafc, SIZE(leafc,KIND=8), 'leafc', &
+          LBOUND(leafc), UBOUND(leafc))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc_storage)) CALL gpu_cc_done_r(452, leafc_storage, SIZE(leafc_storage,KIND=8), 'leafc_storage', &
+          LBOUND(leafc_storage), UBOUND(leafc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(leafc_xfer)) CALL gpu_cc_done_r(453, leafc_xfer, SIZE(leafc_xfer,KIND=8), 'leafc_xfer', &
+          LBOUND(leafc_xfer), UBOUND(leafc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc)) CALL gpu_cc_done_r(454, frootc, SIZE(frootc,KIND=8), 'frootc', &
+          LBOUND(frootc), UBOUND(frootc))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc_storage)) CALL gpu_cc_done_r(455, frootc_storage, SIZE(frootc_storage,KIND=8), 'frootc_storage', &
+          LBOUND(frootc_storage), UBOUND(frootc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(frootc_xfer)) CALL gpu_cc_done_r(456, frootc_xfer, SIZE(frootc_xfer,KIND=8), 'frootc_xfer', &
+          LBOUND(frootc_xfer), UBOUND(frootc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc)) CALL gpu_cc_done_r(457, livestemc, SIZE(livestemc,KIND=8), 'livestemc', &
+          LBOUND(livestemc), UBOUND(livestemc))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc_storage)) CALL gpu_cc_done_r(458, livestemc_storage, SIZE(livestemc_storage,KIND=8), 'livestemc_storage', &
+          LBOUND(livestemc_storage), UBOUND(livestemc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemc_xfer)) CALL gpu_cc_done_r(459, livestemc_xfer, SIZE(livestemc_xfer,KIND=8), 'livestemc_xfer', &
+          LBOUND(livestemc_xfer), UBOUND(livestemc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc)) CALL gpu_cc_done_r(460, deadstemc, SIZE(deadstemc,KIND=8), 'deadstemc', &
+          LBOUND(deadstemc), UBOUND(deadstemc))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc_storage)) CALL gpu_cc_done_r(461, deadstemc_storage, SIZE(deadstemc_storage,KIND=8), 'deadstemc_storage', &
+          LBOUND(deadstemc_storage), UBOUND(deadstemc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemc_xfer)) CALL gpu_cc_done_r(462, deadstemc_xfer, SIZE(deadstemc_xfer,KIND=8), 'deadstemc_xfer', &
+          LBOUND(deadstemc_xfer), UBOUND(deadstemc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc)) CALL gpu_cc_done_r(463, livecrootc, SIZE(livecrootc,KIND=8), 'livecrootc', &
+          LBOUND(livecrootc), UBOUND(livecrootc))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc_storage)) CALL gpu_cc_done_r(464, livecrootc_storage, SIZE(livecrootc_storage,KIND=8), 'livecrootc_storage', &
+          LBOUND(livecrootc_storage), UBOUND(livecrootc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootc_xfer)) CALL gpu_cc_done_r(465, livecrootc_xfer, SIZE(livecrootc_xfer,KIND=8), 'livecrootc_xfer', &
+          LBOUND(livecrootc_xfer), UBOUND(livecrootc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc)) CALL gpu_cc_done_r(466, deadcrootc, SIZE(deadcrootc,KIND=8), 'deadcrootc', &
+          LBOUND(deadcrootc), UBOUND(deadcrootc))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc_storage)) CALL gpu_cc_done_r(467, deadcrootc_storage, SIZE(deadcrootc_storage,KIND=8), 'deadcrootc_storage', &
+          LBOUND(deadcrootc_storage), UBOUND(deadcrootc_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootc_xfer)) CALL gpu_cc_done_r(468, deadcrootc_xfer, SIZE(deadcrootc_xfer,KIND=8), 'deadcrootc_xfer', &
+          LBOUND(deadcrootc_xfer), UBOUND(deadcrootc_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(cpool)) CALL gpu_cc_done_r(469, cpool, SIZE(cpool,KIND=8), 'cpool', &
+          LBOUND(cpool), UBOUND(cpool))
+#endif
+#ifdef CN
+        IF (PRESENT(pft_ctrunc)) CALL gpu_cc_done_r(470, pft_ctrunc, SIZE(pft_ctrunc,KIND=8), 'pft_ctrunc', &
+          LBOUND(pft_ctrunc), UBOUND(pft_ctrunc))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn)) CALL gpu_cc_done_r(471, leafn, SIZE(leafn,KIND=8), 'leafn', &
+          LBOUND(leafn), UBOUND(leafn))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn_storage)) CALL gpu_cc_done_r(472, leafn_storage, SIZE(leafn_storage,KIND=8), 'leafn_storage', &
+          LBOUND(leafn_storage), UBOUND(leafn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(leafn_xfer)) CALL gpu_cc_done_r(473, leafn_xfer, SIZE(leafn_xfer,KIND=8), 'leafn_xfer', &
+          LBOUND(leafn_xfer), UBOUND(leafn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn)) CALL gpu_cc_done_r(474, frootn, SIZE(frootn,KIND=8), 'frootn', &
+          LBOUND(frootn), UBOUND(frootn))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn_storage)) CALL gpu_cc_done_r(475, frootn_storage, SIZE(frootn_storage,KIND=8), 'frootn_storage', &
+          LBOUND(frootn_storage), UBOUND(frootn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(frootn_xfer)) CALL gpu_cc_done_r(476, frootn_xfer, SIZE(frootn_xfer,KIND=8), 'frootn_xfer', &
+          LBOUND(frootn_xfer), UBOUND(frootn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn)) CALL gpu_cc_done_r(477, livestemn, SIZE(livestemn,KIND=8), 'livestemn', &
+          LBOUND(livestemn), UBOUND(livestemn))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn_storage)) CALL gpu_cc_done_r(478, livestemn_storage, SIZE(livestemn_storage,KIND=8), 'livestemn_storage', &
+          LBOUND(livestemn_storage), UBOUND(livestemn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(livestemn_xfer)) CALL gpu_cc_done_r(479, livestemn_xfer, SIZE(livestemn_xfer,KIND=8), 'livestemn_xfer', &
+          LBOUND(livestemn_xfer), UBOUND(livestemn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn)) CALL gpu_cc_done_r(480, deadstemn, SIZE(deadstemn,KIND=8), 'deadstemn', &
+          LBOUND(deadstemn), UBOUND(deadstemn))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn_storage)) CALL gpu_cc_done_r(481, deadstemn_storage, SIZE(deadstemn_storage,KIND=8), 'deadstemn_storage', &
+          LBOUND(deadstemn_storage), UBOUND(deadstemn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(deadstemn_xfer)) CALL gpu_cc_done_r(482, deadstemn_xfer, SIZE(deadstemn_xfer,KIND=8), 'deadstemn_xfer', &
+          LBOUND(deadstemn_xfer), UBOUND(deadstemn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn)) CALL gpu_cc_done_r(483, livecrootn, SIZE(livecrootn,KIND=8), 'livecrootn', &
+          LBOUND(livecrootn), UBOUND(livecrootn))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn_storage)) CALL gpu_cc_done_r(484, livecrootn_storage, SIZE(livecrootn_storage,KIND=8), 'livecrootn_storage', &
+          LBOUND(livecrootn_storage), UBOUND(livecrootn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(livecrootn_xfer)) CALL gpu_cc_done_r(485, livecrootn_xfer, SIZE(livecrootn_xfer,KIND=8), 'livecrootn_xfer', &
+          LBOUND(livecrootn_xfer), UBOUND(livecrootn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn)) CALL gpu_cc_done_r(486, deadcrootn, SIZE(deadcrootn,KIND=8), 'deadcrootn', &
+          LBOUND(deadcrootn), UBOUND(deadcrootn))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn_storage)) CALL gpu_cc_done_r(487, deadcrootn_storage, SIZE(deadcrootn_storage,KIND=8), 'deadcrootn_storage', &
+          LBOUND(deadcrootn_storage), UBOUND(deadcrootn_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(deadcrootn_xfer)) CALL gpu_cc_done_r(488, deadcrootn_xfer, SIZE(deadcrootn_xfer,KIND=8), 'deadcrootn_xfer', &
+          LBOUND(deadcrootn_xfer), UBOUND(deadcrootn_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(npool)) CALL gpu_cc_done_r(489, npool, SIZE(npool,KIND=8), 'npool', &
+          LBOUND(npool), UBOUND(npool))
+#endif
+#ifdef CN
+        IF (PRESENT(pft_ntrunc)) CALL gpu_cc_done_r(490, pft_ntrunc, SIZE(pft_ntrunc,KIND=8), 'pft_ntrunc', &
+          LBOUND(pft_ntrunc), UBOUND(pft_ntrunc))
+#endif
+#ifdef CN
+        IF (PRESENT(gresp_storage)) CALL gpu_cc_done_r(491, gresp_storage, SIZE(gresp_storage,KIND=8), 'gresp_storage', &
+          LBOUND(gresp_storage), UBOUND(gresp_storage))
+#endif
+#ifdef CN
+        IF (PRESENT(gresp_xfer)) CALL gpu_cc_done_r(492, gresp_xfer, SIZE(gresp_xfer,KIND=8), 'gresp_xfer', &
+          LBOUND(gresp_xfer), UBOUND(gresp_xfer))
+#endif
+#ifdef CN
+        IF (PRESENT(xsmrpool)) CALL gpu_cc_done_r(493, xsmrpool, SIZE(xsmrpool,KIND=8), 'xsmrpool', &
+          LBOUND(xsmrpool), UBOUND(xsmrpool))
+#endif
+#ifdef CN
+        IF (PRESENT(annsum_counter)) CALL gpu_cc_done_r(494, annsum_counter, SIZE(annsum_counter,KIND=8), 'annsum_counter', &
+          LBOUND(annsum_counter), UBOUND(annsum_counter))
+#endif
+#ifdef CN
+        IF (PRESENT(cannsum_npp)) CALL gpu_cc_done_r(495, cannsum_npp, SIZE(cannsum_npp,KIND=8), 'cannsum_npp', &
+          LBOUND(cannsum_npp), UBOUND(cannsum_npp))
+#endif
+#ifdef CN
+        IF (PRESENT(cannavg_t2m)) CALL gpu_cc_done_r(496, cannavg_t2m, SIZE(cannavg_t2m,KIND=8), 'cannavg_t2m', &
+          LBOUND(cannavg_t2m), UBOUND(cannavg_t2m))
+#endif
+#ifdef CN
+        IF (PRESENT(wf)) CALL gpu_cc_done_r(497, wf, SIZE(wf,KIND=8), 'wf', &
+          LBOUND(wf), UBOUND(wf))
+#endif
+#ifdef CN
+        IF (PRESENT(me)) CALL gpu_cc_done_r(498, me, SIZE(me,KIND=8), 'me', &
+          LBOUND(me), UBOUND(me))
+#endif
+#ifdef CN
+        IF (PRESENT(mean_fire_prob)) CALL gpu_cc_done_r(499, mean_fire_prob, SIZE(mean_fire_prob,KIND=8), 'mean_fire_prob', &
+          LBOUND(mean_fire_prob), UBOUND(mean_fire_prob))
+#endif
+#ifdef CN
+        IF (PRESENT(cwdc)) CALL gpu_cc_done_r(500, cwdc, SIZE(cwdc,KIND=8), 'cwdc', &
+          LBOUND(cwdc), UBOUND(cwdc))
+#endif
+#ifdef CN
+        IF (PRESENT(litr1c)) CALL gpu_cc_done_r(501, litr1c, SIZE(litr1c,KIND=8), 'litr1c', &
+          LBOUND(litr1c), UBOUND(litr1c))
+#endif
+#ifdef CN
+        IF (PRESENT(litr2c)) CALL gpu_cc_done_r(502, litr2c, SIZE(litr2c,KIND=8), 'litr2c', &
+          LBOUND(litr2c), UBOUND(litr2c))
+#endif
+#ifdef CN
+        IF (PRESENT(litr3c)) CALL gpu_cc_done_r(503, litr3c, SIZE(litr3c,KIND=8), 'litr3c', &
+          LBOUND(litr3c), UBOUND(litr3c))
+#endif
+#ifdef CN
+        IF (PRESENT(soil1c)) CALL gpu_cc_done_r(504, soil1c, SIZE(soil1c,KIND=8), 'soil1c', &
+          LBOUND(soil1c), UBOUND(soil1c))
+#endif
+#ifdef CN
+        IF (PRESENT(soil2c)) CALL gpu_cc_done_r(505, soil2c, SIZE(soil2c,KIND=8), 'soil2c', &
+          LBOUND(soil2c), UBOUND(soil2c))
+#endif
+#ifdef CN
+        IF (PRESENT(soil3c)) CALL gpu_cc_done_r(506, soil3c, SIZE(soil3c,KIND=8), 'soil3c', &
+          LBOUND(soil3c), UBOUND(soil3c))
+#endif
+#ifdef CN
+        IF (PRESENT(soil4c)) CALL gpu_cc_done_r(507, soil4c, SIZE(soil4c,KIND=8), 'soil4c', &
+          LBOUND(soil4c), UBOUND(soil4c))
+#endif
+#ifdef CN
+        IF (PRESENT(seedc)) CALL gpu_cc_done_r(508, seedc, SIZE(seedc,KIND=8), 'seedc', &
+          LBOUND(seedc), UBOUND(seedc))
+#endif
+#ifdef CN
+        IF (PRESENT(col_ctrunc)) CALL gpu_cc_done_r(509, col_ctrunc, SIZE(col_ctrunc,KIND=8), 'col_ctrunc', &
+          LBOUND(col_ctrunc), UBOUND(col_ctrunc))
+#endif
+#ifdef CN
+        IF (PRESENT(prod10c)) CALL gpu_cc_done_r(510, prod10c, SIZE(prod10c,KIND=8), 'prod10c', &
+          LBOUND(prod10c), UBOUND(prod10c))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100c)) CALL gpu_cc_done_r(511, prod100c, SIZE(prod100c,KIND=8), 'prod100c', &
+          LBOUND(prod100c), UBOUND(prod100c))
+#endif
+#ifdef CN
+        IF (PRESENT(cwdn)) CALL gpu_cc_done_r(512, cwdn, SIZE(cwdn,KIND=8), 'cwdn', &
+          LBOUND(cwdn), UBOUND(cwdn))
+#endif
+#ifdef CN
+        IF (PRESENT(litr1n)) CALL gpu_cc_done_r(513, litr1n, SIZE(litr1n,KIND=8), 'litr1n', &
+          LBOUND(litr1n), UBOUND(litr1n))
+#endif
+#ifdef CN
+        IF (PRESENT(litr2n)) CALL gpu_cc_done_r(514, litr2n, SIZE(litr2n,KIND=8), 'litr2n', &
+          LBOUND(litr2n), UBOUND(litr2n))
+#endif
+#ifdef CN
+        IF (PRESENT(litr3n)) CALL gpu_cc_done_r(515, litr3n, SIZE(litr3n,KIND=8), 'litr3n', &
+          LBOUND(litr3n), UBOUND(litr3n))
+#endif
+#ifdef CN
+        IF (PRESENT(soil1n)) CALL gpu_cc_done_r(516, soil1n, SIZE(soil1n,KIND=8), 'soil1n', &
+          LBOUND(soil1n), UBOUND(soil1n))
+#endif
+#ifdef CN
+        IF (PRESENT(soil2n)) CALL gpu_cc_done_r(517, soil2n, SIZE(soil2n,KIND=8), 'soil2n', &
+          LBOUND(soil2n), UBOUND(soil2n))
+#endif
+#ifdef CN
+        IF (PRESENT(soil3n)) CALL gpu_cc_done_r(518, soil3n, SIZE(soil3n,KIND=8), 'soil3n', &
+          LBOUND(soil3n), UBOUND(soil3n))
+#endif
+#ifdef CN
+        IF (PRESENT(soil4n)) CALL gpu_cc_done_r(519, soil4n, SIZE(soil4n,KIND=8), 'soil4n', &
+          LBOUND(soil4n), UBOUND(soil4n))
+#endif
+#ifdef CN
+        IF (PRESENT(seedn)) CALL gpu_cc_done_r(520, seedn, SIZE(seedn,KIND=8), 'seedn', &
+          LBOUND(seedn), UBOUND(seedn))
+#endif
+#ifdef CN
+        IF (PRESENT(col_ntrunc)) CALL gpu_cc_done_r(521, col_ntrunc, SIZE(col_ntrunc,KIND=8), 'col_ntrunc', &
+          LBOUND(col_ntrunc), UBOUND(col_ntrunc))
+#endif
+#ifdef CN
+        IF (PRESENT(prod10n)) CALL gpu_cc_done_r(522, prod10n, SIZE(prod10n,KIND=8), 'prod10n', &
+          LBOUND(prod10n), UBOUND(prod10n))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100n)) CALL gpu_cc_done_r(523, prod100n, SIZE(prod100n,KIND=8), 'prod100n', &
+          LBOUND(prod100n), UBOUND(prod100n))
+#endif
+#ifdef CN
+        IF (PRESENT(sminn)) CALL gpu_cc_done_r(524, sminn, SIZE(sminn,KIND=8), 'sminn', &
+          LBOUND(sminn), UBOUND(sminn))
+#endif
+#ifdef CN
+        IF (PRESENT(totlitc)) CALL gpu_cc_done_r(525, totlitc, SIZE(totlitc,KIND=8), 'totlitc', &
+          LBOUND(totlitc), UBOUND(totlitc))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedc_to_leaf)) CALL gpu_cc_done_r(526, dwt_seedc_to_leaf, SIZE(dwt_seedc_to_leaf,KIND=8), 'dwt_seedc_to_leaf', &
+          LBOUND(dwt_seedc_to_leaf), UBOUND(dwt_seedc_to_leaf))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedc_to_deadstem)) CALL gpu_cc_done_r(527, dwt_seedc_to_deadstem, SIZE(dwt_seedc_to_deadstem,KIND=8), 'dwt_seedc_to_deadstem', &
+          LBOUND(dwt_seedc_to_deadstem), UBOUND(dwt_seedc_to_deadstem))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_conv_cflux)) CALL gpu_cc_done_r(528, dwt_conv_cflux, SIZE(dwt_conv_cflux,KIND=8), 'dwt_conv_cflux', &
+          LBOUND(dwt_conv_cflux), UBOUND(dwt_conv_cflux))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod10c_gain)) CALL gpu_cc_done_r(529, dwt_prod10c_gain, SIZE(dwt_prod10c_gain,KIND=8), 'dwt_prod10c_gain', &
+          LBOUND(dwt_prod10c_gain), UBOUND(dwt_prod10c_gain))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod100c_gain)) CALL gpu_cc_done_r(530, dwt_prod100c_gain, SIZE(dwt_prod100c_gain,KIND=8), 'dwt_prod100c_gain', &
+          LBOUND(dwt_prod100c_gain), UBOUND(dwt_prod100c_gain))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100c_loss)) CALL gpu_cc_done_r(531, prod100c_loss, SIZE(prod100c_loss,KIND=8), 'prod100c_loss', &
+          LBOUND(prod100c_loss), UBOUND(prod100c_loss))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr1c)) CALL gpu_cc_done_r(532, dwt_frootc_to_litr1c, SIZE(dwt_frootc_to_litr1c,KIND=8), 'dwt_frootc_to_litr1c', &
+          LBOUND(dwt_frootc_to_litr1c), UBOUND(dwt_frootc_to_litr1c))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr2c)) CALL gpu_cc_done_r(533, dwt_frootc_to_litr2c, SIZE(dwt_frootc_to_litr2c,KIND=8), 'dwt_frootc_to_litr2c', &
+          LBOUND(dwt_frootc_to_litr2c), UBOUND(dwt_frootc_to_litr2c))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootc_to_litr3c)) CALL gpu_cc_done_r(534, dwt_frootc_to_litr3c, SIZE(dwt_frootc_to_litr3c,KIND=8), 'dwt_frootc_to_litr3c', &
+          LBOUND(dwt_frootc_to_litr3c), UBOUND(dwt_frootc_to_litr3c))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_livecrootc_to_cwdc)) CALL gpu_cc_done_r(535, dwt_livecrootc_to_cwdc, SIZE(dwt_livecrootc_to_cwdc,KIND=8), 'dwt_livecrootc_to_cwdc', &
+          LBOUND(dwt_livecrootc_to_cwdc), UBOUND(dwt_livecrootc_to_cwdc))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_deadcrootc_to_cwdc)) CALL gpu_cc_done_r(536, dwt_deadcrootc_to_cwdc, SIZE(dwt_deadcrootc_to_cwdc,KIND=8), 'dwt_deadcrootc_to_cwdc', &
+          LBOUND(dwt_deadcrootc_to_cwdc), UBOUND(dwt_deadcrootc_to_cwdc))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedn_to_leaf)) CALL gpu_cc_done_r(537, dwt_seedn_to_leaf, SIZE(dwt_seedn_to_leaf,KIND=8), 'dwt_seedn_to_leaf', &
+          LBOUND(dwt_seedn_to_leaf), UBOUND(dwt_seedn_to_leaf))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_seedn_to_deadstem)) CALL gpu_cc_done_r(538, dwt_seedn_to_deadstem, SIZE(dwt_seedn_to_deadstem,KIND=8), 'dwt_seedn_to_deadstem', &
+          LBOUND(dwt_seedn_to_deadstem), UBOUND(dwt_seedn_to_deadstem))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_conv_nflux)) CALL gpu_cc_done_r(539, dwt_conv_nflux, SIZE(dwt_conv_nflux,KIND=8), 'dwt_conv_nflux', &
+          LBOUND(dwt_conv_nflux), UBOUND(dwt_conv_nflux))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod10n_gain)) CALL gpu_cc_done_r(540, dwt_prod10n_gain, SIZE(dwt_prod10n_gain,KIND=8), 'dwt_prod10n_gain', &
+          LBOUND(dwt_prod10n_gain), UBOUND(dwt_prod10n_gain))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_prod100n_gain)) CALL gpu_cc_done_r(541, dwt_prod100n_gain, SIZE(dwt_prod100n_gain,KIND=8), 'dwt_prod100n_gain', &
+          LBOUND(dwt_prod100n_gain), UBOUND(dwt_prod100n_gain))
+#endif
+#ifdef CN
+        IF (PRESENT(prod100n_loss)) CALL gpu_cc_done_r(542, prod100n_loss, SIZE(prod100n_loss,KIND=8), 'prod100n_loss', &
+          LBOUND(prod100n_loss), UBOUND(prod100n_loss))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr1n)) CALL gpu_cc_done_r(543, dwt_frootn_to_litr1n, SIZE(dwt_frootn_to_litr1n,KIND=8), 'dwt_frootn_to_litr1n', &
+          LBOUND(dwt_frootn_to_litr1n), UBOUND(dwt_frootn_to_litr1n))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr2n)) CALL gpu_cc_done_r(544, dwt_frootn_to_litr2n, SIZE(dwt_frootn_to_litr2n,KIND=8), 'dwt_frootn_to_litr2n', &
+          LBOUND(dwt_frootn_to_litr2n), UBOUND(dwt_frootn_to_litr2n))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_frootn_to_litr3n)) CALL gpu_cc_done_r(545, dwt_frootn_to_litr3n, SIZE(dwt_frootn_to_litr3n,KIND=8), 'dwt_frootn_to_litr3n', &
+          LBOUND(dwt_frootn_to_litr3n), UBOUND(dwt_frootn_to_litr3n))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_livecrootn_to_cwdn)) CALL gpu_cc_done_r(546, dwt_livecrootn_to_cwdn, SIZE(dwt_livecrootn_to_cwdn,KIND=8), 'dwt_livecrootn_to_cwdn', &
+          LBOUND(dwt_livecrootn_to_cwdn), UBOUND(dwt_livecrootn_to_cwdn))
+#endif
+#ifdef CN
+        IF (PRESENT(dwt_deadcrootn_to_cwdn)) CALL gpu_cc_done_r(547, dwt_deadcrootn_to_cwdn, SIZE(dwt_deadcrootn_to_cwdn,KIND=8), 'dwt_deadcrootn_to_cwdn', &
+          LBOUND(dwt_deadcrootn_to_cwdn), UBOUND(dwt_deadcrootn_to_cwdn))
+#endif
+#ifdef CN
+        IF (PRESENT(retransn)) CALL gpu_cc_done_r(548, retransn, SIZE(retransn,KIND=8), 'retransn', &
+          LBOUND(retransn), UBOUND(retransn))
+#endif
+        IF (PRESENT(swnorm)) CALL gpu_cc_done_r(549, swnorm, SIZE(swnorm,KIND=8), 'swnorm', &
+          LBOUND(swnorm), UBOUND(swnorm))
+        IF (PRESENT(tr_urb2d)) CALL gpu_cc_done_r(550, tr_urb2d, SIZE(tr_urb2d,KIND=8), 'tr_urb2d', &
+          LBOUND(tr_urb2d), UBOUND(tr_urb2d))
+        IF (PRESENT(tb_urb2d)) CALL gpu_cc_done_r(551, tb_urb2d, SIZE(tb_urb2d,KIND=8), 'tb_urb2d', &
+          LBOUND(tb_urb2d), UBOUND(tb_urb2d))
+        IF (PRESENT(tg_urb2d)) CALL gpu_cc_done_r(552, tg_urb2d, SIZE(tg_urb2d,KIND=8), 'tg_urb2d', &
+          LBOUND(tg_urb2d), UBOUND(tg_urb2d))
+        IF (PRESENT(tc_urb2d)) CALL gpu_cc_done_r(553, tc_urb2d, SIZE(tc_urb2d,KIND=8), 'tc_urb2d', &
+          LBOUND(tc_urb2d), UBOUND(tc_urb2d))
+        IF (PRESENT(qc_urb2d)) CALL gpu_cc_done_r(554, qc_urb2d, SIZE(qc_urb2d,KIND=8), 'qc_urb2d', &
+          LBOUND(qc_urb2d), UBOUND(qc_urb2d))
+        IF (PRESENT(uc_urb2d)) CALL gpu_cc_done_r(555, uc_urb2d, SIZE(uc_urb2d,KIND=8), 'uc_urb2d', &
+          LBOUND(uc_urb2d), UBOUND(uc_urb2d))
+        IF (PRESENT(xxxr_urb2d)) CALL gpu_cc_done_r(556, xxxr_urb2d, SIZE(xxxr_urb2d,KIND=8), 'xxxr_urb2d', &
+          LBOUND(xxxr_urb2d), UBOUND(xxxr_urb2d))
+        IF (PRESENT(xxxb_urb2d)) CALL gpu_cc_done_r(557, xxxb_urb2d, SIZE(xxxb_urb2d,KIND=8), 'xxxb_urb2d', &
+          LBOUND(xxxb_urb2d), UBOUND(xxxb_urb2d))
+        IF (PRESENT(xxxg_urb2d)) CALL gpu_cc_done_r(558, xxxg_urb2d, SIZE(xxxg_urb2d,KIND=8), 'xxxg_urb2d', &
+          LBOUND(xxxg_urb2d), UBOUND(xxxg_urb2d))
+        IF (PRESENT(xxxc_urb2d)) CALL gpu_cc_done_r(559, xxxc_urb2d, SIZE(xxxc_urb2d,KIND=8), 'xxxc_urb2d', &
+          LBOUND(xxxc_urb2d), UBOUND(xxxc_urb2d))
+        IF (PRESENT(cmcr_urb2d)) CALL gpu_cc_done_r(560, cmcr_urb2d, SIZE(cmcr_urb2d,KIND=8), 'cmcr_urb2d', &
+          LBOUND(cmcr_urb2d), UBOUND(cmcr_urb2d))
+        IF (PRESENT(tgr_urb2d)) CALL gpu_cc_done_r(561, tgr_urb2d, SIZE(tgr_urb2d,KIND=8), 'tgr_urb2d', &
+          LBOUND(tgr_urb2d), UBOUND(tgr_urb2d))
+        IF (PRESENT(tgrl_urb3d)) CALL gpu_cc_done_r(562, tgrl_urb3d, SIZE(tgrl_urb3d,KIND=8), 'tgrl_urb3d', &
+          LBOUND(tgrl_urb3d), UBOUND(tgrl_urb3d))
+        IF (PRESENT(smr_urb3d)) CALL gpu_cc_done_r(563, smr_urb3d, SIZE(smr_urb3d,KIND=8), 'smr_urb3d', &
+          LBOUND(smr_urb3d), UBOUND(smr_urb3d))
+        IF (PRESENT(drelr_urb2d)) CALL gpu_cc_done_r(564, drelr_urb2d, SIZE(drelr_urb2d,KIND=8), 'drelr_urb2d', &
+          LBOUND(drelr_urb2d), UBOUND(drelr_urb2d))
+        IF (PRESENT(drelb_urb2d)) CALL gpu_cc_done_r(565, drelb_urb2d, SIZE(drelb_urb2d,KIND=8), 'drelb_urb2d', &
+          LBOUND(drelb_urb2d), UBOUND(drelb_urb2d))
+        IF (PRESENT(drelg_urb2d)) CALL gpu_cc_done_r(566, drelg_urb2d, SIZE(drelg_urb2d,KIND=8), 'drelg_urb2d', &
+          LBOUND(drelg_urb2d), UBOUND(drelg_urb2d))
+        IF (PRESENT(flxhumr_urb2d)) CALL gpu_cc_done_r(567, flxhumr_urb2d, SIZE(flxhumr_urb2d,KIND=8), 'flxhumr_urb2d', &
+          LBOUND(flxhumr_urb2d), UBOUND(flxhumr_urb2d))
+        IF (PRESENT(flxhumb_urb2d)) CALL gpu_cc_done_r(568, flxhumb_urb2d, SIZE(flxhumb_urb2d,KIND=8), 'flxhumb_urb2d', &
+          LBOUND(flxhumb_urb2d), UBOUND(flxhumb_urb2d))
+        IF (PRESENT(flxhumg_urb2d)) CALL gpu_cc_done_r(569, flxhumg_urb2d, SIZE(flxhumg_urb2d,KIND=8), 'flxhumg_urb2d', &
+          LBOUND(flxhumg_urb2d), UBOUND(flxhumg_urb2d))
+        IF (PRESENT(trl_urb3d)) CALL gpu_cc_done_r(570, trl_urb3d, SIZE(trl_urb3d,KIND=8), 'trl_urb3d', &
+          LBOUND(trl_urb3d), UBOUND(trl_urb3d))
+        IF (PRESENT(tbl_urb3d)) CALL gpu_cc_done_r(571, tbl_urb3d, SIZE(tbl_urb3d,KIND=8), 'tbl_urb3d', &
+          LBOUND(tbl_urb3d), UBOUND(tbl_urb3d))
+        IF (PRESENT(tgl_urb3d)) CALL gpu_cc_done_r(572, tgl_urb3d, SIZE(tgl_urb3d,KIND=8), 'tgl_urb3d', &
+          LBOUND(tgl_urb3d), UBOUND(tgl_urb3d))
+        IF (PRESENT(sh_urb2d)) CALL gpu_cc_done_r(573, sh_urb2d, SIZE(sh_urb2d,KIND=8), 'sh_urb2d', &
+          LBOUND(sh_urb2d), UBOUND(sh_urb2d))
+        IF (PRESENT(lh_urb2d)) CALL gpu_cc_done_r(574, lh_urb2d, SIZE(lh_urb2d,KIND=8), 'lh_urb2d', &
+          LBOUND(lh_urb2d), UBOUND(lh_urb2d))
+        IF (PRESENT(g_urb2d)) CALL gpu_cc_done_r(575, g_urb2d, SIZE(g_urb2d,KIND=8), 'g_urb2d', &
+          LBOUND(g_urb2d), UBOUND(g_urb2d))
+        IF (PRESENT(rn_urb2d)) CALL gpu_cc_done_r(576, rn_urb2d, SIZE(rn_urb2d,KIND=8), 'rn_urb2d', &
+          LBOUND(rn_urb2d), UBOUND(rn_urb2d))
+        IF (PRESENT(ts_urb2d)) CALL gpu_cc_done_r(577, ts_urb2d, SIZE(ts_urb2d,KIND=8), 'ts_urb2d', &
+          LBOUND(ts_urb2d), UBOUND(ts_urb2d))
+        IF (PRESENT(frc_urb2d)) CALL gpu_cc_done_r(578, frc_urb2d, SIZE(frc_urb2d,KIND=8), 'frc_urb2d', &
+          LBOUND(frc_urb2d), UBOUND(frc_urb2d))
+        IF (PRESENT(utype_urb2d)) CALL gpu_cc_done_i(579, utype_urb2d, SIZE(utype_urb2d,KIND=8), 'utype_urb2d', &
+          LBOUND(utype_urb2d), UBOUND(utype_urb2d))
+        IF (PRESENT(cmr_sfcdif)) CALL gpu_cc_done_r(580, cmr_sfcdif, SIZE(cmr_sfcdif,KIND=8), 'cmr_sfcdif', &
+          LBOUND(cmr_sfcdif), UBOUND(cmr_sfcdif))
+        IF (PRESENT(chr_sfcdif)) CALL gpu_cc_done_r(581, chr_sfcdif, SIZE(chr_sfcdif,KIND=8), 'chr_sfcdif', &
+          LBOUND(chr_sfcdif), UBOUND(chr_sfcdif))
+        IF (PRESENT(cmc_sfcdif)) CALL gpu_cc_done_r(582, cmc_sfcdif, SIZE(cmc_sfcdif,KIND=8), 'cmc_sfcdif', &
+          LBOUND(cmc_sfcdif), UBOUND(cmc_sfcdif))
+        IF (PRESENT(chc_sfcdif)) CALL gpu_cc_done_r(583, chc_sfcdif, SIZE(chc_sfcdif,KIND=8), 'chc_sfcdif', &
+          LBOUND(chc_sfcdif), UBOUND(chc_sfcdif))
+        IF (PRESENT(cmgr_sfcdif)) CALL gpu_cc_done_r(584, cmgr_sfcdif, SIZE(cmgr_sfcdif,KIND=8), 'cmgr_sfcdif', &
+          LBOUND(cmgr_sfcdif), UBOUND(cmgr_sfcdif))
+        IF (PRESENT(chgr_sfcdif)) CALL gpu_cc_done_r(585, chgr_sfcdif, SIZE(chgr_sfcdif,KIND=8), 'chgr_sfcdif', &
+          LBOUND(chgr_sfcdif), UBOUND(chgr_sfcdif))
+        IF (PRESENT(alswvisdir)) CALL gpu_cc_done_r(586, alswvisdir, SIZE(alswvisdir,KIND=8), 'alswvisdir', &
+          LBOUND(alswvisdir), UBOUND(alswvisdir))
+        IF (PRESENT(alswvisdif)) CALL gpu_cc_done_r(587, alswvisdif, SIZE(alswvisdif,KIND=8), 'alswvisdif', &
+          LBOUND(alswvisdif), UBOUND(alswvisdif))
+        IF (PRESENT(alswnirdir)) CALL gpu_cc_done_r(588, alswnirdir, SIZE(alswnirdir,KIND=8), 'alswnirdir', &
+          LBOUND(alswnirdir), UBOUND(alswnirdir))
+        IF (PRESENT(alswnirdif)) CALL gpu_cc_done_r(589, alswnirdif, SIZE(alswnirdif,KIND=8), 'alswnirdif', &
+          LBOUND(alswnirdif), UBOUND(alswnirdif))
+        IF (PRESENT(ssib_br)) CALL gpu_cc_done_r(590, ssib_br, SIZE(ssib_br,KIND=8), 'ssib_br', &
+          LBOUND(ssib_br), UBOUND(ssib_br))
+        IF (PRESENT(ssib_fm)) CALL gpu_cc_done_r(591, ssib_fm, SIZE(ssib_fm,KIND=8), 'ssib_fm', &
+          LBOUND(ssib_fm), UBOUND(ssib_fm))
+        IF (PRESENT(ssib_fh)) CALL gpu_cc_done_r(592, ssib_fh, SIZE(ssib_fh,KIND=8), 'ssib_fh', &
+          LBOUND(ssib_fh), UBOUND(ssib_fh))
+        IF (PRESENT(ssib_cm)) CALL gpu_cc_done_r(593, ssib_cm, SIZE(ssib_cm,KIND=8), 'ssib_cm', &
+          LBOUND(ssib_cm), UBOUND(ssib_cm))
+        IF (PRESENT(ssibxdd)) CALL gpu_cc_done_r(594, ssibxdd, SIZE(ssibxdd,KIND=8), 'ssibxdd', &
+          LBOUND(ssibxdd), UBOUND(ssibxdd))
+        IF (PRESENT(ssib_lhf)) CALL gpu_cc_done_r(595, ssib_lhf, SIZE(ssib_lhf,KIND=8), 'ssib_lhf', &
+          LBOUND(ssib_lhf), UBOUND(ssib_lhf))
+        IF (PRESENT(ssib_shf)) CALL gpu_cc_done_r(596, ssib_shf, SIZE(ssib_shf,KIND=8), 'ssib_shf', &
+          LBOUND(ssib_shf), UBOUND(ssib_shf))
+        IF (PRESENT(ssib_ghf)) CALL gpu_cc_done_r(597, ssib_ghf, SIZE(ssib_ghf,KIND=8), 'ssib_ghf', &
+          LBOUND(ssib_ghf), UBOUND(ssib_ghf))
+        IF (PRESENT(ssib_egs)) CALL gpu_cc_done_r(598, ssib_egs, SIZE(ssib_egs,KIND=8), 'ssib_egs', &
+          LBOUND(ssib_egs), UBOUND(ssib_egs))
+        IF (PRESENT(ssib_eci)) CALL gpu_cc_done_r(599, ssib_eci, SIZE(ssib_eci,KIND=8), 'ssib_eci', &
+          LBOUND(ssib_eci), UBOUND(ssib_eci))
+        IF (PRESENT(ssib_ect)) CALL gpu_cc_done_r(600, ssib_ect, SIZE(ssib_ect,KIND=8), 'ssib_ect', &
+          LBOUND(ssib_ect), UBOUND(ssib_ect))
+        IF (PRESENT(ssib_egi)) CALL gpu_cc_done_r(601, ssib_egi, SIZE(ssib_egi,KIND=8), 'ssib_egi', &
+          LBOUND(ssib_egi), UBOUND(ssib_egi))
+        IF (PRESENT(ssib_egt)) CALL gpu_cc_done_r(602, ssib_egt, SIZE(ssib_egt,KIND=8), 'ssib_egt', &
+          LBOUND(ssib_egt), UBOUND(ssib_egt))
+        IF (PRESENT(ssib_sdn)) CALL gpu_cc_done_r(603, ssib_sdn, SIZE(ssib_sdn,KIND=8), 'ssib_sdn', &
+          LBOUND(ssib_sdn), UBOUND(ssib_sdn))
+        IF (PRESENT(ssib_sup)) CALL gpu_cc_done_r(604, ssib_sup, SIZE(ssib_sup,KIND=8), 'ssib_sup', &
+          LBOUND(ssib_sup), UBOUND(ssib_sup))
+        IF (PRESENT(ssib_ldn)) CALL gpu_cc_done_r(605, ssib_ldn, SIZE(ssib_ldn,KIND=8), 'ssib_ldn', &
+          LBOUND(ssib_ldn), UBOUND(ssib_ldn))
+        IF (PRESENT(ssib_lup)) CALL gpu_cc_done_r(606, ssib_lup, SIZE(ssib_lup,KIND=8), 'ssib_lup', &
+          LBOUND(ssib_lup), UBOUND(ssib_lup))
+        IF (PRESENT(ssib_wat)) CALL gpu_cc_done_r(607, ssib_wat, SIZE(ssib_wat,KIND=8), 'ssib_wat', &
+          LBOUND(ssib_wat), UBOUND(ssib_wat))
+        IF (PRESENT(ssib_shc)) CALL gpu_cc_done_r(608, ssib_shc, SIZE(ssib_shc,KIND=8), 'ssib_shc', &
+          LBOUND(ssib_shc), UBOUND(ssib_shc))
+        IF (PRESENT(ssib_shg)) CALL gpu_cc_done_r(609, ssib_shg, SIZE(ssib_shg,KIND=8), 'ssib_shg', &
+          LBOUND(ssib_shg), UBOUND(ssib_shg))
+        IF (PRESENT(ssib_lai)) CALL gpu_cc_done_r(610, ssib_lai, SIZE(ssib_lai,KIND=8), 'ssib_lai', &
+          LBOUND(ssib_lai), UBOUND(ssib_lai))
+        IF (PRESENT(ssib_vcf)) CALL gpu_cc_done_r(611, ssib_vcf, SIZE(ssib_vcf,KIND=8), 'ssib_vcf', &
+          LBOUND(ssib_vcf), UBOUND(ssib_vcf))
+        IF (PRESENT(ssib_z00)) CALL gpu_cc_done_r(612, ssib_z00, SIZE(ssib_z00,KIND=8), 'ssib_z00', &
+          LBOUND(ssib_z00), UBOUND(ssib_z00))
+        IF (PRESENT(ssib_veg)) CALL gpu_cc_done_r(613, ssib_veg, SIZE(ssib_veg,KIND=8), 'ssib_veg', &
+          LBOUND(ssib_veg), UBOUND(ssib_veg))
+        IF (PRESENT(isnow)) CALL gpu_cc_done_i(614, isnow, SIZE(isnow,KIND=8), 'isnow', &
+          LBOUND(isnow), UBOUND(isnow))
+        IF (PRESENT(swe)) CALL gpu_cc_done_r(615, swe, SIZE(swe,KIND=8), 'swe', &
+          LBOUND(swe), UBOUND(swe))
+        IF (PRESENT(snowden)) CALL gpu_cc_done_r(616, snowden, SIZE(snowden,KIND=8), 'snowden', &
+          LBOUND(snowden), UBOUND(snowden))
+        IF (PRESENT(snowdepth)) CALL gpu_cc_done_r(617, snowdepth, SIZE(snowdepth,KIND=8), 'snowdepth', &
+          LBOUND(snowdepth), UBOUND(snowdepth))
+        IF (PRESENT(tkair)) CALL gpu_cc_done_r(618, tkair, SIZE(tkair,KIND=8), 'tkair', &
+          LBOUND(tkair), UBOUND(tkair))
+        IF (PRESENT(dzo1)) CALL gpu_cc_done_r(619, dzo1, SIZE(dzo1,KIND=8), 'dzo1', &
+          LBOUND(dzo1), UBOUND(dzo1))
+        IF (PRESENT(wo1)) CALL gpu_cc_done_r(620, wo1, SIZE(wo1,KIND=8), 'wo1', &
+          LBOUND(wo1), UBOUND(wo1))
+        IF (PRESENT(tssn1)) CALL gpu_cc_done_r(621, tssn1, SIZE(tssn1,KIND=8), 'tssn1', &
+          LBOUND(tssn1), UBOUND(tssn1))
+        IF (PRESENT(tssno1)) CALL gpu_cc_done_r(622, tssno1, SIZE(tssno1,KIND=8), 'tssno1', &
+          LBOUND(tssno1), UBOUND(tssno1))
+        IF (PRESENT(bwo1)) CALL gpu_cc_done_r(623, bwo1, SIZE(bwo1,KIND=8), 'bwo1', &
+          LBOUND(bwo1), UBOUND(bwo1))
+        IF (PRESENT(bto1)) CALL gpu_cc_done_r(624, bto1, SIZE(bto1,KIND=8), 'bto1', &
+          LBOUND(bto1), UBOUND(bto1))
+        IF (PRESENT(cto1)) CALL gpu_cc_done_r(625, cto1, SIZE(cto1,KIND=8), 'cto1', &
+          LBOUND(cto1), UBOUND(cto1))
+        IF (PRESENT(fio1)) CALL gpu_cc_done_r(626, fio1, SIZE(fio1,KIND=8), 'fio1', &
+          LBOUND(fio1), UBOUND(fio1))
+        IF (PRESENT(flo1)) CALL gpu_cc_done_r(627, flo1, SIZE(flo1,KIND=8), 'flo1', &
+          LBOUND(flo1), UBOUND(flo1))
+        IF (PRESENT(bio1)) CALL gpu_cc_done_r(628, bio1, SIZE(bio1,KIND=8), 'bio1', &
+          LBOUND(bio1), UBOUND(bio1))
+        IF (PRESENT(blo1)) CALL gpu_cc_done_r(629, blo1, SIZE(blo1,KIND=8), 'blo1', &
+          LBOUND(blo1), UBOUND(blo1))
+        IF (PRESENT(ho1)) CALL gpu_cc_done_r(630, ho1, SIZE(ho1,KIND=8), 'ho1', &
+          LBOUND(ho1), UBOUND(ho1))
+        IF (PRESENT(dzo2)) CALL gpu_cc_done_r(631, dzo2, SIZE(dzo2,KIND=8), 'dzo2', &
+          LBOUND(dzo2), UBOUND(dzo2))
+        IF (PRESENT(wo2)) CALL gpu_cc_done_r(632, wo2, SIZE(wo2,KIND=8), 'wo2', &
+          LBOUND(wo2), UBOUND(wo2))
+        IF (PRESENT(tssn2)) CALL gpu_cc_done_r(633, tssn2, SIZE(tssn2,KIND=8), 'tssn2', &
+          LBOUND(tssn2), UBOUND(tssn2))
+        IF (PRESENT(tssno2)) CALL gpu_cc_done_r(634, tssno2, SIZE(tssno2,KIND=8), 'tssno2', &
+          LBOUND(tssno2), UBOUND(tssno2))
+        IF (PRESENT(bwo2)) CALL gpu_cc_done_r(635, bwo2, SIZE(bwo2,KIND=8), 'bwo2', &
+          LBOUND(bwo2), UBOUND(bwo2))
+        IF (PRESENT(bto2)) CALL gpu_cc_done_r(636, bto2, SIZE(bto2,KIND=8), 'bto2', &
+          LBOUND(bto2), UBOUND(bto2))
+        IF (PRESENT(cto2)) CALL gpu_cc_done_r(637, cto2, SIZE(cto2,KIND=8), 'cto2', &
+          LBOUND(cto2), UBOUND(cto2))
+        IF (PRESENT(fio2)) CALL gpu_cc_done_r(638, fio2, SIZE(fio2,KIND=8), 'fio2', &
+          LBOUND(fio2), UBOUND(fio2))
+        IF (PRESENT(flo2)) CALL gpu_cc_done_r(639, flo2, SIZE(flo2,KIND=8), 'flo2', &
+          LBOUND(flo2), UBOUND(flo2))
+        IF (PRESENT(bio2)) CALL gpu_cc_done_r(640, bio2, SIZE(bio2,KIND=8), 'bio2', &
+          LBOUND(bio2), UBOUND(bio2))
+        IF (PRESENT(blo2)) CALL gpu_cc_done_r(641, blo2, SIZE(blo2,KIND=8), 'blo2', &
+          LBOUND(blo2), UBOUND(blo2))
+        IF (PRESENT(ho2)) CALL gpu_cc_done_r(642, ho2, SIZE(ho2,KIND=8), 'ho2', &
+          LBOUND(ho2), UBOUND(ho2))
+        IF (PRESENT(dzo3)) CALL gpu_cc_done_r(643, dzo3, SIZE(dzo3,KIND=8), 'dzo3', &
+          LBOUND(dzo3), UBOUND(dzo3))
+        IF (PRESENT(wo3)) CALL gpu_cc_done_r(644, wo3, SIZE(wo3,KIND=8), 'wo3', &
+          LBOUND(wo3), UBOUND(wo3))
+        IF (PRESENT(tssn3)) CALL gpu_cc_done_r(645, tssn3, SIZE(tssn3,KIND=8), 'tssn3', &
+          LBOUND(tssn3), UBOUND(tssn3))
+        IF (PRESENT(tssno3)) CALL gpu_cc_done_r(646, tssno3, SIZE(tssno3,KIND=8), 'tssno3', &
+          LBOUND(tssno3), UBOUND(tssno3))
+        IF (PRESENT(bwo3)) CALL gpu_cc_done_r(647, bwo3, SIZE(bwo3,KIND=8), 'bwo3', &
+          LBOUND(bwo3), UBOUND(bwo3))
+        IF (PRESENT(bto3)) CALL gpu_cc_done_r(648, bto3, SIZE(bto3,KIND=8), 'bto3', &
+          LBOUND(bto3), UBOUND(bto3))
+        IF (PRESENT(cto3)) CALL gpu_cc_done_r(649, cto3, SIZE(cto3,KIND=8), 'cto3', &
+          LBOUND(cto3), UBOUND(cto3))
+        IF (PRESENT(fio3)) CALL gpu_cc_done_r(650, fio3, SIZE(fio3,KIND=8), 'fio3', &
+          LBOUND(fio3), UBOUND(fio3))
+        IF (PRESENT(flo3)) CALL gpu_cc_done_r(651, flo3, SIZE(flo3,KIND=8), 'flo3', &
+          LBOUND(flo3), UBOUND(flo3))
+        IF (PRESENT(bio3)) CALL gpu_cc_done_r(652, bio3, SIZE(bio3,KIND=8), 'bio3', &
+          LBOUND(bio3), UBOUND(bio3))
+        IF (PRESENT(blo3)) CALL gpu_cc_done_r(653, blo3, SIZE(blo3,KIND=8), 'blo3', &
+          LBOUND(blo3), UBOUND(blo3))
+        IF (PRESENT(ho3)) CALL gpu_cc_done_r(654, ho3, SIZE(ho3,KIND=8), 'ho3', &
+          LBOUND(ho3), UBOUND(ho3))
+        IF (PRESENT(dzo4)) CALL gpu_cc_done_r(655, dzo4, SIZE(dzo4,KIND=8), 'dzo4', &
+          LBOUND(dzo4), UBOUND(dzo4))
+        IF (PRESENT(wo4)) CALL gpu_cc_done_r(656, wo4, SIZE(wo4,KIND=8), 'wo4', &
+          LBOUND(wo4), UBOUND(wo4))
+        IF (PRESENT(tssn4)) CALL gpu_cc_done_r(657, tssn4, SIZE(tssn4,KIND=8), 'tssn4', &
+          LBOUND(tssn4), UBOUND(tssn4))
+        IF (PRESENT(tssno4)) CALL gpu_cc_done_r(658, tssno4, SIZE(tssno4,KIND=8), 'tssno4', &
+          LBOUND(tssno4), UBOUND(tssno4))
+        IF (PRESENT(bwo4)) CALL gpu_cc_done_r(659, bwo4, SIZE(bwo4,KIND=8), 'bwo4', &
+          LBOUND(bwo4), UBOUND(bwo4))
+        IF (PRESENT(bto4)) CALL gpu_cc_done_r(660, bto4, SIZE(bto4,KIND=8), 'bto4', &
+          LBOUND(bto4), UBOUND(bto4))
+        IF (PRESENT(cto4)) CALL gpu_cc_done_r(661, cto4, SIZE(cto4,KIND=8), 'cto4', &
+          LBOUND(cto4), UBOUND(cto4))
+        IF (PRESENT(fio4)) CALL gpu_cc_done_r(662, fio4, SIZE(fio4,KIND=8), 'fio4', &
+          LBOUND(fio4), UBOUND(fio4))
+        IF (PRESENT(flo4)) CALL gpu_cc_done_r(663, flo4, SIZE(flo4,KIND=8), 'flo4', &
+          LBOUND(flo4), UBOUND(flo4))
+        IF (PRESENT(bio4)) CALL gpu_cc_done_r(664, bio4, SIZE(bio4,KIND=8), 'bio4', &
+          LBOUND(bio4), UBOUND(bio4))
+        IF (PRESENT(blo4)) CALL gpu_cc_done_r(665, blo4, SIZE(blo4,KIND=8), 'blo4', &
+          LBOUND(blo4), UBOUND(blo4))
+        IF (PRESENT(ho4)) CALL gpu_cc_done_r(666, ho4, SIZE(ho4,KIND=8), 'ho4', &
+          LBOUND(ho4), UBOUND(ho4))
+        IF (PRESENT(qv_curr)) CALL gpu_cc_done_r(667, qv_curr, SIZE(qv_curr,KIND=8), 'qv_curr', &
+          LBOUND(qv_curr), UBOUND(qv_curr))
+        IF (PRESENT(qc_curr)) CALL gpu_cc_done_r(668, qc_curr, SIZE(qc_curr,KIND=8), 'qc_curr', &
+          LBOUND(qc_curr), UBOUND(qc_curr))
+        IF (PRESENT(qr_curr)) CALL gpu_cc_done_r(669, qr_curr, SIZE(qr_curr,KIND=8), 'qr_curr', &
+          LBOUND(qr_curr), UBOUND(qr_curr))
+        IF (PRESENT(qi_curr)) CALL gpu_cc_done_r(670, qi_curr, SIZE(qi_curr,KIND=8), 'qi_curr', &
+          LBOUND(qi_curr), UBOUND(qi_curr))
+        IF (PRESENT(qs_curr)) CALL gpu_cc_done_r(671, qs_curr, SIZE(qs_curr,KIND=8), 'qs_curr', &
+          LBOUND(qs_curr), UBOUND(qs_curr))
+        IF (PRESENT(qg_curr)) CALL gpu_cc_done_r(672, qg_curr, SIZE(qg_curr,KIND=8), 'qg_curr', &
+          LBOUND(qg_curr), UBOUND(qg_curr))
+        IF (PRESENT(capg)) CALL gpu_cc_done_r(673, capg, SIZE(capg,KIND=8), 'capg', &
+          LBOUND(capg), UBOUND(capg))
+        IF (PRESENT(hol)) CALL gpu_cc_done_r(674, hol, SIZE(hol,KIND=8), 'hol', &
+          LBOUND(hol), UBOUND(hol))
+        IF (PRESENT(mol)) CALL gpu_cc_done_r(675, mol, SIZE(mol,KIND=8), 'mol', &
+          LBOUND(mol), UBOUND(mol))
+        IF (PRESENT(rainbl)) CALL gpu_cc_done_r(676, rainbl, SIZE(rainbl,KIND=8), 'rainbl', &
+          LBOUND(rainbl), UBOUND(rainbl))
+        IF (PRESENT(regime)) CALL gpu_cc_done_r(677, regime, SIZE(regime,KIND=8), 'regime', &
+          LBOUND(regime), UBOUND(regime))
+        IF (PRESENT(qsg)) CALL gpu_cc_done_r(678, qsg, SIZE(qsg,KIND=8), 'qsg', &
+          LBOUND(qsg), UBOUND(qsg))
+        IF (PRESENT(qvg)) CALL gpu_cc_done_r(679, qvg, SIZE(qvg,KIND=8), 'qvg', &
+          LBOUND(qvg), UBOUND(qvg))
+        IF (PRESENT(qcg)) CALL gpu_cc_done_r(680, qcg, SIZE(qcg,KIND=8), 'qcg', &
+          LBOUND(qcg), UBOUND(qcg))
+        IF (PRESENT(soilt1)) CALL gpu_cc_done_r(681, soilt1, SIZE(soilt1,KIND=8), 'soilt1', &
+          LBOUND(soilt1), UBOUND(soilt1))
+        IF (PRESENT(tsnav)) CALL gpu_cc_done_r(682, tsnav, SIZE(tsnav,KIND=8), 'tsnav', &
+          LBOUND(tsnav), UBOUND(tsnav))
+        IF (PRESENT(smfr3d)) CALL gpu_cc_done_r(683, smfr3d, SIZE(smfr3d,KIND=8), 'smfr3d', &
+          LBOUND(smfr3d), UBOUND(smfr3d))
+        IF (PRESENT(keepfr3dflag)) CALL gpu_cc_done_r(684, keepfr3dflag, SIZE(keepfr3dflag,KIND=8), 'keepfr3dflag', &
+          LBOUND(keepfr3dflag), UBOUND(keepfr3dflag))
+        IF (PRESENT(dew)) CALL gpu_cc_done_r(685, dew, SIZE(dew,KIND=8), 'dew', &
+          LBOUND(dew), UBOUND(dew))
+        IF (PRESENT(rhosnf)) CALL gpu_cc_done_r(686, rhosnf, SIZE(rhosnf,KIND=8), 'rhosnf', &
+          LBOUND(rhosnf), UBOUND(rhosnf))
+        IF (PRESENT(precipfr)) CALL gpu_cc_done_r(687, precipfr, SIZE(precipfr,KIND=8), 'precipfr', &
+          LBOUND(precipfr), UBOUND(precipfr))
+        IF (PRESENT(potevp)) CALL gpu_cc_done_r(688, potevp, SIZE(potevp,KIND=8), 'potevp', &
+          LBOUND(potevp), UBOUND(potevp))
+        IF (PRESENT(snopcx)) CALL gpu_cc_done_r(689, snopcx, SIZE(snopcx,KIND=8), 'snopcx', &
+          LBOUND(snopcx), UBOUND(snopcx))
+        IF (PRESENT(soiltb)) CALL gpu_cc_done_r(690, soiltb, SIZE(soiltb,KIND=8), 'soiltb', &
+          LBOUND(soiltb), UBOUND(soiltb))
+        IF (PRESENT(sr)) CALL gpu_cc_done_r(691, sr, SIZE(sr,KIND=8), 'sr', &
+          LBOUND(sr), UBOUND(sr))
+        IF (PRESENT(t2_ndg_old)) CALL gpu_cc_done_r(692, t2_ndg_old, SIZE(t2_ndg_old,KIND=8), 't2_ndg_old', &
+          LBOUND(t2_ndg_old), UBOUND(t2_ndg_old))
+        IF (PRESENT(q2_ndg_old)) CALL gpu_cc_done_r(693, q2_ndg_old, SIZE(q2_ndg_old,KIND=8), 'q2_ndg_old', &
+          LBOUND(q2_ndg_old), UBOUND(q2_ndg_old))
+        IF (PRESENT(t2_ndg_new)) CALL gpu_cc_done_r(694, t2_ndg_new, SIZE(t2_ndg_new,KIND=8), 't2_ndg_new', &
+          LBOUND(t2_ndg_new), UBOUND(t2_ndg_new))
+        IF (PRESENT(q2_ndg_new)) CALL gpu_cc_done_r(695, q2_ndg_new, SIZE(q2_ndg_new,KIND=8), 'q2_ndg_new', &
+          LBOUND(q2_ndg_new), UBOUND(q2_ndg_new))
+        IF (PRESENT(sn_ndg_old)) CALL gpu_cc_done_r(696, sn_ndg_old, SIZE(sn_ndg_old,KIND=8), 'sn_ndg_old', &
+          LBOUND(sn_ndg_old), UBOUND(sn_ndg_old))
+        IF (PRESENT(sn_ndg_new)) CALL gpu_cc_done_r(697, sn_ndg_new, SIZE(sn_ndg_new,KIND=8), 'sn_ndg_new', &
+          LBOUND(sn_ndg_new), UBOUND(sn_ndg_new))
+        IF (PRESENT(t2obs)) CALL gpu_cc_done_r(698, t2obs, SIZE(t2obs,KIND=8), 't2obs', &
+          LBOUND(t2obs), UBOUND(t2obs))
+        IF (PRESENT(q2obs)) CALL gpu_cc_done_r(699, q2obs, SIZE(q2obs,KIND=8), 'q2obs', &
+          LBOUND(q2obs), UBOUND(q2obs))
+        IF (PRESENT(hd_temf)) CALL gpu_cc_done_r(700, hd_temf, SIZE(hd_temf,KIND=8), 'hd_temf', &
+          LBOUND(hd_temf), UBOUND(hd_temf))
+        IF (PRESENT(te_temf)) CALL gpu_cc_done_r(701, te_temf, SIZE(te_temf,KIND=8), 'te_temf', &
+          LBOUND(te_temf), UBOUND(te_temf))
+        IF (PRESENT(exch_temf)) CALL gpu_cc_done_r(702, exch_temf, SIZE(exch_temf,KIND=8), 'exch_temf', &
+          LBOUND(exch_temf), UBOUND(exch_temf))
+        IF (PRESENT(wm_temf)) CALL gpu_cc_done_r(703, wm_temf, SIZE(wm_temf,KIND=8), 'wm_temf', &
+          LBOUND(wm_temf), UBOUND(wm_temf))
+        IF (PRESENT(hfx_force)) CALL gpu_cc_done_r0(704, hfx_force, 'hfx_force')
+        IF (PRESENT(lh_force)) CALL gpu_cc_done_r0(705, lh_force, 'lh_force')
+        IF (PRESENT(tsk_force)) CALL gpu_cc_done_r0(706, tsk_force, 'tsk_force')
+        IF (PRESENT(uratx)) CALL gpu_cc_done_r(707, uratx, SIZE(uratx,KIND=8), 'uratx', &
+          LBOUND(uratx), UBOUND(uratx))
+        IF (PRESENT(vratx)) CALL gpu_cc_done_r(708, vratx, SIZE(vratx,KIND=8), 'vratx', &
+          LBOUND(vratx), UBOUND(vratx))
+        IF (PRESENT(tratx)) CALL gpu_cc_done_r(709, tratx, SIZE(tratx,KIND=8), 'tratx', &
+          LBOUND(tratx), UBOUND(tratx))
+        IF (PRESENT(tml)) CALL gpu_cc_done_r(710, tml, SIZE(tml,KIND=8), 'tml', &
+          LBOUND(tml), UBOUND(tml))
+        IF (PRESENT(t0ml)) CALL gpu_cc_done_r(711, t0ml, SIZE(t0ml,KIND=8), 't0ml', &
+          LBOUND(t0ml), UBOUND(t0ml))
+        IF (PRESENT(hml)) CALL gpu_cc_done_r(712, hml, SIZE(hml,KIND=8), 'hml', &
+          LBOUND(hml), UBOUND(hml))
+        IF (PRESENT(h0ml)) CALL gpu_cc_done_r(713, h0ml, SIZE(h0ml,KIND=8), 'h0ml', &
+          LBOUND(h0ml), UBOUND(h0ml))
+        IF (PRESENT(huml)) CALL gpu_cc_done_r(714, huml, SIZE(huml,KIND=8), 'huml', &
+          LBOUND(huml), UBOUND(huml))
+        IF (PRESENT(hvml)) CALL gpu_cc_done_r(715, hvml, SIZE(hvml,KIND=8), 'hvml', &
+          LBOUND(hvml), UBOUND(hvml))
+        IF (PRESENT(ustm)) CALL gpu_cc_done_r(716, ustm, SIZE(ustm,KIND=8), 'ustm', &
+          LBOUND(ustm), UBOUND(ustm))
+        IF (PRESENT(ck)) CALL gpu_cc_done_r(717, ck, SIZE(ck,KIND=8), 'ck', &
+          LBOUND(ck), UBOUND(ck))
+        IF (PRESENT(cka)) CALL gpu_cc_done_r(718, cka, SIZE(cka,KIND=8), 'cka', &
+          LBOUND(cka), UBOUND(cka))
+        IF (PRESENT(cd)) CALL gpu_cc_done_r(719, cd, SIZE(cd,KIND=8), 'cd', &
+          LBOUND(cd), UBOUND(cd))
+        IF (PRESENT(cda)) CALL gpu_cc_done_r(720, cda, SIZE(cda,KIND=8), 'cda', &
+          LBOUND(cda), UBOUND(cda))
+        IF (PRESENT(snotime)) CALL gpu_cc_done_r(721, snotime, SIZE(snotime,KIND=8), 'snotime', &
+          LBOUND(snotime), UBOUND(snotime))
+        IF (PRESENT(noahres)) CALL gpu_cc_done_r(722, noahres, SIZE(noahres,KIND=8), 'noahres', &
+          LBOUND(noahres), UBOUND(noahres))
+        IF (PRESENT(bldtacttime)) CALL gpu_cc_done_r0(723, bldtacttime, 'bldtacttime')
+        IF (PRESENT(tsk_rural)) CALL gpu_cc_done_r(724, tsk_rural, SIZE(tsk_rural,KIND=8), 'tsk_rural', &
+          LBOUND(tsk_rural), UBOUND(tsk_rural))
+        IF (PRESENT(trb_urb4d)) CALL gpu_cc_done_r(725, trb_urb4d, SIZE(trb_urb4d,KIND=8), 'trb_urb4d', &
+          LBOUND(trb_urb4d), UBOUND(trb_urb4d))
+        IF (PRESENT(tw1_urb4d)) CALL gpu_cc_done_r(726, tw1_urb4d, SIZE(tw1_urb4d,KIND=8), 'tw1_urb4d', &
+          LBOUND(tw1_urb4d), UBOUND(tw1_urb4d))
+        IF (PRESENT(tw2_urb4d)) CALL gpu_cc_done_r(727, tw2_urb4d, SIZE(tw2_urb4d,KIND=8), 'tw2_urb4d', &
+          LBOUND(tw2_urb4d), UBOUND(tw2_urb4d))
+        IF (PRESENT(tgb_urb4d)) CALL gpu_cc_done_r(728, tgb_urb4d, SIZE(tgb_urb4d,KIND=8), 'tgb_urb4d', &
+          LBOUND(tgb_urb4d), UBOUND(tgb_urb4d))
+        IF (PRESENT(tlev_urb3d)) CALL gpu_cc_done_r(729, tlev_urb3d, SIZE(tlev_urb3d,KIND=8), 'tlev_urb3d', &
+          LBOUND(tlev_urb3d), UBOUND(tlev_urb3d))
+        IF (PRESENT(qlev_urb3d)) CALL gpu_cc_done_r(730, qlev_urb3d, SIZE(qlev_urb3d,KIND=8), 'qlev_urb3d', &
+          LBOUND(qlev_urb3d), UBOUND(qlev_urb3d))
+        IF (PRESENT(tw1lev_urb3d)) CALL gpu_cc_done_r(731, tw1lev_urb3d, SIZE(tw1lev_urb3d,KIND=8), 'tw1lev_urb3d', &
+          LBOUND(tw1lev_urb3d), UBOUND(tw1lev_urb3d))
+        IF (PRESENT(tw2lev_urb3d)) CALL gpu_cc_done_r(732, tw2lev_urb3d, SIZE(tw2lev_urb3d,KIND=8), 'tw2lev_urb3d', &
+          LBOUND(tw2lev_urb3d), UBOUND(tw2lev_urb3d))
+        IF (PRESENT(tglev_urb3d)) CALL gpu_cc_done_r(733, tglev_urb3d, SIZE(tglev_urb3d,KIND=8), 'tglev_urb3d', &
+          LBOUND(tglev_urb3d), UBOUND(tglev_urb3d))
+        IF (PRESENT(tflev_urb3d)) CALL gpu_cc_done_r(734, tflev_urb3d, SIZE(tflev_urb3d,KIND=8), 'tflev_urb3d', &
+          LBOUND(tflev_urb3d), UBOUND(tflev_urb3d))
+        IF (PRESENT(sf_ac_urb3d)) CALL gpu_cc_done_r(735, sf_ac_urb3d, SIZE(sf_ac_urb3d,KIND=8), 'sf_ac_urb3d', &
+          LBOUND(sf_ac_urb3d), UBOUND(sf_ac_urb3d))
+        IF (PRESENT(lf_ac_urb3d)) CALL gpu_cc_done_r(736, lf_ac_urb3d, SIZE(lf_ac_urb3d,KIND=8), 'lf_ac_urb3d', &
+          LBOUND(lf_ac_urb3d), UBOUND(lf_ac_urb3d))
+        IF (PRESENT(cm_ac_urb3d)) CALL gpu_cc_done_r(737, cm_ac_urb3d, SIZE(cm_ac_urb3d,KIND=8), 'cm_ac_urb3d', &
+          LBOUND(cm_ac_urb3d), UBOUND(cm_ac_urb3d))
+        IF (PRESENT(sfvent_urb3d)) CALL gpu_cc_done_r(738, sfvent_urb3d, SIZE(sfvent_urb3d,KIND=8), 'sfvent_urb3d', &
+          LBOUND(sfvent_urb3d), UBOUND(sfvent_urb3d))
+        IF (PRESENT(lfvent_urb3d)) CALL gpu_cc_done_r(739, lfvent_urb3d, SIZE(lfvent_urb3d,KIND=8), 'lfvent_urb3d', &
+          LBOUND(lfvent_urb3d), UBOUND(lfvent_urb3d))
+        IF (PRESENT(sfwin1_urb3d)) CALL gpu_cc_done_r(740, sfwin1_urb3d, SIZE(sfwin1_urb3d,KIND=8), 'sfwin1_urb3d', &
+          LBOUND(sfwin1_urb3d), UBOUND(sfwin1_urb3d))
+        IF (PRESENT(sfwin2_urb3d)) CALL gpu_cc_done_r(741, sfwin2_urb3d, SIZE(sfwin2_urb3d,KIND=8), 'sfwin2_urb3d', &
+          LBOUND(sfwin2_urb3d), UBOUND(sfwin2_urb3d))
+        IF (PRESENT(sfw1_urb3d)) CALL gpu_cc_done_r(742, sfw1_urb3d, SIZE(sfw1_urb3d,KIND=8), 'sfw1_urb3d', &
+          LBOUND(sfw1_urb3d), UBOUND(sfw1_urb3d))
+        IF (PRESENT(sfw2_urb3d)) CALL gpu_cc_done_r(743, sfw2_urb3d, SIZE(sfw2_urb3d,KIND=8), 'sfw2_urb3d', &
+          LBOUND(sfw2_urb3d), UBOUND(sfw2_urb3d))
+        IF (PRESENT(sfr_urb3d)) CALL gpu_cc_done_r(744, sfr_urb3d, SIZE(sfr_urb3d,KIND=8), 'sfr_urb3d', &
+          LBOUND(sfr_urb3d), UBOUND(sfr_urb3d))
+        IF (PRESENT(sfg_urb3d)) CALL gpu_cc_done_r(745, sfg_urb3d, SIZE(sfg_urb3d,KIND=8), 'sfg_urb3d', &
+          LBOUND(sfg_urb3d), UBOUND(sfg_urb3d))
+        IF (PRESENT(ep_pv_urb3d)) CALL gpu_cc_done_r(746, ep_pv_urb3d, SIZE(ep_pv_urb3d,KIND=8), 'ep_pv_urb3d', &
+          LBOUND(ep_pv_urb3d), UBOUND(ep_pv_urb3d))
+        IF (PRESENT(t_pv_urb3d)) CALL gpu_cc_done_r(747, t_pv_urb3d, SIZE(t_pv_urb3d,KIND=8), 't_pv_urb3d', &
+          LBOUND(t_pv_urb3d), UBOUND(t_pv_urb3d))
+        IF (PRESENT(trv_urb4d)) CALL gpu_cc_done_r(748, trv_urb4d, SIZE(trv_urb4d,KIND=8), 'trv_urb4d', &
+          LBOUND(trv_urb4d), UBOUND(trv_urb4d))
+        IF (PRESENT(qr_urb4d)) CALL gpu_cc_done_r(749, qr_urb4d, SIZE(qr_urb4d,KIND=8), 'qr_urb4d', &
+          LBOUND(qr_urb4d), UBOUND(qr_urb4d))
+        IF (PRESENT(qgr_urb3d)) CALL gpu_cc_done_r(750, qgr_urb3d, SIZE(qgr_urb3d,KIND=8), 'qgr_urb3d', &
+          LBOUND(qgr_urb3d), UBOUND(qgr_urb3d))
+        IF (PRESENT(tgr_urb3d)) CALL gpu_cc_done_r(751, tgr_urb3d, SIZE(tgr_urb3d,KIND=8), 'tgr_urb3d', &
+          LBOUND(tgr_urb3d), UBOUND(tgr_urb3d))
+        IF (PRESENT(drain_urb4d)) CALL gpu_cc_done_r(752, drain_urb4d, SIZE(drain_urb4d,KIND=8), 'drain_urb4d', &
+          LBOUND(drain_urb4d), UBOUND(drain_urb4d))
+        IF (PRESENT(draingr_urb3d)) CALL gpu_cc_done_r(753, draingr_urb3d, SIZE(draingr_urb3d,KIND=8), 'draingr_urb3d', &
+          LBOUND(draingr_urb3d), UBOUND(draingr_urb3d))
+        IF (PRESENT(sfrv_urb3d)) CALL gpu_cc_done_r(754, sfrv_urb3d, SIZE(sfrv_urb3d,KIND=8), 'sfrv_urb3d', &
+          LBOUND(sfrv_urb3d), UBOUND(sfrv_urb3d))
+        IF (PRESENT(lfrv_urb3d)) CALL gpu_cc_done_r(755, lfrv_urb3d, SIZE(lfrv_urb3d,KIND=8), 'lfrv_urb3d', &
+          LBOUND(lfrv_urb3d), UBOUND(lfrv_urb3d))
+        IF (PRESENT(dgr_urb3d)) CALL gpu_cc_done_r(756, dgr_urb3d, SIZE(dgr_urb3d,KIND=8), 'dgr_urb3d', &
+          LBOUND(dgr_urb3d), UBOUND(dgr_urb3d))
+        IF (PRESENT(dg_urb3d)) CALL gpu_cc_done_r(757, dg_urb3d, SIZE(dg_urb3d,KIND=8), 'dg_urb3d', &
+          LBOUND(dg_urb3d), UBOUND(dg_urb3d))
+        IF (PRESENT(lfr_urb3d)) CALL gpu_cc_done_r(758, lfr_urb3d, SIZE(lfr_urb3d,KIND=8), 'lfr_urb3d', &
+          LBOUND(lfr_urb3d), UBOUND(lfr_urb3d))
+        IF (PRESENT(lfg_urb3d)) CALL gpu_cc_done_r(759, lfg_urb3d, SIZE(lfg_urb3d,KIND=8), 'lfg_urb3d', &
+          LBOUND(lfg_urb3d), UBOUND(lfg_urb3d))
+        IF (PRESENT(a_u_bep)) CALL gpu_cc_done_r(760, a_u_bep, SIZE(a_u_bep,KIND=8), 'a_u_bep', &
+          LBOUND(a_u_bep), UBOUND(a_u_bep))
+        IF (PRESENT(a_v_bep)) CALL gpu_cc_done_r(761, a_v_bep, SIZE(a_v_bep,KIND=8), 'a_v_bep', &
+          LBOUND(a_v_bep), UBOUND(a_v_bep))
+        IF (PRESENT(a_t_bep)) CALL gpu_cc_done_r(762, a_t_bep, SIZE(a_t_bep,KIND=8), 'a_t_bep', &
+          LBOUND(a_t_bep), UBOUND(a_t_bep))
+        IF (PRESENT(a_q_bep)) CALL gpu_cc_done_r(763, a_q_bep, SIZE(a_q_bep,KIND=8), 'a_q_bep', &
+          LBOUND(a_q_bep), UBOUND(a_q_bep))
+        IF (PRESENT(b_u_bep)) CALL gpu_cc_done_r(764, b_u_bep, SIZE(b_u_bep,KIND=8), 'b_u_bep', &
+          LBOUND(b_u_bep), UBOUND(b_u_bep))
+        IF (PRESENT(b_v_bep)) CALL gpu_cc_done_r(765, b_v_bep, SIZE(b_v_bep,KIND=8), 'b_v_bep', &
+          LBOUND(b_v_bep), UBOUND(b_v_bep))
+        IF (PRESENT(b_t_bep)) CALL gpu_cc_done_r(766, b_t_bep, SIZE(b_t_bep,KIND=8), 'b_t_bep', &
+          LBOUND(b_t_bep), UBOUND(b_t_bep))
+        IF (PRESENT(b_q_bep)) CALL gpu_cc_done_r(767, b_q_bep, SIZE(b_q_bep,KIND=8), 'b_q_bep', &
+          LBOUND(b_q_bep), UBOUND(b_q_bep))
+        IF (PRESENT(sf_bep)) CALL gpu_cc_done_r(768, sf_bep, SIZE(sf_bep,KIND=8), 'sf_bep', &
+          LBOUND(sf_bep), UBOUND(sf_bep))
+        IF (PRESENT(vl_bep)) CALL gpu_cc_done_r(769, vl_bep, SIZE(vl_bep,KIND=8), 'vl_bep', &
+          LBOUND(vl_bep), UBOUND(vl_bep))
+        IF (PRESENT(a_e_bep)) CALL gpu_cc_done_r(770, a_e_bep, SIZE(a_e_bep,KIND=8), 'a_e_bep', &
+          LBOUND(a_e_bep), UBOUND(a_e_bep))
+        IF (PRESENT(b_e_bep)) CALL gpu_cc_done_r(771, b_e_bep, SIZE(b_e_bep,KIND=8), 'b_e_bep', &
+          LBOUND(b_e_bep), UBOUND(b_e_bep))
+        IF (PRESENT(dlg_bep)) CALL gpu_cc_done_r(772, dlg_bep, SIZE(dlg_bep,KIND=8), 'dlg_bep', &
+          LBOUND(dlg_bep), UBOUND(dlg_bep))
+        IF (PRESENT(dl_u_bep)) CALL gpu_cc_done_r(773, dl_u_bep, SIZE(dl_u_bep,KIND=8), 'dl_u_bep', &
+          LBOUND(dl_u_bep), UBOUND(dl_u_bep))
+        IF (PRESENT(tsk_save)) CALL gpu_cc_done_r(774, tsk_save, SIZE(tsk_save,KIND=8), 'tsk_save', &
+          LBOUND(tsk_save), UBOUND(tsk_save))
+        IF (PRESENT(mosaic_cat_index)) CALL gpu_cc_done_i(775, mosaic_cat_index, SIZE(mosaic_cat_index,KIND=8), 'mosaic_cat_index', &
+          LBOUND(mosaic_cat_index), UBOUND(mosaic_cat_index))
+        IF (PRESENT(landusef2)) CALL gpu_cc_done_r(776, landusef2, SIZE(landusef2,KIND=8), 'landusef2', &
+          LBOUND(landusef2), UBOUND(landusef2))
+        IF (PRESENT(tsk_mosaic)) CALL gpu_cc_done_r(777, tsk_mosaic, SIZE(tsk_mosaic,KIND=8), 'tsk_mosaic', &
+          LBOUND(tsk_mosaic), UBOUND(tsk_mosaic))
+        IF (PRESENT(qsfc_mosaic)) CALL gpu_cc_done_r(778, qsfc_mosaic, SIZE(qsfc_mosaic,KIND=8), 'qsfc_mosaic', &
+          LBOUND(qsfc_mosaic), UBOUND(qsfc_mosaic))
+        IF (PRESENT(tslb_mosaic)) CALL gpu_cc_done_r(779, tslb_mosaic, SIZE(tslb_mosaic,KIND=8), 'tslb_mosaic', &
+          LBOUND(tslb_mosaic), UBOUND(tslb_mosaic))
+        IF (PRESENT(smois_mosaic)) CALL gpu_cc_done_r(780, smois_mosaic, SIZE(smois_mosaic,KIND=8), 'smois_mosaic', &
+          LBOUND(smois_mosaic), UBOUND(smois_mosaic))
+        IF (PRESENT(sh2o_mosaic)) CALL gpu_cc_done_r(781, sh2o_mosaic, SIZE(sh2o_mosaic,KIND=8), 'sh2o_mosaic', &
+          LBOUND(sh2o_mosaic), UBOUND(sh2o_mosaic))
+        IF (PRESENT(canwat_mosaic)) CALL gpu_cc_done_r(782, canwat_mosaic, SIZE(canwat_mosaic,KIND=8), 'canwat_mosaic', &
+          LBOUND(canwat_mosaic), UBOUND(canwat_mosaic))
+        IF (PRESENT(snow_mosaic)) CALL gpu_cc_done_r(783, snow_mosaic, SIZE(snow_mosaic,KIND=8), 'snow_mosaic', &
+          LBOUND(snow_mosaic), UBOUND(snow_mosaic))
+        IF (PRESENT(snowh_mosaic)) CALL gpu_cc_done_r(784, snowh_mosaic, SIZE(snowh_mosaic,KIND=8), 'snowh_mosaic', &
+          LBOUND(snowh_mosaic), UBOUND(snowh_mosaic))
+        IF (PRESENT(snowc_mosaic)) CALL gpu_cc_done_r(785, snowc_mosaic, SIZE(snowc_mosaic,KIND=8), 'snowc_mosaic', &
+          LBOUND(snowc_mosaic), UBOUND(snowc_mosaic))
+        IF (PRESENT(albedo_mosaic)) CALL gpu_cc_done_r(786, albedo_mosaic, SIZE(albedo_mosaic,KIND=8), 'albedo_mosaic', &
+          LBOUND(albedo_mosaic), UBOUND(albedo_mosaic))
+        IF (PRESENT(albbck_mosaic)) CALL gpu_cc_done_r(787, albbck_mosaic, SIZE(albbck_mosaic,KIND=8), 'albbck_mosaic', &
+          LBOUND(albbck_mosaic), UBOUND(albbck_mosaic))
+        IF (PRESENT(emiss_mosaic)) CALL gpu_cc_done_r(788, emiss_mosaic, SIZE(emiss_mosaic,KIND=8), 'emiss_mosaic', &
+          LBOUND(emiss_mosaic), UBOUND(emiss_mosaic))
+        IF (PRESENT(embck_mosaic)) CALL gpu_cc_done_r(789, embck_mosaic, SIZE(embck_mosaic,KIND=8), 'embck_mosaic', &
+          LBOUND(embck_mosaic), UBOUND(embck_mosaic))
+        IF (PRESENT(znt_mosaic)) CALL gpu_cc_done_r(790, znt_mosaic, SIZE(znt_mosaic,KIND=8), 'znt_mosaic', &
+          LBOUND(znt_mosaic), UBOUND(znt_mosaic))
+        IF (PRESENT(z0_mosaic)) CALL gpu_cc_done_r(791, z0_mosaic, SIZE(z0_mosaic,KIND=8), 'z0_mosaic', &
+          LBOUND(z0_mosaic), UBOUND(z0_mosaic))
+        IF (PRESENT(hfx_mosaic)) CALL gpu_cc_done_r(792, hfx_mosaic, SIZE(hfx_mosaic,KIND=8), 'hfx_mosaic', &
+          LBOUND(hfx_mosaic), UBOUND(hfx_mosaic))
+        IF (PRESENT(qfx_mosaic)) CALL gpu_cc_done_r(793, qfx_mosaic, SIZE(qfx_mosaic,KIND=8), 'qfx_mosaic', &
+          LBOUND(qfx_mosaic), UBOUND(qfx_mosaic))
+        IF (PRESENT(lh_mosaic)) CALL gpu_cc_done_r(794, lh_mosaic, SIZE(lh_mosaic,KIND=8), 'lh_mosaic', &
+          LBOUND(lh_mosaic), UBOUND(lh_mosaic))
+        IF (PRESENT(grdflx_mosaic)) CALL gpu_cc_done_r(795, grdflx_mosaic, SIZE(grdflx_mosaic,KIND=8), 'grdflx_mosaic', &
+          LBOUND(grdflx_mosaic), UBOUND(grdflx_mosaic))
+        IF (PRESENT(snotime_mosaic)) CALL gpu_cc_done_r(796, snotime_mosaic, SIZE(snotime_mosaic,KIND=8), 'snotime_mosaic', &
+          LBOUND(snotime_mosaic), UBOUND(snotime_mosaic))
+        IF (PRESENT(rs_mosaic)) CALL gpu_cc_done_r(797, rs_mosaic, SIZE(rs_mosaic,KIND=8), 'rs_mosaic', &
+          LBOUND(rs_mosaic), UBOUND(rs_mosaic))
+        IF (PRESENT(lai_mosaic)) CALL gpu_cc_done_r(798, lai_mosaic, SIZE(lai_mosaic,KIND=8), 'lai_mosaic', &
+          LBOUND(lai_mosaic), UBOUND(lai_mosaic))
+        IF (PRESENT(tr_urb2d_mosaic)) CALL gpu_cc_done_r(799, tr_urb2d_mosaic, SIZE(tr_urb2d_mosaic,KIND=8), 'tr_urb2d_mosaic', &
+          LBOUND(tr_urb2d_mosaic), UBOUND(tr_urb2d_mosaic))
+        IF (PRESENT(tb_urb2d_mosaic)) CALL gpu_cc_done_r(800, tb_urb2d_mosaic, SIZE(tb_urb2d_mosaic,KIND=8), 'tb_urb2d_mosaic', &
+          LBOUND(tb_urb2d_mosaic), UBOUND(tb_urb2d_mosaic))
+        IF (PRESENT(tg_urb2d_mosaic)) CALL gpu_cc_done_r(801, tg_urb2d_mosaic, SIZE(tg_urb2d_mosaic,KIND=8), 'tg_urb2d_mosaic', &
+          LBOUND(tg_urb2d_mosaic), UBOUND(tg_urb2d_mosaic))
+        IF (PRESENT(tc_urb2d_mosaic)) CALL gpu_cc_done_r(802, tc_urb2d_mosaic, SIZE(tc_urb2d_mosaic,KIND=8), 'tc_urb2d_mosaic', &
+          LBOUND(tc_urb2d_mosaic), UBOUND(tc_urb2d_mosaic))
+        IF (PRESENT(qc_urb2d_mosaic)) CALL gpu_cc_done_r(803, qc_urb2d_mosaic, SIZE(qc_urb2d_mosaic,KIND=8), 'qc_urb2d_mosaic', &
+          LBOUND(qc_urb2d_mosaic), UBOUND(qc_urb2d_mosaic))
+        IF (PRESENT(uc_urb2d_mosaic)) CALL gpu_cc_done_r(804, uc_urb2d_mosaic, SIZE(uc_urb2d_mosaic,KIND=8), 'uc_urb2d_mosaic', &
+          LBOUND(uc_urb2d_mosaic), UBOUND(uc_urb2d_mosaic))
+        IF (PRESENT(trl_urb3d_mosaic)) CALL gpu_cc_done_r(805, trl_urb3d_mosaic, SIZE(trl_urb3d_mosaic,KIND=8), 'trl_urb3d_mosaic', &
+          LBOUND(trl_urb3d_mosaic), UBOUND(trl_urb3d_mosaic))
+        IF (PRESENT(tbl_urb3d_mosaic)) CALL gpu_cc_done_r(806, tbl_urb3d_mosaic, SIZE(tbl_urb3d_mosaic,KIND=8), 'tbl_urb3d_mosaic', &
+          LBOUND(tbl_urb3d_mosaic), UBOUND(tbl_urb3d_mosaic))
+        IF (PRESENT(tgl_urb3d_mosaic)) CALL gpu_cc_done_r(807, tgl_urb3d_mosaic, SIZE(tgl_urb3d_mosaic,KIND=8), 'tgl_urb3d_mosaic', &
+          LBOUND(tgl_urb3d_mosaic), UBOUND(tgl_urb3d_mosaic))
+        IF (PRESENT(sh_urb2d_mosaic)) CALL gpu_cc_done_r(808, sh_urb2d_mosaic, SIZE(sh_urb2d_mosaic,KIND=8), 'sh_urb2d_mosaic', &
+          LBOUND(sh_urb2d_mosaic), UBOUND(sh_urb2d_mosaic))
+        IF (PRESENT(lh_urb2d_mosaic)) CALL gpu_cc_done_r(809, lh_urb2d_mosaic, SIZE(lh_urb2d_mosaic,KIND=8), 'lh_urb2d_mosaic', &
+          LBOUND(lh_urb2d_mosaic), UBOUND(lh_urb2d_mosaic))
+        IF (PRESENT(g_urb2d_mosaic)) CALL gpu_cc_done_r(810, g_urb2d_mosaic, SIZE(g_urb2d_mosaic,KIND=8), 'g_urb2d_mosaic', &
+          LBOUND(g_urb2d_mosaic), UBOUND(g_urb2d_mosaic))
+        IF (PRESENT(rn_urb2d_mosaic)) CALL gpu_cc_done_r(811, rn_urb2d_mosaic, SIZE(rn_urb2d_mosaic,KIND=8), 'rn_urb2d_mosaic', &
+          LBOUND(rn_urb2d_mosaic), UBOUND(rn_urb2d_mosaic))
+        IF (PRESENT(ts_urb2d_mosaic)) CALL gpu_cc_done_r(812, ts_urb2d_mosaic, SIZE(ts_urb2d_mosaic,KIND=8), 'ts_urb2d_mosaic', &
+          LBOUND(ts_urb2d_mosaic), UBOUND(ts_urb2d_mosaic))
+        IF (PRESENT(ts_rul2d_mosaic)) CALL gpu_cc_done_r(813, ts_rul2d_mosaic, SIZE(ts_rul2d_mosaic,KIND=8), 'ts_rul2d_mosaic', &
+          LBOUND(ts_rul2d_mosaic), UBOUND(ts_rul2d_mosaic))
+        CALL gpu_cc_done_r(814, zol, SIZE(zol,KIND=8), 'zol', &
+          LBOUND(zol), UBOUND(zol))
+        IF (PRESENT(sda_hfx)) CALL gpu_cc_done_r(815, sda_hfx, SIZE(sda_hfx,KIND=8), 'sda_hfx', &
+          LBOUND(sda_hfx), UBOUND(sda_hfx))
+        IF (PRESENT(sda_qfx)) CALL gpu_cc_done_r(816, sda_qfx, SIZE(sda_qfx,KIND=8), 'sda_qfx', &
+          LBOUND(sda_qfx), UBOUND(sda_qfx))
+        IF (PRESENT(hfx_both)) CALL gpu_cc_done_r(817, hfx_both, SIZE(hfx_both,KIND=8), 'hfx_both', &
+          LBOUND(hfx_both), UBOUND(hfx_both))
+        IF (PRESENT(qfx_both)) CALL gpu_cc_done_r(818, qfx_both, SIZE(qfx_both,KIND=8), 'qfx_both', &
+          LBOUND(qfx_both), UBOUND(qfx_both))
+        IF (PRESENT(qnorm)) CALL gpu_cc_done_r(819, qnorm, SIZE(qnorm,KIND=8), 'qnorm', &
+          LBOUND(qnorm), UBOUND(qnorm))
+        IF (PRESENT(pattern_spp_lsm)) CALL gpu_cc_done_r(820, pattern_spp_lsm, SIZE(pattern_spp_lsm,KIND=8), 'pattern_spp_lsm', &
+          LBOUND(pattern_spp_lsm), UBOUND(pattern_spp_lsm))
+        IF (PRESENT(field_sf)) CALL gpu_cc_done_r(821, field_sf, SIZE(field_sf,KIND=8), 'field_sf', &
+          LBOUND(field_sf), UBOUND(field_sf))
+        IF (PRESENT(pattern_spp_pbl)) CALL gpu_cc_done_r(822, pattern_spp_pbl, SIZE(pattern_spp_pbl,KIND=8), 'pattern_spp_pbl', &
+          LBOUND(pattern_spp_pbl), UBOUND(pattern_spp_pbl))
+        IF (PRESENT(xlaidyn)) CALL gpu_cc_done_r(823, xlaidyn, SIZE(xlaidyn,KIND=8), 'xlaidyn', &
+          LBOUND(xlaidyn), UBOUND(xlaidyn))
+        IF (PRESENT(perts_qvapor)) CALL gpu_cc_done_r(824, perts_qvapor, SIZE(perts_qvapor,KIND=8), 'perts_qvapor', &
+          LBOUND(perts_qvapor), UBOUND(perts_qvapor))
+        IF (PRESENT(perts_th)) CALL gpu_cc_done_r(825, perts_th, SIZE(perts_th,KIND=8), 'perts_th', &
+          LBOUND(perts_th), UBOUND(perts_th))
+        IF (PRESENT(perts_smois)) CALL gpu_cc_done_r(826, perts_smois, SIZE(perts_smois,KIND=8), 'perts_smois', &
+          LBOUND(perts_smois), UBOUND(perts_smois))
+        IF (PRESENT(perts_tsoil)) CALL gpu_cc_done_r(827, perts_tsoil, SIZE(perts_tsoil,KIND=8), 'perts_tsoil', &
+          LBOUND(perts_tsoil), UBOUND(perts_tsoil))
+        IF (PRESENT(irr_rand_field)) CALL gpu_cc_done_i(828, irr_rand_field, SIZE(irr_rand_field,KIND=8), 'irr_rand_field', &
+          LBOUND(irr_rand_field), UBOUND(irr_rand_field))
+        IF (gpu_cc_next(R_SURFACE_DRIVER)) GOTO 99901
+      END IF
+#endif
    END SUBROUTINE surface_driver
 
 !-------------------------------------------------------------------------
