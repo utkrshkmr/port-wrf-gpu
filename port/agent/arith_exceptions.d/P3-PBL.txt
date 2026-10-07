@@ -1,2 +1,3 @@
 # arith_guard exceptions of P3-PBL (one per line: <file>|<normalized statement>|<reason>);
 # the reviewer checks every line (port/tools/arith_guard.py, CODE_ONLY.md).
+WRF/phys/module_pbl_driver.F|ktend_pbl=min(kte+1,kde)|hoisted K-PBLD-1 loop bound, same MIN(kte+1,kde) as the CPU loop

@@ -52,3 +52,27 @@
    CALL gpu_work_check_r(work_p3_pbl_rqnifablten, "work_p3_pbl_rqnifablten", nwork, nbad)
    CALL gpu_work_check_r(work_p3_pbl_rqnbcablten, "work_p3_pbl_rqnbcablten", nwork, nbad)
 #endif
+! GPU view only: 2D automatics of pbl_driver that K-PBLD-1 writes
+! (TSKOLD, USTOLD, ZNTOLD, PSFC). The CPU view keeps the automatic arrays.
+#if GPU_WORK_SECTION == 1
+#ifdef WRF_GPU
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_tskold(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_ustold(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_zntold(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_psfc(:)
+#endif
+#elif GPU_WORK_SECTION == 2
+#ifdef WRF_GPU
+   CALL gpu_work_alloc_r(work_p3_pbl_tskold, n2d, "work_p3_pbl_tskold")
+   CALL gpu_work_alloc_r(work_p3_pbl_ustold, n2d, "work_p3_pbl_ustold")
+   CALL gpu_work_alloc_r(work_p3_pbl_zntold, n2d, "work_p3_pbl_zntold")
+   CALL gpu_work_alloc_r(work_p3_pbl_psfc, n2d, "work_p3_pbl_psfc")
+#endif
+#elif GPU_WORK_SECTION == 3
+#ifdef WRF_GPU
+   CALL gpu_work_check_r(work_p3_pbl_tskold, "work_p3_pbl_tskold", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_ustold, "work_p3_pbl_ustold", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_zntold, "work_p3_pbl_zntold", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_psfc, "work_p3_pbl_psfc", nwork, nbad)
+#endif
+#endif
