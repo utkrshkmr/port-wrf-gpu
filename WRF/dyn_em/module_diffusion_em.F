@@ -5134,6 +5134,12 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
 !-----------------------------------------------------------------------
 ! Begin declarations.
 
+#ifdef WRF_GPU
+   USE module_gpu_work, ONLY : work_p2_g3_h3, work_p2_g3_xkxavg, work_p2_g3_tmptendf
+#endif
+   USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_VERTICAL_DIFFUSION_2
+   USE module_gpu_callcheck
+
    IMPLICIT NONE
 
    TYPE(grid_config_rec_type), INTENT(IN   ) :: config_flags
@@ -5164,14 +5170,42 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
 
    INTEGER :: i_start, i_end, j_start, j_end
 
+#ifdef WRF_GPU
+   LOGICAL :: gpu_isl
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: H3, xkxavg, tmptendf
+   REAL , DIMENSION( its:ite, kts:kte, jts:jte) :: rravg
+#else
    REAL , DIMENSION( its:ite, kts:kte, jts:jte)            ::        H3, &
                                                                  xkxavg, &
                                                                   rravg
 
    REAL , DIMENSION( its:ite, kts:kte, jts:jte)            ::  tmptendf
+#endif
 
 ! End declarations.
 !-----------------------------------------------------------------------
+
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_save_r(1, tendency, SIZE(tendency,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_VERTICAL_DIFFUSION_2)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(tendency, var, xkhv, dn, dnw, rdz, rdzw, fnm, fnp, rho)
+        ELSE
+!$acc update self(tendency, var, xkhv, dn, dnw, rdz, rdzw, fnm, fnp, rho)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+   H3(its:ite, kts:kte, jts:jte) => &
+        work_p2_g3_h3(1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+   xkxavg(its:ite, kts:kte, jts:jte) => &
+        work_p2_g3_xkxavg(1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+   tmptendf(its:ite, kts:kte, jts:jte) => &
+        work_p2_g3_tmptendf(1:(ite-its+1)*(kte-kts+1)*(jte-jts+1))
+#endif
 
    ktf=MIN(kte,kde-1)
 
@@ -5192,6 +5226,10 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
       IF ( config_flags%periodic_x ) i_end = MIN(ite,ide-1)
 
    IF (doing_tke) THEN
+! K-VDS-1: save tendency before the TKE doubling (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(tmptendf, tendency) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts,ktf
       DO i = i_start, i_end
@@ -5203,8 +5241,25 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
 
 ! H3
 
+#ifdef WRF_GPU
+! K-VDS-1: zero xkxavg. The CPU whole-array assignment sets every element to 0.
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(xkxavg) firstprivate(its, ite, jts, jte, kts, kte)
+   DO j = jts, jte
+   DO k = kts, kte
+   DO i = its, ite
+      xkxavg(i,k,j) = 0.
+   ENDDO
+   ENDDO
+   ENDDO
+#else
    xkxavg = 0.
+#endif
 
+! K-VDS-1: xkxavg and H3 (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(xkxavg, fnm, fnp, xkhv, rho, H3, var, rdz) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
    DO j = j_start, j_end
    DO k = kts+1,ktf
    DO i = i_start, i_end
@@ -5215,6 +5270,9 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
    ENDDO
    ENDDO
 
+! K-VDS-2: zero H3 at kts and ktf+1 (Template A)
+!$acc parallel loop gang vector collapse(2) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(H3) firstprivate(j_start, j_end, i_start, i_end, kts, ktf)
    DO j = j_start, j_end
    DO i = i_start, i_end
       H3(i,kts,j)=0.
@@ -5222,6 +5280,10 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
    ENDDO
    ENDDO
 
+! K-VDS-3: tendency from the vertical flux (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(tendency, H3, dnw) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
    DO j = j_start, j_end
    DO k = kts,ktf
    DO i = i_start, i_end
@@ -5232,6 +5294,10 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
    ENDDO
 
    IF (doing_tke) THEN
+! K-VDS-3: TKE doubling (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_VERTICAL_DIFFUSION_2)) default(none) &
+!$acc& present(tendency, tmptendf) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end)
       DO j = j_start, j_end
       DO k = kts,ktf
       DO i = i_start, i_end
@@ -5241,6 +5307,22 @@ SUBROUTINE vertical_diffusion_s( tendency, config_flags, var, xkhv,       &
       ENDDO
       ENDDO
    ENDIF
+
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(tendency)
+        ELSE
+!$acc update device(tendency)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_VERTICAL_DIFFUSION_2)) THEN
+        CALL gpu_cc_done_r(1, tendency, SIZE(tendency,KIND=8), 'tendency', &
+          LBOUND(tendency), UBOUND(tendency))
+        IF (gpu_cc_next(R_VERTICAL_DIFFUSION_2)) GOTO 99901
+      END IF
+#endif
 
 END SUBROUTINE vertical_diffusion_s
 
