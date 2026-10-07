@@ -1127,20 +1127,20 @@ implicit none
 integer, intent(in)::ips,ipe,jps,jpe,ims,ime,jms,jme,kms,kme,kps,kpe
 real, intent(in)::a(ims:ime,kms:kme,jms:jme)
 character(len=*),intent(in)::name
-integer:: i,j,k
-real:: avg_a,max_a,min_a,t,aa,bb
+integer:: i,j,k,nnan
+real:: avg_a,max_a,min_a,t,aa
 character(len=128)::msg
 ! if(fire_print_msg.eq.0)return
-! check for nans in any case
-bb=0.
+! any-NaN count (x /= x). print_2d_stats calls this routine.
+nnan=0
 do j=jps,jpe
   do k=kps,kpe
     do i=ips,ipe
-       bb=bb+a(i,k,j)
+       if (a(i,k,j) /= a(i,k,j)) nnan = nnan + 1
     enddo
   enddo
 enddo
-if(bb.eq.bb.and.fire_print_msg.eq.0)return
+if(nnan.eq.0.and.fire_print_msg.eq.0)return
 avg_a=0
 max_a=-huge(max_a)
 min_a= huge(min_a)
@@ -1156,7 +1156,7 @@ do j=jps,jpe
     enddo
   enddo
 enddo
-if(bb.ne.bb)goto 10 ! should never happen 
+if(nnan.ne.0)goto 10 ! count was nonzero but the scan did not stop 
 if(fire_print_msg.eq.0)return
 avg_a = avg_a/((ipe-ips+1)*(jpe-jps+1)*(kpe-kps+1))
 call print_stat_line(name,ips,ipe,jps,jpe,min_a,max_a,avg_a)

@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p4_model
-- Last commit: (this commit)
+- Last commit: (this commit; task 1 is 56d26ef)
 
 ## Items
 
@@ -14,8 +14,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-FM5 | todo | | |
 | K-FM6 | todo | | |
 | K-FSC | todo | | |
-| task 1: hoist set_flags once per domain at init | coded | (this commit) | call stays in fire_driver_em, gated on fire_ifun_start.eq.1; see Questions |
-| task 2: integer NaN counts in print_2d_stats/print_3d_stats | todo | | |
+| task 1: hoist set_flags once per domain at init | coded | 56d26ef | call stays in fire_driver_em, gated on fire_ifun_start.eq.1; see Questions |
+| task 2: integer NaN counts in print_2d_stats/print_3d_stats | coded | (this commit) | print_2d_stats calls print_3d_stats; the count is there |
 | task 3: delete dead post-loop ignition check | todo | | |
 | task 4: fuel_frac_burnt, fuel_frac_end, lfn_out work arrays | todo | | |
 | task 5: device data (I-12) flags and constants | todo | | |
@@ -41,4 +41,5 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 ## Log
 
-- Task 1: `set_flags` runs only when `fire_ifun_start.eq.1` (the init driver). The per-step path (`fire_ifun_start.eq.3`) no longer calls it. Values are unchanged: flags are constant for the run. arith_guard will report the new IF as a CPU-view change; expected for this shared refactor.
+- Task 1: `set_flags` runs only when `fire_ifun_start.eq.1` (the init driver). The per-step path (`fire_ifun_start.eq.3`) no longer calls it. Values are unchanged: flags are constant for the run. arith_guard reports the new IF as a CPU-view change; expected for this shared refactor. Commit 56d26ef.
+- Task 2: `print_3d_stats` counts NaNs with `x /= x` into integer `nnan` instead of a float sum. `print_2d_stats` only calls `print_3d_stats`, so both paths use the count. A nonzero count still falls through to the host scan and `crash`. Non-NaN values with `fire_print_msg.eq.0` still return before the min/max/avg loop. arith_guard CPU-view change expected.
