@@ -121,8 +121,10 @@ halo_fire_mag_sub
     call fire_ignition_convert (config_flags,fire_max_ignitions,fire_ignition_longlat, &
         ignition_line,fire_num_ignitions,unit_fxlong,unit_fxlat)
 
-    ! copy configuration flags to fire internal structures
-    call set_flags(config_flags)
+    ! Once per domain at init. fire_driver_em_init passes fire_ifun_start=1
+    ! and the per-step driver passes 3. set_flags is private to this module,
+    ! so the call cannot move into fire_driver_em_init until it is public.
+    if (fire_ifun_start .eq. 1) call set_flags(config_flags)
 
     ! refinement r
     ir=grid%sr_x ! refinement ratio
