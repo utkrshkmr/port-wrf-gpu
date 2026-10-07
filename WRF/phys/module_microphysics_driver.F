@@ -276,6 +276,8 @@ SUBROUTINE microphysics_driver(                                          &
    ! WRF Double-Moment 6-class
 
 !----------------------------------------------------------------------
+   USE module_gpu_work, ONLY : work_p3_wsm6_qv_tmp, work_p3_wsm6_qc_tmp, &
+        work_p3_wsm6_qi_tmp, work_p3_wsm6_qs_tmp, work_p3_wsm6_qni_tmp
    IMPLICIT NONE
 !======================================================================
 ! Grid structure in physics part of WRF
@@ -514,7 +516,7 @@ SUBROUTINE microphysics_driver(                                          &
    real, intent (in), optional :: pert_thom_qv, pert_thom_qc, pert_thom_qi, pert_thom_qs, pert_thom_ni
    real, dimension(ims:ime, kms:kme, jms:jme ), intent (in), optional :: perts_qvapor, perts_qcloud, perts_qice, &
        perts_qsnow, perts_ni 
-  real, dimension(:, :, :), allocatable :: qv_tmp, qc_tmp, qi_tmp, qs_tmp, qni_tmp
+  REAL, DIMENSION(:, :, :), POINTER, CONTIGUOUS :: qv_tmp, qc_tmp, qi_tmp, qs_tmp, qni_tmp
  
  !3D variables required for CAMMGMP scheme
  REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
@@ -767,7 +769,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
 ! LOCAL  VAR
 
-   INTEGER :: i,j,k,its,ite,jts,jte,ij,sz,n
+   INTEGER :: i,j,k,its,ite,jts,jte,ij,sz,n,nqtmp
    LOGICAL :: channel
    LOGICAL :: nssl_progn = .false.
    REAL    :: z0, z1, z2, w1, w2
@@ -1028,11 +1030,12 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 !
         CASE (THOMPSONAERO)
               if (pert_thom .and. multi_perturb == 1) then
-                allocate (qv_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qc_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qi_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qs_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qni_tmp(its:ite, kts:kte, jts:jte))
+                nqtmp = (ite-its+1)*(kte-kts+1)*(jte-jts+1)
+                qv_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qv_tmp(1:nqtmp)
+                qc_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qc_tmp(1:nqtmp)
+                qi_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qi_tmp(1:nqtmp)
+                qs_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qs_tmp(1:nqtmp)
+                qni_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qni_tmp(1:nqtmp)
 
                 call Add_multi_perturb_mp_perturbations (perts_qvapor, perts_qcloud, perts_qice, &
                   perts_qsnow, perts_ni, pert_thom_qv, pert_thom_qc, pert_thom_qi, pert_thom_qs, &
@@ -1113,11 +1116,6 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                   perts_qsnow, perts_ni, pert_thom_qv, pert_thom_qc, pert_thom_qi, pert_thom_qs, &
                   pert_thom_ni, qv_curr, qc_curr, qi_curr, qs_curr, qni_curr, qv_tmp, qc_tmp, qi_tmp, &
                   qs_tmp, qni_tmp, its, ite, jts, jte, ims, ime, jms, jme, kms, kme, kts, kte)
-                deallocate (qv_tmp)
-                deallocate (qc_tmp)
-                deallocate (qi_tmp)
-                deallocate (qs_tmp)
-                deallocate (qni_tmp)
               end if
 
               IF (config_flags%aer_fire_emit_opt.gt.0)  then
@@ -1222,11 +1220,12 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  qs_b4mp(its:ite,kts:kte,jts:jte) = qs_curr(its:ite,kts:kte,jts:jte)
 #endif
               if (pert_thom .and. multi_perturb == 1) then
-                allocate (qv_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qc_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qi_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qs_tmp(its:ite, kts:kte, jts:jte))
-                allocate (qni_tmp(its:ite, kts:kte, jts:jte))
+                nqtmp = (ite-its+1)*(kte-kts+1)*(jte-jts+1)
+                qv_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qv_tmp(1:nqtmp)
+                qc_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qc_tmp(1:nqtmp)
+                qi_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qi_tmp(1:nqtmp)
+                qs_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qs_tmp(1:nqtmp)
+                qni_tmp(its:ite, kts:kte, jts:jte) => work_p3_wsm6_qni_tmp(1:nqtmp)
 
                 call Add_multi_perturb_mp_perturbations (perts_qvapor, perts_qcloud, perts_qice, &
                   perts_qsnow, perts_ni, pert_thom_qv, pert_thom_qc, pert_thom_qi, pert_thom_qs, &
@@ -1281,11 +1280,6 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                   perts_qsnow, perts_ni, pert_thom_qv, pert_thom_qc, pert_thom_qi, pert_thom_qs, &
                   pert_thom_ni, qv_curr, qc_curr, qi_curr, qs_curr, qni_curr, qv_tmp, qc_tmp, qi_tmp, &
                   qs_tmp, qni_tmp, its, ite, jts, jte, ims, ime, jms, jme, kms, kme, kts, kte)
-                deallocate (qv_tmp)
-                deallocate (qc_tmp)
-                deallocate (qi_tmp)
-                deallocate (qs_tmp)
-                deallocate (qni_tmp)
               end if
 
              ELSE

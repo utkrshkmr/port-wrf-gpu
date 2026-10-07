@@ -24,3 +24,27 @@
 !
 ! Names start with work_p3_wsm6_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+!
+! Shared refactor (both builds): the five tile temporaries qv_tmp, qc_tmp,
+! qi_tmp, qs_tmp, qni_tmp of microphysics_driver. Each is one memory-sized
+! 3D field (n3d). The routine remaps a pointer onto the tile bounds.
+
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_wsm6_qv_tmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_wsm6_qc_tmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_wsm6_qi_tmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_wsm6_qs_tmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_wsm6_qni_tmp(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p3_wsm6_qv_tmp, n3d, "work_p3_wsm6_qv_tmp")
+   CALL gpu_work_alloc_r(work_p3_wsm6_qc_tmp, n3d, "work_p3_wsm6_qc_tmp")
+   CALL gpu_work_alloc_r(work_p3_wsm6_qi_tmp, n3d, "work_p3_wsm6_qi_tmp")
+   CALL gpu_work_alloc_r(work_p3_wsm6_qs_tmp, n3d, "work_p3_wsm6_qs_tmp")
+   CALL gpu_work_alloc_r(work_p3_wsm6_qni_tmp, n3d, "work_p3_wsm6_qni_tmp")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p3_wsm6_qv_tmp, "work_p3_wsm6_qv_tmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_wsm6_qc_tmp, "work_p3_wsm6_qc_tmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_wsm6_qi_tmp, "work_p3_wsm6_qi_tmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_wsm6_qs_tmp, "work_p3_wsm6_qs_tmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_wsm6_qni_tmp, "work_p3_wsm6_qni_tmp", nwork, nbad)
+#endif

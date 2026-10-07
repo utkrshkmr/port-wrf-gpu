@@ -2,9 +2,9 @@
 
 Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, coded, n/a, blocked.
 
-- State: todo
+- State: in-progress
 - Branch: agent/wp/p3_wsm6
-- Last commit:
+- Last commit: Shared refactor: microphysics_driver tile temporaries (WP P3-WSM6)
 
 ## Items
 
@@ -17,7 +17,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | 8.2:effective-radius | todo | |  |
 | 8.2:minor-loop | todo | |  |
 | task 1: the P1.4 tables of mp_wsm6 (the SAVE scalars of mp_wsm6.F90:46-64): !$... | todo | | |
-| task 2: shared refactor (separate commit): microphysics_driver's large 3D auto... | todo | | |
+| task 2: shared refactor (separate commit): microphysics_driver's large 3D auto... | coded | this commit | qv/qc/qi/qs/qni_tmp pointers into work_p3_wsm6_*; arith_guard CPU-view diffs expected |
 
 ## Scope requests
 
@@ -25,4 +25,16 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 ## Questions and blockers
 
+- The only large 3D locals in microphysics_driver are the allocatable tile arrays
+  qv_tmp, qc_tmp, qi_tmp, qs_tmp, qni_tmp (Thompson pert_thom path), not Fortran
+  automatic arrays. They are the P1.7 row for this driver. WSM6 does not touch them.
+  Each tile is remapped onto a memory-sized work array (n3d). The tile extent is
+  at most the memory extent, so the pointer section fits.
+
 ## Log
+
+- Shared refactor: replaced ALLOCATE/DEALLOCATE of the five tile temporaries with
+  pointer remaps onto work_p3_wsm6_qv_tmp, work_p3_wsm6_qc_tmp, work_p3_wsm6_qi_tmp,
+  work_p3_wsm6_qs_tmp, work_p3_wsm6_qni_tmp. Same bounds (its:ite, kts:kte, jts:jte).
+  No arithmetic change. CPU-view edits are the P1.7 exception (arith_guard will
+  report them; the base is not moved). Not compiled or tested (code-only).
