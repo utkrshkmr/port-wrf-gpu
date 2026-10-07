@@ -2659,6 +2659,10 @@ END SUBROUTINE smag2d_km
                              ids, ide, jds, jde, kds, kde,         &
                              ims, ime, jms, jme, kms, kme,         &
                              its, ite, jts, jte, kts, kte          )
+#ifdef WRF_GPU
+    USE module_gpu_route, ONLY : gpu_on, gpu_island, gpu_world_host, R_CALC_L_SCALE
+    USE module_gpu_callcheck
+#endif
 
 ! History:     Sep 2003   Written by Bryan and Knievel, NCAR
 
@@ -2697,10 +2701,32 @@ END SUBROUTINE smag2d_km
 
     REAL  &
     :: deltas, tmp
+#ifdef WRF_GPU
+    LOGICAL :: gpu_isl
+#endif
 
 ! End declarations.
 !-----------------------------------------------------------------------
 
+#ifdef WRF_GPU
+99901 CONTINUE
+      IF (gpu_cc_start(R_CALC_L_SCALE)) THEN
+        CALL gpu_cc_save_r(1, l_scale, SIZE(l_scale,KIND=8))
+      END IF
+      gpu_isl = gpu_island(R_CALC_L_SCALE)
+      IF (gpu_isl) THEN
+        IF (gpu_world_host) THEN
+!$acc update device(tke, bn2, l_scale, rdzw, msftx, msfty)
+        ELSE
+!$acc update self(tke, bn2, l_scale, rdzw, msftx, msfty)
+        END IF
+        gpu_world_host = .NOT. gpu_world_host
+      END IF
+#endif
+! K-LSC: length scale (Template A)
+!$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALC_L_SCALE)) default(none) &
+!$acc& present(l_scale, msftx, msfty, rdzw, bn2, tke) private(deltas, tmp) &
+!$acc& firstprivate(j_start, j_end, kts, ktf, i_start, i_end, dx, dy)
     DO j = j_start, j_end
     DO k = kts, ktf
     DO i = i_start, i_end
@@ -2718,6 +2744,21 @@ END SUBROUTINE smag2d_km
     END DO
     END DO
 
+#ifdef WRF_GPU
+      IF (gpu_isl) THEN
+        gpu_world_host = .NOT. gpu_world_host
+        IF (gpu_world_host) THEN
+!$acc update self(l_scale)
+        ELSE
+!$acc update device(l_scale)
+        END IF
+      END IF
+      IF (gpu_cc_active(R_CALC_L_SCALE)) THEN
+        CALL gpu_cc_done_r(1, l_scale, SIZE(l_scale,KIND=8), 'l_scale', &
+          LBOUND(l_scale), UBOUND(l_scale))
+        IF (gpu_cc_next(R_CALC_L_SCALE)) GOTO 99901
+      END IF
+#endif
     END SUBROUTINE calc_l_scale
 
 !=======================================================================
