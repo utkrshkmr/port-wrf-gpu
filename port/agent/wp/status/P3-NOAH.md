@@ -4,7 +4,7 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 
 - State: in-progress
 - Branch: agent/wp/p3_noah
-- Last commit: e967539
+- Last commit: 08a873b
 
 ## Items
 
@@ -15,8 +15,8 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 | K-SFCDIAG | todo | |  |
 | 1 shared refactor: iloc/jloc as arguments | coded | c568dc4 | threadprivate module copies removed; IILOC/JJLOC stay as the arguments |
 | 2 shared refactor: LUTYPE/SLTYPE as integer codes | coded | e967539 | SFLX/REDPRM take integer codes; module LUTYPE/SLTYPE stay CHARACTER for table I/O |
-| 3 P1.4 tables (49): declare create, noahlsm_gpu_upload, noahlsm_gpu_tabcheck | coded | | bit-sum via IEOR; kernel_lint PASS; GPU arith exceptions recorded |
-| 4 port lsm (K-LSM) | todo | |  |
+| 3 P1.4 tables (49): declare create, noahlsm_gpu_upload, noahlsm_gpu_tabcheck | coded | 08a873b | bit-sum via IEOR; kernel_lint PASS; GPU arith exceptions recorded |
+| 4 port lsm (K-LSM) | todo | | next: template CP kernel over the j,i point loop; paste island lsm.txt |
 | 5 port SFLX (K-LSM) | todo | |  |
 | 6 port REDPRM (K-LSM) | todo | |  |
 | 7 port CSNOW (K-LSM) | todo | |  |
@@ -64,3 +64,4 @@ Written by the work package only (CODE_ONLY.md §6). States: todo, in-progress, 
 - Shared refactor: dropped write-only threadprivate iloc/jloc in module_sf_noahlsm, module_sf_noahlsm_glacial_only and module_sf_noah_seaice. arith_guard CPU-view diffs are expected (CODE_ONLY.md §8). Not compiled.
 - Shared refactor: SFLX and REDPRM take integer land-use and soil dataset codes. Host table I/O is unchanged. arith_guard CPU-view diffs are expected. Not compiled.
 - P1.4: declare create of the 49 Noah tables, noahlsm_gpu_upload, noahlsm_gpu_tabcheck. Bit-sum is IEOR of TRANSFER patterns, one thread, loop seq. kernel_lint PASS. CPU-view arith_guard hits are the earlier refactors only. Not compiled.
+- Checkpoint before item 4. lsm is WRF/phys/module_sf_noahdrv.F:40-1781. First executable is IRRIGATION_CHANNEL=0.0 (island entry; handoff line 719, now 720 after the USE edit). Point loop is JLOOP 749-1603, ILOOP 792-1602. itimestep==1 block is 751-790 (host scalar). 2D automatics HFX_RURAL and friends are 683-693; plan says work arrays. sf_urban_physics=0 is pinned, so BEP/urban after 1605 is an unported branch (fatal before the island). Soil locals are dimension(1:num_soil_layers) and need GPU_S in the GPU view. Island: port/agent/wp/islands/P3-NOAH/lsm.txt (entry 99901, exit before END SUBROUTINE). SFLX is not routine seq yet; that is item 5.
