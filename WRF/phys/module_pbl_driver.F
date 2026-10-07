@@ -178,6 +178,10 @@ CONTAINS
 #endif
 
    USE module_model_constants
+   USE module_gpu_work, ONLY : work_p3_pbl_u_phytmp, work_p3_pbl_v_phytmp,     &
+                               work_p3_pbl_tke_windfarm,                       &
+                               work_p3_pbl_rqncblten, work_p3_pbl_rqnwfablten, &
+                               work_p3_pbl_rqnifablten, work_p3_pbl_rqnbcablten
 
 ! *** add new modules of schemes here
 
@@ -712,8 +716,9 @@ CONTAINS
                      ,rqvblten,rqcblten,rqrblten                 &
                      ,rqiblten,rqsblten,rqgblten,rqniblten         !rqniblten  used in CAMUWPBL
 
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) ::   & !local: added for MYNN
-                      rqncblten,rqnwfablten,rqnifablten,rqnbcablten
+   ! P1.7: was automatic (ims:ime, kms:kme, jms:jme); local, added for MYNN
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: rqncblten, rqnwfablten,     &
+                                                   rqnifablten, rqnbcablten
 
    REAL,       DIMENSION( ims:ime, jms:jme )                    , &
                OPTIONAL                                         , &
@@ -789,8 +794,9 @@ CONTAINS
 
 !  LOCAL  VAR
 
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::v_phytmp
-   REAL,       DIMENSION( ims:ime, kms:kme, jms:jme ) ::u_phytmp
+   ! P1.7: was automatic (ims:ime, kms:kme, jms:jme)
+   REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: v_phytmp
+   REAL,       DIMENSION(:,:,:), POINTER, CONTIGUOUS :: u_phytmp
 
    REAL,       DIMENSION( ims:ime, jms:jme )          ::  TSKOLD, &
                                                           USTOLD, &
@@ -837,7 +843,8 @@ CONTAINS
    integer iu_bep,iurb,idiff
    real seamask,thsk,zzz,unew,vnew,tnew,qnew,umom,vmom
    REAL :: z0,z1,z2,w1,w2
-   REAL, DIMENSION( ims:ime, kms:kme, jms:jme ) :: TKE_windfarm ! Yulong add for WLM
+   ! P1.7: was automatic (ims:ime, kms:kme, jms:jme). Yulong add for WLM
+   REAL, DIMENSION(:,:,:), POINTER, CONTIGUOUS :: TKE_windfarm
    INTEGER :: ihour, jmonth, jday
 !
 ! FASDAS
@@ -884,6 +891,15 @@ CONTAINS
   flag_qnbca = .FALSE. ; IF ( PRESENT( F_QNBCA ) ) flag_qnbca = F_QNBCA
 
   if (bl_pbl_physics .eq. 0) return
+
+   ! P1.7: remap the former 3D automatic arrays onto work arrays (both builds).
+   u_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_pbl_u_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   v_phytmp(ims:ime,kms:kme,jms:jme) => work_p3_pbl_v_phytmp(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   TKE_windfarm(ims:ime,kms:kme,jms:jme) => work_p3_pbl_tke_windfarm(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   rqncblten(ims:ime,kms:kme,jms:jme) => work_p3_pbl_rqncblten(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   rqnwfablten(ims:ime,kms:kme,jms:jme) => work_p3_pbl_rqnwfablten(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   rqnifablten(ims:ime,kms:kme,jms:jme) => work_p3_pbl_rqnifablten(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
+   rqnbcablten(ims:ime,kms:kme,jms:jme) => work_p3_pbl_rqnbcablten(1:(ime-ims+1)*(kme-kms+1)*(jme-jms+1))
 
 ! RAINBL in mm (Accumulation between PBL calls)
 !

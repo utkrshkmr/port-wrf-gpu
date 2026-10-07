@@ -24,3 +24,31 @@
 !
 ! Names start with work_p3_pbl_ so that no two work packages collide.
 ! No apostrophes in comments here: cpp reads this file, the WRF sed step does not.
+!
+! Shared refactor (plan.md P1.7): the large 3D automatic arrays of pbl_driver.
+! Both builds. Shape (ims:ime, kms:kme, jms:jme) maps onto n3d.
+#if GPU_WORK_SECTION == 1
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_u_phytmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_v_phytmp(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_tke_windfarm(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_rqncblten(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_rqnwfablten(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_rqnifablten(:)
+   REAL, ALLOCATABLE, TARGET, PUBLIC :: work_p3_pbl_rqnbcablten(:)
+#elif GPU_WORK_SECTION == 2
+   CALL gpu_work_alloc_r(work_p3_pbl_u_phytmp, n3d, "work_p3_pbl_u_phytmp")
+   CALL gpu_work_alloc_r(work_p3_pbl_v_phytmp, n3d, "work_p3_pbl_v_phytmp")
+   CALL gpu_work_alloc_r(work_p3_pbl_tke_windfarm, n3d, "work_p3_pbl_tke_windfarm")
+   CALL gpu_work_alloc_r(work_p3_pbl_rqncblten, n3d, "work_p3_pbl_rqncblten")
+   CALL gpu_work_alloc_r(work_p3_pbl_rqnwfablten, n3d, "work_p3_pbl_rqnwfablten")
+   CALL gpu_work_alloc_r(work_p3_pbl_rqnifablten, n3d, "work_p3_pbl_rqnifablten")
+   CALL gpu_work_alloc_r(work_p3_pbl_rqnbcablten, n3d, "work_p3_pbl_rqnbcablten")
+#elif GPU_WORK_SECTION == 3
+   CALL gpu_work_check_r(work_p3_pbl_u_phytmp, "work_p3_pbl_u_phytmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_v_phytmp, "work_p3_pbl_v_phytmp", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_tke_windfarm, "work_p3_pbl_tke_windfarm", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_rqncblten, "work_p3_pbl_rqncblten", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_rqnwfablten, "work_p3_pbl_rqnwfablten", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_rqnifablten, "work_p3_pbl_rqnifablten", nwork, nbad)
+   CALL gpu_work_check_r(work_p3_pbl_rqnbcablten, "work_p3_pbl_rqnbcablten", nwork, nbad)
+#endif
