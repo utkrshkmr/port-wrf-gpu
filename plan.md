@@ -1753,4 +1753,11 @@ supersedes every machine assignment above (CCR, "GPU node", A100 80 GB, H100).
    the host cores and the G5 criteria repeated on the full case.
 7. **Cases are made on the workstation.** WPS and `real.exe` for the dev and acceptance cases are built and run on
    the host cores.
+8. **Sample gating cases (S0-13).** Below the dev case, two tiers of generated small cases gate every commit and every
+   phase, CPU-REF (host) against GPU-REPRO bitwise on traces and files: T0, ideal cases of seconds to two minutes
+   (the smoke case, a nested variant with the Eaton boundary options, a physics variant, a no-fire variant), made
+   by `ideal.exe` from generated soundings and fuel maps; T1, real-data cases of a few hundred points and 10–30
+   simulated minutes made from the small fire input files the owner provides. A failure prints a precision report
+   per field (first differing step, differing points, largest difference in ulps, digits of agreement) to localize
+   it. They are gates, not the acceptance: G5 stays on `eaton_mid`.
 

@@ -230,7 +230,44 @@ move (WORKFLOW.md §6). The base moves once per family, in the order below.
 Each row: CPU-REF of the base vs CPU-REF of the refactor commit, bitwise on traces and output files. If a family
 fails, it is split down to the single statement change that moves bits. That change is then fixed or reverted.
 
+## S0-13 · Sample gating cases (tiny and small), generated
+
+Between the per-routine harness (random inputs) and the dev-case windows (10–20 min each while routines are still on
+the host) there is room for cases that run in seconds to a few minutes and still exercise the real model: the
+whole time step, both builds, the fire. They are **gating tests**: CPU-REF and GPU-REPRO run the same case from the
+same input, and every field must agree bit for bit. They do not replace the dev or acceptance case; they catch most
+mistakes before those are spent on.
+
+| | |
+|---|---|
+| Changes | `port/make_test_cases.py` (new; infrastructure), `cases/tests/<tier>-<name>/` (namelist, manifest, README with the expected wall time), `port/h100/windows.txt` and `port/gates/t_tiers.sh` (locked: reviewer adds the entries), `cpu_verify.sh` (runs tier T0) |
+| Machine | CLOUD (generator, T0 on gfortran) → WS-A100 (host runs of `ideal.exe`/`real.exe`, CPU-REF references, device runs) |
+| Depends | S0-07 (builds), the owner's small fire input files for T1 |
+
+**Tiers.** Each tier is a set of cases of one size; each case has a CPU-REF reference and is compared on traces
+(level 2) and on every history and restart field.
+
+| Tier | Cases | Size, model time | Wall time, one A100 (expected) | Input | Used at |
+|---|---|---|---|---|---|
+| **T0 ideal-tiny** | `t0-fire` (the current smoke case, 103×103×51, open boundaries, one domain); `t0-fire-nest` (two domains, nest ratio 3, `nested` boundaries, fire on the nest: the Eaton boundary options); `t0-phys` (the Eaton physics suite on the ideal case, radiation every 30 s); `t0-cold` (no fire: dynamics and physics only) | 1–3 simulated minutes | seconds to 2 min | none: `ideal.exe` from a generated sounding and fuel map | rung L3 on CLOUD (gfortran views); rung L5–L6 first check on the device; `cpu_verify.sh`; every commit |
+| **T1 real-small** | one case per small fire input the owner provides: `t1-<name>`, with the Eaton namelist options, `sr_x = sr_y = 4`, 10–30 simulated minutes through the ignition; restart written before ignition so that windows are restart-vs-restart | a few hundred points per side, 10–30 min | 2–10 min | the owner's small `wrfinput_d0*`/`wrfbdy_d01` files, md5s in the manifest | per-phase gates before W-20; the nightly regression (S7-02) |
+| **T2 dev** | `eaton_small` windows W-T0 … W-1H (S0-09) | as `windows.txt` | 10 min to hours | Eaton inputs | sub-gates, stage gates |
+| **T3 acceptance** | `eaton_mid` (S0-09.5–.7), 17 h | 17 h | days | Eaton inputs | G5 |
+
+| Task | What | Size | Done when |
+|---|---|---|---|
+| S0-13.1 | `make_test_cases.py t0`: writes the four T0 namelists, soundings and fuel maps from one template (the smoke-case generator generalized); options chosen so that `gpu_check_config` accepts `t0-fire-nest`, `t0-phys` and `t0-cold` (the Eaton envelope: nested boundaries, even `sr`, `WRF_KMAX`), while `t0-fire` keeps its open boundaries for the CPU-view checks | M | the four cases run with `gnu-ref` in under a minute each on CLOUD |
+| S0-13.2 | `make_test_cases.py t1 <inputs>`: from the owner's small input files, writes the namelist (Eaton options, dates and domain sizes read from the files), the manifest, a restart point before ignition, and the README | M | one `cases/tests/t1-<name>/` per input set |
+| S0-13.3 | CPU-REF references of T0 and T1 on the host cores (1 rank and 8 ranks, both bitwise: a small T-DEC); archived with md5s under `$WORK/reference/tests/` | S | references exist |
+| S0-13.4 | `windows.txt` entries (`T0-*`, `T1-*`) and `t_tiers.sh <build> T0|T1`: runs every case of a tier with GPU-REPRO and compares with `compare.sh`; prints one PASS/FAIL line per case | M | `t_tiers.sh` runs on WS-A100 |
+| S0-13.5 | Precision report on failure: `compare_fields.py --report` prints, per differing field, the first differing step, the number of differing points, the largest difference in ulps, and the digits of agreement, so that a failure is localized without a second run; `bittrace_diff.py` names the step, stage, tag and field as before | S | one failing case produces the report |
+| S0-13.6 | `cpu_verify.sh` runs T0 (all four cases) instead of S-3M alone; `t_reg20.sh` runs T0 and T1 on the device before W-20 | S | both scripts updated (tool fix, logged) |
+| S0-13.7 | Cost table of the tiers (wall time per case on CPU-REF 8 ranks and on one A100) in ENVIRONMENT.md | S | numbers recorded |
+
+**Gate S0-13:** every T0 and T1 case is bitwise, CPU-REF (host) vs GPU-REPRO with every route off (the Stage 1
+configuration), on both A100s. From then on every phase gate runs `t_tiers.sh T0 T1` before its W-20.
+
 **Stage gate G0** (plan.md §14), on these machines:
-- WS-A100: S0-04 … S0-09, S0-11 (S0-10 may still be running);
+- WS-A100: S0-04 … S0-09, S0-11, S0-13 (S0-10 may still be running);
 - CLOUD: S0-01 … S0-03;
 - every family of S0-12 certified, so `cpu_view_base` points at a commit containing all of run 1's refactors.

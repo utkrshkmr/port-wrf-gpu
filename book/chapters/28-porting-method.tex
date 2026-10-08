@@ -359,9 +359,11 @@ the acceptance run uses the case \code{eaton_mid} (\cref{ch:case}) and the full 
 
 \section{Organization}
 
-The plan (\code{roadmap/plan-4.6/}) arranges the work in nine stages and 139 phases:
+The plan (\code{roadmap/plan-4.6/}) arranges the work in nine stages and 140 phases:
 \begin{itemize}
-  \item 0, ground truth: the reproducible CPU reference, the probes, the dev case;
+  \item 0, ground truth: the reproducible CPU reference, the probes, the dev and acceptance cases, and tiers of
+    small generated gating cases that both builds run and must match bit for bit, from ideal cases of seconds to
+    small real-data cases of minutes (\cref{app:tests});
   \item 1, infrastructure: state, pool, work arrays, tables and sync points, with all compute still on the host;
   \item 2, dynamics; 3, physics; 4, fire;
   \item 5, nest forcing on the device, the end of the bracket, and the full 17-hour acceptance run;

@@ -1,7 +1,7 @@
 # The WRF 4.6.0 GPU port, phase by phase
 
 This is the working plan of Stage 1 of the [roadmap](../README.md): WRF 4.6.0 + WRF-Fire on NVIDIA A100 and H100
-GPUs, bit for bit equal to the CPU reference. It replaces the phase cards' order of work with **9 stages and 139 small
+GPUs, bit for bit equal to the CPU reference. It replaces the phase cards' order of work with **9 stages and 140 small
 phases**. Each phase:
 - is contained: it names the routines and files it changes, and nothing else changes;
 - states the machine of every task;
@@ -23,7 +23,7 @@ run 1 (2026-10-07) already wrote it. That code is unverified.
 
 | File | Stage | Phases |
 |---|---|---|
-| [stage-0-ground-truth.md](stage-0-ground-truth.md) | 0 Ground truth: land run 1, toolchain, probes, references, shared refactors | S0-01 … S0-12 |
+| [stage-0-ground-truth.md](stage-0-ground-truth.md) | 0 Ground truth: land run 1, toolchain, probes, references, shared refactors, sample gating cases | S0-01 … S0-13 |
 | [stage-1-infrastructure.md](stage-1-infrastructure.md) | 1 GPU infrastructure, all compute still on the host | S1-01 … S1-12 |
 | [stage-2-dynamics.md](stage-2-dynamics.md) | 2 The dynamical core | S2-01 … S2-23 |
 | [stage-3-physics.md](stage-3-physics.md) | 3 The physics of the case | S3-01 … S3-25 |
@@ -91,10 +91,10 @@ gets **two tasks**: `.c` (rungs 1–3) and `.g` (rungs 4–8). A routine longer 
 |---|---|---|---|---|
 | L1 write | GPU view under `#ifdef WRF_GPU`: kernels by template, island, call check, route | CLOUD | `python3 port/tools/ref.py <kernel>`; CODING_STANDARD.md | `bash port/gates/static.sh` PASS (arith_guard, kernel_lint, scope) |
 | L2 CPU compile | both gfortran views compile the file | CLOUD | `compile_one.sh gnu-gpu <file>`, `compile_one.sh gnu-ref <file>` | no errors; `default(none)` complete |
-| L3 CPU equality | GPU view = CPU view on the host | CLOUD | `harness.sh <file> <routine> --builds <gnu-ref>,<gnu-gpu>`; S-3M through `cpu_verify.sh` when the routine is on the smoke path | identical bits |
+| L3 CPU equality | GPU view = CPU view on the host | CLOUD | `harness.sh <file> <routine> --builds <gnu-ref>,<gnu-gpu>`; the T0 cases through `cpu_verify.sh` (S0-13) | identical bits |
 | L4 device compile | nvfortran GPU-REPRO compile | WS-A100 | `compile_one.sh gpu-repro <file> --minfo` | every kernel generates GPU code; no implicit data movement; inner loops `seq`; registers and spills recorded (profiler layer L0) |
 | L5 device harness | host, device and CPU view on random inputs | WS-A100 | `harness.sh <file> <routine>` | three-way identical |
-| L6 T-AB | device vs host execution of the routine on real data | WS-A100 | `bash port/gates/t_ab.sh <route> W-20` | identical traces |
+| L6 T-AB | device vs host execution of the routine on real data | WS-A100 | `t_tiers.sh T0 T1` first (seconds to minutes), then `bash port/gates/t_ab.sh <route> W-20` | identical traces |
 | L7 T-TRACE | GPU-REPRO vs CPU-REF | WS-A100 | `bash port/gates/t_trace.sh W-20` | bitwise |
 | L8 record | the routine's kernels in the kernel database | WS-A100 | [plan-profiler.md](../plan-profiler.md) PR-L2/L3 | rows present |
 
@@ -109,7 +109,7 @@ rungs 2–3. Run-1 code is marked "run 1" in the phase tables.
 
 | Gate | Where | Contains |
 |---|---|---|
-| **Phase gate** `G-<phase>` | WS-A100 (+ CLOUD) | every routine of the phase at L7, on GPU 0 and on GPU 1; `T-REG-20` (W-20, everything ported so far) bitwise; `static.sh` and `cpu_verify.sh` PASS; workbook and `kernels.csv` current |
+| **Phase gate** `G-<phase>` | WS-A100 (+ CLOUD) | every routine of the phase at L7, on GPU 0 and on GPU 1; the sample gating cases `t_tiers.sh T0 T1` bitwise (S0-13); `T-REG-20` (W-20, everything ported so far) bitwise; `static.sh` and `cpu_verify.sh` PASS; workbook and `kernels.csv` current |
 | **Sub-gate** (plan.md G2.A … G3.E, G4) | WS-A100 | the phase gates of its phases, plus `T-TRACE-100` (W-100) or the window plan.md names (W-RAD, W-TKE, W-IGN, W-FIRE) |
 | **Stage gate** G0 … G6 | as listed per stage | plan.md §14 |
 
@@ -146,6 +146,7 @@ A failing gate never moves forward:
 | S0-10 | Long references: eaton_mid 17 h; E0 against the original CCR run | WS-A100 | S0-08, S0-09 |
 | S0-11 | T-UNINIT, once | WS-A100 | S0-09 |
 | S0-12 | Certify the shared refactors of run 1 (one family per task) | WS-A100 | S0-03, S0-09 |
+| S0-13 | Sample gating cases: tiers T0 (ideal, seconds) and T1 (the owner's small fire inputs, minutes), generated; `t_tiers.sh`; precision report | CLOUD → WS-A100 | S0-07 |
 | **Stage 1** | **GPU infrastructure** | | |
 | S1-01 | First GPU-REPRO build, every route off | WS-A100 | G0 |
 | S1-02 | State on the device (gen_allocs) and T-MAP | CLOUD → WS-A100 | S1-01 |
