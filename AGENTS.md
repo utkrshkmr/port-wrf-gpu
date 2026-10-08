@@ -11,7 +11,8 @@
 > Whatever your area, change only its paths: `python3 port/tools/check_area_scope.py <area> --worktree`.
 
 You are implementing Phases 1–7 of the GPU port of WRF v4.6.0 + WRF-Fire described in [plan.md](plan.md), on a
-machine with NVIDIA H100 GPUs. Phase 0 is done (see [port/RESULTS.md](port/RESULTS.md)). The goal is a `wrf.exe`
+workstation with two NVIDIA A100 40 GB GPUs (plan.md §18: every run and every comparison happens there or in the
+cloud environment, never on CCR). Phase 0 is done (see [port/RESULTS.md](port/RESULTS.md)). The goal is a `wrf.exe`
 that runs on one GPU and gives **bit-for-bit the same results** as the CPU reference build (CPU-REF). "Close" is a
 failure: one differing bit changes where the fire spreads.
 

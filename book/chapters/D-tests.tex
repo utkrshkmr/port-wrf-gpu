@@ -53,10 +53,10 @@ T-OMP-FEAT & the compiler feature probes (OpenACC versions: phase S0-05) & recor
 \multicolumn{3}{l}{\textbf{CPU reference (P0.9a, P0.10)}} \\
 T-SHARED-1 \dots\ 9 & each shared refactor against the unrefactored CPU build & bitwise \\
 T-UNINIT & a build initializing every local to signaling NaN against one initializing to zero & bitwise \\
-T-DET & the same binary twice, 1 hour (full case) & bitwise \\
-T-DEC-A, T-DEC-B & 1 rank against many; different rank counts (full case) & bitwise \\
+T-DET & the same binary twice, 1 hour of the dev case, on the workstation's host cores & bitwise \\
+T-DEC-A, T-DEC-B & 1 rank against 56; 14, 28 and 56 ranks, on the host cores & bitwise \\
 T-RST & a continuous run against a restarted one & bitwise or documented \\
-T-XM & the CPU-REF binary on a CCR node and on a GPU node's host & bitwise \\
+T-XM & dropped: there is one machine, so there is no cross-machine run to compare & --- \\
 T-KISS & the random number streams of McICA, host against device & bitwise \\
 \midrule
 \multicolumn{3}{l}{\textbf{Infrastructure (P1)}} \\
@@ -92,13 +92,13 @@ T-SLAB & host data outside the copied slab and strips filled with signaling NaNs
 T-O3 & the nest's ozone field after every forcing & equal \\
 T-NSYS-CLEAN & only forcing, I/O and reduction results are copied & as specified \\
 T-OUT, T-BDY & history and restart files; a window across a boundary-data read & bitwise \\
-G5 & the full 17 hours on an 80~GB GPU: all history and restart files, all fire arrays, the traces of every step;
-  A100 equal to H100; T-DRIFT-FULL; T-XM on the final binary & bitwise \\
-G-MEM & the peak device memory (full case) & $\le$ 55~GB at G1, $\le$ 70~GB at G3 and G5 \\
+G5 & the 17 hours of \code{eaton_mid} on one A100 40~GB against CPU-REF on the same workstation: all history and
+  restart files, all fire arrays, the traces of every step; GPU 0 equal to GPU 1; T-DRIFT-FULL & bitwise \\
+G-MEM & the peak device memory & dev case $\le$ 25~GB at G1; acceptance case $\le$ 34~GB at G3 and G5 \\
 T-CASE-1H & a new fire case: one hour around its ignition & bitwise \\
 \midrule
 \multicolumn{3}{l}{\textbf{Several GPUs (Stage 8)}} \\
-T-DEC-GPU & one GPU against two, dev case & bitwise \\
+T-DEC-GPU & one GPU against two, dev case; then the full case on both GPUs against its CPU-REF on the host cores & bitwise \\
 \end{longtable}
 \endgroup
 

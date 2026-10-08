@@ -58,16 +58,25 @@ What stays on the CPU in every stage:
 | ID | Machine | Has | Runs | Cannot |
 |---|---|---|---|---|
 | **CLOUD** | the cloud coding environment (claude.ai/code) | Linux, 4 cores, gfortran 13 (`-fopenacc` runs OpenACC regions on the host), Python 3, git, GitHub; no NVHPC, no GPU, no TeX, no case data | writing code; `static.sh`; gfortran builds of both views (`gnu-ref`, `gnu-gpu`); the smoke case S-3M; `harness.sh` on random inputs; the reference unit tests; review; planning; book text | nvfortran, any device run, real data |
-| **WS-A100** | the owner's workstation | 2× A100 40 GB (cc80), Xeon Gold 6330 (2×28 cores), NVHPC (container or module), the dev case `eaton_small` | NVHPC builds (CPU-REF and GPU-REPRO); device unit tests and probes; harness on the device; T-AB and T-TRACE on dev-case windows; fire windows; nsys and ncu on A100; two independent runs at once (one per GPU) | the full case on one GPU (needs about 60 GB, plan.md §3) |
-| **GPU80** | one 80 GB NVIDIA GPU: H100 80 GB (preferred) or A100 80 GB | NVHPC, the full Eaton case | full-case memory gates (G-MEM); the 17 h acceptance run (G5); H100 profiles and per-GPU tuning | — |
-| **CCR** | CCR CPU nodes | MPI over many nodes, the case data, the reference archives | CPU-REF reference runs (dev and full case); T-DEC; T-DRIFT; T-RST | GPUs |
+| **WS-A100** | the owner's workstation | 2× A100 40 GB (cc80), Xeon Gold 6330 (2×28 = 56 cores), NVHPC (container or module), the dev case `eaton_small` and the acceptance case `eaton_mid` | **everything that runs**: NVHPC builds (CPU-REF and GPU-REPRO); **all CPU-REF reference runs on the host cores** (dev and acceptance case, windows, T-DET, T-DEC with 1/28/56 ranks, T-RST, T-DRIFT); WPS and `real.exe` for the cases; device unit tests and probes; harness on the device; T-AB and T-TRACE; fire windows; the 17 h acceptance run (G5) on one GPU; nsys and ncu on A100; two independent runs at once (one per GPU); later the full case on both GPUs (S8-01 … S8-05) | the full Eaton case on one GPU (about 57 GB, plan.md §3) |
 | **CI** | GitHub Actions of the repository | TeX Live | the book PDF ([plan-book.md](../plan-book.md)) | GPUs, case data |
+
+**Machine policy ([ADR-006](../decisions/ADR-006-machines.md), 2026-10-08).** Nothing is developed or tested on
+CCR, and no 80 GB GPU is assumed. CCR supplies the input files and the original run, which is compared with CPU-REF
+statistically (E0), never bit for bit. Every bit-for-bit comparison is CPU-REF on the workstation's host CPUs against
+GPU-REPRO on its A100s: same source, same compiler, same container, same machine. An H100 is optional everywhere it
+is named (Stage 6, the profiler, the book); no gate depends on it. Older text that names "CCR" or "GPU80" as a
+machine of a task is superseded by this policy; `port/ccr/` is kept for reference only.
+
+**Cases.** `eaton_small` (d02 181×181×60) is the development case for every window. `eaton_mid` is the acceptance
+case: the same dates, physics, fire options and ignition as the full case, d01 unchanged, and the largest d02 that
+fits one A100 40 GB with at least 15 % headroom by `gpu_mem_estimate.py` (expected about 400×400×60, fire grid about
+1600², about 30 GB; S0-09.5 decides). The full case (d02 811×811) needs both A100s and comes with multi-GPU
+(S8-01 … S8-05), the first work after G5. G-MEM limits: dev case ≤ 25 GB at G1; acceptance case ≤ 34 GB at G3 and G5.
 
 Backlog needs ([TASK_PROTOCOL.md](../TASK_PROTOCOL.md) §2):
 - CLOUD = `cpu` (+ `net`);
-- WS-A100 = `gpu-nv`, `data`;
-- GPU80 = `gpu-nv`, `data`, and an 80 GB device;
-- CCR = `ccr`, `data`.
+- WS-A100 = `gpu-nv`, `data` (the `ccr` need is no longer used).
 
 Run times to expect are in [ENV_H100.md](../../port/agent/ENV_H100.md) §5. While a routine is still on the host,
 a W-20 window takes 10–20 min, and much less once it is ported. A100 40 GB specifics are in §5a.
@@ -87,7 +96,7 @@ gets **two tasks**: `.c` (rungs 1–3) and `.g` (rungs 4–8). A routine longer 
 | L5 device harness | host, device and CPU view on random inputs | WS-A100 | `harness.sh <file> <routine>` | three-way identical |
 | L6 T-AB | device vs host execution of the routine on real data | WS-A100 | `bash port/gates/t_ab.sh <route> W-20` | identical traces |
 | L7 T-TRACE | GPU-REPRO vs CPU-REF | WS-A100 | `bash port/gates/t_trace.sh W-20` | bitwise |
-| L8 record | the routine's kernels in the kernel database | WS-A100 (GPU80 later) | [plan-profiler.md](../plan-profiler.md) PR-L2/L3 | rows present |
+| L8 record | the routine's kernels in the kernel database | WS-A100 | [plan-profiler.md](../plan-profiler.md) PR-L2/L3 | rows present |
 
 A routine is **done** at L7, plus L8 once that profiler layer exists (from S2-01). Its `kernels.csv` row is then set
 with the commit and the passing tests: `workbook.py set <kernel> done --commit <sha> --tests "..."`.
@@ -112,7 +121,7 @@ A failing gate never moves forward:
 ## Order and independence
 
 - Stages run in order: a stage starts when the previous stage gate has passed. Exceptions:
-  - S0-08 (full-case reference, CCR) and S0-12 can run beside Stages 1–4;
+  - S0-10 (the long CPU-REF references on the host cores) and S0-12 can run beside Stages 1–4;
   - Stage 6's profiler layers are built from Stage 1 on;
   - book tasks run any time.
 - **Inside a stage, phases are independent** unless their "Depends" line says otherwise. Islands make every routine
@@ -131,12 +140,12 @@ A failing gate never moves forward:
 | S0-04 | Toolchain on WS-A100 | WS-A100 | — |
 | S0-05 | OpenACC feature probes (acc_features) | CLOUD → WS-A100 | S0-04 |
 | S0-06 | Arithmetic and unit tests on the A100 | WS-A100 | S0-04 |
-| S0-07 | CPU-REF build and symbol audit (T-SYM) | WS-A100 / CCR | S0-04 |
-| S0-08 | CPU-REF reproducibility (T-DET, T-DEC, T-XM, T-RST) | CCR (+ WS-A100) | S0-07 |
-| S0-09 | Dev case eaton_small and its references | CCR | S0-07 |
-| S0-10 | Full-case reference (17 h) | CCR | S0-08 |
+| S0-07 | CPU-REF build and symbol audit (T-SYM) | WS-A100 | S0-04 |
+| S0-08 | CPU-REF reproducibility on the host cores (T-DET, T-DEC, T-RST) | WS-A100 | S0-07 |
+| S0-09 | Dev case eaton_small, acceptance case eaton_mid, and their references | WS-A100 | S0-07 |
+| S0-10 | Long references: eaton_mid 17 h; E0 against the original CCR run | WS-A100 | S0-08, S0-09 |
 | S0-11 | T-UNINIT, once | WS-A100 | S0-09 |
-| S0-12 | Certify the shared refactors of run 1 (one family per task) | WS-A100 / CCR | S0-03, S0-09 |
+| S0-12 | Certify the shared refactors of run 1 (one family per task) | WS-A100 | S0-03, S0-09 |
 | **Stage 1** | **GPU infrastructure** | | |
 | S1-01 | First GPU-REPRO build, every route off | WS-A100 | G0 |
 | S1-02 | State on the device (gen_allocs) and T-MAP | CLOUD → WS-A100 | S1-01 |
@@ -149,7 +158,7 @@ A failing gate never moves forward:
 | S1-09 | Startup gate gpu_check_config and T-GATE | CLOUD → WS-A100 | S1-01 |
 | S1-10 | Self tests and the dispatcher (WRF_GPU_SELFTEST) | CLOUD → WS-A100 | S1-04 … S1-06 |
 | S1-11 | Profiler layer 1: NVTX, timing and memory logs | CLOUD → WS-A100 | S1-01 |
-| S1-12 | G1 windows; G-MEM-1 on GPU80 | WS-A100, GPU80 | all of Stage 1 |
+| S1-12 | G1 windows; G-MEM-1 (dev case) | WS-A100 | all of Stage 1 |
 | **Stage 2** | **Dynamics** | | |
 | S2-01 | Physical boundary conditions | WS-A100 | G1 |
 | S2-02 | RK preparation, pointwise | WS-A100 | G1 |
@@ -173,7 +182,7 @@ A failing gate never moves forward:
 | S2-20 | N2, eddy viscosities, TKE (run 1, partial) | WS-A100 | G1 |
 | S2-21 | Vertical diffusion and the stress tensor (run 1, partial) | WS-A100 | G1 |
 | S2-22 | Horizontal diffusion (G2.G) | WS-A100 | S2-19 … S2-21 |
-| S2-23 | Stage closure: T-NSYS, T-DRIFT, dynamics profile (G2) | WS-A100, CCR | all of Stage 2 |
+| S2-23 | Stage closure: T-NSYS, T-DRIFT, dynamics profile (G2) | WS-A100 | all of Stage 2 |
 | **Stage 3** | **Physics** | | |
 | S3-01 | Physics glue of the big-step utilities | WS-A100 | G2 |
 | S3-02 | Physics tendencies (G3.A) | WS-A100 | S3-01 |
@@ -199,7 +208,7 @@ A failing gate never moves forward:
 | S3-22 | RRTMG taumol (taugb1–16) | CLOUD → WS-A100 | S3-20 |
 | S3-23 | RRTMG radiative transfer and McICA (T-KISS) | CLOUD → WS-A100 | S3-20 |
 | S3-24 | RRTMG batching and kernel; T-RRTMG-COL (G3.E) | WS-A100 | S3-17 … S3-23 |
-| S3-25 | Stage closure: T-TRACE-RAD, T-NSYS, T-DRIFT, G-MEM-2 (G3) | WS-A100, GPU80, CCR | all of Stage 3 |
+| S3-25 | Stage closure: T-TRACE-RAD, T-NSYS, T-DRIFT, G-MEM-2 (acceptance case) (G3) | WS-A100 | all of Stage 3 |
 | **Stage 4** | **Fire** | | |
 | S4-01 | Fire data on the device: flags, constants, fp, ghosts (run 1) | WS-A100 | G3 |
 | S4-02 | Fire statistics: integer NaN counts (run 1) | WS-A100 | S4-01 |
@@ -213,7 +222,7 @@ A failing gate never moves forward:
 | S4-10 | fire_model and the fire drivers (run 1, partial) | WS-A100 | S4-03 … S4-09 |
 | S4-11 | Fire tendency into the atmosphere | CLOUD → WS-A100 | S4-01 |
 | S4-12 | Fire windows: T-FIRE-IGN, T-FIRE-WIN | WS-A100 | S4-10, S4-11 |
-| S4-13 | Stage closure (G4) | WS-A100, CCR | S4-12 |
+| S4-13 | Stage closure (G4) | WS-A100 | S4-12 |
 | **Stage 5** | **Forcing and acceptance** | | |
 | S5-01 | couple_or_uncouple_em on the device | CLOUD → WS-A100 | G4 |
 | S5-02 | Generated forcing lists (gen_gpu.c) (run 1, partial) | CLOUD → WS-A100 | G4 |
@@ -222,15 +231,15 @@ A failing gate never moves forward:
 | S5-05 | Remove the solve_em bracket; T-NSYS-CLEAN | WS-A100 | S5-03 |
 | S5-06 | Output and input sync: T-OUT, T-BDY | WS-A100 | S5-05 |
 | S5-07 | One-hour dev windows (W-1H) on both A100s | WS-A100 | S5-06 |
-| S5-08 | Full-case memory and first full-case hour | GPU80 | S5-07 |
-| S5-09 | Full 17 h acceptance; T-DRIFT-FULL; T-XM final | GPU80, CCR | S5-08, S0-10 |
-| S5-10 | Stage closure (G5, v0.1 candidate) | GPU80 | S5-09 |
+| S5-08 | Acceptance case: memory and first hour | WS-A100 | S5-07 |
+| S5-09 | 17 h acceptance on eaton_mid; T-DRIFT-FULL; the same run on GPU 1 | WS-A100 | S5-08, S0-10 |
+| S5-10 | Stage closure (G5, v0.1 candidate) | WS-A100 | S5-09 |
 | **Stage 6** | **Performance (bit-neutral)** | | |
-| S6-01 … S6-16 | profiles, then one optimization family per phase | WS-A100, GPU80 | G5 (profiler layers earlier) |
+| S6-01 … S6-16 | profiles, then one optimization family per phase | WS-A100 (H100 optional) | G5 (profiler layers earlier) |
 | **Stage 7** | **Other fires and release** | | |
-| S7-01 … S7-08 | onboarding, a second fire, regression in CI, release v0.1 | CLOUD, WS-A100, GPU80 | G5 |
+| S7-01 … S7-08 | onboarding, a second fire, regression in CI, release v0.1 | CLOUD, WS-A100 | G5 |
 | **Stage 8** | **The rest of WRF 4.6.0** | | |
-| S8-01 … S8-20 | multi-GPU, 2× A100 40 GB full case, restarts, two-way nesting, more physics and fire options | per phase | G5 |
+| S8-01 … S8-20 | multi-GPU and the full Eaton case on the 2× A100 40 GB (first after G5), restarts, two-way nesting, more physics and fire options | CLOUD, WS-A100 | G5 |
 
 ## What run 1 left (input to Stage 0)
 

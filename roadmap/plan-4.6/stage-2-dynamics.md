@@ -264,7 +264,7 @@ Work package P2-G3 · Depends S2-19 … S2-21
 |---|---|---|---|---|
 | S2-23.1 | All Stage 2 routes on: W-20 and W-100 on GPU 0 and GPU 1 | WS-A100 | S | bitwise |
 | S2-23.2 | T-NSYS on W-20: only physics/fire bracket copies and sync points remain | WS-A100 | S | `t_nsys.sh` PASS |
-| S2-23.3 | T-DRIFT: CPU-REF at this commit vs the dev reference, 1 h, on CCR | CCR | S | bitwise |
+| S2-23.3 | T-DRIFT: CPU-REF at this commit vs the dev reference, 1 h, on the host cores | WS-A100 | S | bitwise |
 | S2-23.4 | First dynamics profile on A100: kernel table, launches per step, bandwidth per kernel (plan-profiler PR-R1) | WS-A100 | M | `perf/reports/S2-dynamics-a100.md` |
 | S2-23.5 | Book: dynamics chapters get their "port" sections ([plan-book.md](../plan-book.md)) | CLOUD | M | CI builds the PDF |
 

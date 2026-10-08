@@ -273,7 +273,7 @@ the kernel database (plan-profiler §3).
 parallel sums (R2); worked example S6-13.
 
 **37 Results** (from 18; 14 pp)
-- Speedups on A100 and H100 against CPU-REF and the original CCR run.
+- Speedups on A100 (H100 if available) against CPU-REF on the workstation's host cores; the original CCR run compared statistically (E0).
 - Time per range; energy to solution (P-15).
 - All from PERF.md.
 

@@ -1,8 +1,10 @@
 # Stage 5 — Nest forcing, island removal, full-run acceptance
 
 Goal: nest forcing moves only what the host interpolation reads and writes; no copy is left that is not forcing, I/O
-or a reduction result; and the full 17 h Eaton run on one 80 GB GPU is bitwise equal to CPU-REF. Passing G5 makes
-the v0.1 candidate.
+or a reduction result; and the 17 h run of the acceptance case `eaton_mid` on one A100 40 GB is bitwise equal to
+CPU-REF run on the same workstation's host cores ([ADR-006](../decisions/ADR-006-machines.md)). Passing G5 makes the
+v0.1 candidate. The full Eaton case (d02 811×811) does not fit one 40 GB GPU; it follows with multi-GPU
+(S8-01 … S8-05), the first work after G5.
 
 Spec: plan.md §10 (P5.1–P5.4, G5), PHASE5.md, INTERFACES.md I-11.
 
@@ -76,31 +78,32 @@ Depends S5-03
 | S5-07.2 | W-1H on GPU 1, at the same time | WS-A100 | M | bitwise, and identical to GPU 0 |
 | S5-07.3 | First speed numbers on A100 (dev case): wall seconds per simulated hour, per domain | WS-A100 | S | RESULTS.md |
 
-## S5-08 · Full-case memory and first full-case hour
+## S5-08 · Acceptance case: memory and first hour
 
 | Task | What | Machine | Size | Done when |
 |---|---|---|---|---|
-| S5-08.1 | Full case, init + 1 d01 step: memory log | GPU80 | S | peak ≤ 70 GB (G-MEM-3 preliminary) |
-| S5-08.2 | Full case, 02:20 restart, 100 d02 steps, level 2 vs CPU-REF from the same restart | GPU80 | M | bitwise |
-| S5-08.3 | Full case, 1 h window, level 1 | GPU80 | M | bitwise |
+| S5-08.1 | `eaton_mid`, init + 1 d01 step: memory log | WS-A100 (GPU 0) | S | peak ≤ 34 GB (G-MEM-3 preliminary) |
+| S5-08.2 | `eaton_mid`, 02:20 restart, 100 d02 steps, level 2 vs CPU-REF from the same restart (S0-09.7) | WS-A100 | M | bitwise |
+| S5-08.3 | `eaton_mid`, 1 h window, level 1 | WS-A100 | M | bitwise |
 
-## S5-09 · Full 17 h acceptance
+## S5-09 · 17 h acceptance on `eaton_mid`
 
 | Task | What | Machine | Size | Done when |
 |---|---|---|---|---|
-| S5-09.1 | The 17 h GPU-REPRO run (level-1 trace, all history and restarts) | GPU80 | M (mostly waiting) | completes |
-| S5-09.2 | `compare_fields.py --bitwise` over 69 frames and 34 restarts; `compare_fire.py` 0 cells; traces identical | GPU80 | S | PASS |
-| S5-09.3 | T-DRIFT-FULL: CPU-REF of the final commit, 17 h on CCR, equals the S0-10 archive | CCR | M | bitwise |
-| S5-09.4 | T-XM on the final binaries | CCR + GPU80 host | S | bitwise |
-| S5-09.5 | A second GPU type (A100 80 GB or H100) if available: the same run, identical to the first | GPU80 (other type) | M | bitwise |
+| S5-09.1 | The 17 h GPU-REPRO run on GPU 0 (level-1 trace, all history and restarts) | WS-A100 | M (mostly waiting) | completes |
+| S5-09.2 | `compare_fields.py --bitwise` over the 69 frames and 34 restarts; `compare_fire.py` 0 cells; traces identical to the S0-10 reference | WS-A100 | S | PASS |
+| S5-09.3 | T-DRIFT-FULL: CPU-REF of the final commit, 17 h on the host cores, equals the S0-10 archive | WS-A100 host | M | bitwise |
+| S5-09.4 | The same 17 h run on GPU 1, identical to GPU 0 (and to CPU-REF) | WS-A100 | M | bitwise |
+| S5-09.5 | If an H100 or an A100 80 GB becomes available: the same run there, identical | optional | M | bitwise |
 
 ## S5-10 · Stage closure (G5)
 
 | Task | What | Machine | Size |
 |---|---|---|---|
-| S5-10.1 | `bash port/gates/g5.sh` PASS; G-MEM-3 ≤ 70 GB over the full run | GPU80 | S |
-| S5-10.2 | RESULTS.md: binary md5s, image digest, input manifest, both GPUs | GPU80 | S |
+| S5-10.1 | `bash port/gates/g5.sh` PASS; G-MEM-3 ≤ 34 GB over the 17 h run | WS-A100 | S |
+| S5-10.2 | RESULTS.md: binary md5s, image digest, input manifest, both GPUs | WS-A100 | S |
 | S5-10.3 | Tag `v0.1-rc1`; backlog card A-29 done (opens Stage 2 of the roadmap: WRF 4.8.0) | CLOUD | S |
 | S5-10.4 | Book: "The port" chapter's acceptance section | CLOUD | M |
 
-**Stage gate G5:** plan.md §10 G5, items 1–9.
+**Stage gate G5:** plan.md §10 G5, items 1–9, as amended in plan.md §18 (acceptance case `eaton_mid`, both A100s
+instead of two GPU types, no T-XM).

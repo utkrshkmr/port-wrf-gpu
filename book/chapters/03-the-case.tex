@@ -105,7 +105,9 @@ reference, CPU-REF:
 \begin{itemize}
   \item the same source built with flags that make the CPU arithmetic reproducible, and with a portable library of
     elementary functions (\cref{ch:repro});
-  \item run on CCR CPU nodes, in the same container image the GPU runs use.
+  \item run on the host CPUs of the same workstation that holds the GPUs, in the same container image, so that the
+    comparison is between two builds of one source on one machine; nothing is developed or tested on CCR
+    (\code{roadmap/decisions/ADR-006-machines.md}).
 \end{itemize}
 CPU-REF's 17-hour run, its traces and its hourly restarts are archived with checksums. How far CPU-REF moves the
 fire against the original run is measured once and recorded (\tbr); it is not a criterion, because no GPU can
@@ -155,4 +157,7 @@ reasons for each, is in \code{plan.md} section~2. \Cref{app:namelist} reproduces
 
 \paragraph{Memory.} The full case needs about 58--62~GB of device memory: the state of both domains, a scratch pool,
 work arrays, the radiation batch, and the local memory of the column physics (\code{plan.md} section~3). It fits an
-80~GB GPU, not a 40~GB one; \cref{ch:mgpu} describes how two 40~GB A100s can share it.
+80~GB GPU, not one of the project's 40~GB A100s. The acceptance run of the port therefore uses \code{eaton_mid}, a
+case with the same options and ignition and the largest nest that fits one 40~GB GPU with 15\,\% headroom (about
+$400 \times 400 \times 60$, by the memory estimator); the full case follows on both A100s together
+(\cref{ch:mgpu}). A smaller case still, \code{eaton_small} ($181 \times 181$ nest), serves development.

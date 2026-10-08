@@ -161,8 +161,8 @@ adds that keyword to `module_gpu_route.F` if it is missing). Routes are turned o
 | S1-12.2 | W-20 on GPU 1 | WS-A100 | S | bitwise |
 | S1-12.3 | W-T0: the first 3 d01 steps from t=0 (nest open, forcing), with one history and one restart write | WS-A100 | M | files identical |
 | S1-12.4 | T-NSYS on W-20: every copy belongs to the bracket, a sync point or the S6 bridge | WS-A100 | S | `t_nsys.sh` PASS |
-| S1-12.5 | G-MEM-1: full case, init + first d01 step + first d02 step, logged peak | GPU80 | S | ≤ 55 GB (run when GPU80 is available; does not block Stage 2) |
+| S1-12.5 | G-MEM-1: dev case, init + first d01 step + first d02 step, logged peak; the acceptance case's peak from the same log and the full case from the estimator only | WS-A100 | S | dev case ≤ 25 GB; acceptance case ≤ 34 GB |
 | S1-12.6 | Book: chapter "Data residency" facts and numbers ([plan-book.md](../plan-book.md) B-28.2) | CLOUD | S | text in book |
 
-**Stage gate G1:** every phase gate of Stage 1, plus `bash port/gates/g1.sh` PASS on WS-A100. G-MEM-1 is recorded
-when GPU80 is available.
+**Stage gate G1:** every phase gate of Stage 1, plus `bash port/gates/g1.sh` PASS on WS-A100, with G-MEM-1
+recorded.

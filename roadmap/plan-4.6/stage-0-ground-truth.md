@@ -4,8 +4,10 @@ Goal: a trusted starting point before any further GPU work.
 - The CPU check works.
 - The code of run 1 is landed.
 - The toolchain on the A100 workstation is known.
-- The CPU reference is reproducible and archived.
-- The dev case exists.
+- The CPU reference is reproducible and archived, **on the workstation's own host cores**
+  ([ADR-006](../decisions/ADR-006-machines.md): nothing runs on CCR; CPU-REF and GPU-REPRO are compared on one
+  machine).
+- The dev case `eaton_small` and the acceptance case `eaton_mid` exist with their references.
 - Every shared refactor is certified bitwise.
 
 Ladder, gates and machines: [README.md](README.md). Task sizes: S ≤ ¼ day, M ≤ ½ day.
@@ -145,55 +147,62 @@ and CODE_ONLY.md updated by the reviewer).
 
 | | |
 |---|---|
-| Machine | WS-A100 (host CPUs) and CCR (the same container image) |
+| Machine | WS-A100 (host CPUs, the same container image as the GPU builds) |
 | Depends | S0-04 |
 
 | Task | What | Size | Done when |
 |---|---|---|---|
 | S0-07.1 | Build CPU-REF from the handoff (`build.sh cpu-ref --commit`); keep `wrf.exe` md5 | S | md5 in RESULTS.md |
 | S0-07.2 | T-SYM: `nm` over every in-scope object; no math-library symbols outside the allow-list | S | PASS |
-| S0-07.3 | Same build on CCR inside the same image; compare md5 | S | identical binary |
+| S0-07.3 | Build WPS and `real.exe` on the host (gfortran or nvfortran; they only make inputs and are not compared) | M | `geogrid`, `metgrid`, `real.exe` run on the Eaton domain |
 | S0-07.4 | T-BUILD-REF: the port's own files compile without `-w` | S | no warnings |
 
 ## S0-08 · CPU-REF reproducibility
 
 | | |
 |---|---|
-| Machine | CCR (+ WS-A100 host for T-XM) |
-| Depends | S0-07 |
+| Machine | WS-A100 (host CPUs, 56 cores; the dev case) |
+| Depends | S0-07, S0-09.1 |
 
 | Task | Test | Size | Done when |
 |---|---|---|---|
-| S0-08.1 | T-DET: same binary, same ranks, twice, 1 h | M | bitwise |
-| S0-08.2 | T-DEC-A: 1 vs 64 ranks, 3 d01 steps, level-2 trace | M | bitwise; else bisect (plan.md P0.10) |
-| S0-08.3 | T-DEC-B: 64 vs 128 vs 144 ranks, 30 min | M | bitwise |
-| S0-08.4 | T-XM: CCR node vs WS-A100 host, 3 d01 steps from t=0 and from 02:00 | S | bitwise |
-| S0-08.5 | T-RST: continuous vs restart at 02:00, compared at 03:00 | M | bitwise, or documented |
+| S0-08.1 | T-DET: same binary, same ranks, twice, 1 h of the dev case | M | bitwise |
+| S0-08.2 | T-DEC-A: 1 vs 56 ranks, 3 d01 steps, level-2 trace | M | bitwise; else bisect (plan.md P0.10) |
+| S0-08.3 | T-DEC-B: 14 vs 28 vs 56 ranks, 30 min | M | bitwise |
+| S0-08.4 | T-RST: continuous vs restart at 02:00, compared at 03:00 | M | bitwise, or documented |
+| S0-08.5 | Cost table: wall time of the dev and acceptance cases on 56 ranks, per simulated hour (sets the plan for S0-10 and S5-09) | S | numbers in ENVIRONMENT.md |
 
-## S0-09 · Dev case `eaton_small` and its references
+T-XM (the same binary on two machines) is dropped: there is one machine (ADR-006).
+
+## S0-09 · Dev case `eaton_small`, acceptance case `eaton_mid`, and their references
 
 | | |
 |---|---|
-| Machine | CCR (WPS, real.exe, references); WS-A100 receives the files |
+| Machine | WS-A100 (WPS and `real.exe` on the host; CPU-REF references on the 56 host cores) |
 | Depends | S0-07 |
 
 | Task | What | Size | Done when |
 |---|---|---|---|
-| S0-09.1 | Make the dev case (`port/make_dev_case.py`): d02 181×181×60 centered on the ignition | M | `cases/eaton_small/` namelist + manifest |
-| S0-09.2 | CPU-REF reference: 1 h continuous from 02:00, restarts at 02:00 and 02:20 | M | archived with md5 |
-| S0-09.3 | CPU-REF 17 h dev run (for T-DRIFT) | M | archived |
-| S0-09.4 | Copy to WS-A100; `manifest.py check`; run every window of `windows.txt` once with CPU-REF on WS-A100 | M | each window has a reference trace |
+| S0-09.1 | Make the dev case (`port/make_dev_case.py` + WPS/real on the host): d02 181×181×60 centered on the ignition; inputs from the CCR files checked against `manifest.md5` | M | `cases/eaton_small/` namelist + manifest |
+| S0-09.2 | CPU-REF dev reference: 1 h continuous from 02:00, restarts at 02:00 and 02:20 | M | archived with md5 |
+| S0-09.3 | CPU-REF 17 h dev run (for T-DRIFT) | M (waiting) | archived |
+| S0-09.4 | `manifest.py check`; run every window of `windows.txt` once with CPU-REF | M | each window has a reference trace |
+| S0-09.5 | Size the acceptance case: `gpu_mem_estimate.py` over d02 sizes; choose the largest d02 that leaves ≥ 15 % of 40 GB free (expected about 400×400×60, fire grid about 1600²); `RRTMG` batch 2048 if that is what makes it fit | S | size recorded in `cases/eaton_mid/README.md` |
+| S0-09.6 | Make `eaton_mid` (same dates, physics, fire options and ignition; d01 unchanged; d02 centered on the ignition); namelist and manifest | M | `cases/eaton_mid/` |
+| S0-09.7 | CPU-REF `eaton_mid` references: 1 h from 02:00 with restarts at 02:00 and 02:20; windows W-20/W-100/W-RAD of the acceptance case run once | M | archived |
 
-## S0-10 · Full-case reference (17 h)
+## S0-10 · Long references: `eaton_mid` 17 h, E0, E1, Prof-CPU
 
-Runs beside Stages 1–4.
+Runs on the host cores beside Stages 1–4 (the GPUs stay free for the port). The cost table of S0-08.5 says how long
+each run takes; the owner decides the run length if 17 h is too costly (ADR-006).
 
 | Task | What | Machine | Size |
 |---|---|---|---|
-| S0-10.1 | 17 h CPU-REF run, level-1 trace, hourly restarts (plan.md P0.11) | CCR | M (mostly waiting) |
-| S0-10.2 | 02:00 restart run with `restart_interval = 20` (the 02:20 restart) | CCR | S |
-| S0-10.3 | Archive with md5 list; E0 (vs the original CCR run) and E1 (1-ulp perturbation) recorded | CCR | M |
-| S0-10.4 | Prof-CPU table (`port/prof_cpu.py`) | CCR | S |
+| S0-10.1 | `eaton_mid` 17 h CPU-REF run, level-1 trace, hourly restarts (plan.md P0.11 applied to the acceptance case) | WS-A100 host | M (mostly waiting) |
+| S0-10.2 | 02:00 restart run with `restart_interval = 20` (the 02:20 restart) | WS-A100 host | S |
+| S0-10.3 | Archive with md5 list; E1 (1-ulp perturbation of `eaton_mid`) recorded | WS-A100 host | M |
+| S0-10.4 | E0: the original CCR run (its history files, copied as data) vs CPU-REF of the **full** case over the first hours, with `compare_fields.py` and `compare_fire.py`: a statistical comparison that documents how far a different build on a different machine moves the fire. Not a gate. The full-case CPU-REF run is made here on the host for as many hours as the cost table allows | WS-A100 host | M |
+| S0-10.5 | Prof-CPU table (`port/prof_cpu.py`) for the dev and acceptance cases on 56 ranks | WS-A100 host | S |
 
 ## S0-11 · T-UNINIT, once
 
@@ -222,7 +231,6 @@ Each row: CPU-REF of the base vs CPU-REF of the refactor commit, bitwise on trac
 fails, it is split down to the single statement change that moves bits. That change is then fixed or reverted.
 
 **Stage gate G0** (plan.md §14), on these machines:
-- WS-A100: S0-04 … S0-06, S0-11;
-- CCR: S0-07 … S0-09 (S0-10 may still be running);
+- WS-A100: S0-04 … S0-09, S0-11 (S0-10 may still be running);
 - CLOUD: S0-01 … S0-03;
 - every family of S0-12 certified, so `cpu_view_base` points at a commit containing all of run 1's refactors.

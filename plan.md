@@ -1724,7 +1724,33 @@ These refine the plan above; `port/RESULTS.md` ("Deviations from plan.md in Phas
    change between steps is uploaded (S1, S2, S5, S6 after), and the sync-point downloads (S2', S3, S4, S6 before) are
    only correct once the bracket uploads the state at the end of `solve_em`. Wired separately, either half makes the
    model continue from stale data; `port/agent/PHASE1.md` has them as one step and the order of work around it.
-9. **H100 development machine without root:** the toolchain runs in the NVHPC container image (Apptainer, rootless
-   Podman or Docker); dependencies are built inside it into a user directory (`port/agent/ENV_H100.md`). CCR remains
-   the place of the full-case reference and acceptance runs (G5).
+9. **Development machine without root:** the toolchain runs in the NVHPC container image (Apptainer, rootless
+   Podman or Docker); dependencies are built inside it into a user directory (`port/agent/ENV_H100.md`).
+
+## 18. Amendment (2026-10-08): machines and the acceptance case
+
+Decided by the project owner ([roadmap/decisions/ADR-006-machines.md](roadmap/decisions/ADR-006-machines.md)); it
+supersedes every machine assignment above (CCR, "GPU node", A100 80 GB, H100).
+
+1. **Two machines.** All development, tests and bit-for-bit comparisons run on the cloud coding environment (no GPU)
+   and on the owner's workstation: two A100 40 GB and 56 host cores. Nothing is developed or tested on CCR; no 80 GB
+   GPU is assumed; an H100 is optional wherever it is named.
+2. **Apples to apples.** CPU-REF (§4) is built with the same compiler and container as GPU-REPRO and **runs on the
+   workstation's host cores**. All reference runs (P0.9–P0.11, P0.16), T-DET, T-DEC (1, 14, 28 and 56 ranks), T-RST,
+   T-DRIFT and T-DRIFT-FULL are made there. T-XM is dropped from every gate.
+3. **CCR supplies data only.** The input files (§2.1) and the original run's output are copied from CCR as files. E0
+   (P0.13) compares the original run with CPU-REF statistically and is not a gate; the CCR runs are "roughly matched".
+4. **Acceptance case `eaton_mid`.** The full case (§3, about 57 GB) does not fit one A100 40 GB. G5 therefore runs on
+   `eaton_mid`: the same dates, physics, fire options and ignition as §2.2, d01 unchanged, and the largest d02 that
+   fits one A100 40 GB with at least 15 % headroom by `port/gpu_mem_estimate.py` (expected about 400×400×60, fire
+   grid about 1600²). Items 1–9 of G5 apply to it, with "both GPUs of the workstation" in place of "A100 and H100" in
+   item 5 and without item 7 (T-XM). Its 17 h CPU-REF reference is run on the host cores (the run length is 17 h as
+   the goal; the owner decides after seeing the measured cost).
+5. **G-MEM limits.** Dev case ≤ 25 GB at G1; acceptance case ≤ 34 GB at G3 and G5. The full-case estimate is reported
+   from the estimator only.
+6. **The full case** runs on both A100s with the multi-GPU path of §16, which is no longer deferred: it is the first
+   work after G5 (`roadmap/plan-4.6/stage-8-coverage.md`, S8-01 … S8-05), with its own 17 h CPU-REF reference on
+   the host cores and the G5 criteria repeated on the full case.
+7. **Cases are made on the workstation.** WPS and `real.exe` for the dev and acceptance cases are built and run on
+   the host cores.
 

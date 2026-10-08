@@ -133,7 +133,7 @@ Work package P4-ATM · Depends S4-01
 | Task | What | Machine | Size |
 |---|---|---|---|
 | S4-13.1 | The bracket is empty: no island left inside `solve_em` (`t_nsys.sh` W-20) | WS-A100 | S |
-| S4-13.2 | T-DRIFT | CCR | S |
+| S4-13.2 | T-DRIFT (host cores) | WS-A100 | S |
 | S4-13.3 | Fire profile on A100: WENO divergence, fire-grid bandwidth, launches per fire call | WS-A100 | M |
 | S4-13.4 | Book: fire chapter "port" section; first fire animation from the trace of S4-12 | CLOUD | M |
 

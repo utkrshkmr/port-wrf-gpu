@@ -128,8 +128,9 @@ total & 56.6 \\
 \bottomrule
 \end{tabular}
 \end{center}
-This fits an 80~GB GPU, below the gate's limit of 70~GB, but not a 40~GB one (\cref{ch:mgpu}). The measured peak is
-\tbr\ (gate G-MEM).
+This does not fit one of the project's 40~GB A100s. The acceptance case \code{eaton_mid} is sized by the same
+estimator to fit one with 15\,\% headroom (gate limit 34~GB), and the full case runs on both GPUs together
+(\cref{ch:mgpu}). The measured peaks are \tbr\ (gate G-MEM).
 
 \section{What remains on the host}
 
@@ -141,10 +142,11 @@ however fast the GPU part becomes. The profiler reports the host share of the st
 
 A GPU speedup is meaningful only against a fair baseline. The port reports three numbers (\cref{ch:results}):
 \begin{itemize}
-  \item against CPU-REF on $N$ cores of CCR's nodes: the same source and the same arithmetic;
-  \item against the original CCR run of the case, with its compiler and flags;
-  \item energy to solution: power times time, for the GPU node and for the CPU nodes, for the same simulated
-    17 hours.
+  \item against CPU-REF on the 56 host cores of the same workstation: the same source, compiler and arithmetic,
+    on one machine;
+  \item against the original CCR run of the case, with its compiler and flags, statistically (that run is not
+    reproduced bit for bit, and nothing of the port runs on CCR);
+  \item energy to solution: power times time, for the GPUs and for the host cores, for the same simulated hours.
 \end{itemize}
 And it reports REPRO and FAST side by side once FAST exists. Their difference is the measured cost of
 reproducibility (ADR-003).

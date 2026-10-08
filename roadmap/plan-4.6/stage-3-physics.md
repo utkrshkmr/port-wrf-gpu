@@ -76,7 +76,7 @@ Work package P3-SFCLAY · plan.md §8.3 · Depends S3-03
 | S3-06.1c | `sf_sfclayrev_run` routine seq, CP-3; `zolri`, `zolri2`, `psim/psih` lookups and `*_full` fallbacks routine seq | M |
 | S3-06.2c | ψ tables `declare create` + upload; T-TAB | S |
 | S3-06.3c | `SFCLAYREV` wrapper and `sf_sfclayrev_pre_run`: K-SFCLAY per point | M |
-| S3-06.4 | T-ZOLRI: occurrences of the undefined path in the reference = 0 (instrumented CPU-REF once) | WS-A100 or CCR, S |
+| S3-06.4 | T-ZOLRI: occurrences of the undefined path in the reference = 0 (instrumented CPU-REF once) | WS-A100, S |
 | S3-06.1g | Column harness, then L4–L8 | M |
 
 ## S3-07 · Noah: certified refactors and tables (run 1)
@@ -283,9 +283,9 @@ Depends S3-17 … S3-23
 |---|---|---|---|---|
 | S3-25.1 | All Stage 2–3 routes on: W-20, W-100, W-RAD on GPU 0 and GPU 1 | WS-A100 | M | bitwise |
 | S3-25.2 | T-NSYS on W-20: only the fire bracket and sync points | WS-A100 | S | PASS |
-| S3-25.3 | T-DRIFT | CCR | S | bitwise |
-| S3-25.4 | G-MEM-2: full case, first d01 step with radiation on both domains; peak ≤ 70 GB | GPU80 | S | logged |
+| S3-25.3 | T-DRIFT (host cores) | WS-A100 | S | bitwise |
+| S3-25.4 | G-MEM-2: acceptance case `eaton_mid`, first d01 step with radiation on both domains; peak ≤ 34 GB; the full case from the estimator | WS-A100 | S | logged |
 | S3-25.5 | Physics profile on A100 (column kernels: occupancy, local memory, registers) | WS-A100 | M | `perf/reports/S3-physics-a100.md` |
 | S3-25.6 | Book: physics chapters' "port" sections | CLOUD | M | CI PDF |
 
-**Stage gate G3:** `bash port/gates/g3.sh` PASS, plus S3-25 (S3-25.4 when GPU80 is available).
+**Stage gate G3:** `bash port/gates/g3.sh` PASS, plus S3-25.

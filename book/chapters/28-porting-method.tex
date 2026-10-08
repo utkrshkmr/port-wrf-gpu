@@ -347,11 +347,15 @@ The first three rungs need no GPU and run in a cloud environment; the others nee
 is done at rung L7. The machines are named by what they can do:
 \begin{itemize}
   \item \textbf{CLOUD}, a cloud coding environment with gfortran and no GPU;
-  \item \textbf{WS-A100}, a workstation with two A100 40~GB and the dev case;
-  \item \textbf{GPU80}, an 80~GB GPU for the full case;
-  \item \textbf{CCR}, CPU nodes for the reference runs;
+  \item \textbf{WS-A100}, a workstation with two A100 40~GB and 56 host cores: every device test, and every
+    CPU-REF reference run on its host cores, so that CPU and GPU results are compared on one machine with one
+    compiler;
   \item \textbf{CI}, GitHub Actions, which builds this book.
 \end{itemize}
+Nothing is developed or tested on the cluster where the case was first run; it supplies the input files, and its
+original run is compared with CPU-REF statistically, never bit for bit. The full case does not fit one 40~GB GPU, so
+the acceptance run uses the case \code{eaton_mid} (\cref{ch:case}) and the full case follows on both GPUs
+(\cref{ch:mgpu}).
 
 \section{Organization}
 

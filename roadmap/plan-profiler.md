@@ -29,7 +29,8 @@ A plan only: nothing here is built yet. The profiler grows in layers, each built
 ## 2. Hardware (to be measured, not assumed)
 
 Datasheet values below are a starting point only. PR-H1 … PR-H4 measure the real ceilings on the owner's machines,
-and the models use the measured numbers.
+and the models use the measured numbers. The owner's machine has two A100 40 GB ([ADR-006](decisions/ADR-006-machines.md));
+the H100 columns are kept for the optional case that one becomes available.
 
 | | A100 40 GB (PCIe / SXM) | A100 80 GB SXM | H100 PCIe 80 GB | H100 SXM 80 GB |
 |---|---|---|---|---|
@@ -54,8 +55,9 @@ What this means for the port:
 - **Column physics** (WSM6, Noah, YSU, RRTMG) is limited by registers, local memory and divergence, not bandwidth.
   The larger H100 register and L1 budget changes the best batch shape.
 - **The fire grid of the full case** is about 43 MB per field: just over the A100 L2 and just under the H100 L2. The
-  dev case's 724² grid (2 MB per field) fits easily, so dev-case measurements of fire kernels must not be
-  extrapolated to the full case without a full-case check (GPU80).
+  dev case's 724² grid (2 MB per field) fits easily, and the acceptance case's (about 1600², 10 MB) too, so their
+  fire-kernel measurements must not be extrapolated to the full case without a full-case check (on both A100s, once
+  S8-04 exists).
 
 ## 3. Layers
 
@@ -64,12 +66,12 @@ What this means for the port:
 | **L0 static** | per kernel, from the compiler: parallelization schedule and implicit data movement (`-Minfo=accel`); registers, spills, stack frame, shared memory (`-gpu=ptxinfo`); mapped to kernel IDs through the `! K-...` comment above each directive | S1-01.5 | WS-A100 (compile); parse anywhere |
 | **L1 runtime hooks** | NVTX ranges: one per route call site, per `solve_em` section (the `BENCH_*` timers), per domain and RK stage; `WRF_GPU_TIMING` and memory logs; launch counter per step | S1-11 | WS-A100 |
 | **L1b OpenACC profiling library** | a small C library on the OpenACC Profiling Interface (`acc_prof_register`, loaded with `ACC_PROFLIB`): per compute region, the source file and line, launches, gang/vector sizes and device time, plus every data event. This is the port's own lightweight profiler, cheap enough for every regression run. | S2-01 (first kernels) | CLOUD (write) → WS-A100 |
-| **L2 system profile** | scripted `nsys` captures of a window: kernel table (count, total, mean, min, max), memcpy table (T-NSYS), launch gaps per stream, API overhead, NVTX range summary | S1-12 (copies), S2-23 (kernels) | WS-A100, GPU80 |
-| **L3 kernel metrics** | `ncu` on a sampled set of kernels, with fixed section sets and the metrics in §3.1 | S2-23.4 | WS-A100, GPU80 |
+| **L2 system profile** | scripted `nsys` captures of a window: kernel table (count, total, mean, min, max), memcpy table (T-NSYS), launch gaps per stream, API overhead, NVTX range summary | S1-12 (copies), S2-23 (kernels) | WS-A100 (H100 optional) |
+| **L3 kernel metrics** | `ncu` on a sampled set of kernels, with fixed section sets and the metrics in §3.1 | S2-23.4 | WS-A100 (H100 optional) |
 | **L4 models** | measured roofline per kernel; bandwidth floor per step; launch-overhead, transfer and memory models; predicted vs measured | S2-23 (first), S6-01 (complete) | anywhere (inputs from L0–L3) |
 | **L5 kernel database** | one row per kernel × GPU × case × window × commit (schema §3.2); diff between commits; report generator (Markdown for `perf/reports`, CSV for the book's pgfplots figures) | S2-01 (schema), grows every phase | CLOUD (tools), WS-A100 (data) |
 | **L6 analyzers** | the opportunity finders of §5: fusion, caching and reuse, tiling, warp-level, launches and gaps, transfers | S6-02 (complete); A1 and A5 from S2-23 | CLOUD (tools), WS-A100 |
-| **H hardware** | measured ceilings of each GPU: bandwidth, L2 effects, launch latency, reductions, host links | S0-04.5 (query), S6-01 (micro-benchmarks) | WS-A100, GPU80 |
+| **H hardware** | measured ceilings of each GPU: bandwidth, L2 effects, launch latency, reductions, host links | S0-04.5 (query), S6-01 (micro-benchmarks) | WS-A100 (H100 optional) |
 
 ### 3.1 Kernel metrics (L3)
 
@@ -136,9 +138,9 @@ Size S ≤ ¼ day, M ≤ ½ day. "Built in" refers to the phase of [plan-4.6](pl
 
 | Task | What | Machine | Size | Built in | Done when |
 |---|---|---|---|---|---|
-| PR-H1 | Device query of every GPU (SMs, clocks, L2, memory, persisting-L2 limit, ECC) | WS-A100, GPU80 | S | S0-04.5 | ENVIRONMENT.md table |
-| PR-H2 | Bandwidth micro-benchmarks in OpenACC and CUDA Fortran: copy, scale, add, triad; strided; working-set sweep across L2 | WS-A100, GPU80 | M | S6-01 | measured ceilings in `perf/db/hw.csv` |
-| PR-H3 | Launch latency (empty kernel, OpenACC and CUDA Fortran, sync and async), reduction throughput, host-link bandwidth (pinned/pageable) | WS-A100, GPU80 | M | S6-01 | `perf/db/hw.csv` |
+| PR-H1 | Device query of every GPU (SMs, clocks, L2, memory, persisting-L2 limit, ECC) | WS-A100 (H100 optional) | S | S0-04.5 | ENVIRONMENT.md table |
+| PR-H2 | Bandwidth micro-benchmarks in OpenACC and CUDA Fortran: copy, scale, add, triad; strided; working-set sweep across L2 | WS-A100 (H100 optional) | M | S6-01 | measured ceilings in `perf/db/hw.csv` |
+| PR-H3 | Launch latency (empty kernel, OpenACC and CUDA Fortran, sync and async), reduction throughput, host-link bandwidth (pinned/pageable) | WS-A100 (H100 optional) | M | S6-01 | `perf/db/hw.csv` |
 | PR-H4 | Roofline ceilings (FP32, FP64, DRAM, L2) from H2/H3 | anywhere | S | S6-01 | ceilings file |
 | PR-L0.1 | `minfo_parse.py`: `-Minfo=accel` → per kernel schedule, `seq` loops, implicit copies | CLOUD | M | S1-01.5 | parses a full build log |
 | PR-L0.2 | `ptxinfo_parse.py`: registers, spills, stack, shared memory per kernel | CLOUD | S | S1-01.5 | CSV |
@@ -171,8 +173,8 @@ Size S ≤ ¼ day, M ≤ ½ day. "Built in" refers to the phase of [plan-4.6](pl
 | PR-R1 | Dynamics profile on A100 | WS-A100 | M | S2-23.4 | `perf/reports/S2-dynamics-a100.md` |
 | PR-R2 | Physics profile on A100 | WS-A100 | M | S3-25.5 | report |
 | PR-R3 | Fire profile on A100 | WS-A100 | M | S4-13.3 | report |
-| PR-R4 | Baseline full case on H100 and dev case on A100 | GPU80, WS-A100 | M | S6-01 | report |
-| PR-R5 | Final tuned report, both GPUs | GPU80, WS-A100 | M | S6-16 | PERF.md |
+| PR-R4 | Baseline acceptance case and dev case on A100 (H100 optional) | WS-A100 | M | S6-01 | report |
+| PR-R5 | Final tuned report, both A100s (H100 optional) | WS-A100 | M | S6-16 | PERF.md |
 | PR-V1 | Repeatability: 5 runs, coefficient of variation < 2 % per range | WS-A100 | S | S2-23 | measured |
 | PR-V2 | Model sanity: L3 DRAM bytes vs the static traffic model per kernel (P-03) within 20 % | CLOUD | S | S6-01 | table |
 

@@ -21,7 +21,7 @@ host from a user environment. Nothing is written outside `$WORK` and your home d
 | netCDF-Fortran built with the image gfortran (only for T-UNINIT, PHASE1.md H0.9) | `setup_toolchain.sh deps-gnu` into `$DEPS/netcdf-gnu` | `nf-config --fc` is `gfortran` |
 | Python 3 with numpy, netCDF4, mpmath (host) | system python3, else a venv or micromamba env in `$DEPS/pyenv` (`setup_toolchain.sh python`) | `check` |
 | ≥ 64 GB RAM, ≥ 16 cores, ≥ 300 GB free for `$WORK` | the machine | `check` |
-| The Eaton case inputs (see 3) | copied from CCR | `dev_case.sh make` checks the md5s |
+| The Eaton case inputs (see 3) | copied from CCR as files (CCR runs nothing) | `dev_case.sh make` checks the md5s |
 
 Pinning matters: T-FMA, T-IEEE and the F-* probes are only valid for the compiler version they ran with. Never switch
 the image tag in the middle of a phase; if you must, rerun H0.2–H0.4 and the reference builds (H0.5, H0.7), and write
@@ -125,9 +125,12 @@ On a machine with two A100 40 GB:
 - everything that uses the dev case runs: harness, T-AB, T-TRACE (W-20, W-100, W-RAD), T-FIRE-* on the dev case,
   T-FORCE, T-SLAB, T-O3, T-NSYS. Run two windows at once, one per GPU (`GPU_ID=0` and `GPU_ID=1`);
 - the build is the same (`-gpu=cc80,cc90`);
-- **not possible:** the full-case memory checks (G-MEM at G1, G3, G5) and the full 17 h acceptance run of G5. They
-  need an 80 GB GPU (A100 80 GB or H100) or the multi-GPU path that plan.md §16 defers. Record them in BLOCKERS.md
-  as "needs an 80 GB GPU", not as failures.
+- the acceptance case `eaton_mid` (plan.md §18; the largest d02 that fits one 40 GB GPU with 15 % headroom) runs
+  on one GPU: its windows, memory gates (≤ 34 GB) and its 17 h acceptance run (G5);
+- the CPU-REF references of both cases run on the host cores (`CPU_RANKS` up to 56), in the same container;
+- **not possible on one GPU:** the full Eaton case (d02 811×811, about 57 GB). It runs on both GPUs with the
+  multi-GPU path (plan-4.6 S8-01 … S8-05), the first work after G5. Until then, record full-case items as "needs
+  multi-GPU", not as failures.
 
 ## 6. First commands (H0.5–H0.8)
 

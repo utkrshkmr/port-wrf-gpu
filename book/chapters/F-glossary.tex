@@ -8,7 +8,8 @@
     upload at the end.
   \item[Call check] A test inside a model run that executes a routine on the device and on the host from the same
     inputs and compares every output (\cref{alg:callcheck}).
-  \item[CCR] The CPU cluster on which the case was originally run and the reference runs are made.
+  \item[CCR] The CPU cluster on which the case was originally run. It supplies the input files and the original run
+    for a statistical comparison; nothing of the port is developed, run or verified there.
   \item[CFBM] The Community Fire Behavior Model, NCAR's new fire model in WRF~4.8.0 (\cref{ch:cfbm}).
   \item[Coalesced access] A load or store by a warp to consecutive addresses, served with the fewest memory
     transactions (\cref{ch:memory}).
@@ -18,7 +19,8 @@
   \item[CPU view, GPU view] What a ported file compiles to without and with the macro \code{WRF_GPU}.
   \item[CUDA Fortran] NVIDIA's extension of Fortran for writing GPU kernels explicitly (\cref{ch:gpu}).
   \item[d01, d02] The outer domain (900~m) and the nest (100~m) of the case.
-  \item[Dev case] \code{eaton_small}: the case with a smaller nest, used for all development windows.
+  \item[Dev case, acceptance case] \code{eaton_small}, with a $181 \times 181$ nest, used for all development
+    windows; \code{eaton_mid}, the largest nest that fits one A100 40~GB, used for the 17-hour acceptance run.
   \item[Divergence] Threads of one warp taking different branches, which the warp then executes one after the other
     (\cref{ch:warp}).
   \item[ENO, WENO] (Weighted) essentially non-oscillatory differences, used for the fire's level set

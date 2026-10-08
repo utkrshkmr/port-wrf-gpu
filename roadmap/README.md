@@ -54,6 +54,7 @@ instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/READM
 | [003](decisions/ADR-003-repro-and-fast-modes.md) | REPRO (bit-for-bit, the default) and FAST (statistically validated) build modes from one source. | decided |
 | 004 | License of the port's own files (card R-01). | open (owner) |
 | 005 | Multi-GPU halo design (card M-03). | open |
+| [006](decisions/ADR-006-machines.md) | Development and verification only on the cloud environment and the A100 workstation; CPU-REF on its host cores; acceptance case `eaton_mid` on one A100 40 GB; the full case via multi-GPU; CCR supplies data only; H100 optional. | decided |
 
 ## Milestones
 

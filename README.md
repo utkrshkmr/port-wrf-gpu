@@ -1,6 +1,6 @@
 # port-wrf-gpu: WRF 4.6.0 and WRF-Fire on GPUs, bit for bit
 
-A port of the Weather Research and Forecasting model (WRF) v4.6.0 with WRF-Fire to NVIDIA A100 and H100 GPUs. It
+A port of the Weather Research and Forecasting model (WRF) v4.6.0 with WRF-Fire to NVIDIA A100 GPUs (H100 optional). It
 is written as Fortran with OpenACC directives (CUDA Fortran for measured hotspots, ADR-001 rev 2), and it must give
 results bit-for-bit identical to a CPU reference build. The repository also holds the verification tools, the plans,
 the long-term roadmap, a profiler and a textbook.
@@ -20,10 +20,16 @@ run alongside: the [profiler](roadmap/plan-profiler.md) (built layer by layer wi
 | ID | Machine | Used for |
 |---|---|---|
 | CLOUD | cloud coding environment: gfortran 13 (`-fopenacc` runs OpenACC regions on the host), Python, no GPU, no case data | writing code, `static.sh`, both gfortran views, the smoke case S-3M, the harness on random inputs, reviews, plans, the book |
-| WS-A100 | the owner's workstation: 2x A100 40 GB, NVHPC, the dev case `eaton_small` | NVHPC builds, device tests, T-AB and T-TRACE on dev-case windows, fire windows, nsys/ncu on A100; two runs at once (one per GPU) |
-| GPU80 | one 80 GB GPU (H100 preferred, or A100 80 GB) | the full Eaton case: memory gates, the 17 h acceptance run, H100 profiles |
-| CCR | CPU cluster | CPU-REF reference runs (dev and full case), T-DEC, T-DRIFT, T-RST |
+| WS-A100 | the owner's workstation: 2x A100 40 GB, 56 host cores, NVHPC, the dev case `eaton_small` and the acceptance case `eaton_mid` | everything that runs: NVHPC builds; **all CPU-REF reference runs on the host cores**; WPS and real.exe; device tests; T-AB and T-TRACE; fire windows; the 17 h acceptance run on one GPU; nsys/ncu; two runs at once (one per GPU); later the full case on both GPUs |
 | CI | GitHub Actions | the book PDF |
+
+**Machine policy ([ADR-006](roadmap/decisions/ADR-006-machines.md)).** Nothing is developed or tested on CCR, and no
+80 GB GPU is assumed. CCR supplies the input files and the original run, which is compared with CPU-REF
+statistically (E0), never bit for bit. Every bit-for-bit comparison is apples to apples on one machine: CPU-REF on the
+workstation's host cores against GPU-REPRO on its A100s, same source, same compiler, same container. The full Eaton
+case (about 57 GB) does not fit one A100 40 GB, so the acceptance gate G5 runs on `eaton_mid`, the largest d02 that
+fits one GPU with 15 % headroom (expected about 400x400x60); the full case follows on both A100s with multi-GPU
+(S8-01 ... S8-05), the first work after G5. An H100 is optional wherever it is named below.
 
 ### How every routine is ported (the ladder)
 
@@ -53,10 +59,10 @@ commit, `static.sh` before every commit ([AGENTS.md](AGENTS.md)).
 | S0-04 Toolchain on WS-A100 | .1 NVHPC pinned, versions recorded; .2 MPI and netCDF with nvfortran; .3 gfortran netCDF; .4 flags spell-checked; .5 device query of both A100s | WS-A100 | an OpenACC and a CUDA Fortran kernel run on GPU 0 and 1 |
 | S0-05 OpenACC feature probes | .1 F-IF host fallback; .2 F-ROUTINE; .3 F-DECLARE; .4 F-PRESENT (pool pointers); .5 F-STMTFN/INTPROC/OPT/CHAR; .6 F-RED; .7 F-NAN; .8 F-STACK; .9 F-ATTACH (fire `fp`); .10 F-HOSTDATA; .11 F-CACHE/ASYNC; .12 F-AUTO/PRIVARR | CLOUD -> WS-A100 | every probe recorded with a fallback where it fails |
 | S0-06 Arithmetic and unit tests on the A100 | .1 T-FMA; .2 T-SIGNZERO, T-MINMAX, T-SUBNORM; .3 T-RM-EXH; .4 T-RM-POW, T-RM-D; .5 T-IPOW, T-KISS, T-PDLIM, T-OZN, templates, call check on the device; .6 repeat on GPU 1 | WS-A100 | all PASS on both A100s |
-| S0-07 CPU-REF build and symbol audit | .1 CPU-REF build, md5 kept; .2 T-SYM; .3 same build on CCR, identical binary; .4 T-BUILD-REF | WS-A100, CCR | |
-| S0-08 CPU-REF reproducibility | .1 T-DET; .2 T-DEC-A (1 vs 64 ranks); .3 T-DEC-B; .4 T-XM (CCR node vs workstation host); .5 T-RST | CCR | bitwise (T-RST or documented) |
-| S0-09 Dev case `eaton_small` | .1 make the case (d02 181x181x60 on the ignition); .2 CPU-REF 1 h with restarts at 02:00 and 02:20; .3 17 h dev run for T-DRIFT; .4 copy to WS-A100, every window run once with CPU-REF | CCR -> WS-A100 | each window has a reference trace |
-| S0-10 Full-case reference (17 h) | .1 the 17 h CPU-REF run with hourly restarts; .2 the 02:20 restart; .3 archive, E0 and E1 experiments; .4 Prof-CPU table | CCR | runs beside Stages 1-4 |
+| S0-07 CPU-REF build and symbol audit | .1 CPU-REF build, md5 kept; .2 T-SYM; .3 WPS and real.exe built on the host; .4 T-BUILD-REF | WS-A100 | |
+| S0-08 CPU-REF reproducibility | .1 T-DET; .2 T-DEC-A (1 vs 56 ranks); .3 T-DEC-B (14/28/56 ranks); .4 T-RST; .5 cost table of the dev and acceptance cases on 56 ranks | WS-A100 host | bitwise (T-RST or documented) |
+| S0-09 Dev case `eaton_small`, acceptance case `eaton_mid` | .1 make the dev case (d02 181x181x60 on the ignition); .2 CPU-REF 1 h with restarts at 02:00 and 02:20; .3 17 h dev run for T-DRIFT; .4 every window run once with CPU-REF; .5 size `eaton_mid` with the memory estimator (>= 15 % of 40 GB free); .6 make it; .7 its 1 h reference and windows | WS-A100 | each window has a reference trace |
+| S0-10 Long references | .1 `eaton_mid` 17 h CPU-REF run with hourly restarts; .2 the 02:20 restart; .3 archive, E1 experiment; .4 E0: the original CCR run vs CPU-REF of the full case, statistical, not a gate; .5 Prof-CPU table | WS-A100 host | runs beside Stages 1-4 |
 | S0-11 T-UNINIT | NaN-fill vs zero-fill builds on W-T0 | WS-A100 | identical |
 | S0-12 Certify the shared refactors of run 1 | one family per task, each CPU-REF vs base bitwise, then the base moves: .1 advect_scalar_pd work arrays; .2 `var_mix`; .3 fire hoists and work arrays (W-IGN); .4 microphysics driver; .5 PBL driver; .6 radiation driver (W-RAD); .7 RRTMG EQUIVALENCE flattening and init hoist (W-RAD); .8 Noah `iloc/jloc`, type codes; .9 surface driver | WS-A100, CCR | **G0** |
 
@@ -75,7 +81,7 @@ commit, `static.sh` before every commit ([AGENTS.md](AGENTS.md)).
 | S1-09 Startup gate `gpu_check_config`, T-GATE | .1 the allowed-option table; .2 size, ratio, rank, fuel checks; .3 T-GATE | CLOUD -> WS-A100 | a disallowed namelist is rejected |
 | S1-10 Self tests and the dispatcher | `WRF_GPU_SELFTEST=1` runs T-MAP, T-TAB, T-POOL, T-WORK | WS-A100 | PASS on both GPUs |
 | S1-11 Profiler layer 1 | .1 NVTX/CUDA shim; .2 ranges per `solve_em` section and route; .3 `WRF_GPU_TIMING`; .4 memory log; .5 logging changes no bit | CLOUD -> WS-A100 | |
-| S1-12 G1 windows, G-MEM-1 | .1-.2 W-20 on GPU 0 and 1; .3 W-T0 with history and restart writes; .4 T-NSYS; .5 full-case memory after init and first steps (<= 55 GB); .6 book facts | WS-A100, GPU80 | **G1** |
+| S1-12 G1 windows, G-MEM-1 | .1-.2 W-20 on GPU 0 and 1; .3 W-T0 with history and restart writes; .4 T-NSYS; .5 memory after init and first steps (dev case <= 25 GB, acceptance case <= 34 GB); .6 book facts | WS-A100 | **G1** |
 
 ### Stage 2 - The dynamical core (23 phases)
 
@@ -105,7 +111,7 @@ Each routine: `.Nc` (L1-L3, CLOUD) and `.Ng` (L4-L8, WS-A100). Run-1 code starts
 | S2-20 N2, eddy viscosities, TKE (run 1, partial) | `calculate_N2`, `smag2d_km`, `tke_km`, `calc_l_scale`, `tke_shear`, `tke_buoyancy`, `tke_dissip`, `tke_rhs`, `conv_t_tendf_to_moist` | |
 | S2-21 Vertical diffusion and the stress tensor (run 1, partial) | `cal_titau_*` (4), `vertical_diffusion_2`, `_u_2/_v_2/_w_2`, `vertical_diffusion_s` | |
 | S2-22 Horizontal diffusion | `horizontal_diffusion_2`, `_u_2/_v_2/_w_2`, `horizontal_diffusion_s` (11 kernels) | **G2.G** T-TRACE-100, T-TRACE-TKE |
-| S2-23 Stage closure | .1 all routes on, W-20 and W-100 on both GPUs; .2 T-NSYS; .3 T-DRIFT on CCR; .4 first dynamics profile on A100; .5 book sections | **G2** |
+| S2-23 Stage closure | .1 all routes on, W-20 and W-100 on both GPUs; .2 T-NSYS; .3 T-DRIFT on the host cores; .4 first dynamics profile on A100; .5 book sections | **G2** |
 
 ### Stage 3 - The physics of the case (25 phases)
 
@@ -138,7 +144,7 @@ the device) before it meets real data.
 | S3-22 RRTMG taumol | `taugb1` ... `taugb16` in four tasks (`rp_mod`), `taumol`; harness | |
 | S3-23 RRTMG radiative transfer and McICA | `rtrnmc` (two tasks), `mcica_subcol_lw`, `generate_stochastic_clouds`, `kissvec`; T-KISS on the device; harness | |
 | S3-24 RRTMG batching and kernel | batch work arrays (`WRF_RRTMG_BATCH`), one thread per column, error codes; T-RRTMG-COL; W-RAD | **G3.E** T-AB-radiation_driver, T-TRACE-RAD |
-| S3-25 Stage closure | .1 all routes on, W-20/W-100/W-RAD on both GPUs; .2 T-NSYS; .3 T-DRIFT; .4 G-MEM-2 (<= 70 GB, GPU80); .5 physics profile; .6 book | **G3** |
+| S3-25 Stage closure | .1 all routes on, W-20/W-100/W-RAD on both GPUs; .2 T-NSYS; .3 T-DRIFT; .4 G-MEM-2 (acceptance case <= 34 GB); .5 physics profile; .6 book | **G3** |
 
 ### Stage 4 - WRF-Fire (13 phases)
 
@@ -171,34 +177,34 @@ Fire T-AB runs on W-IGN or W-FIRE (W-20 contains no ignition).
 | S5-05 Remove the `solve_em` bracket | delete the bracket; T-NSYS-CLEAN on 200 d02 steps; no `cudaMalloc` in the time loop | CLOUD -> WS-A100 | PASS |
 | S5-06 Output and input sync | T-OUT (history and restart files), T-BDY (a boundary read) | WS-A100 | bitwise |
 | S5-07 One-hour dev windows | W-1H on GPU 0 and GPU 1 at once; first speed numbers | WS-A100 | bitwise, GPUs identical |
-| S5-08 Full-case memory and first hour | memory after init (<= 70 GB); 100 d02 steps from 02:20; 1 h window | GPU80 | bitwise |
-| S5-09 Full 17 h acceptance | the 17 h run; 69 history frames and 34 restarts bitwise, 0 differing fire cells, traces identical; T-DRIFT-FULL on CCR; T-XM; a second GPU type if available | GPU80, CCR | |
-| S5-10 Stage closure | `g5.sh` PASS, G-MEM-3; RESULTS.md with md5s and digests; tag `v0.1-rc1`; book acceptance section | GPU80, CLOUD | **G5** (opens 4.8.0 and CFBM) |
+| S5-08 Acceptance case: memory and first hour | `eaton_mid` memory after init (<= 34 GB); 100 d02 steps from 02:20; 1 h window | WS-A100 | bitwise |
+| S5-09 17 h acceptance on `eaton_mid` | the 17 h run on GPU 0; 69 history frames and 34 restarts bitwise, 0 differing fire cells, traces identical; T-DRIFT-FULL on the host cores; the same run on GPU 1, identical; an H100 if one becomes available | WS-A100 | |
+| S5-10 Stage closure | `g5.sh` PASS, G-MEM-3 <= 34 GB; RESULTS.md with md5s and digests; tag `v0.1-rc1`; book acceptance section | WS-A100, CLOUD | **G5** (opens multi-GPU, then 4.8.0 and CFBM) |
 
 ### Stage 6 - Performance without changing a bit (16 phases)
 
 Every optimization climbs the ladder: analyzer evidence -> legality note (classes R0/R1/R2 keep the bits; F is FAST
 only) -> code -> bitwise tests (T-AB, T-TRACE-100, T-TRACE-RAD, T-REG-20; OpenACC vs CUDA Fortran) -> measure on
-A100 (dev) and H100 (full) -> keep if the step is >= 3 % faster or the kernel >= 10 %.
+A100 (dev and acceptance case; H100 optional) -> keep if the step is >= 3 % faster or the kernel >= 10 %.
 
 | Phase | What | Machine |
 |---|---|---|
-| S6-01 Baseline profiles | nsys and ncu of W-100/W-RAD on A100 and 1 h of the full case on H100; bandwidth floor and roofline per kernel; time per range vs Prof-CPU; report | WS-A100, GPU80 |
+| S6-01 Baseline profiles | nsys and ncu of W-100/W-RAD and 1 h of the acceptance case on A100 (H100 optional); bandwidth floor and roofline per kernel; time per range vs Prof-CPU; report | WS-A100 |
 | S6-02 Opportunity reports | fusion finder, cache and reuse, tiling candidates, warp report (divergence, coalescing, occupancy, spills), launches and gaps; ranked list | WS-A100 |
 | S6-03 O1 | fire NaN-check kernels out of production builds | WS-A100 |
 | S6-04 O2 | merge boundary-strip kernels (4 -> 1) and zero/copy kernels | WS-A100 |
 | S6-05 O3 | asynchronous queues for independent kernels, `wait` before dependents | WS-A100 |
 | S6-06 Fusion I | pointwise sequences inside one routine (`small_step_prep`, `rk_addtend_dry`, `calc_p_rho`, physics glue) | WS-A100 |
 | S6-07 Fusion II | chains across routines in the acoustic sub-step, with a legality table per chain | WS-A100 |
-| S6-08 CUDA Graph | one acoustic sub-step captured and replayed (experiment) | WS-A100, GPU80 |
-| S6-09 Caching | `!$acc cache`, read-only paths, L2 persistence windows (fire grid, tables) on A100 vs H100, constant memory | WS-A100, GPU80 |
+| S6-08 CUDA Graph | one acoustic sub-step captured and replayed (experiment) | WS-A100 |
+| S6-09 Caching | `!$acc cache`, read-only paths, L2 persistence windows (fire grid, tables), constant memory | WS-A100 |
 | S6-10 Coalescing and loop order | kernels with high sectors/request, one per commit | WS-A100 |
-| S6-11 Tiling | shared-memory tiles in CUDA Fortran for advection y- and x-fluxes, diffusion, fire `tend_ls`; H100 TMA and clusters | WS-A100, GPU80 |
-| S6-12 Warp level | fire band split, advection edge branches, register caps per kernel and GPU, spills of column physics | WS-A100, GPU80 |
-| S6-13 Column physics | RRTMG performance version (per layer, per g-point, ordered sums); WSM6 and Noah batch shape | WS-A100, GPU80 |
-| S6-14 I/O and transfers | pinned asynchronous history output (O8), lazy `o3rad` (O10), parent-side pack (O11), quilting | WS-A100, GPU80 |
-| S6-15 Per-GPU tuning | `vector_length`, `num_gangs`, register caps per kernel for A100 and H100; settings files | WS-A100, GPU80 |
-| S6-16 Stage closure | tuned binary repeats G5 bitwise; PERF.md complete for both GPUs (speedups vs CPU-REF and the original run); book results chapter | GPU80, CCR, CLOUD (**G6**) |
+| S6-11 Tiling | shared-memory tiles in CUDA Fortran for advection y- and x-fluxes, diffusion, fire `tend_ls`; H100 TMA and clusters only if an H100 is available | WS-A100 |
+| S6-12 Warp level | fire band split, advection edge branches, register caps per kernel and GPU, spills of column physics | WS-A100 |
+| S6-13 Column physics | RRTMG performance version (per layer, per g-point, ordered sums); WSM6 and Noah batch shape | WS-A100 |
+| S6-14 I/O and transfers | pinned asynchronous history output (O8), lazy `o3rad` (O10), parent-side pack (O11), quilting | WS-A100 |
+| S6-15 Per-GPU tuning | `vector_length`, `num_gangs`, register caps per kernel for A100 (H100 optional); settings files | WS-A100 |
+| S6-16 Stage closure | tuned binary repeats G5 bitwise; PERF.md complete for A100 (speedups vs CPU-REF on the 56 host cores; the original CCR run statistically); book results chapter | WS-A100, CLOUD (**G6**) |
 
 ### Stage 7 - Other fires, regression, release v0.1 (8 phases)
 
@@ -206,8 +212,8 @@ A100 (dev) and H100 (full) -> keep if the step is >= 3 % faster or the kernel >=
 |---|---|---|
 | S7-01 Onboarding tools | `manifest.py`, `check_case.py` against the envelope; memory estimator within 5 %; the A100 40 GB fit rule; docs | CLOUD, WS-A100 |
 | S7-02 Regression suite | `port/regress.sh` (T-REG-20, T-TRACE-100, T-TRACE-RAD, T-FMA, T-SUBNORM); nightly on WS-A100; result page | WS-A100 |
-| S7-03 Second fire case | choose with the owner; WPS/real on CCR; case contract; CPU-REF 1 h around ignition; T-CASE-1H | CCR, WS-A100 |
-| S7-04 Envelope edges | `e_vert` at `WRF_KMAX`; another nest ratio; a d02 near the 80 GB limit | CCR, GPU80 |
+| S7-03 Second fire case | choose with the owner; WPS/real on the host; case contract; CPU-REF 1 h around ignition; T-CASE-1H | WS-A100 |
+| S7-04 Envelope edges | `e_vert` at `WRF_KMAX`; another nest ratio; a d02 near the 40 GB limit of one GPU | WS-A100 |
 | S7-05 License and release checks | ADR-004 (owner), headers and NOTICE, no private paths | CLOUD |
 | S7-06 User documentation | build and run guide, troubleshooting, limits | CLOUD |
 | S7-07 Release v0.1 | tag, CITATION.cff and DOI, the book PDF, announcement | CLOUD |
@@ -217,16 +223,16 @@ Gate G7: the regression suite has run nightly for 2 weeks without a failure; the
 
 ### Stage 8 - The rest of WRF 4.6.0 (20 phases, after G5, order chosen by the owner)
 
-Each phase: a case variant and its CPU reference (CCR), the kernel table and work packages (CLOUD), the routine
+Each phase: a case variant and its CPU reference (host cores), the kernel table and work packages (CLOUD), the routine
 ladder (CLOUD -> WS-A100), column harness where needed, and a gate (T-AB of every new route, T-TRACE-100 on the
 variant, the Eaton regression unchanged, `gpu_check_config` accepts the option).
 
 | Phase | Option family |
 |---|---|
-| S8-01 | Multi-GPU design (ADR-005): device-resident halos, GPU-aware MPI, RSL_LITE pack/unpack on the device |
+| S8-01 | Multi-GPU design (ADR-005): device-resident halos, GPU-aware MPI, RSL_LITE pack/unpack on the device. S8-01 ... S8-05 start right after G5: they are the only route to the full Eaton case |
 | S8-02 | Device halo pack/unpack kernels and halo includes on the device |
 | S8-03 | Decomposition independence on GPUs: 1 vs 2 GPUs bitwise (T-DEC-GPU) |
-| S8-04 | The full Eaton case on 2x A100 40 GB |
+| S8-04 | The full Eaton case on 2x A100 40 GB, with its own 17 h CPU-REF reference on the host cores and the G5 criteria repeated |
 | S8-05 | Multi-GPU performance: halo time, overlap, scaling 1 -> 2 GPUs |
 | S8-06 | Restart starts on the GPU (`restart = .true.`) |
 | S8-07 | Two-way nesting (`feedback = 1`) |
