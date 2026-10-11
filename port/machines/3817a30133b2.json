@@ -1,0 +1,143 @@
+{
+ "adr006_profile": "a100-40x2",
+ "capabilities": {
+  "acceptance_g5": [
+   "eaton_mid"
+  ],
+  "build_jobs": 56,
+  "cases": {
+   "eaton_full": {
+    "estimate_gb": 52.88,
+    "fits": false,
+    "namelist": "cases/eaton_20250108/namelist.input",
+    "rrtmg_batch": 2048
+   },
+   "eaton_mid": {
+    "estimate_gb": 33.89,
+    "fits": true,
+    "namelist": "estimated: largest d02 of a 40 GB gate = 550x550 (S0-09.5 decides)",
+    "rrtmg_batch": 2048
+   },
+   "eaton_small": {
+    "estimate_gb": 24.21,
+    "fits": true,
+    "namelist": "full case with d02 181x181 (S0-09.1 makes the case)",
+    "rrtmg_batch": 4096,
+    "within_dev_gate": true
+   }
+  },
+  "cases_on_one_gpu": [
+   "eaton_small",
+   "eaton_mid"
+  ],
+  "cpu_ranks": [
+   1,
+   14,
+   28,
+   56
+  ],
+  "eaton_mid_d02": 550,
+  "full_case": "multi-GPU (S8-01 ... S8-05)",
+  "gmem_limit_gb": 34,
+  "gpu_memory_gb": 40,
+  "gpu_pair_check": "two GPUs",
+  "h100_only": false,
+  "multi_gpu": true,
+  "ok": true,
+  "parallel_gpu_runs": 2,
+  "resident_threads": 221184,
+  "rrtmg_batch": 4096
+ },
+ "container": {
+  "detected_in": "host",
+  "runtime": "none",
+  "usable": "no"
+ },
+ "cuda": "13.2",
+ "driver": "595.91.07",
+ "gpu_key": "a100-pcie-40gb",
+ "gpu_links": {
+  "0-1": "SYS"
+ },
+ "gpus": [
+  {
+   "cc": "8.0",
+   "driver": "595.91.07",
+   "ecc": "Enabled",
+   "index": 0,
+   "max_sm_mhz": 1410,
+   "memory_mib": 40960,
+   "mig": "Disabled",
+   "name": "NVIDIA A100-PCIE-40GB"
+  },
+  {
+   "cc": "8.0",
+   "driver": "595.91.07",
+   "ecc": "Enabled",
+   "index": 1,
+   "max_sm_mhz": 1410,
+   "memory_mib": 40960,
+   "mig": "Disabled",
+   "name": "NVIDIA A100-PCIE-40GB"
+  }
+ ],
+ "host": {
+  "cores": 56,
+  "cores_per_socket": 28,
+  "cpu_model": "Intel(R) Xeon(R) Gold 6330 CPU @ 2.00GHz",
+  "key": "ce86612404c3",
+  "logical_cpus": 112,
+  "ram_gb": 503.2,
+  "rapl_readable": "no",
+  "sockets": 2,
+  "threads_per_core": 2,
+  "vendor": "GenuineIntel"
+ },
+ "last_protocol_steps": [
+  {
+   "detail": "no nvfortran yet (S0-04); driver 595.91.07, CUDA 13.2 recorded",
+   "result": "PASS",
+   "step": "T-MACHINE-a"
+  },
+  {
+   "detail": "pending S0-05/S0-06: no compiler to build the device tests yet",
+   "result": "PASS",
+   "step": "T-MACHINE-b"
+  },
+  {
+   "detail": "T-XM: no archived reference of another host (host key ce86612404c3): nothing to compare",
+   "result": "PASS",
+   "step": "T-MACHINE-c"
+  },
+  {
+   "detail": "T-XG: no GPU traces of commit 1c31bce701e1 from another GPU model: nothing to compare",
+   "result": "PASS",
+   "step": "T-MACHINE-d"
+  }
+ ],
+ "machine_id": "3817a30133b2",
+ "pending": [
+  "S0-04",
+  "S0-05",
+  "S0-06"
+ ],
+ "profile": "a100-40x2",
+ "protocol_change": "new",
+ "protocol_commit": "1c31bce701e1",
+ "protocol_date": "2026-10-11 01:32 UTC",
+ "protocol_history": [
+  {
+   "pending": [
+    "S0-04",
+    "S0-05",
+    "S0-06"
+   ],
+   "protocol_change": "new",
+   "protocol_commit": "1c31bce701e1",
+   "protocol_date": "2026-10-11 01:32 UTC",
+   "protocol_result": "PASS"
+  }
+ ],
+ "protocol_result": "PASS",
+ "schema": 1
+}

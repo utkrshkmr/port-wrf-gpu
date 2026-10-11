@@ -1,0 +1,2 @@
+index, name, uuid, memory.total [MiB], compute_cap, driver_version, pci.bus_id, ecc.mode.current, mig.mode.current, clocks.max.sm [MHz]
+0, NVIDIA A100 80GB PCIe, GPU-a100a800-0000-0000-0000-000000000000, 81920 MiB, 8.0, 550.54.15, 00000000:41:00.0, Enabled, Disabled, 1410 MHz

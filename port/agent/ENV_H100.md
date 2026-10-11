@@ -68,6 +68,18 @@ Notes:
 - Everything the scripts run in the container goes through `x`. If you run commands by hand, use the `shell`
   command above, or `source port/h100/common.sh; x <command>`.
 
+## 2a. The A100 workstation (where Stage 0 runs)
+
+| Item | Value |
+|---|---|
+| Repository checkout | `/home/csgrad/utkarshk/port-wrf-gpu` |
+| Profile | `a100-40x2` (machine id `3817a30133b2`, `port/machines/3817a30133b2.json`) |
+| `$WORK` (for now) | `/home/csgrad/utkarshk/wrf_gpu_work`: `/home` has under 10 GB free, far below the 300 GB `$WORK` needs (BLOCKERS.md S0-04) |
+| Container runtime | none usable without root (no Apptainer/Podman; Docker socket not permitted): `CONTAINER=none` until NVHPC is installed (BLOCKERS.md S0-04) |
+| Python on the host | `/home/csgrad/utkarshk/miniconda3/bin/python3` (3.12; numpy yes, netCDF4 not yet) |
+
+`port/h100/env.local.sh` on that machine sets `WORK` and `CONTAINER` as above.
+
 ## 3. Inputs
 
 Copy the three input files of the reference case from CCR (the run folder in `cases/eaton_20250108/README.md`) to
@@ -117,8 +129,17 @@ editing one file takes a few minutes (the file, its dependents, the link).
 The GPU machine varies between sessions (plan.md §18, ADR-006 rev 2). Run `bash port/h100/machine.sh detect` at
 the start of every session (phase S0-00 writes it): it records the GPUs and the host in `$WORK/machine.json`, derives
 what this machine can run (`port/machines/capabilities.md`), and asks for the machine-change protocol
-(`port/gates/t_machine.sh`) when the machine is not the one recorded last. Until S0-00 exists, record the output of
-`nvidia-smi -L`, `nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv` and `lscpu` in the workbook.
+(`port/gates/t_machine.sh`) when the machine is not the one recorded last.
+
+```sh
+bash port/h100/machine.sh detect      # profile, capabilities -> $WORK/machine.json
+bash port/gates/t_machine.sh          # machine-change protocol -> port/machines/<id>.json (commit it)
+bash port/h100/machine.sh check       # exit 0 once the protocol passed for this machine
+bash port/h100/machine.sh get capabilities.gmem_limit_gb
+python3 port/machines/test_machine.py # unit tests on the recorded samples (port/machines/samples/)
+```
+
+`build.sh` records the machine in `BUILD_INFO` and takes `BUILD_JOBS` from the detected host cores.
 
 - **A100 80 GB or H100 (80 GB):** the full case fits one GPU (about 57 GB, gate 68 GB); everything below also runs.
 - **Two A100 40 GB:** as follows.

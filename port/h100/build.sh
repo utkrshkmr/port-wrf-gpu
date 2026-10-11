@@ -141,6 +141,8 @@ fi
   echo "source: $source_desc"
   echo "configure: option $(cat .configure_option) ($stanza, $kind)"
   echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(hostname)"
+  echo "machine: $(machine_line)"
+  echo "build jobs: $BUILD_JOBS"
   echo "compiler: $(x bash -c 'case '"$mode"' in gnu*) gfortran --version;; *) nvfortran --version;; esac' 2>/dev/null | grep -v '^$' | head -2 | tr '\n' ' ')"
   echo "wrf.exe md5: $(md5sum < main/wrf.exe | cut -d' ' -f1)"
   [ -n "${IMAGE:-}" ] && echo "image: $IMAGE sha256 $(sha256sum < "$IMAGE" | cut -d' ' -f1)"

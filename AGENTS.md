@@ -10,6 +10,12 @@
 >
 > Whatever your area, change only its paths: `python3 port/tools/check_area_scope.py <area> --worktree`.
 
+**Where the work lives.** On the owner's A100 workstation (profile `a100-40x2`: 2 × A100 40 GB, 2 × 28-core Xeon
+Gold 6330) this repository is checked out at **`/home/csgrad/utkarshk/port-wrf-gpu`** (Stage 0 started there,
+2026-10-10, branch `agent/s0-00`). Work there; its machine settings are in `port/h100/env.local.sh` (not in git) and
+[ENV_H100.md §2a](port/agent/ENV_H100.md). Another checkout or another machine: run `machine.sh detect` and record
+its path the same way.
+
 You are implementing Phases 1–7 of the GPU port of WRF v4.6.0 + WRF-Fire described in [plan.md](plan.md), on a
 GPU machine whose profile varies between sessions: one A100 80 GB, two A100 40 GB, or one or more H100s (plan.md
 §18). Run `bash port/h100/machine.sh detect` first in every session; never assume the machine. Every run and every

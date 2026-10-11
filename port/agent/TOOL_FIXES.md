@@ -22,3 +22,4 @@ A tool fix must not change what is compared or how:
 
 | date | files | problem (command and error) | fix | unchanged (why the comparison is not affected) |
 |---|---|---|---|---|
+| 2026-10-10 | port/h100/common.sh, port/h100/build.sh (port/h100/env.sh template) | S0-00.3: scripts assumed the machine (`BUILD_JOBS=16` fixed; BUILD_INFO did not say which machine built it) | `machine_get`/`machine_line` in common.sh read `$WORK/machine.json` (machine.sh detect); `BUILD_JOBS` defaults to the detected host cores (16 if undetected); BUILD_INFO gains `machine:` and `build jobs:` lines; new `machine.sh`, `machine.py` (S0-00.1/.2) | compiler flags, stanzas, windows, trace levels and comparisons untouched; make parallelism does not change the objects; BUILD_INFO lines are informational |

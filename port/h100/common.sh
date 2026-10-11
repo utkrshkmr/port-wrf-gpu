@@ -9,6 +9,13 @@ export LC_ALL=C OMP_NUM_THREADS=1 WRFIO_NCD_LARGE_FILE_SUPPORT=1
 # the port's Python tools run on the host; use the user environment if there is one
 [ -x "${PYENV:-/nonexistent}/bin/python3" ] && export PATH=$PYENV/bin:$PATH
 
+# The detected machine (port/h100/machine.sh detect, phase S0-00): BUILD_JOBS from
+# its host cores unless set; machine_line prints "<id> <profile>" for results.
+machine_get() { python3 "$HERE_H100/machine.py" get "$1" "$WORK/machine.json" 2>/dev/null; }
+machine_line() { local id; id=$(machine_get machine_id) && echo "$id $(machine_get profile)" || echo "undetected"; }
+[ -n "${BUILD_JOBS:-}" ] || BUILD_JOBS=$(machine_get capabilities.build_jobs || echo 16)
+export BUILD_JOBS
+
 die() { echo "ERROR: $*" >&2; exit 1; }
 note() { echo "--- $*" >&2; }
 

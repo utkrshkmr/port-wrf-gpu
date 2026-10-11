@@ -40,5 +40,6 @@ export MPIRUN=${MPIRUN:-mpirun}
 export CPU_RANKS=${CPU_RANKS:-$(( $(getconf _NPROCESSORS_ONLN) > 64 ? 64 : $(getconf _NPROCESSORS_ONLN) ))}
 # GPU used by GPU runs (CUDA device number)
 export GPU_ID=${GPU_ID:-0}
-# Parallel make jobs for WRF builds
-export BUILD_JOBS=${BUILD_JOBS:-16}
+# Parallel make jobs for WRF builds (empty: from the detected machine,
+# port/h100/machine.sh detect; 16 if the machine is not detected)
+export BUILD_JOBS=${BUILD_JOBS:-}

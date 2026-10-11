@@ -14,19 +14,21 @@ How to update, after every task (and at the end of every work session, even if t
 
 ## Current state
 
-- Run mode: code-only parallel run of Phases 1-3 (port/agent/CODE_ONLY.md; prompts A-D in PROMPTS.md): 36 work
-  packages (WORKPACKAGES.md), integration branch agent/code, branches agent/wp/<id>; all 36 todo. The H0 tasks and
-  every test wait for the reviewer and the H100 machine.
-- Phase: H0 (entry tasks on the H100 machine)
-- Current task: H0.1
-- Last commit: (none yet by the agent; handoff package on branch claude/wrf-gpu-port-cpu-7doq8n)
-- Last gate passed: G0, local part only (CPU, gfortran; see port/RESULTS.md)
-- Builds: none yet on the H100 machine
+- Run mode: Stage 0 of roadmap/plan-4.6 on the A100 workstation (checkout /home/csgrad/utkarshk/port-wrf-gpu,
+  branch agent/s0-00). The code-only run 1 branches (agent/wp/*) wait for S0-01/S0-02.
+- Phase: S0-00 (detect the machine; roadmap/plan-4.6/stage-0-ground-truth.md)
+- Current task: S0-00.3 (window.sh and gates read the profile), then S0-00.5, S0-00.6
+- Last commit: see `git log agent/s0-00`
+- Last gate passed: t_machine (first machine: records only; S0-04/05/06 pending)
+- Builds: none yet (no NVHPC, BLOCKERS B2)
 - Dev references: not made yet ($WORK/reference/eaton_small)
-- Blockers: none
-- Case data: if the Eaton inputs are not on the machine, skip H0.6/H0.7 and use the smoke case (PHASE1.md "Without
-  the case data"); then keep the list "Pending the case data" here.
-- Next step: H0.1 install and check the toolchain (port/agent/ENV_H100.md)
+- Blockers: B1 storage for $WORK (/home 100 % full); B2 no container runtime / NVHPC without root
+- Case data: Eaton inputs not on the machine yet
+- Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07, CUDA 13.2;
+  2 x 28-core Xeon Gold 6330, 503 GB; G-MEM 34 GB; eaton_small 24.2 GB, eaton_mid ~550x550 33.9 GB with RRTMG 2048,
+  full case needs multi-GPU)
+- Next step: owner resolves B1 and B2; meanwhile S0-00.3/.5/.6 (window.sh GPU choice and fit check, gate machine
+  check, archive layout) and S0-01 (CLOUD tasks run here with gfortran)
 
 ## Task checklist
 
@@ -236,3 +238,18 @@ How to update, after every task (and at the end of every work session, even if t
 - 8 new work packages (44 in all): P4-A2F, P4-LS, P4-FUEL, P4-MODEL, P4-ATM, P5-TRACE, P5-CPL, P5-FORCE; interfaces
   I-11 (S6 vs forcing switch) and I-12 (fire flags and `fp` on the device).
 - Machine: the test machine has two A100 40 GB: dev-case gates only (ENV_H100.md §5a).
+
+### 2026-10-10 S0-00 Machine detection, capabilities and the machine-change protocol (S0-00.1, .2, .4; .3 partly)
+- New: `port/h100/machine.sh` (detect/show/get/check), `port/h100/machine.py` (parsing, capability rules,
+  `capabilities.md` generator), `port/gates/t_machine.sh` (protocol steps a-e), `port/machines/` (samples of
+  a100-40x2 (real capture, UUIDs anonymized), a100-80x1 and h100-80x2 (constructed), v100-16x1 (cc < 8.0 stop);
+  `capabilities.md`; `test_machine.py` 7 tests PASS; `3817a30133b2.json`).
+- capabilities.md reproduces the ADR-006 rev 2 table from the numbers. New facts: eaton_small estimates 24.2 GB
+  (A100) / 25.7 GB (H100, above the 25 GB dev gate); eaton_mid estimate = d02 550x550 with RRTMG 2048 (ADR expected
+  ~400x400; S0-09.5 decides).
+- `t_machine.sh` PASS on the workstation: first machine, nothing to compare; S0-04, S0-05, S0-06 recorded pending.
+- `common.sh`/`build.sh`: BUILD_JOBS from the detected cores, BUILD_INFO records the machine (TOOL_FIXES row).
+- Owner-directed edits of locked files: AGENTS.md and ENV_H100.md name the checkout path; t_machine.sh new;
+  protected.md5 regenerated for them.
+- Blockers B1 (storage), B2 (container/NVHPC).
+

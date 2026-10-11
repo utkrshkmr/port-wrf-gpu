@@ -1,0 +1,3 @@
+index, name, uuid, memory.total [MiB], compute_cap, driver_version, pci.bus_id, ecc.mode.current, mig.mode.current, clocks.max.sm [MHz]
+0, NVIDIA H100 80GB HBM3, GPU-h100h100-0000-0000-0000-000000000000, 81559 MiB, 9.0, 550.54.15, 00000000:18:00.0, Enabled, Disabled, 1980 MHz
+1, NVIDIA H100 80GB HBM3, GPU-h100h100-0000-0000-0000-000000000001, 81559 MiB, 9.0, 550.54.15, 00000000:2A:00.0, Enabled, Disabled, 1980 MHz
