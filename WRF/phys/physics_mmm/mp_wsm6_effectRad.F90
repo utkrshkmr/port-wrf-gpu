@@ -132,17 +132,17 @@
  do k = kts,kte
    do i = its,ite
      ! for cloud
-     rqc(i,k) = max(R1,qc(i,k)*rho(i,k))
+     rqc(i,k) = rp_max(R1,qc(i,k)*rho(i,k))
      if (rqc(i,k).gt.R1) has_qc = .true.
      ! for ice
-     rqi(i,k) = max(R1,qi(i,k)*rho(i,k))
-     temp = (rho(i,k)*max(qi(i,k),qmin))
+     rqi(i,k) = rp_max(R1,qi(i,k)*rho(i,k))
+     temp = (rho(i,k)*rp_max(qi(i,k),qmin))
      temp = sqrt(sqrt(temp*temp*temp))
-     ni(i,k) = min(max(5.38e7*temp,1.e3),1.e6)
-     rni(i,k)= max(R2,ni(i,k)*rho(i,k))
+     ni(i,k) = rp_min(rp_max(5.38e7*temp,1.e3),1.e6)
+     rni(i,k)= rp_max(R2,ni(i,k)*rho(i,k))
      if (rqi(i,k).gt.R1 .and. rni(i,k).gt.R2) has_qi = .true.
      ! for snow
-     rqs(i,k) = max(R1,qs(i,k)*rho(i,k))
+     rqs(i,k) = rp_max(R1,qs(i,k)*rho(i,k))
      if (rqs(i,k).gt.R1) has_qs = .true.
    enddo
  enddo
@@ -152,7 +152,7 @@
      do i = its,ite
        if (rqc(i,k).le.R1) CYCLE
        lamdac = rp_pow((pidnc*nc0/rqc(i,k)), obmr)
-       re_qc(i,k) =  max(2.51E-6,min(1.5*(1.0/lamdac),re_qc_max))
+       re_qc(i,k) =  rp_max(2.51E-6,rp_min(1.5*(1.0/lamdac),re_qc_max))
      enddo
    enddo
  endif
@@ -162,7 +162,7 @@
      do i = its,ite
        if (rqi(i,k).le.R1 .or. rni(i,k).le.R2) CYCLE
        diai = 11.9*sqrt(rqi(i,k)/ni(i,k))
-       re_qi(i,k) = max(10.01E-6,min(0.75*0.163*diai,re_qi_max))
+       re_qi(i,k) = rp_max(10.01E-6,rp_min(0.75*0.163*diai,re_qi_max))
      enddo
    enddo
  endif
@@ -172,9 +172,9 @@
      do k = kts,kte
        if (rqs(i,k).le.R1) CYCLE
        supcol = t0c-t(i,k)
-       n0sfac = max(min(rp_exp(alpha*supcol),n0smax/n0s),1.)
+       n0sfac = rp_max(rp_min(rp_exp(alpha*supcol),n0smax/n0s),1.)
        lamdas = sqrt(sqrt(pidn0s*n0sfac/rqs(i,k)))
-       re_qs(i,k) = max(25.E-6,min(0.5*(1./lamdas),re_qs_max))
+       re_qs(i,k) = rp_max(25.E-6,rp_min(0.5*(1./lamdas),re_qs_max))
      enddo
    enddo
  endif
@@ -182,9 +182,9 @@
 !--- limit effective radii of cloud water, cloud ice, and snow to maximum values:
  do k = kts,kte
    do i = its,ite
-      re_qc(i,k) = max(re_qc_bg,min(re_qc(i,k),re_qc_max))
-      re_qi(i,k) = max(re_qi_bg,min(re_qi(i,k),re_qi_max))
-      re_qs(i,k) = max(re_qs_bg,min(re_qs(i,k),re_qs_max))
+      re_qc(i,k) = rp_max(re_qc_bg,rp_min(re_qc(i,k),re_qc_max))
+      re_qi(i,k) = rp_max(re_qi_bg,rp_min(re_qi(i,k),re_qi_max))
+      re_qs(i,k) = rp_max(re_qs_bg,rp_min(re_qs(i,k),re_qs_max))
    enddo
  enddo
 

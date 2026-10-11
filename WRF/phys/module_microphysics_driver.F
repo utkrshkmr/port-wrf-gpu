@@ -2,6 +2,7 @@
 ! *** add new modules of schemes here
 !
 MODULE module_microphysics_driver
+   USE module_repro_math
   real, private, parameter :: QX_MIN = 1.E-12
   real, private, parameter :: NI_MIN = 1.E-6
 CONTAINS
@@ -821,14 +822,14 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    ! the OpenMP loops are inside the scheme when running on MIC
    IF ( mp_physics .EQ. WSM5SCHEME ) THEN
        IF (channel) THEN
-         its = max(ips,ids)
-         ite = min(ipe,ide-1)
+         its = rp_max(ips,ids)
+         ite = rp_min(ipe,ide-1)
        ELSE
-         its = max(ips,ids+sz)
-         ite = min(ipe,ide-1-sz)
+         its = rp_max(ips,ids+sz)
+         ite = rp_min(ipe,ide-1-sz)
        ENDIF
-       jts = max(jps,jds+sz)
-       jte = min(jpe,jde-1-sz)
+       jts = rp_max(jps,jds+sz)
+       jte = rp_min(jpe,jde-1-sz)
 
        CALL wsm5(                                              &
              TH=th                                             &
@@ -869,14 +870,14 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
    DO ij = 1 , num_tiles
        IF (channel) THEN
-         its = max(i_start(ij),ids)
-         ite = min(i_end(ij),ide-1)
+         its = rp_max(i_start(ij),ids)
+         ite = rp_min(i_end(ij),ide-1)
        ELSE
-         its = max(i_start(ij),ids+sz)
-         ite = min(i_end(ij),ide-1-sz)
+         its = rp_max(i_start(ij),ids+sz)
+         ite = rp_min(i_end(ij),ide-1-sz)
        ENDIF
-       jts = max(j_start(ij),jds+sz)
-       jte = min(j_end(ij),jde-1-sz)
+       jts = rp_max(j_start(ij),jds+sz)
+       jte = rp_min(j_end(ij),jde-1-sz)
 
 # if( EM_CORE==1 )
        sf_surf_irr: SELECT CASE(sf_surf_irr_scheme)
@@ -950,22 +951,22 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    do k = kts, kte
       do j = jts, jte
          do i = its, ite
-         aero(i,k,j, 1) = max(0.0, chem(i,k,j,p_sulf)*1.0e-6*p(i,k,j)*    &
+         aero(i,k,j, 1) = rp_max(0.0, chem(i,k,j,p_sulf)*1.0e-6*p(i,k,j)*    &
                           96.0/(8.314*th(i,k,j)*pi_phy(i,k,j)))  ! 1 = SO4
-         aero(i,k,j, 2) = max(0.0, (chem(i,k,j,p_bc1)+chem(i,k,j,p_bc2))*1.0e-6*rho(i,k,j))  ! 2 = BC1+BC2
-         aero(i,k,j, 3) = max(0.0, chem(i,k,j,p_oc1)*1.0e-6*rho(i,k,j)*1.4e0)          !  3 = OC1
-         aero(i,k,j, 4) = max(0.0, chem(i,k,j,p_oc2)*1.0e-6*rho(i,k,j)*1.4e0)          !  4 = OC2
-         aero(i,k,j, 5) = max(0.0, chem(i,k,j,p_seas_1)*1.0e-6*rho(i,k,j))           !  5 = SS1
-         aero(i,k,j, 6) = max(0.0, (chem(i,k,j,p_seas_2)+chem(i,k,j,p_seas_3)+  &
+         aero(i,k,j, 2) = rp_max(0.0, (chem(i,k,j,p_bc1)+chem(i,k,j,p_bc2))*1.0e-6*rho(i,k,j))  ! 2 = BC1+BC2
+         aero(i,k,j, 3) = rp_max(0.0, chem(i,k,j,p_oc1)*1.0e-6*rho(i,k,j)*1.4e0)          !  3 = OC1
+         aero(i,k,j, 4) = rp_max(0.0, chem(i,k,j,p_oc2)*1.0e-6*rho(i,k,j)*1.4e0)          !  4 = OC2
+         aero(i,k,j, 5) = rp_max(0.0, chem(i,k,j,p_seas_1)*1.0e-6*rho(i,k,j))           !  5 = SS1
+         aero(i,k,j, 6) = rp_max(0.0, (chem(i,k,j,p_seas_2)+chem(i,k,j,p_seas_3)+  &
                                    chem(i,k,j,p_seas_4))*1.0e-6*rho(i,k,j))          !  6 = SS2+SS3+SS4
-         aero(i,k,j, 7) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(1))   !  7 = DU1 dust mode 1
-         aero(i,k,j, 8) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(2))   !  8 = DU1 dust mode 2
-         aero(i,k,j, 9) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(3))   !  9 = DU1 dust mode 3
-         aero(i,k,j,10) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(4))   ! 10 = DU1 dust mode 4
-         aero(i,k,j,11) = max(0.0, chem(i,k,j,p_dust_2)*1.0e-6*rho(i,k,j))           ! 11 = DU2 dust mode 5
-         aero(i,k,j,12) = max(0.0, chem(i,k,j,p_dust_3)*1.0e-6*rho(i,k,j))           ! 11 = DU3 dust mode 6
-         aero(i,k,j,13) = max(0.0, chem(i,k,j,p_dust_4)*1.0e-6*rho(i,k,j))           ! 11 = DU4 dust mode 7
-         aero(i,k,j,14) = max(0.0, chem(i,k,j,p_dust_5)*1.0e-6*rho(i,k,j))           ! 11 = DU5 dust mode 8
+         aero(i,k,j, 7) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(1))   !  7 = DU1 dust mode 1
+         aero(i,k,j, 8) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(2))   !  8 = DU1 dust mode 2
+         aero(i,k,j, 9) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(3))   !  9 = DU1 dust mode 3
+         aero(i,k,j,10) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(4))   ! 10 = DU1 dust mode 4
+         aero(i,k,j,11) = rp_max(0.0, chem(i,k,j,p_dust_2)*1.0e-6*rho(i,k,j))           ! 11 = DU2 dust mode 5
+         aero(i,k,j,12) = rp_max(0.0, chem(i,k,j,p_dust_3)*1.0e-6*rho(i,k,j))           ! 11 = DU3 dust mode 6
+         aero(i,k,j,13) = rp_max(0.0, chem(i,k,j,p_dust_4)*1.0e-6*rho(i,k,j))           ! 11 = DU4 dust mode 7
+         aero(i,k,j,14) = rp_max(0.0, chem(i,k,j,p_dust_5)*1.0e-6*rho(i,k,j))           ! 11 = DU5 dust mode 8
          enddo ! !
       enddo ! j
    enddo ! k
@@ -2810,15 +2811,15 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
        do k = kts, kte
          do i = its, ite
            qv_tmp(i, k, j) = qv_curr(i, k, j)
-           qv_curr(i, k, j) = max (QX_MIN, (1.0 + perts_qvapor(i, k, j) * pert_thom_qv) * qv_curr(i, k, j))
+           qv_curr(i, k, j) = rp_max (QX_MIN, (1.0 + perts_qvapor(i, k, j) * pert_thom_qv) * qv_curr(i, k, j))
            qc_tmp(i, k, j) = qc_curr(i, k, j)
-           qc_curr(i, k, j) = max (QX_MIN, (1.0 + perts_qcloud(i, k, j) * pert_thom_qc) * qc_curr(i, k, j))
+           qc_curr(i, k, j) = rp_max (QX_MIN, (1.0 + perts_qcloud(i, k, j) * pert_thom_qc) * qc_curr(i, k, j))
            qi_tmp(i, k, j) = qi_curr(i, k, j)
-           qi_curr(i, k, j) = max (QX_MIN, (1.0 + perts_qice(i, k, j) * pert_thom_qi) * qi_curr(i, k, j))
+           qi_curr(i, k, j) = rp_max (QX_MIN, (1.0 + perts_qice(i, k, j) * pert_thom_qi) * qi_curr(i, k, j))
            qs_tmp(i, k, j) = qs_curr(i, k, j)
-           qs_curr(i, k, j) = max (QX_MIN, (1.0 + perts_qsnow(i, k, j) * pert_thom_qs) * qs_curr(i, k, j))
+           qs_curr(i, k, j) = rp_max (QX_MIN, (1.0 + perts_qsnow(i, k, j) * pert_thom_qs) * qs_curr(i, k, j))
            qni_tmp(i, k, j) = qni_curr(i, k, j)
-           qni_curr(i, k, j) = max (NI_MIN, (1.0 + perts_ni(i, k, j) * pert_thom_ni) * qni_curr(i, k, j))
+           qni_curr(i, k, j) = rp_max (NI_MIN, (1.0 + perts_ni(i, k, j) * pert_thom_ni) * qni_curr(i, k, j))
          end do
        end do
      end do
@@ -2845,11 +2846,11 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
      do j = jts, jte
        do k = kts, kte
          do i = its, ite
-           qv_curr(i, k, j) = max (QX_MIN, qv_curr(i, k, j) - perts_qvapor(i, k, j) * pert_thom_qv * qv_tmp(i, k, j))
-           qc_curr(i, k, j) = max (QX_MIN, qc_curr(i, k, j) - perts_qcloud(i, k, j) * pert_thom_qc * qc_tmp(i, k, j))
-           qi_curr(i, k, j) = max (QX_MIN, qi_curr(i, k, j) - perts_qice(i, k, j) * pert_thom_qi * qi_tmp(i, k, j))
-           qs_curr(i, k, j) = max (QX_MIN, qs_curr(i, k, j) - perts_qsnow(i, k, j) * pert_thom_qs * qs_tmp(i, k, j))
-           qni_curr(i, k, j) = max (NI_MIN, qni_curr(i, k, j) - perts_ni(i, k, j) * pert_thom_ni * qni_tmp(i, k, j))
+           qv_curr(i, k, j) = rp_max (QX_MIN, qv_curr(i, k, j) - perts_qvapor(i, k, j) * pert_thom_qv * qv_tmp(i, k, j))
+           qc_curr(i, k, j) = rp_max (QX_MIN, qc_curr(i, k, j) - perts_qcloud(i, k, j) * pert_thom_qc * qc_tmp(i, k, j))
+           qi_curr(i, k, j) = rp_max (QX_MIN, qi_curr(i, k, j) - perts_qice(i, k, j) * pert_thom_qi * qi_tmp(i, k, j))
+           qs_curr(i, k, j) = rp_max (QX_MIN, qs_curr(i, k, j) - perts_qsnow(i, k, j) * pert_thom_qs * qs_tmp(i, k, j))
+           qni_curr(i, k, j) = rp_max (NI_MIN, qni_curr(i, k, j) - perts_ni(i, k, j) * pert_thom_ni * qni_tmp(i, k, j))
          end do
        end do
      end do

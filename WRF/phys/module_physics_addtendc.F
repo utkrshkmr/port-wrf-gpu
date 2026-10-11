@@ -17,6 +17,7 @@
 
 
 MODULE module_physics_addtendc
+   USE module_repro_math
 
 #if ( EM_CORE == 1 )
 
@@ -2118,9 +2119,9 @@ SUBROUTINE advance_ppt(RTHCUTEN,RQVCUTEN,RQCCUTEN,RQRCUTEN,           &
 ! SET START AND END POINTS FOR TILES
 
    i_start = its
-   i_end   = min( ite,ide-1 )
+   i_end   = rp_min( ite,ide-1 )
    j_start = jts
-   j_end   = min( jte,jde-1 )
+   j_end   = rp_min( jte,jde-1 )
 !
 !  IF( config_flags%nested .or. config_flags%specified ) THEN
 !    i_start = max( its,ids+1 )
@@ -2130,7 +2131,7 @@ SUBROUTINE advance_ppt(RTHCUTEN,RQVCUTEN,RQCCUTEN,RQRCUTEN,           &
 !  ENDIF
 !
    k_start = kts
-   k_end = min( kte, kde-1 )
+   k_end = rp_min( kte, kde-1 )
 
 ! Update total cumulus scheme precipitation
 
@@ -2184,10 +2185,10 @@ SUBROUTINE advance_ppt(RTHCUTEN,RQVCUTEN,RQCCUTEN,RQRCUTEN,           &
            NCUTOP=NINT(CUTOP(I,J))
            NCUBOT=NINT(CUBOT(I,J))
            IF(NCUTOP>1.AND.NCUTOP<KDE)THEN
-             HTOP(I,J)=MAX(CUTOP(I,J),HTOP(I,J))
+             HTOP(I,J)=rp_max(CUTOP(I,J),HTOP(I,J))
            ENDIF
            IF(NCUBOT>0.AND.NCUBOT<KDE)THEN
-             HBOT(I,J)=MIN(CUBOT(I,J),HBOT(I,J))
+             HBOT(I,J)=rp_min(CUBOT(I,J),HBOT(I,J))
            ENDIF
 
         ENDDO
@@ -2202,10 +2203,10 @@ SUBROUTINE advance_ppt(RTHCUTEN,RQVCUTEN,RQCCUTEN,RQRCUTEN,           &
            NCUTOP=NINT(CUTOP(I,J))
            NCUBOT=NINT(CUBOT(I,J))
            IF(NCUTOP>1.AND.NCUTOP<KDE)THEN
-             HTOP(I,J)=MAX(CUTOP(I,J),HTOP(I,J))
+             HTOP(I,J)=rp_max(CUTOP(I,J),HTOP(I,J))
            ENDIF
            IF(NCUBOT>0.AND.NCUBOT<KDE)THEN
-             HBOT(I,J)=MIN(CUBOT(I,J),HBOT(I,J))
+             HBOT(I,J)=rp_min(CUBOT(I,J),HBOT(I,J))
            ENDIF
 
            IF ( NCA(I,J) .GT. 0 ) THEN
@@ -2304,21 +2305,21 @@ SUBROUTINE add_a2a(lvar,rvar,config_flags,                  &
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
 
    i_start = its
-   i_end   = MIN(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = MIN(jte,jde-1)
-   ktf = min(kte,kde-1)
+   j_end   = rp_min(jte,jde-1)
+   ktf = rp_min(kte,kde-1)
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-2,ite)
+        config_flags%nested) i_end   = rp_min(ide-2,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-2,jte)
+        config_flags%nested) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+      IF ( config_flags%periodic_x ) i_end = rp_min( ite, ide-1 )
 
    DO j = j_start,j_end
    DO k = kts,ktf
@@ -2352,20 +2353,20 @@ SUBROUTINE add_a2a_ph(lvar,rvar,config_flags,                  &
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end
 
    i_start = its
-   i_end   = MIN(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = MIN(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-2,ite)
+        config_flags%nested) i_end   = rp_min(ide-2,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-2,jte)
+        config_flags%nested) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+      IF ( config_flags%periodic_x ) i_end = rp_min( ite, ide-1 )
 
    DO j = j_start,j_end
    DO k = kts,kte
@@ -2402,21 +2403,21 @@ SUBROUTINE add_a2c_u(lvar,rvar,config_flags,                &
 
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
 
-   ktf=min(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
    i_start = its
    i_end   = ite
    j_start = jts
-   j_end   = MIN(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-1,ite)
+        config_flags%nested) i_end   = rp_min(ide-1,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-2,jte)
+        config_flags%nested) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -2456,23 +2457,23 @@ SUBROUTINE add_a2c_v(lvar,rvar,config_flags,                &
 
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
 
-   ktf=min(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
    i_start = its
-   i_end   = MIN(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
    j_end   = jte
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-2,ite)
+        config_flags%nested) i_end   = rp_min(ide-2,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-1,jte)
+        config_flags%nested) j_end   = rp_min(jde-1,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+      IF ( config_flags%periodic_x ) i_end = rp_min( ite, ide-1 )
 
    DO j = j_start,j_end
    DO k = kts,kte
@@ -2510,22 +2511,22 @@ SUBROUTINE add_c2c_u(lvar,rvar,config_flags,                &
 
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
 
-   ktf=min(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
    i_start = its
    i_end   = ite
    j_start = jts
-   j_end   = MIN(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-1,ite)
+        config_flags%nested) i_end   = rp_min(ide-1,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-2,jte)
+        config_flags%nested) j_end   = rp_min(jde-2,jte)
 
 !  write(*,'(a,6i4)') 'call c2cu, i_start, i_end, j_start, j_end=', i_start, i_end, j_start, j_end
 
@@ -2563,21 +2564,21 @@ SUBROUTINE add_c2c_v(lvar,rvar,config_flags,                &
 
    INTEGER :: i,j,k,i_start,i_end,j_start,j_end,ktf
 
-   ktf=min(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
    i_start = its
-   i_end   = MIN(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
    j_end   = jte
 
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%specified .or. &
-        config_flags%nested) i_end   = MIN(ide-2,ite)
+        config_flags%nested) i_end   = rp_min(ide-2,ite)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_start = MAX(jds+1,jts)
+        config_flags%nested) j_start = rp_max(jds+1,jts)
    IF ( config_flags%specified .or. &
-        config_flags%nested) j_end   = MIN(jde-1,jte)
+        config_flags%nested) j_end   = rp_min(jde-1,jte)
 
 !  write(*,'(a,6i4)') 'call c2cv, i_start, i_end, j_start, j_end=', i_start, i_end, j_start, j_end
 

@@ -262,9 +262,9 @@ BENCH_END(phy_prep_tim)
      &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde               &
      &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme               &
      &        ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe               &
-     &        ,i_start=grid%i_start,i_end=min(grid%i_end, ide-1)               &
-     &        ,j_start=grid%j_start,j_end=min(grid%j_end, jde-1)               &
-     &        ,kts=k_start, kte=min(k_end,kde-1)                               &
+     &        ,i_start=grid%i_start,i_end=rp_min(grid%i_end, ide-1)               &
+     &        ,j_start=grid%j_start,j_end=rp_min(grid%j_end, jde-1)               &
+     &        ,kts=k_start, kte=rp_min(k_end,kde-1)                               &
      &        ,num_tiles=grid%num_tiles                                        )
 #ifdef WRF_TRACE_FINE
      CALL bt_fine_p1('pre_radiation_driver', rk_step)
@@ -371,9 +371,9 @@ BENCH_START(rad_driver_tim)
             ! indexes
      &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde          &
      &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme          &
-     &        ,i_start=grid%i_start,i_end=min(grid%i_end, ide-1)          &
-     &        ,j_start=grid%j_start,j_end=min(grid%j_end, jde-1)          &
-     &        ,kts=k_start, kte=min(k_end,kde-1)                          &
+     &        ,i_start=grid%i_start,i_end=rp_min(grid%i_end, ide-1)          &
+     &        ,j_start=grid%j_start,j_end=rp_min(grid%j_end, jde-1)          &
+     &        ,kts=k_start, kte=rp_min(k_end,kde-1)                          &
      &        ,num_tiles=grid%num_tiles                                   &
             ! Optional
 !JJS 20101020 vvvvv
@@ -1017,9 +1017,9 @@ BENCH_START(surf_driver_tim)
      &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde          &
      &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme          &
      &        ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe          &
-     &        , I_START=grid%i_start,I_END=min(grid%i_end, ide-1)         &
-     &        , J_START=grid%j_start,J_END=min(grid%j_end, jde-1)         &
-     &        , KTS=k_start, KTE=min(k_end,kde-1)                         &
+     &        , I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)         &
+     &        , J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)         &
+     &        , KTS=k_start, KTE=rp_min(k_end,kde-1)                         &
      &        , NUM_TILES=grid%num_tiles                                  &
           ! Variables required by TEMF PBL - WA 1/7/09
               ,te_temf=grid%te_temf,hd_temf=grid%hd_temf                  &
@@ -1110,8 +1110,8 @@ BENCH_START(surf_driver_tim)
 
 #ifdef WRF_HYDRO
         if(HYDRO_dt .gt. 1 ) call wrf_drv_HYDRO(HYDRO_dt, grid,  &
-     &     grid%i_start(1),min(grid%i_end(1), ide-1),      &
-     &     grid%j_start(1),min(grid%j_end(1), jde-1) )
+     &     grid%i_start(1),rp_min(grid%i_end(1), ide-1),      &
+     &     grid%j_start(1),rp_min(grid%j_end(1), jde-1) )
 #endif
 
 BENCH_END(surf_driver_tim)
@@ -1192,9 +1192,9 @@ BENCH_START(pbl_driver_tim)
      &        ,EXCH_TKE=grid%exch_tke, RTHRATEN=grid%rthraten             &
      &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde          &
      &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme          &
-     &        ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)          &
-     &        ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)          &
-     &        ,KTS=k_start, KTE=min(k_end,kde-1)                          &
+     &        ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)          &
+     &        ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)          &
+     &        ,KTS=k_start, KTE=rp_min(k_end,kde-1)                          &
      &        ,NUM_TILES=grid%num_tiles                                   &
           ! Variables Required by ACM PBL  - jp
      &        ,ZNU=grid%znu,ZNW=grid%znw,MUT=grid%mut,P_TOP=grid%p_top    &
@@ -1517,9 +1517,9 @@ BENCH_START(cu_driver_tim)
      &             ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
      &             ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
      &             ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-     &             ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)     &
-     &             ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)     &
-     &             ,KTS=k_start, KTE=min(k_end,kde-1)                     &
+     &             ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)     &
+     &             ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)     &
+     &             ,KTS=k_start, KTE=rp_min(k_end,kde-1)                     &
      &             ,NUM_TILES=grid%num_tiles                              &
                  ! Moisture tendency arguments
      &             ,RQVCUTEN=grid%rqvcuten , RQCCUTEN=grid%rqccuten       &
@@ -1583,9 +1583,9 @@ BENCH_END(cu_driver_tim)
      &          config_flags%cu_physics,                                     &
      &          ids,ide, jds,jde, kds,kde,                                   &
      &          ims,ime, jms,jme, kms,kme                                    &
-     &          ,ITS=grid%i_start(ij),ITE=min(grid%i_end(ij), ide-1)                 &
-     &          ,JTS=grid%j_start(ij),JTE=min(grid%j_end(ij), jde-1)                 &
-     &          ,KTS=k_start, KTE=min(k_end,kde-1))
+     &          ,ITS=grid%i_start(ij),ITE=rp_min(grid%i_end(ij), ide-1)                 &
+     &          ,JTS=grid%j_start(ij),JTE=rp_min(grid%j_end(ij), jde-1)                 &
+     &          ,KTS=k_start, KTE=rp_min(k_end,kde-1))
       ENDDO
       !$OMP END PARALLEL DO
 #ifdef WRF_TRACE_FINE
@@ -1601,9 +1601,9 @@ BENCH_START(shcu_driver_tim)
      &              IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
      &             ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
      &             ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-     &             ,I_START=grid%i_start, I_END=min(grid%i_end, ide-1)    &
-     &             ,J_START=grid%j_start, J_END=min(grid%j_end, jde-1)    &
-     &             ,KTS=k_start, KTE=min(k_end, kde-1)                    &
+     &             ,I_START=grid%i_start, I_END=rp_min(grid%i_end, ide-1)    &
+     &             ,J_START=grid%j_start, J_END=rp_min(grid%j_end, jde-1)    &
+     &             ,KTS=k_start, KTE=rp_min(k_end, kde-1)                    &
      &             ,NUM_TILES=grid%num_tiles                              &
      &             ,U=grid%u_phy, V=grid%v_phy, TH=th_phy, T=t_phy        &
      &             ,P=grid%p_hyd, PI=pi_phy, RHO=grid%rho, MOIST=moist    &
@@ -1794,7 +1794,7 @@ BENCH_END(shcu_driver_tim)
      &             ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
      &             ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
      &             ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-     &             ,KTS=k_start, KTE=min(k_end,kde-1)                     &
+     &             ,KTS=k_start, KTE=rp_min(k_end,kde-1)                     &
      &              )
 
 #ifdef DM_PARALLEL
@@ -1837,9 +1837,9 @@ BENCH_START(fdda_driver_tim)
                   pblh=grid%pblh,ht=grid%ht,REGIME=grid%regime,ZNT=grid%znt         &
                    ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde               &
                    ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme               &
-                   ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)               &
-                   ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)               &
-                   ,KTS=k_start, KTE=min(k_end,kde-1)                               &
+                   ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)               &
+                   ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)               &
+                   ,KTS=k_start, KTE=rp_min(k_end,kde-1)                               &
                    , num_tiles=grid%num_tiles,                                      &
                    u10=grid%u10, v10=grid%v10, th2=grid%th2, q2=grid%q2,            &
                    u10_ndg_old=grid%u10_ndg_old,                    &

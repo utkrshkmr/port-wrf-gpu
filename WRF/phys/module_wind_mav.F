@@ -1207,6 +1207,7 @@ MODULE module_wind_mav
 !---------------------------------------------------------------
 
   function find_turb(xc, yc, xt, yt, u, v, sr_angle, sr_dis)  result(ft)
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan   ! isnan is not an NVHPC 26.5 intrinsic (GPU port)
   implicit none
   logical :: ft 
   real :: xc, yc, xt, yt, sr_angle, sr_dis, u, v
@@ -1232,7 +1233,7 @@ MODULE module_wind_mav
 
       angle = real(acos(tmp1/tmp2), kind = 4)
 
-      if (isnan(angle)) then
+      if (ieee_is_nan(angle)) then
          angle = 0.
       end if
  

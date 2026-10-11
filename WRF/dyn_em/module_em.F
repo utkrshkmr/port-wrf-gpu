@@ -3,6 +3,7 @@
 !
 
 MODULE module_em
+   USE module_repro_math
 
    USE module_model_constants
    
@@ -1200,7 +1201,7 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
 ! For scalars we need the final tendency to include an inverse msf (msfty)
 ! advection tendency is OK, physics/bc tendency needs to be divided by msf
 
-   DO j = jts,MIN(jte,jde-1)
+   DO j = jts,rp_min(jte,jde-1)
    DO k = kts,kte-1
    DO i = its,ite
      ! multiply by my to uncouple u
@@ -1213,7 +1214,7 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
 
    DO j = jts,jte
    DO k = kts,kte-1
-   DO i = its,MIN(ite,ide-1)
+   DO i = its,rp_min(ite,ide-1)
      ! multiply by mx to uncouple v
      IF(rk_step == 1)rv_tendf(i,k,j) = rv_tendf(i,k,j) +  v_save(i,k,j)*msfvx(i,j)
      ! divide by mx to couple v
@@ -1222,9 +1223,9 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
    ENDDO
    ENDDO
 
-   DO j = jts,MIN(jte,jde-1)
+   DO j = jts,rp_min(jte,jde-1)
    DO k = kts,kte
-   DO i = its,MIN(ite,ide-1)
+   DO i = its,rp_min(ite,ide-1)
      ! multiply by my to uncouple w
      IF(rk_step == 1)rw_tendf(i,k,j) = rw_tendf(i,k,j) +  w_save(i,k,j)*msfty(i,j)
      ! divide by my to couple w
@@ -1236,9 +1237,9 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
    ENDDO
    ENDDO
 
-   DO j = jts,MIN(jte,jde-1)
+   DO j = jts,rp_min(jte,jde-1)
    DO k = kts,kte-1
-   DO i = its,MIN(ite,ide-1)
+   DO i = its,rp_min(ite,ide-1)
      IF(rk_step == 1)t_tendf(i,k,j) = t_tendf(i,k,j) +  t_save(i,k,j)
      ! divide by my to couple theta
       t_tend(i,k,j) =  t_tend(i,k,j) +  t_tendf(i,k,j)/msfty(i,j)  &
@@ -1248,8 +1249,8 @@ SUBROUTINE rk_addtend_dry ( ru_tend, rv_tend, rw_tend, ph_tend, t_tend,      &
    ENDDO
    ENDDO
 
-   DO j = jts,MIN(jte,jde-1)
-   DO i = its,MIN(ite,ide-1)
+   DO j = jts,rp_min(jte,jde-1)
+   DO i = its,rp_min(ite,ide-1)
 ! mu tendencies not coupled with 1/msf
       MU_TEND(i,j) =  MU_TEND(i,j) +  MU_TENDF(i,j)
    ENDDO
@@ -1656,9 +1657,9 @@ SUBROUTINE q_diabatic_add ( scs, sce,                        &
 
      IF( im.eq.p_qv )THEN
 !!!       print *,'  qv '
-       DO j = jts,MIN(jte,jde-1)
+       DO j = jts,rp_min(jte,jde-1)
        DO k = kts,kte-1
-       DO i = its,MIN(ite,ide-1)
+       DO i = its,rp_min(ite,ide-1)
          scalar_tends(i,k,j,im) = scalar_tends(i,k,j,im) + qv_diabatic(i,k,j)*(c1(k)*mut(I,J)+c2(k))
        ENDDO
        ENDDO
@@ -1666,9 +1667,9 @@ SUBROUTINE q_diabatic_add ( scs, sce,                        &
      ENDIF
      IF( im.eq.p_qc )THEN
 !!!       print *,'  qc '
-       DO j = jts,MIN(jte,jde-1)
+       DO j = jts,rp_min(jte,jde-1)
        DO k = kts,kte-1
-       DO i = its,MIN(ite,ide-1)
+       DO i = its,rp_min(ite,ide-1)
          scalar_tends(i,k,j,im) = scalar_tends(i,k,j,im) + qc_diabatic(i,k,j)*(c1(k)*mut(I,J)+c2(k))
        ENDDO
        ENDDO
@@ -1724,9 +1725,9 @@ SUBROUTINE q_diabatic_subtr( scs, sce,                       &
 
      IF( im.eq.p_qv )THEN
 !!!       print *,'  qv '
-       DO j = jts,MIN(jte,jde-1)
+       DO j = jts,rp_min(jte,jde-1)
        DO k = kts,kte-1
-       DO i = its,MIN(ite,ide-1)
+       DO i = its,rp_min(ite,ide-1)
          scalar(i,k,j,im) = scalar(i,k,j,im) - dt*qv_diabatic(i,k,j)
        ENDDO
        ENDDO
@@ -1734,9 +1735,9 @@ SUBROUTINE q_diabatic_subtr( scs, sce,                       &
      ENDIF
      IF( im.eq.p_qc )THEN
 !!!       print *,'  qc '
-       DO j = jts,MIN(jte,jde-1)
+       DO j = jts,rp_min(jte,jde-1)
        DO k = kts,kte-1
-       DO i = its,MIN(ite,ide-1)
+       DO i = its,rp_min(ite,ide-1)
          scalar(i,k,j,im) = scalar(i,k,j,im) - dt*qc_diabatic(i,k,j)
        ENDDO
        ENDDO
@@ -1821,9 +1822,9 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
 !  set loop limits.
 
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
 
@@ -1835,12 +1836,12 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
       k_end_spc   = k_end
 
     IF( config_flags%nested .or. config_flags%specified ) THEN
-      IF( .NOT. config_flags%periodic_x)i_start = max( its,ids+spec_zone )
-      IF( .NOT. config_flags%periodic_x)i_end   = min( ite,ide-spec_zone-1 )
-      j_start = max( jts,jds+spec_zone )
-      j_end   = min( jte,jde-spec_zone-1 )
+      IF( .NOT. config_flags%periodic_x)i_start = rp_max( its,ids+spec_zone )
+      IF( .NOT. config_flags%periodic_x)i_end   = rp_min( ite,ide-spec_zone-1 )
+      j_start = rp_max( jts,jds+spec_zone )
+      j_end   = rp_min( jte,jde-spec_zone-1 )
       k_start = kts
-      k_end   = min( kte, kde-1 )
+      k_end   = rp_min( kte, kde-1 )
     ENDIF
 
     IF ( rk_step == 1 ) THEN
@@ -1850,9 +1851,9 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
 
       DO  im = scs,sce
 
-       DO  j = jts, min(jte,jde-1)
-       DO  k = kts, min(kte,kde-1)
-       DO  i = its, min(ite,ide-1)
+       DO  j = jts, rp_min(jte,jde-1)
+       DO  k = kts, rp_min(kte,kde-1)
+       DO  i = its, rp_min(ite,ide-1)
            tendency(i,k,j) = 0.
        ENDDO
        ENDDO
@@ -1875,15 +1876,15 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
        ENDDO
        ENDDO
    
-      DO  j = jts, min(jte,jde-1)
+      DO  j = jts, rp_min(jte,jde-1)
 
-      DO  i = its, min(ite,ide-1)
+      DO  i = its, rp_min(ite,ide-1)
         MUOLD(i) = MU_OLD(i,j) + MU_BASE(i,j)
         MUNEW(i) = MU_NEW(i,j) + MU_BASE(i,j)
       ENDDO
 
-      DO  k = kts, min(kte,kde-1)
-      DO  i = its, min(ite,ide-1)
+      DO  k = kts, rp_min(kte,kde-1)
+      DO  i = its, rp_min(ite,ide-1)
 
         scalar_1(i,k,j,im) = scalar_2(i,k,j,im)
         scalar_2(i,k,j,im) = ((c1(k)*muold(i)+c2(k))*scalar_1(i,k,j,im)   &
@@ -1901,9 +1902,9 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
 
       DO  im = scs, sce
 
-       DO  j = jts, min(jte,jde-1)
-       DO  k = kts, min(kte,kde-1)
-       DO  i = its, min(ite,ide-1)
+       DO  j = jts, rp_min(jte,jde-1)
+       DO  k = kts, rp_min(kte,kde-1)
+       DO  i = its, rp_min(ite,ide-1)
            tendency(i,k,j) = 0.
        ENDDO
        ENDDO
@@ -1926,15 +1927,15 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
        ENDDO
        ENDDO
 
-      DO  j = jts, min(jte,jde-1)
+      DO  j = jts, rp_min(jte,jde-1)
 
-      DO  i = its, min(ite,ide-1)
+      DO  i = its, rp_min(ite,ide-1)
         MUOLD(i) = MU_OLD(i,j) + MU_BASE(i,j)
         MUNEW(i) = MU_NEW(i,j) + MU_BASE(i,j)
       ENDDO
 
-      DO  k = kts, min(kte,kde-1)
-      DO  i = its, min(ite,ide-1)
+      DO  k = kts, rp_min(kte,kde-1)
+      DO  i = its, rp_min(ite,ide-1)
 
         scalar_2(i,k,j,im) = ((c1(k)*muold(i)+c2(k))*scalar_1(i,k,j,im)   &
                              + dt*tendency(i,k,j))/(c1(k)*munew(i)+c2(k))
@@ -1945,8 +1946,8 @@ SUBROUTINE rk_update_scalar( scs, sce,                      &
       ! This is separated from the k/i-loop above for better performance
       IF ( PRESENT(advh_t) .AND. PRESENT(advz_t) ) THEN
         IF(tenddec.and.rk_step.eq.config_flags%rk_ord) THEN
-          DO  k = kts, min(kte,kde-1)
-          DO  i = its, min(ite,ide-1)
+          DO  k = kts, rp_min(kte,kde-1)
+          DO  i = its, rp_min(ite,ide-1)
 
             advh_t(i,k,j) = advh_t(i,k,j) + (dt*h_tendency(i,k,j)* msfty(i,j))/(c1(k)*munew(i)+c2(k))
             advz_t(i,k,j) = advz_t(i,k,j) + (dt*z_tendency(i,k,j)* msfty(i,j))/(c1(k)*munew(i)+c2(k))
@@ -2020,9 +2021,9 @@ SUBROUTINE rk_update_scalar_pd( scs, sce,                      &
 !  set loop limits.
 
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
 
@@ -2034,19 +2035,19 @@ SUBROUTINE rk_update_scalar_pd( scs, sce,                      &
       k_end_spc   = k_end
 
     IF( config_flags%nested .or. config_flags%specified ) THEN
-      IF( .NOT. config_flags%periodic_x)i_start = max( its,ids+spec_zone )
-      IF( .NOT. config_flags%periodic_x)i_end   = min( ite,ide-spec_zone-1 )
-      j_start = max( jts,jds+spec_zone )
-      j_end   = min( jte,jde-spec_zone-1 )
+      IF( .NOT. config_flags%periodic_x)i_start = rp_max( its,ids+spec_zone )
+      IF( .NOT. config_flags%periodic_x)i_end   = rp_min( ite,ide-spec_zone-1 )
+      j_start = rp_max( jts,jds+spec_zone )
+      j_end   = rp_min( jte,jde-spec_zone-1 )
       k_start = kts
-      k_end   = min( kte, kde-1 )
+      k_end   = rp_min( kte, kde-1 )
     ENDIF
 
       DO  im = scs, sce
 
-       DO  j = jts, min(jte,jde-1)
-       DO  k = kts, min(kte,kde-1)
-       DO  i = its, min(ite,ide-1)
+       DO  j = jts, rp_min(jte,jde-1)
+       DO  k = kts, rp_min(kte,kde-1)
+       DO  i = its, rp_min(ite,ide-1)
            tendency(i,k,j) = 0.
        ENDDO
        ENDDO
@@ -2061,15 +2062,15 @@ SUBROUTINE rk_update_scalar_pd( scs, sce,                      &
        ENDDO
        ENDDO
 
-      DO  j = jts, min(jte,jde-1)
+      DO  j = jts, rp_min(jte,jde-1)
 
-      DO  i = its, min(ite,ide-1)
+      DO  i = its, rp_min(ite,ide-1)
         MUOLD(i) = MU_OLD(i,j) + MU_BASE(i,j)
         MUNEW(i) = MU_NEW(i,j) + MU_BASE(i,j)
       ENDDO
 
-      DO  k = kts, min(kte,kde-1)
-      DO  i = its, min(ite,ide-1)
+      DO  k = kts, rp_min(kte,kde-1)
+      DO  i = its, rp_min(ite,ide-1)
 
         scalar(i,k,j,im) = ((c1(k)*muold(i)+c2(k))*scalar(i,k,j,im)   &
                              + dt*tendency(i,k,j))/(c1(k)*munew(i)+c2(k))
@@ -2349,11 +2350,11 @@ SUBROUTINE calculate_phy_tend (config_flags,c1,c2,                     &
 !
 !</DESCRIPTION>
 
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
-      ktf=MIN(kte,kde-1)
-      itsu=MAX(its,ids+1)
-      jtsv=MAX(jts,jds+1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
+      ktf=rp_min(kte,kde-1)
+      itsu=rp_max(its,ids+1)
+      jtsv=rp_max(jts,jds+1)
 
 ! radiation
 
@@ -2640,11 +2641,11 @@ SUBROUTINE positive_definite_filter ( a,                          &
 !
 !</DESCRIPTION>
 
-  DO j=jts,min(jte,jde-1)
+  DO j=jts,rp_min(jte,jde-1)
   DO k=kts,kte-1
-  DO i=its,min(ite,ide-1)
+  DO i=its,rp_min(ite,ide-1)
 !    a(i,k,j) = max(a(i,k,j),0.)
-    a(i,k,j) = min(1000.,max(a(i,k,j),0.))
+    a(i,k,j) = rp_min(1000.,rp_max(a(i,k,j),0.))
   ENDDO
   ENDDO
   ENDDO
@@ -2675,10 +2676,10 @@ SUBROUTINE bound_tke ( tke, tke_upper_bound,       &
 !
 !</DESCRIPTION>
 
-  DO j=jts,min(jte,jde-1)
+  DO j=jts,rp_min(jte,jde-1)
   DO k=kts,kte-1
-  DO i=its,min(ite,ide-1)
-    tke(i,k,j) = min(tke_upper_bound,max(tke(i,k,j),0.))
+  DO i=its,rp_min(ite,ide-1)
+    tke(i,k,j) = rp_min(tke_upper_bound,rp_max(tke(i,k,j),0.))
   ENDDO
   ENDDO
   ENDDO
@@ -2708,10 +2709,10 @@ SUBROUTINE bound_qna ( qna,                        &
 !
 !</DESCRIPTION>
 
-  DO j=jts,min(jte,jde-1)
+  DO j=jts,rp_min(jte,jde-1)
   DO k=kts,kte-1
-  DO i=its,min(ite,ide-1)
-    qna(i,k,j) = max(qna(i,k,j),0.)
+  DO i=its,rp_min(ite,ide-1)
+    qna(i,k,j) = rp_max(qna(i,k,j),0.)
   ENDDO
   ENDDO
   ENDDO
@@ -2822,9 +2823,9 @@ subroutine trajectory (     grid,config_flags,               &
    write(dbg_mes,'(''trajectory('',i2.2,''): Entering trajectory'')') dm
    call wrf_debug(200,trim(dbg_mes) )
 
-   i_beg = max( 1,its-1 )
-   i_end = min( ite+2,ide-1 )
-   do j=max(1,jts-1),min(jte+2,jde-1)
+   i_beg = rp_max( 1,its-1 )
+   i_end = rp_min( ite+2,ide-1 )
+   do j=rp_max(1,jts-1),rp_min(jte+2,jde-1)
      do k=kms,kme-1
        u(its:i_end,k,j)=ru_m(its:i_end,k,j)/(c1h(k)*MUU(its:i_end,j)+c2h(k))*msfu(its:i_end,j)
        v(its:i_end,k,j)=rv_m(its:i_end,k,j)/(c1h(k)*MUV(its:i_end,j)+c2h(k))*msfv(its:i_end,j)

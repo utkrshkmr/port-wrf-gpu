@@ -231,7 +231,7 @@ contains
                   WRITE_MESSAGE(".... Try namelist option SEAICE_THICKNESS_OPT=0.")
                   FATAL_ERROR("SEAICE_THICKNESS_OPT")
               ENDIF
-              SITHICK = MIN ( MAX ( 0.10 , ICEDEPTH(I,J) ) , 10.0 )
+              SITHICK = rp_min ( rp_max ( 0.10 , ICEDEPTH(I,J) ) , 10.0 )
               ICEDEPTH(I,J) = SITHICK
           END SELECT
 
@@ -298,7 +298,7 @@ contains
               ! minimum and maximum values.  No matter what anybody else says about snow 
               ! accumulation and melt, we want the snow depth on sea ice to be specified
               ! as SNOWSI (bounded by SEAICE_SNOWDEPTH_MIN and SEAICE_SNOWDEPTH_MAX).
-              SNOWONSI = MAX ( SEAICE_SNOWDEPTH_MIN , MIN ( SNOWSI(I,J) , SEAICE_SNOWDEPTH_MAX ) )
+              SNOWONSI = rp_max ( SEAICE_SNOWDEPTH_MIN , rp_min ( SNOWSI(I,J) , SEAICE_SNOWDEPTH_MAX ) )
               SNEQV = SNOWONSI * 0.3
               SNOWH2D(I,J) = SNOWONSI
 
@@ -478,7 +478,7 @@ contains
           !
           NOAHRES(I,J) = ( SOLNET + LWDN ) &
                &         - SHEAT + SSOIL - ETA &
-               &         - ( EMISSI * STBOLT * (T1**4) ) &
+               &         - ( EMISSI * STBOLT * (rp_pow(T1, 4)) ) &
                &         - FLX1 - FLX2 - FLX3
 #if defined(wrfmodel)
 #if (NMM_CORE != 1)

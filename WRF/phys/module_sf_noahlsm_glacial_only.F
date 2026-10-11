@@ -508,7 +508,7 @@ CONTAINS
 !               ENDIF
     ENDIF
 
-    SNOALB2 = MAX ( SNOALB2, ALB )
+    SNOALB2 = rp_max ( SNOALB2, ALB )
     ALBEDO = ALB + (SNOALB2-ALB)
     IF (ALBEDO .GT. SNOALB2) ALBEDO=SNOALB2
 
@@ -916,7 +916,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
     IF (ETP <= 0.0) THEN
        IF ( ( RIBB >= 0.1 ) .AND. ( FDOWN > 150.0 ) ) THEN
-          ETP=(MIN(ETP*(1.0-RIBB),0.)/0.980 + ETP*(0.980-1.0))/0.980
+          ETP=(rp_min(ETP*(1.0-RIBB),0.)/0.980 + ETP*(0.980-1.0))/0.980
        ENDIF
        ETP1 = ETP * 0.001
        DEW = -ETP1
@@ -974,7 +974,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
        T1 = T12
        SSOIL = DF1 * (T1- STC (1)) / DTOT
-       SNEQV = MAX(0.0, SNEQV-ESNOW2)
+       SNEQV = rp_max(0.0, SNEQV-ESNOW2)
        FLX3 = 0.0
        EX = 0.0
        SNOMLT = 0.0
@@ -1267,7 +1267,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
     HNEWC = NEWSNC / DSNEW
     IF ( SNOWHC + HNEWC < 1.0E-3 ) THEN
-       SNDENS = MAX ( DSNEW , SNDENS )
+       SNDENS = rp_max ( DSNEW , SNDENS )
     ELSE
        SNDENS = ( SNOWHC * SNDENS + HNEWC * DSNEW ) / ( SNOWHC + HNEWC )
     ENDIF

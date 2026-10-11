@@ -515,7 +515,7 @@ SUBROUTINE compute_eta ( znw , &
 
       DO k = 1, prac_levels-1
         pb = znu_prac(k)*(p_surf - p_top) + p_top
-        temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+        temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
         IF ( pb .LT. p_strat ) THEN
           temp = tiso + A_strat*rp_log(pb/p_strat)
         END IF
@@ -571,7 +571,7 @@ SUBROUTINE compute_eta ( znw , &
 
         pb = 0.5*(eta_levels(k)+znw_prac(kk)) * (p_surf - p_top) + p_top
 
-        temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+        temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
         IF ( pb .LT. p_strat ) THEN
           temp = tiso + A_strat * rp_log ( pb/p_strat )
         END IF
@@ -581,7 +581,7 @@ SUBROUTINE compute_eta ( znw , &
         eta_levels(k+1) = eta_levels(k) - dz*g / ( mub*alb(k) )
         pb = 0.5*(eta_levels(k)+eta_levels(k+1)) * (p_surf - p_top) + p_top
 
-        temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+        temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
         IF ( pb .LT. p_strat ) THEN
           temp = tiso + A_strat * rp_log ( pb/p_strat )
         END IF
@@ -614,7 +614,7 @@ SUBROUTINE compute_eta ( znw , &
         DO loop = 1 , 10
           DO k = 8, kte-1-2-1
             pb = (znw(k)+znw(k+1))*0.5 * (p_surf - p_top) + p_top
-            temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+            temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
             IF ( pb .LT. p_strat ) THEN
               temp = tiso + A_strat * rp_log ( pb/p_strat )
             END IF
@@ -636,7 +636,7 @@ SUBROUTINE compute_eta ( znw , &
 
         DO k = 1, kde-1-2
           pb = (znw(k)+znw(k+1))*0.5 * (p_surf - p_top) + p_top
-          temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+          temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
           IF ( pb .LT. p_strat ) THEN
             temp = tiso + A_strat * rp_log ( pb/p_strat )
           END IF
@@ -690,7 +690,7 @@ SUBROUTINE compute_eta ( znw , &
 
       DO k = 8, kte-1
         pb = (znw(k)+znw(k+1))*0.5 * (p_surf - p_top) + p_top
-        temp = MAX ( tiso, t00 + A*rp_log(pb/p00) )
+        temp = rp_max ( tiso, t00 + A*rp_log(pb/p00) )
         IF ( pb .LT. p_strat ) THEN
           temp = tiso + A_strat * rp_log ( pb/p_strat )
         END IF
@@ -714,6 +714,7 @@ SUBROUTINE blend_terrain ( ter_interpolated , ter_input , &
                            ids , ide , jds , jde , kds , kde , &
                            ims , ime , jms , jme , kms , kme , &
                            ips , ipe , jps , jpe , kps , kpe )
+   USE module_repro_math
 
    USE module_configure
    IMPLICIT NONE
@@ -740,9 +741,9 @@ SUBROUTINE blend_terrain ( ter_interpolated , ter_input , &
    !  Initialize temp values to the nest ter elevation.  This fills in the values
    !  that will not be modified below.
 
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             ter_temp(i,k,j) = ter_input(i,k,j)
          END DO
       END DO
@@ -754,9 +755,9 @@ SUBROUTINE blend_terrain ( ter_interpolated , ter_input , &
    !  domain, this is only a patch; for a small domain, this is not a biggy.
 
    r_blend_zones = 1./(blend_width+1)
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             DO blend_cell = blend_width,1,-1
                IF   ( ( i .EQ.       spec_bdy_width + blend_cell ) .OR.  ( j .EQ.       spec_bdy_width + blend_cell ) .OR. &
                       ( i .EQ. ide - spec_bdy_width - blend_cell ) .OR.  ( j .EQ. jde - spec_bdy_width - blend_cell ) ) THEN
@@ -775,9 +776,9 @@ SUBROUTINE blend_terrain ( ter_interpolated , ter_input , &
    !  Set nest elevation with temp values.  All values not overwritten in the above
    !  loops have been previously set in the initial assignment.
 
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             ter_input(i,k,j) = ter_temp(i,k,j)
          END DO
       END DO
@@ -789,6 +790,7 @@ SUBROUTINE copy_3d_field ( ter_interpolated , ter_input , &
                            ids , ide , jds , jde , kds , kde , &
                            ims , ime , jms , jme , kms , kme , &
                            ips , ipe , jps , jpe , kps , kpe )
+   USE module_repro_math
 
    IMPLICIT NONE
 
@@ -800,9 +802,9 @@ SUBROUTINE copy_3d_field ( ter_interpolated , ter_input , &
 
    INTEGER :: i , j , k
 
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             ter_interpolated(i,k,j) = ter_input(i,k,j)
          END DO
       END DO
@@ -847,9 +849,9 @@ SUBROUTINE adjust_tempqv ( mub, save_mub, c3, c4, znw, p_top, &
 
 ! p_old = full pressure before terrain blending; also compute initial RH
 ! which is going to be conserved during terrain blending
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe-1
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             p_old(i,k,j) = c4(k) +         c3(k)*save_mub(i,j) + p_top + pp(i,k,j)
             IF ( use_theta_m .EQ. 1 ) THEN
                tc = (th(i,k,j)+300.)*rp_pow((p_old(i,k,j)/1.e5), (2./7.))/(1.+R_v/R_d*qv(i,k,j)) - 273.15
@@ -863,9 +865,9 @@ SUBROUTINE adjust_tempqv ( mub, save_mub, c3, c4, znw, p_top, &
       END DO
    END DO
 ! p_new = full pressure after terrain blending; also compute temperature correction and convert RH back to QV
-   DO j = jps , MIN(jpe, jde-1)
+   DO j = jps , rp_min(jpe, jde-1)
       DO k = kps , kpe-1
-         DO i = ips , MIN(ipe, ide-1)
+         DO i = ips , rp_min(ipe, ide-1)
             p_new(i,k,j) = c4(k) +         c3(k)*mub(i,j) + p_top + pp(i,k,j)
 ! 2*(g/cp-6.5e-3)*R_dry/g = -191.86e-3
             IF ( use_theta_m .EQ. 1 ) THEN
@@ -1077,11 +1079,11 @@ SUBROUTINE compute_vcoord_1d_coeffs ( ht, etac, znw, &
          c3f(k) = znw(k)
       ELSE IF ( hybrid_opt .EQ. 2 ) THEN
          B1 = 2. * etac**2 * ( 1. - etac )
-         B2 = -etac * ( 4. - 3. * etac - etac**3 )
-         B3 = 2. * ( 1. - etac**3 )
+         B2 = -etac * ( 4. - 3. * etac - rp_pow(etac, 3) )
+         B3 = 2. * ( 1. - rp_pow(etac, 3) )
          B4 = - ( 1. - etac**2 )
-         B5 = (1.-etac)**4
-         c3f(k) = ( B1 + B2*znw(k) + B3*znw(k)**2 + B4*znw(k)**3 ) / B5
+         B5 = rp_pow((1.-etac), 4)
+         c3f(k) = ( B1 + B2*znw(k) + B3*znw(k)**2 + B4*rp_pow(znw(k), 3) ) / B5
          IF ( znw(k) .LT. etac ) THEN
             c3f(k) = 0.
          END IF
@@ -1162,8 +1164,8 @@ SUBROUTINE compute_vcoord_1d_coeffs ( ht, etac, znw, &
    !  decreasing reference pressure.
    !  P_dry_ref(k)  = c3f(k) * ( psurf - p_top ) + c4f(k) + p_top
 
-   DO j = jts, MIN(jde-1,jte)
-      DO i = its, MIN(ide-1,ite)
+   DO j = jts, rp_min(jde-1,jte)
+      DO i = its, rp_min(ide-1,ite)
          p_surf = p00 * rp_exp ( -t00/a + rp_pow(( (t00/a)**2 - 2.*g*ht(i,j)/a/r_d ), 0.5) )
          DO k=1, kde-1
             press_above = c3f(k+1)*(p_surf-p_top) + c4f(k+1) + p_top

@@ -268,7 +268,7 @@ CONTAINS
           !
 
           SNDENS = SNEQV / SNOWH
-          SNOWH = MAX ( SEAICE_SNOWDEPTH_MIN , MIN ( SNOWH , SEAICE_SNOWDEPTH_MAX ) )
+          SNOWH = rp_max ( SEAICE_SNOWDEPTH_MIN , rp_min ( SNOWH , SEAICE_SNOWDEPTH_MAX ) )
           SNEQV = SNOWH * SNDENS 
 
       ELSEIF ( SEAICE_SNOWDEPTH_OPT == 1 ) THEN
@@ -487,7 +487,7 @@ CONTAINS
           ! Set bounds on snow depth, maintaining snow density.
           !
           SNDENS = SNEQV / SNOWH
-          SNOWH = MAX ( SEAICE_SNOWDEPTH_MIN , MIN ( SNOWH , SEAICE_SNOWDEPTH_MAX ) )
+          SNOWH = rp_max ( SEAICE_SNOWDEPTH_MIN , rp_min ( SNOWH , SEAICE_SNOWDEPTH_MAX ) )
           SNEQV = SNOWH * SNDENS 
 
       ELSEIF ( SEAICE_SNOWDEPTH_OPT == 1 ) THEN
@@ -876,7 +876,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
     IF (ETP <= 0.0) THEN
        IF ( ( RIBB >= 0.1 ) .AND. ( FDOWN > 150.0 ) ) THEN
-          ETP=(MIN(ETP*(1.0-RIBB),0.)*SNCOVR/0.980 + ETP*(0.980-SNCOVR))/0.980
+          ETP=(rp_min(ETP*(1.0-RIBB),0.)*SNCOVR/0.980 + ETP*(0.980-SNCOVR))/0.980
        ENDIF
        ETP1 = ETP * 0.001
        DEW = -ETP1
@@ -943,7 +943,7 @@ CONTAINS
        T1 = T12
        SSOIL = DF1 * (T1- STC (1)) / DTOT
 !        ESD = MAX (0.0, ESD- ETP2)
-       ESD = MAX(0.0, ESD-ESNOW2)
+       ESD = rp_max(0.0, ESD-ESNOW2)
        FLX3 = 0.0
        EX = 0.0
 
@@ -1278,7 +1278,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
       HNEWC = NEWSNC / DSNEW
       IF (SNOWHC + HNEWC .LT. 1.0E-3) THEN
-         SNDENS = MAX(DSNEW,SNDENS)
+         SNDENS = rp_max(DSNEW,SNDENS)
       ELSE
          SNDENS = (SNOWHC * SNDENS + HNEWC * DSNEW)/ (SNOWHC + HNEWC)
       ENDIF

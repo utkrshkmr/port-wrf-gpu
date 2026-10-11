@@ -63,8 +63,8 @@ intrinsic epsilon
 integer:: i,j
 real lfn_init,time_init
 
-lfn_init = 2*max((ifde-ifds+1)*fdx,(jfde-jfds+1)*fdy)      ! more than domain diameter
-time_init=time_now + max(time_now,1.0)*epsilon(time_now) ! a bit in future
+lfn_init = 2*rp_max((ifde-ifds+1)*fdx,(jfde-jfds+1)*fdy)      ! more than domain diameter
+time_init=time_now + rp_max(time_now,1.0)*epsilon(time_now) ! a bit in future
  
 do j=jfts,jfte
     do i=ifts,ifte
@@ -145,7 +145,7 @@ radius     = ignition_line%radius  ! all within this radius ignites immediately
 ros        = ignition_line%ros     ! rate of spread
 tos        = radius/ros            ! time of spread to the given radius
 st         = start_time            ! the start time of ignition considered in this time step
-et         = min(end_ts,end_time)  ! the end time of the ignition segment in this time step
+et         = rp_min(end_ts,end_time)  ! the end time of the ignition segment in this time step
 
 ! this should be called whenever (start_ts, end_ts) \subset (start_time, end_time + tos) 
 if(start_ts>et+tos .or. end_ts<st)return   ! too late or too early, nothing to do
@@ -200,10 +200,10 @@ do j=jfts,jfte
         ! get d= distance from the nearest point on the ignition segment
         ! and time_ign = the ignition time there
         call nearest(d,time_ign,ax,ay,sx,sy,st,ex,ey,et,cx2,cy2)
-        dmax=max(d,dmax)
-        dmin=min(d,dmin)
+        dmax=rp_max(d,dmax)
+        dmin=rp_min(d,dmin)
 
-        lfn_new=d - min( radius, ros*(end_ts - time_ign) )  ! lft at end_ts
+        lfn_new=d - rp_min( radius, ros*(end_ts - time_ign) )  ! lft at end_ts
         if(fire_print_msg.ge.3)then
 !$OMP CRITICAL(FIRE_CORE_CRIT)
             write(msg,*)'IGN1 i,j=',i,j,' lfn(i,j)=',lfn(i,j),' tign(i,j)=',tign(i,j)
@@ -232,10 +232,10 @@ do j=jfts,jfte
                 ' fixing ignition time ',tign(i,j),' outside of the time step [',start_ts,end_ts,']'
                 call message (msg)
 !$OMP END CRITICAL(FIRE_CORE_CRIT)
-                tign(i,j) = min(max(tign(i,j),start_ts),end_ts)
+                tign(i,j) = rp_min(rp_max(tign(i,j),start_ts),end_ts)
             endif
         endif
-        lfn(i,j)=min(lfn(i,j),lfn_new)  ! update the level set function
+        lfn(i,j)=rp_min(lfn(i,j),lfn_new)  ! update the level set function
         if(fire_print_msg.ge.3)then
 !$OMP CRITICAL(FIRE_CORE_CRIT)
             write(msg,*)'IGN3 i,j=',i,j,' lfn(i,j)=',lfn(i,j),' tign(i,j)=',tign(i,j)
@@ -570,7 +570,7 @@ do j=jts,jte
            endif
        else
            frat=(1-fuel_frac(i,j))/fire_area(i,j)
-           fmax=max(fmax,frat)
+           fmax=rp_max(fmax,frat)
        endif
     enddo
 enddo
@@ -699,10 +699,10 @@ if(lfn11>0. .or. t11>0.)t11=0.
 ! approximate burning area, between 0 and 1   
 ps = lfn00+lfn01+lfn10+lfn11   
 aps = abs(lfn00)+abs(lfn01)+abs(lfn10)+abs(lfn11)
-aps=max(aps,safe)
+aps=rp_max(aps,safe)
 area =(-ps/aps+1.)/2.
-area = max(area,0.) ! make sure area is between 0 and 1
-area = min(area,1.)
+area = rp_max(area,0.) ! make sure area is between 0 and 1
+area = rp_min(area,1.)
     
 ! average negative time since ignition
 ta=0.25*(t00+t01+t10+t11)
@@ -1029,7 +1029,7 @@ else
             if ( kk .ne. ll ) then
                 dist = sqrt( (xylist(kk,1)-xylist(ll,1))**2+ &
                              (xylist(kk,2)-xylist(ll,2))**2 )                   
-                mB(kk,kk)=min( mB(kk,kk) , dist )
+                mB(kk,kk)=rp_min( mB(kk,kk) , dist )
             end if              
         end do !ll
         mB(kk,kk)=mB(kk,kk)+1.
@@ -1138,8 +1138,8 @@ else
             ! coefficient at ae^2 in the expansion, after some algebra            
             a2=(xt1-xt2)*((1./4.)*(xt1+xt2)*ceae**2+(1./3.)* &
                (xt1**2+xt1*xt2+xt2**2)*ceae+(1./8.)* &
-               (xt1**3+xt1*(xt2**2)+xt1**2*xt2+xt2**3))               
-            d=(ae**4)*a2
+               (rp_pow(xt1, 3)+xt1*(xt2**2)+xt1**2*xt2+rp_pow(xt2, 3)))               
+            d=(rp_pow(ae, 4))*a2
             
             if (abs(d)>eps) then
             ! since ae*xt1+ce<=0 ae*xt2+ce<=0 all fine for large ae
@@ -1192,7 +1192,7 @@ intrinsic epsilon
 real, parameter:: zero=0.,one=1.,eps=epsilon(zero)
 
 !eps = 2.2204*(10.0**(-8))!from matlab
-if ( eps < abs(ab)**3/6. ) then
+if ( eps < rp_pow(abs(ab), 3)/6. ) then
     intexp=(rp_exp(ab)-1)/ab
   else
     intexp=1+ab/2.
@@ -1487,10 +1487,10 @@ call message(msg)
 
 ! CFL check
 
-    tbound=min(tbound,tbound2,tbound3)
+    tbound=rp_min(tbound,tbound2,tbound3)
 
 !$OMP CRITICAL(FIRE_CORE_CRIT)
-    write(msg,'(a,f10.2,4(a,f7.2))')'prop_ls: time',ts,' dt=',dt,' bound',min(tbound,999.99), &
+    write(msg,'(a,f10.2,4(a,f7.2))')'prop_ls: time',ts,' dt=',dt,' bound',rp_min(tbound,999.99), &
         ' dx=',dx,' dy=',dy
 !$OMP END CRITICAL(FIRE_CORE_CRIT)
     call message(msg)
@@ -1661,7 +1661,7 @@ enddo ! end iterations for steady state solution of reinitialization PDE
     do j=jfts,jfte 
         do i=ifts,ifte 
           lfn_out(i,j)=lfn_s3(i,j) ! assing to lfn_out the reinitialized level-set function
-          lfn_out(i,j)=min(lfn_out(i,j),lfn_in(i,j)) ! fire area can only increase
+          lfn_out(i,j)=rp_min(lfn_out(i,j),lfn_in(i,j)) ! fire area can only increase
         enddo
     enddo
 
@@ -1983,8 +1983,8 @@ threshold_AV=fire_viscosity_ngp*dx
                   diff2y=select_eno(diffLy,diffRy)
                   grad=sqrt(diff2x*diff2x + diff2y*diff2y)
               case(4) ! Sethian - twice stronger pushdown of bumps
-                  grad=sqrt(max(diffLx,0.)**2+min(diffRx,0.)**2   &
-                          + max(diffLy,0.)**2+min(diffRy,0.)**2)
+                  grad=sqrt(rp_max(diffLx,0.)**2+rp_min(diffRx,0.)**2   &
+                          + rp_max(diffLy,0.)**2+rp_min(diffRy,0.)**2)
               case(5) ! 2nd order (DME)
                   diff2x=select_2nd(rr,dx,lfn(i,j),lfn(i-1,j),lfn(i+1,j))
                   diff2y=select_2nd(rr,dy,lfn(i,j),lfn(i,j-1),lfn(i,j+1))
@@ -2049,7 +2049,7 @@ threshold_AV=fire_viscosity_ngp*dx
             nvx,nvy,i,j,fp)
             rr=ros_base + ros_wind + fire_slope_factor*ros_slope
 
-            if(fire_grows_only.gt.0)rr=max(rr,0.)
+            if(fire_grows_only.gt.0)rr=rp_max(rr,0.)
             ! set ros for output
             if(i.ge.its.and.i.le.ite.and.j.ge.jts.and.j.le.jte)ros(i,j)=rr
 
@@ -2082,8 +2082,8 @@ threshold_AV=fire_viscosity_ngp*dx
                 if(fire_upwind_split.eq.1)then   
 
                     ! one-sided upwinding
-                    te = te - max(advx,0.)*diffLx - min(advx,0.)*diffRy &
-                            - max(advy,0.)*diffLy - min(advy,0.)*diffRy
+                    te = te - rp_max(advx,0.)*diffLx - rp_min(advx,0.)*diffRy &
+                            - rp_max(advy,0.)*diffLy - rp_min(advy,0.)*diffRy
 
 
                 elseif(fire_upwind_split.eq.2)then   
@@ -2100,14 +2100,14 @@ threshold_AV=fire_viscosity_ngp*dx
 
             ! cfl condition
             if (grad > 0.) then
-                 tbound = max(tbound,rr*(abs(diff2x)/dx+abs(diff2y)/dy)/grad)
+                 tbound = rp_max(tbound,rr*(abs(diff2x)/dx+abs(diff2y)/dy)/grad)
             endif
 
             ! DME: adds spatially variable artificial viscosity
             if (abs(lfn(i,j)).lt.threshold_AV .AND. (i.gt.ids+bdy_eno1 .and. i.lt.ide-bdy_eno1) .AND. (j.gt.jds+bdy_eno1 .and. j.lt.jde-bdy_eno1)) then 
               fire_viscosity_var=fire_viscosity_bg
             elseif (abs(lfn(i,j)).ge.threshold_AV .AND. abs(lfn(i,j)).lt.threshold_AV*(1.0+fire_viscosity_band) .AND. (i.gt.ids+10 .and. i.lt.ide-10) .AND. (j.gt.jds+10 .and. j.lt.jde-10)) then
-              fire_viscosity_var=min(fire_viscosity_bg+(fire_viscosity-fire_viscosity_bg)*(abs(lfn(i,j))-threshold_AV)/(fire_viscosity_band*threshold_AV),fire_viscosity)
+              fire_viscosity_var=rp_min(fire_viscosity_bg+(fire_viscosity-fire_viscosity_bg)*(abs(lfn(i,j))-threshold_AV)/(fire_viscosity_band*threshold_AV),fire_viscosity)
             else
               fire_viscosity_var=fire_viscosity
             endif
@@ -2395,7 +2395,7 @@ real, parameter:: eps=epsilon(0.0)
             nvx,nvy,i,j,fp)
 
             r=ros_base + ros_wind + ros_slope
-            if(fire_grows_only.gt.0)r=max(r,0.)
+            if(fire_grows_only.gt.0)r=rp_max(r,0.)
             speed_func=r
 
 end function speed_func

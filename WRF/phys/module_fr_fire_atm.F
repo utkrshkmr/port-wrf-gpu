@@ -62,15 +62,15 @@ jr=jsz2/jsz1
 avgw = 1.0/(ir*jr)
 
 ! --- set loop indicies
-i_st = MAX(its,ids+1)
-i_en = MIN(ite,ide-2)
-j_st = MAX(jts,jds+1)
-j_en = MIN(jte,jde-2)
+i_st = rp_max(its,ids+1)
+i_en = rp_min(ite,ide-2)
+j_st = rp_max(jts,jds+1)
+j_en = rp_min(jte,jde-2)
 
 ! --- check if TG used: init prop_smk
 if (fire_smk_scheme .eq. 1) then
    k_st = kts
-   k_en = MIN(kte,kde-1)
+   k_en = rp_min(kte,kde-1)
    call tg_dist(ims,ime, kms,kme, jms,jme, &
                 i_st,i_en, j_st,j_en, k_st,k_en, dz8w, &
                 fire_smk_peak,fire_tg_ub,fire_smk_ext,z_at_w,zs, &
@@ -176,7 +176,7 @@ SUBROUTINE fire_tendency( &
 !!   character(len=128)::msg
 
         do j=jts,jte
-            do k=kts,min(kte+1,kde)
+            do k=kts,rp_min(kte+1,kde)
                do i=its,ite
                    rthfrten(i,k,j)=0.
                    rqvfrten(i,k,j)=0.
@@ -201,12 +201,12 @@ SUBROUTINE fire_tendency( &
 
 ! --- set loop indicies : note that
 
-   i_st = MAX(its,ids+1)
-   i_en = MIN(ite,ide-1)
+   i_st = rp_max(its,ids+1)
+   i_en = rp_min(ite,ide-1)
    k_st = kts
-   k_en = MIN(kte,kde-1)
-   j_st = MAX(jts,jds+1)
-   j_en = MIN(jte,jde-1)
+   k_en = rp_min(kte,kde-1)
+   j_st = rp_max(jts,jds+1)
+   j_en = rp_min(jte,jde-1)
 
 ! --- check if TG is used, and create proportion
    if (fire_sfc_flx .eq. 1) then !Truncated Gaussian scheme
@@ -338,8 +338,8 @@ SUBROUTINE tg_dist(ims,ime, kms,kme, jms,jme, &
    xia = (fire_tg_lb-fire_peak_hgt)/(0.5*fire_ext_depth)
    xib = (fire_tg_ub-fire_peak_hgt)/(0.5*fire_ext_depth)
 
-   phi_a = 0.5*(1.+rp_tanh(acoef*xia+bcoef*(xia**3)))
-   phi_b = 0.5*(1.+rp_tanh(acoef*xib+bcoef*(xib**3)))
+   phi_a = 0.5*(1.+rp_tanh(acoef*xia+bcoef*(rp_pow(xia, 3))))
+   phi_b = 0.5*(1.+rp_tanh(acoef*xib+bcoef*(rp_pow(xib, 3))))
 
    DO j = j_st,j_en
       DO k = k_st,k_en
@@ -347,7 +347,7 @@ SUBROUTINE tg_dist(ims,ime, kms,kme, jms,jme, &
 
             xi=(z_w-fire_peak_hgt)/(0.5*fire_ext_depth)
 
-            prop_temp = 0.5*(acoef+3.*bcoef*(xi**2))/(0.5*fire_ext_depth)*(1.-(rp_tanh(acoef*xi+bcoef*(xi**3)))**2)
+            prop_temp = 0.5*(acoef+3.*bcoef*(xi**2))/(0.5*fire_ext_depth)*(1.-(rp_tanh(acoef*xi+bcoef*(rp_pow(xi, 3))))**2)
             prop_temp = prop_temp / (phi_b-phi_a)
    
             !discretize the continuous function

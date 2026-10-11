@@ -26,7 +26,17 @@
 !   rp_pow(x,y) = x**y                        : (4,4) (8,8) (4,8) (8,4)
 !                                               (4,i4) (8,i4) (i4,i4)
 !                                               (i4,4) (i4,8)
-!     Integer exponents are evaluated exactly as the original x**n.
+!     Integer exponents (REAL base): with REPRO_MATH an explicit product
+!     x*x*...*x (left to right, |n|-1 multiplications), and 1/that for
+!     n < 0; x**0 = 1.  NVHPC 26.5 calls a host library for x**n but
+!     multiplies on the device (T-IPOW, BLOCKERS B3), so x**n itself is not
+!     reproducible.  INTEGER base: x**n (exact).
+!   rp_max(a,b[,c[,d]]), rp_min(...)          : REAL(4), REAL(8), INTEGER(4), INTEGER(8)
+!     With REPRO_MATH, REAL arguments follow explicit IEEE rules (MAX and MIN
+!     of +0 and -0 differ between host and device, T-MINMAX, BLOCKERS B3):
+!     -0 < +0; if one argument is NaN the other one is returned; if both
+!     are NaN, the canonical NaN.  More than two arguments are taken left to
+!     right: rp_max(a,b,c) = rp_max(rp_max(a,b),c).  INTEGER: MAX/MIN.
 !   rp_mod(a,p) = MOD(a,p)                    : (4,4) (8,8) (i4,i4) (i8,i8)
 !     The REAL versions are exact (like C fmod), so they equal the
 !     intrinsic bit for bit.
@@ -64,7 +74,7 @@ MODULE module_repro_math
 
    PUBLIC :: rp_exp, rp_log, rp_log10, rp_pow, rp_sin, rp_cos, rp_tan
    PUBLIC :: rp_asin, rp_acos, rp_atan, rp_atan2, rp_sinh, rp_cosh, rp_tanh
-   PUBLIC :: rp_mod, rp_repro_enabled
+   PUBLIC :: rp_mod, rp_repro_enabled, rp_max, rp_min
 
    INTERFACE rp_exp
       MODULE PROCEDURE rp_exp_r4, rp_exp_r8
@@ -112,6 +122,16 @@ MODULE module_repro_math
    END INTERFACE
    INTERFACE rp_mod
       MODULE PROCEDURE rp_mod_r4, rp_mod_r8, rp_mod_i4, rp_mod_i8
+   END INTERFACE
+   INTERFACE rp_max
+      MODULE PROCEDURE rp_max_r4, rp_max_r8, rp_max_i4, rp_max_i8,              &
+                       rp_max3_r4, rp_max3_r8, rp_max3_i4, rp_max3_i8,          &
+                       rp_max4_r4, rp_max4_r8, rp_max4_i4, rp_max4_i8
+   END INTERFACE
+   INTERFACE rp_min
+      MODULE PROCEDURE rp_min_r4, rp_min_r8, rp_min_i4, rp_min_i8,              &
+                       rp_min3_r4, rp_min3_r8, rp_min3_i4, rp_min3_i8,          &
+                       rp_min4_r4, rp_min4_r8, rp_min4_i4, rp_min4_i8
    END INTERFACE
 
    ! Bit patterns
@@ -2418,13 +2438,32 @@ CONTAINS
       r = rp_pow_r8(REAL(x, r8), y)
    END FUNCTION rp_pow_i4r8
 
-   ! Integer exponents: evaluated exactly as the original expression x**n.
+   ! Integer exponents: an explicit product with REPRO_MATH (see the header).
    ELEMENTAL FUNCTION rp_pow_r4i4(x, n) RESULT(r)
 !$acc routine seq
       REAL(r4), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r4) :: r
+#ifdef REPRO_MATH
+      REAL(r4) :: p
+      INTEGER(i4) :: k, m
+      m = ABS(n)
+      IF (m == 0) THEN
+         r = 1.0_r4
+      ELSE
+         p = x
+         DO k = 2, m
+            p = p*x
+         END DO
+         IF (n < 0) THEN
+            r = 1.0_r4/p
+         ELSE
+            r = p
+         END IF
+      END IF
+#else
       r = x**n
+#endif
    END FUNCTION rp_pow_r4i4
 
    ELEMENTAL FUNCTION rp_pow_r8i4(x, n) RESULT(r)
@@ -2432,7 +2471,26 @@ CONTAINS
       REAL(r8), INTENT(IN) :: x
       INTEGER(i4), INTENT(IN) :: n
       REAL(r8) :: r
+#ifdef REPRO_MATH
+      REAL(r8) :: p
+      INTEGER(i4) :: k, m
+      m = ABS(n)
+      IF (m == 0) THEN
+         r = 1.0_r8
+      ELSE
+         p = x
+         DO k = 2, m
+            p = p*x
+         END DO
+         IF (n < 0) THEN
+            r = 1.0_r8/p
+         ELSE
+            r = p
+         END IF
+      END IF
+#else
       r = x**n
+#endif
    END FUNCTION rp_pow_r8i4
 
    ELEMENTAL FUNCTION rp_pow_i4i4(x, n) RESULT(r)
@@ -2455,5 +2513,321 @@ CONTAINS
       INTEGER(i8) :: r
       r = MOD(a, p)
    END FUNCTION rp_mod_i8
+
+!-----------------------------------------------------------------------
+! MAX and MIN with defined signed-zero and NaN results (T-MINMAX)
+!-----------------------------------------------------------------------
+
+   ELEMENTAL FUNCTION rp_max_r4(a, b) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      IF (a > b) THEN
+         r = a
+      ELSE IF (b > a) THEN
+         r = b
+      ELSE IF (a == b) THEN
+         IF (TRANSFER(a, 0_i4) < 0_i4) THEN
+            r = b
+         ELSE
+            r = a
+         END IF
+      ELSE IF (b == b) THEN
+         r = b
+      ELSE IF (a == a) THEN
+         r = a
+      ELSE
+         r = TRANSFER(NAN4_BITS, r)
+      END IF
+#else
+      r = MAX(a, b)
+#endif
+   END FUNCTION rp_max_r4
+
+   ELEMENTAL FUNCTION rp_max_r8(a, b) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      IF (a > b) THEN
+         r = a
+      ELSE IF (b > a) THEN
+         r = b
+      ELSE IF (a == b) THEN
+         IF (TRANSFER(a, 0_i8) < 0_i8) THEN
+            r = b
+         ELSE
+            r = a
+         END IF
+      ELSE IF (b == b) THEN
+         r = b
+      ELSE IF (a == a) THEN
+         r = a
+      ELSE
+         r = TRANSFER(NAN_BITS, r)
+      END IF
+#else
+      r = MAX(a, b)
+#endif
+   END FUNCTION rp_max_r8
+
+   ELEMENTAL FUNCTION rp_max_i4(a, b) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b
+      INTEGER(i4) :: r
+      r = MAX(a, b)
+   END FUNCTION rp_max_i4
+
+   ELEMENTAL FUNCTION rp_max_i8(a, b) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b
+      INTEGER(i8) :: r
+      r = MAX(a, b)
+   END FUNCTION rp_max_i8
+
+   ELEMENTAL FUNCTION rp_max3_r4(a, b, c) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b, c
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      r = rp_max_r4(rp_max_r4(a, b), c)
+#else
+      r = MAX(a, b, c)
+#endif
+   END FUNCTION rp_max3_r4
+
+   ELEMENTAL FUNCTION rp_max3_r8(a, b, c) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b, c
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      r = rp_max_r8(rp_max_r8(a, b), c)
+#else
+      r = MAX(a, b, c)
+#endif
+   END FUNCTION rp_max3_r8
+
+   ELEMENTAL FUNCTION rp_max3_i4(a, b, c) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b, c
+      INTEGER(i4) :: r
+#ifdef REPRO_MATH
+      r = rp_max_i4(rp_max_i4(a, b), c)
+#else
+      r = MAX(a, b, c)
+#endif
+   END FUNCTION rp_max3_i4
+
+   ELEMENTAL FUNCTION rp_max3_i8(a, b, c) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b, c
+      INTEGER(i8) :: r
+#ifdef REPRO_MATH
+      r = rp_max_i8(rp_max_i8(a, b), c)
+#else
+      r = MAX(a, b, c)
+#endif
+   END FUNCTION rp_max3_i8
+
+   ELEMENTAL FUNCTION rp_max4_r4(a, b, c, d) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b, c, d
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      r = rp_max_r4(rp_max_r4(rp_max_r4(a, b), c), d)
+#else
+      r = MAX(a, b, c, d)
+#endif
+   END FUNCTION rp_max4_r4
+
+   ELEMENTAL FUNCTION rp_max4_r8(a, b, c, d) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b, c, d
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      r = rp_max_r8(rp_max_r8(rp_max_r8(a, b), c), d)
+#else
+      r = MAX(a, b, c, d)
+#endif
+   END FUNCTION rp_max4_r8
+
+   ELEMENTAL FUNCTION rp_max4_i4(a, b, c, d) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b, c, d
+      INTEGER(i4) :: r
+#ifdef REPRO_MATH
+      r = rp_max_i4(rp_max_i4(rp_max_i4(a, b), c), d)
+#else
+      r = MAX(a, b, c, d)
+#endif
+   END FUNCTION rp_max4_i4
+
+   ELEMENTAL FUNCTION rp_max4_i8(a, b, c, d) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b, c, d
+      INTEGER(i8) :: r
+#ifdef REPRO_MATH
+      r = rp_max_i8(rp_max_i8(rp_max_i8(a, b), c), d)
+#else
+      r = MAX(a, b, c, d)
+#endif
+   END FUNCTION rp_max4_i8
+
+   ELEMENTAL FUNCTION rp_min_r4(a, b) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      IF (a < b) THEN
+         r = a
+      ELSE IF (b < a) THEN
+         r = b
+      ELSE IF (a == b) THEN
+         IF (TRANSFER(a, 0_i4) < 0_i4) THEN
+            r = a
+         ELSE
+            r = b
+         END IF
+      ELSE IF (b == b) THEN
+         r = b
+      ELSE IF (a == a) THEN
+         r = a
+      ELSE
+         r = TRANSFER(NAN4_BITS, r)
+      END IF
+#else
+      r = MIN(a, b)
+#endif
+   END FUNCTION rp_min_r4
+
+   ELEMENTAL FUNCTION rp_min_r8(a, b) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      IF (a < b) THEN
+         r = a
+      ELSE IF (b < a) THEN
+         r = b
+      ELSE IF (a == b) THEN
+         IF (TRANSFER(a, 0_i8) < 0_i8) THEN
+            r = a
+         ELSE
+            r = b
+         END IF
+      ELSE IF (b == b) THEN
+         r = b
+      ELSE IF (a == a) THEN
+         r = a
+      ELSE
+         r = TRANSFER(NAN_BITS, r)
+      END IF
+#else
+      r = MIN(a, b)
+#endif
+   END FUNCTION rp_min_r8
+
+   ELEMENTAL FUNCTION rp_min_i4(a, b) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b
+      INTEGER(i4) :: r
+      r = MIN(a, b)
+   END FUNCTION rp_min_i4
+
+   ELEMENTAL FUNCTION rp_min_i8(a, b) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b
+      INTEGER(i8) :: r
+      r = MIN(a, b)
+   END FUNCTION rp_min_i8
+
+   ELEMENTAL FUNCTION rp_min3_r4(a, b, c) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b, c
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      r = rp_min_r4(rp_min_r4(a, b), c)
+#else
+      r = MIN(a, b, c)
+#endif
+   END FUNCTION rp_min3_r4
+
+   ELEMENTAL FUNCTION rp_min3_r8(a, b, c) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b, c
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      r = rp_min_r8(rp_min_r8(a, b), c)
+#else
+      r = MIN(a, b, c)
+#endif
+   END FUNCTION rp_min3_r8
+
+   ELEMENTAL FUNCTION rp_min3_i4(a, b, c) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b, c
+      INTEGER(i4) :: r
+#ifdef REPRO_MATH
+      r = rp_min_i4(rp_min_i4(a, b), c)
+#else
+      r = MIN(a, b, c)
+#endif
+   END FUNCTION rp_min3_i4
+
+   ELEMENTAL FUNCTION rp_min3_i8(a, b, c) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b, c
+      INTEGER(i8) :: r
+#ifdef REPRO_MATH
+      r = rp_min_i8(rp_min_i8(a, b), c)
+#else
+      r = MIN(a, b, c)
+#endif
+   END FUNCTION rp_min3_i8
+
+   ELEMENTAL FUNCTION rp_min4_r4(a, b, c, d) RESULT(r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: a, b, c, d
+      REAL(r4) :: r
+#ifdef REPRO_MATH
+      r = rp_min_r4(rp_min_r4(rp_min_r4(a, b), c), d)
+#else
+      r = MIN(a, b, c, d)
+#endif
+   END FUNCTION rp_min4_r4
+
+   ELEMENTAL FUNCTION rp_min4_r8(a, b, c, d) RESULT(r)
+!$acc routine seq
+      REAL(r8), INTENT(IN) :: a, b, c, d
+      REAL(r8) :: r
+#ifdef REPRO_MATH
+      r = rp_min_r8(rp_min_r8(rp_min_r8(a, b), c), d)
+#else
+      r = MIN(a, b, c, d)
+#endif
+   END FUNCTION rp_min4_r8
+
+   ELEMENTAL FUNCTION rp_min4_i4(a, b, c, d) RESULT(r)
+!$acc routine seq
+      INTEGER(i4), INTENT(IN) :: a, b, c, d
+      INTEGER(i4) :: r
+#ifdef REPRO_MATH
+      r = rp_min_i4(rp_min_i4(rp_min_i4(a, b), c), d)
+#else
+      r = MIN(a, b, c, d)
+#endif
+   END FUNCTION rp_min4_i4
+
+   ELEMENTAL FUNCTION rp_min4_i8(a, b, c, d) RESULT(r)
+!$acc routine seq
+      INTEGER(i8), INTENT(IN) :: a, b, c, d
+      INTEGER(i8) :: r
+#ifdef REPRO_MATH
+      r = rp_min_i8(rp_min_i8(rp_min_i8(a, b), c), d)
+#else
+      r = MIN(a, b, c, d)
+#endif
+   END FUNCTION rp_min4_i8
 
 END MODULE module_repro_math

@@ -626,7 +626,7 @@
      do i = its,ite
        if(.not.stable(i))then
          brdn(i) = brup(i)
-         spdk2   = max(ux(i,k)**2+vx(i,k)**2,1.)
+         spdk2   = rp_max(ux(i,k)**2+vx(i,k)**2,1.)
          brup(i) = (thvx(i,k)-thermal(i))*(g*za(i,k)/thvx(i,1))/spdk2
          kpbl(i) = k
          stable(i) = brup(i).gt.brcr(i)
@@ -651,19 +651,19 @@
    do i = its,ite
      fm = psim(i)
      fh = psih(i)
-     zol1(i) = max(br(i)*fm*fm/fh,rimin)
+     zol1(i) = rp_max(br(i)*fm*fm/fh,rimin)
      if(sfcflg(i))then
-       zol1(i) = min(zol1(i),-zfmin)
+       zol1(i) = rp_min(zol1(i),-zfmin)
      else
-       zol1(i) = max(zol1(i),zfmin)
+       zol1(i) = rp_max(zol1(i),zfmin)
      endif
      hol1 = zol1(i)*hpbl(i)/zl1(i)*sfcfrac
      if(sfcflg(i))then
        phim(i) = rp_pow((1.-aphi16*hol1), (-1./4.))
        phih(i) = rp_pow((1.-aphi16*hol1), (-1./2.))
-       bfx0 = max(sflux(i),0.)
-       hfx0 = max(hfx(i)/rhox(i)/cp,0.)
-       qfx0 = max(ep1*thx(i,1)*qfx(i)/rhox(i),0.)
+       bfx0 = rp_max(sflux(i),0.)
+       hfx0 = rp_max(hfx(i)/rhox(i)/cp,0.)
+       qfx0 = rp_max(ep1*thx(i,1)*qfx(i)/rhox(i),0.)
        wstar3(i) = (govrth(i)*bfx0*hpbl(i))
        wstar(i) = rp_pow((wstar3(i)), h1)
      else
@@ -674,8 +674,8 @@
      endif
      ust3(i)   = rp_pow(ust(i), 3.)
      wscale(i) = rp_pow((ust3(i)+phifac*karman*wstar3(i)*0.5), h1)
-     wscale(i) = min(wscale(i),ust(i)*aphi16)
-     wscale(i) = max(wscale(i),ust(i)/aphi5)
+     wscale(i) = rp_min(wscale(i),ust(i)*aphi16)
+     wscale(i) = rp_max(wscale(i),ust(i)/aphi5)
    enddo
 !
 !     compute the surface variables for pbl height estimation
@@ -684,13 +684,13 @@
    do i = its,ite
      if(sfcflg(i).and.sflux(i).gt.0.0)then
        gamfac   = bfac/rhox(i)/wscale(i)
-       hgamt(i) = min(gamfac*hfx(i)/cp,gamcrt)
-       hgamq(i) = min(gamfac*qfx(i),gamcrq)
+       hgamt(i) = rp_min(gamfac*hfx(i)/cp,gamcrt)
+       hgamq(i) = rp_min(gamfac*qfx(i),gamcrq)
        vpert = (hgamt(i)+ep1*thx(i,1)*hgamq(i))/bfac*afac
-       thermal(i) = thermal(i)+max(vpert,0.)*min(za(i,1)/(sfcfrac*hpbl(i)),1.0)
-       thermalli(i)= thermalli(i)+max(vpert,0.)*min(za(i,1)/(sfcfrac*hpbl(i)),1.0)
-       hgamt(i) = max(hgamt(i),0.0)
-       hgamq(i) = max(hgamq(i),0.0)
+       thermal(i) = thermal(i)+rp_max(vpert,0.)*rp_min(za(i,1)/(sfcfrac*hpbl(i)),1.0)
+       thermalli(i)= thermalli(i)+rp_max(vpert,0.)*rp_min(za(i,1)/(sfcfrac*hpbl(i)),1.0)
+       hgamt(i) = rp_max(hgamt(i),0.0)
+       hgamq(i) = rp_max(hgamq(i),0.0)
        brint    = -15.9*ust(i)*ust(i)/wspd(i)*wstar3(i)/(rp_pow(wscale(i), 4.))
        hgamu(i) = brint*ux(i,1)
        hgamv(i) = brint*vx(i,1)
@@ -720,7 +720,7 @@
      do i = its,ite
        if(.not.stable(i).and.pblflg(i))then
          brdn(i) = brup(i)
-         spdk2   = max(ux(i,k)**2+vx(i,k)**2,1.)
+         spdk2   = rp_max(ux(i,k)**2+vx(i,k)**2,1.)
          brup(i) = (thvx(i,k)-thermal(i))*(g*za(i,k)/thvx(i,1))/spdk2
          kpbl(i) = k
          stable(i) = brup(i).gt.brcr(i)
@@ -735,7 +735,7 @@
         kpblold(i) = kpbl(i)
         definebrup=.false.
         do k = kpblold(i), kte-1
-           spdk2   = max(ux(i,k)**2+vx(i,k)**2,1.)
+           spdk2   = rp_max(ux(i,k)**2+vx(i,k)**2,1.)
            bruptmp = (thlix(i,k)-thermalli(i))*(g*za(i,k)/thlix(i,1))/spdk2
            stable(i) = bruptmp.ge.brcr(i)
            if (definebrup) then
@@ -784,7 +784,7 @@
        wspd10 = u10(i)*u10(i) + v10(i)*v10(i)
        wspd10 = sqrt(wspd10)
        ross = wspd10 / (cori*znt(i))
-       brcr_sbro(i) = min(0.16*rp_pow((1.e-7*ross), (-0.18)),.3)
+       brcr_sbro(i) = rp_min(0.16*rp_pow((1.e-7*ross), (-0.18)),.3)
      endif
    enddo
 !
@@ -802,7 +802,7 @@
      do i = its,ite
        if(.not.stable(i))then
          brdn(i) = brup(i)
-         spdk2   = max(ux(i,k)**2+vx(i,k)**2,1.)
+         spdk2   = rp_max(ux(i,k)**2+vx(i,k)**2,1.)
          brup(i) = (thvx(i,k)-thermal(i))*(g*za(i,k)/thvx(i,1))/spdk2
          kpbl(i) = k
          stable(i) = brup(i).gt.brcr(i)
@@ -835,8 +835,8 @@
        wm3       = wstar3(i) + 5. * ust3(i)
        wm2(i)    = rp_pow(wm3, h2)
        bfxpbl(i) = -0.15*thvx(i,1)/g*wm3/hpbl(i)
-       dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),tmin)
-       we(i) = max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
+       dthvx(i)  = rp_max(thvx(i,k+1)-thvx(i,k),tmin)
+       we(i) = rp_max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
        if((qcxl(i,k)+qixl(i,k)).gt.0.01e-3.and.ysu_topdown_pblmix)then
            if ( kpbl(i) .ge. 2) then
                 cloudflg(i)=.true. 
@@ -846,11 +846,11 @@
                 temps=templ + ((qvx(i,k)+qcxl(i,k))-rvls)/(cp/xlv  + &
                 ep2*xlv*rvls/(rd*templ**2))
                 rvls=100.*6.112*rp_exp(17.67*(temps-273.15)/(temps-29.65))*(ep2/p2di(i,k+1))
-                rcldb=max((qvx(i,k)+qcxl(i,k))-rvls,0.)
+                rcldb=rp_max((qvx(i,k)+qcxl(i,k))-rvls,0.)
                 !entrainment efficiency
                 dthvx(i)  = (thlix(i,k+2)+thx(i,k+2)*ep1*(qvx(i,k+2)+qcxl(i,k+2))) &
                           - (thlix(i,k) + thx(i,k)  *ep1*(qvx(i,k)  +qcxl(i,k)))
-                dthvx(i)  = max(dthvx(i),0.1)
+                dthvx(i)  = rp_max(dthvx(i),0.1)
                 tmp1      = xlv/cp * rcldb/(pi2d(i,k)*dthvx(i))
                 ent_eff   = 0.2 * 8. * tmp1 +0.2
 
@@ -860,68 +860,68 @@
                    radflux=radflux*cp/g*(p2di(i,kk)-p2di(i,kk+1)) ! converts temp/s to W/m^2
                    if (radflux < 0.0 ) radsum=abs(radflux)+radsum
                 enddo
-                radsum=max(radsum,0.0)
+                radsum=rp_max(radsum,0.0)
 
                 !recompute entrainment from sfc thermals
-                bfx0 = max(max(sflux(i),0.0)-radsum/rhox2(i,k)/cp,0.)
-                bfx0 = max(sflux(i),0.0)
+                bfx0 = rp_max(rp_max(sflux(i),0.0)-radsum/rhox2(i,k)/cp,0.)
+                bfx0 = rp_max(sflux(i),0.0)
                 wm3 = (govrth(i)*bfx0*hpbl(i))+5. * ust3(i)
                 wm2(i)    = rp_pow(wm3, h2)
                 bfxpbl(i) = -0.15*thvx(i,1)/g*wm3/hpbl(i)
-                dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),tmin)
-                we(i) = max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
+                dthvx(i)  = rp_max(thvx(i,k+1)-thvx(i,k),tmin)
+                we(i) = rp_max(bfxpbl(i)/dthvx(i),-sqrt(wm2(i)))
 
                 !entrainment from PBL top thermals
-                bfx0 = max(radsum/rhox2(i,k)/cp-max(sflux(i),0.0),0.)
-                bfx0 = max(radsum/rhox2(i,k)/cp,0.)
+                bfx0 = rp_max(radsum/rhox2(i,k)/cp-rp_max(sflux(i),0.0),0.)
+                bfx0 = rp_max(radsum/rhox2(i,k)/cp,0.)
                 wm3       = (g/thvx(i,k)*bfx0*hpbl(i)) ! this is wstar3(i)
                 wm2(i)    = wm2(i)+rp_pow(wm3, h2)
                 bfxpbl(i) = - ent_eff * bfx0
-                dthvx(i)  = max(thvx(i,k+1)-thvx(i,k),0.1)
-                we(i) = we(i) + max(bfxpbl(i)/dthvx(i),-sqrt(rp_pow(wm3, h2)))
+                dthvx(i)  = rp_max(thvx(i,k+1)-thvx(i,k),0.1)
+                we(i) = we(i) + rp_max(bfxpbl(i)/dthvx(i),-sqrt(rp_pow(wm3, h2)))
 
                 !wstar3_2
-                bfx0 = max(radsum/rhox2(i,k)/cp,0.)
+                bfx0 = rp_max(radsum/rhox2(i,k)/cp,0.)
                 wstar3_2(i) =  (g/thvx(i,k)*bfx0*hpbl(i))
                 !recompute hgamt 
                 wscale(i) = rp_pow((ust3(i)+phifac*karman*(wstar3(i)+wstar3_2(i))*0.5), h1)
-                wscale(i) = min(wscale(i),ust(i)*aphi16)
-                wscale(i) = max(wscale(i),ust(i)/aphi5)
+                wscale(i) = rp_min(wscale(i),ust(i)*aphi16)
+                wscale(i) = rp_max(wscale(i),ust(i)/aphi5)
                 gamfac   = bfac/rhox(i)/wscale(i)
-                hgamt(i) = min(gamfac*hfx(i)/cp,gamcrt)
-                hgamq(i) = min(gamfac*qfx(i),gamcrq)
+                hgamt(i) = rp_min(gamfac*hfx(i)/cp,gamcrt)
+                hgamq(i) = rp_min(gamfac*qfx(i),gamcrq)
                 gamfac   = bfac/rhox2(i,k)/wscale(i)
-                hgamt2(i,k) = min(gamfac*radsum/cp,gamcrt)
-                hgamt(i) = max(hgamt(i),0.0) + max(hgamt2(i,k),0.0)
+                hgamt2(i,k) = rp_min(gamfac*radsum/cp,gamcrt)
+                hgamt(i) = rp_max(hgamt(i),0.0) + rp_max(hgamt2(i,k),0.0)
                 brint    = -15.9*ust(i)*ust(i)/wspd(i)*(wstar3(i)+wstar3_2(i))/(rp_pow(wscale(i), 4.))
                 hgamu(i) = brint*ux(i,1)
                 hgamv(i) = brint*vx(i,1)
            endif
        endif
        prpbl(i) = 1.0
-       dthx  = max(thx(i,k+1)-thx(i,k),tmin)
-       dqx   = min(qvx(i,k+1)-qvx(i,k),0.0)
+       dthx  = rp_max(thx(i,k+1)-thx(i,k),tmin)
+       dqx   = rp_min(qvx(i,k+1)-qvx(i,k),0.0)
        hfxpbl(i) = we(i)*dthx
        qfxpbl(i) = we(i)*dqx
 !
        dux = ux(i,k+1)-ux(i,k)
        dvx = vx(i,k+1)-vx(i,k)
        if(dux.gt.tmin) then
-         ufxpbl(i) = max(prpbl(i)*we(i)*dux,-ust(i)*ust(i))
+         ufxpbl(i) = rp_max(prpbl(i)*we(i)*dux,-ust(i)*ust(i))
        elseif(dux.lt.-tmin) then
-         ufxpbl(i) = min(prpbl(i)*we(i)*dux,ust(i)*ust(i))
+         ufxpbl(i) = rp_min(prpbl(i)*we(i)*dux,ust(i)*ust(i))
        else
          ufxpbl(i) = 0.0
        endif
        if(dvx.gt.tmin) then
-         vfxpbl(i) = max(prpbl(i)*we(i)*dvx,-ust(i)*ust(i))
+         vfxpbl(i) = rp_max(prpbl(i)*we(i)*dvx,-ust(i)*ust(i))
        elseif(dvx.lt.-tmin) then
-         vfxpbl(i) = min(prpbl(i)*we(i)*dvx,ust(i)*ust(i))
+         vfxpbl(i) = rp_min(prpbl(i)*we(i)*dvx,ust(i)*ust(i))
        else
          vfxpbl(i) = 0.0
        endif
        delb  = govrth(i)*d3*hpbl(i)
-       delta(i) = min(d1*hpbl(i) + d2*wm2(i)/delb,100.)
+       delta(i) = rp_min(d1*hpbl(i) + d2*wm2(i)/delb,100.)
      endif
    enddo
 !
@@ -940,24 +940,24 @@
    do k = kts,klpbl
      do i = its,ite
        if(k.lt.kpbl(i)) then
-         zfac(i,k) = min(max((1.-(zq(i,k+1)-zl1(i))/(hpbl(i)-zl1(i))),zfmin),1.)
+         zfac(i,k) = rp_min(rp_max((1.-(zq(i,k+1)-zl1(i))/(hpbl(i)-zl1(i))),zfmin),1.)
          zfacent(i,k) = rp_pow((1.-zfac(i,k)), 3.)
          wscalek(i,k) = rp_pow((ust3(i)+phifac*karman*wstar3(i)*(1.-zfac(i,k))), h1)
          wscalek2(i,k) = rp_pow((phifac*karman*wstar3_2(i)*(zfac(i,k))), h1)
          if(sfcflg(i)) then
            prfac = conpr
            prfac2 = 15.9*(wstar3(i)+wstar3_2(i))/ust3(i)/(1.+4.*karman*(wstar3(i)+wstar3_2(i))/ust3(i))
-           prnumfac = -3.*(max(zq(i,k+1)-sfcfrac*hpbl(i),0.))**2/hpbl(i)**2
+           prnumfac = -3.*(rp_max(zq(i,k+1)-sfcfrac*hpbl(i),0.))**2/hpbl(i)**2
          else
            prfac = 0.
            prfac2 = 0.
            prnumfac = 0.
            phim8z = 1.+aphi5*zol1(i)*zq(i,k+1)/zl1(i)
            wscalek(i,k) = ust(i)/phim8z
-           wscalek(i,k) = max(wscalek(i,k),0.001)
+           wscalek(i,k) = rp_max(wscalek(i,k),0.001)
          endif
          prnum0 = (phih(i)/phim(i)+prfac)
-         prnum0 = max(min(prnum0,prmax),prmin)
+         prnum0 = rp_max(rp_min(prnum0,prmax),prmin)
            xkzm(i,k) = wscalek(i,k) *karman*    zq(i,k+1)      *    zfac(i,k)**pfac+ &
                        wscalek2(i,k)*karman*(hpbl(i)-zq(i,k+1))*(1-zfac(i,k))**pfac
          !Do not include xkzm at kpbl-1 since it changes entrainment
@@ -972,9 +972,9 @@
          xkzm(i,k) = xkzm(i,k)+xkzom(i,k)
          xkzh(i,k) = xkzh(i,k)+xkzoh(i,k)
          xkzq(i,k) = xkzq(i,k)+xkzoh(i,k)
-         xkzm(i,k) = min(xkzm(i,k),xkzmax)
-         xkzh(i,k) = min(xkzh(i,k),xkzmax)
-         xkzq(i,k) = min(xkzq(i,k),xkzmax)
+         xkzm(i,k) = rp_min(xkzm(i,k),xkzmax)
+         xkzh(i,k) = rp_min(xkzh(i,k),xkzmax)
+         xkzq(i,k) = rp_min(xkzq(i,k),xkzmax)
        endif
      enddo
    enddo
@@ -1001,13 +1001,13 @@
            endif
          endif
          zk = karman*zq(i,k+1)
-         rlamdz = min(max(0.1*dza(i,k+1),rlam),300.)
-         rlamdz = min(dza(i,k+1),rlamdz)
+         rlamdz = rp_min(rp_max(0.1*dza(i,k+1),rlam),300.)
+         rlamdz = rp_min(dza(i,k+1),rlamdz)
          rl2 = (zk*rlamdz/(rlamdz+zk))**2
          dk = rl2*sqrt(ss)
          if(ri.lt.0.)then
 ! unstable regime
-           ri = max(ri, rimin)
+           ri = rp_max(ri, rimin)
            sri = sqrt(-ri)
            xkzm(i,k) = dk*(1+8.*(-ri)/(1+1.746*sri))
            xkzh(i,k) = dk*(1+8.*(-ri)/(1+1.286*sri))
@@ -1015,14 +1015,14 @@
 ! stable regime
            xkzh(i,k) = dk/(1+5.*ri)**2
            prnum = 1.0+2.1*ri
-           prnum = min(prnum,prmax)
+           prnum = rp_min(prnum,prmax)
            xkzm(i,k) = xkzh(i,k)*prnum
          endif
 !
          xkzm(i,k) = xkzm(i,k)+xkzom(i,k)
          xkzh(i,k) = xkzh(i,k)+xkzoh(i,k)
-         xkzm(i,k) = min(xkzm(i,k),xkzmax)
-         xkzh(i,k) = min(xkzh(i,k),xkzmax)
+         xkzm(i,k) = rp_min(xkzm(i,k),xkzmax)
+         xkzh(i,k) = rp_min(xkzh(i,k),xkzmax)
          xkzml(i,k) = xkzm(i,k)
          xkzhl(i,k) = xkzh(i,k)
        endif
@@ -1059,8 +1059,8 @@
        elseif(pblflg(i).and.k.ge.kpbl(i).and.entfac(i,k).lt.4.6) then
          xkzh(i,k) = -we(i)*dza(i,kpbl(i))*rp_exp(-entfac(i,k))
          xkzh(i,k) = sqrt(xkzh(i,k)*xkzhl(i,k))
-         xkzh(i,k) = max(xkzh(i,k),xkzoh(i,k))
-         xkzh(i,k) = min(xkzh(i,k),xkzmax)
+         xkzh(i,k) = rp_max(xkzh(i,k),xkzoh(i,k))
+         xkzh(i,k) = rp_min(xkzh(i,k),xkzmax)
          f1(i,k+1) = thx(i,k+1)-300.
        else
          f1(i,k+1) = thx(i,k+1)-300.
@@ -1147,8 +1147,8 @@
          elseif(pblflg(i).and.k.ge.kpbl(i).and.entfac(i,k).lt.4.6) then
             xkzq(i,k) = -we(i)*dza(i,kpbl(i))*rp_exp(-entfac(i,k))
             xkzq(i,k) = sqrt(xkzq(i,k)*xkzhl(i,k))
-            xkzq(i,k) = max(xkzq(i,k),xkzoh(i,k))
-            xkzq(i,k) = min(xkzq(i,k),xkzmax)
+            xkzq(i,k) = rp_max(xkzq(i,k),xkzoh(i,k))
+            xkzq(i,k) = rp_min(xkzq(i,k),xkzmax)
             f1(i,k+1) = qvx(i,k+1)
          else
             f1(i,k+1) = qvx(i,k+1)
@@ -1262,8 +1262,8 @@
        zk = karman*zq(i,k+1)
  !over pbl
        if (k.ge.kpbl(i)) then
-        rlamdz = min(max(0.1*dza(i,k+1),rlam),300.)
-        rlamdz = min(dza(i,k+1),rlamdz)
+        rlamdz = rp_min(rp_max(0.1*dza(i,k+1),rlam),300.)
+        rlamdz = rp_min(dza(i,k+1),rlamdz)
        else
  !in pbl
         rlamdz = 150.0
@@ -1294,7 +1294,7 @@
 ! compute vconv
 !      Use Beljaars over land
         if (xland(i).lt.1.5) then
-        fluxc = max(sflux(i),0.0)
+        fluxc = rp_max(sflux(i),0.0)
         vconvc=1.
         VCONV = vconvc*rp_pow((g/thvx(i,1)*pblh_ysu(i)*fluxc), .33)
         else
@@ -1307,8 +1307,8 @@
       fric(i,1)=ust(i)**2/wspd1(i)*rhox(i)*g/del(i,1)*dt2         &
         *(wspd1(i)/wspd(i))**2
       if(present(ctopo)) then
-        vconvnew=0.9*vconvfx(i)+1.5*(max((pblh_ysu(i)-500)/1000.0,0.0))
-        vconvlim = min(vconvnew,1.0)
+        vconvnew=0.9*vconvfx(i)+1.5*(rp_max((pblh_ysu(i)-500)/1000.0,0.0))
+        vconvlim = rp_min(vconvnew,1.0)
         ad(i,1) = 1.+fric(i,1)*vconvlim+ctopo(i)*fric(i,1)*(1-vconvlim)
         ad(i,1) = ad(i,1) - bepswitch*frc_urb1d(i)* &
                      (fric(i,1)*vconvlim+ctopo(i)*fric(i,1)*(1-vconvlim))
@@ -1338,8 +1338,8 @@
        elseif(pblflg(i).and.k.ge.kpbl(i).and.entfac(i,k).lt.4.6) then
          xkzm(i,k) = prpbl(i)*xkzh(i,k)
          xkzm(i,k) = sqrt(xkzm(i,k)*xkzml(i,k))
-         xkzm(i,k) = max(xkzm(i,k),xkzom(i,k))
-         xkzm(i,k) = min(xkzm(i,k),xkzmax)
+         xkzm(i,k) = rp_max(xkzm(i,k),xkzom(i,k))
+         xkzm(i,k) = rp_min(xkzm(i,k),xkzmax)
          f1(i,k+1) = ux(i,k+1)
          f2(i,k+1) = vx(i,k+1)
        else
@@ -1623,7 +1623,7 @@
       minthv = 9.e9
 
       do while (zw1d(k) .le. 500.)
-        qtke  =max(qke1d(k),0.)   ! maximum qke
+        qtke  =rp_max(qke1d(k),0.)   ! maximum qke
          if (maxqke < qtke) then
             maxqke = qtke
             ktke = k
@@ -1636,8 +1636,8 @@
       enddo
       !tkeeps = maxtke/20. = maxqke/40.
       tkeeps = maxqke/40.
-      tkeeps = max(tkeeps,0.025)
-      tkeeps = min(tkeeps,0.25)
+      tkeeps = rp_max(tkeeps,0.025)
+      tkeeps = rp_min(tkeeps,0.25)
 
       !find thetav-based pblh (best for daytime).
       zi=0.
@@ -1655,7 +1655,7 @@
       do while (zi .eq. 0.)
          if (thetav1d(k) .ge. (minthv + delt_thv))then
             zi = zw1d(k) - dz1d(k-1)* &
-              & min((thetav1d(k)-(minthv + delt_thv))/max(thetav1d(k)-thetav1d(k-1),1e-6),1.0)
+              & rp_min((thetav1d(k)-(minthv + delt_thv))/rp_max(thetav1d(k)-thetav1d(k-1),1e-6),1.0)
         endif
         k = k+1
          if (k .eq. kte-1) zi = zw1d(kts+1) !exit safeguard
@@ -1672,13 +1672,13 @@
       k = ktke+1
      do while (pblh_tke .eq. 0.)
         !qke can be negative (if ckmod == 0)... make tke non-negative.
-         qtke  =max(qke1d(k)/2.,0.)      ! maximum tke
-         qtkem1=max(qke1d(k-1)/2.,0.)
+         qtke  =rp_max(qke1d(k)/2.,0.)      ! maximum tke
+         qtkem1=rp_max(qke1d(k-1)/2.,0.)
          if (qtke .le. tkeeps) then
                pblh_tke = zw1d(k) - dz1d(k-1)* &
-               & min((tkeeps-qtke)/max(qtkem1-qtke, 1e-6), 1.0)
+               & rp_min((tkeeps-qtke)/rp_max(qtkem1-qtke, 1e-6), 1.0)
              !in case of near zero tke, set pblh = lowest level.
-             pblh_tke = max(pblh_tke,zw1d(kts+1))
+             pblh_tke = rp_max(pblh_tke,zw1d(kts+1))
              !print *,"pblh_tke:",i,j,pblh_tke, qke1d(k)/2., zw1d(kts+1)
          endif
          k = k+1

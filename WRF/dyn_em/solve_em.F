@@ -378,7 +378,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
    diag_flag = .false.
    if ( Is_alarm_tstep(grid%domain_clock, grid%alarms(HISTORY_ALARM)) ) then
       diag_flag = .true.
-      ke_diag = min(k_end,kde-1) ! set depth to full domain for reflectivity field
+      ke_diag = rp_min(k_end,kde-1) ! set depth to full domain for reflectivity field
    endif
    IF (config_flags%nwp_diagnostics == 1) diag_flag = .true.
 
@@ -391,7 +391,7 @@ SUBROUTINE solve_em ( grid , config_flags  &
 
 #if (WRF_CHEM == 1)
 
-   kte=min(k_end,kde-1)
+   kte=rp_min(k_end,kde-1)
 # ifdef DM_PARALLEL
    if ( num_chem >= PARAM_FIRST_SCALAR ) then
 !-----------------------------------------------------------------------
@@ -454,16 +454,16 @@ SUBROUTINE solve_em ( grid , config_flags  &
 
    IF ( grid%time_step_sound == 0 ) THEN
 ! This function will give 4 for 6*dx and 6 for 10*dx and returns even numbers only
-     spacing = min(grid%dx, grid%dy)
+     spacing = rp_min(grid%dx, grid%dy)
      IF ( ( config_flags%use_adaptive_time_step ) .AND. ( config_flags%map_proj == PROJ_CASSINI ) ) THEN
-       max_msft=MIN ( MAX(grid%max_msftx, grid%max_msfty) , &
+       max_msft=rp_min ( rp_max(grid%max_msftx, grid%max_msfty) , &
                       1.0/rp_cos(config_flags%fft_filter_lat*degrad) )
-       num_sound_steps = max ( 2 * ( INT (300. * grid%dt / (spacing / max_msft) - 0.01 ) + 1 ), 4 )
+       num_sound_steps = rp_max ( 2 * ( INT (300. * grid%dt / (spacing / max_msft) - 0.01 ) + 1 ), 4 )
      ELSE IF  ( config_flags%use_adaptive_time_step ) THEN
-       max_msft= MAX(grid%max_msftx, grid%max_msfty)
-       num_sound_steps = max ( 2 * ( INT (300. * grid%dt / (spacing / max_msft) - 0.01 ) + 1 ), 4 )
+       max_msft= rp_max(grid%max_msftx, grid%max_msfty)
+       num_sound_steps = rp_max ( 2 * ( INT (300. * grid%dt / (spacing / max_msft) - 0.01 ) + 1 ), 4 )
      ELSE
-       num_sound_steps = max ( 2 * ( INT (300. * grid%dt /  spacing             - 0.01 ) + 1 ), 4 )
+       num_sound_steps = rp_max ( 2 * ( INT (300. * grid%dt /  spacing             - 0.01 ) + 1 ), 4 )
      END IF
      WRITE(wrf_err_message,*)'grid spacing, dt, time_step_sound=',spacing,grid%dt,num_sound_steps
      CALL wrf_debug ( 50 , wrf_err_message )
@@ -3665,7 +3665,7 @@ BENCH_END(bc_end_tim)
       WRITE ( message , FMT = '("solve_em: old_dt =",g15.6,", dt=",g15.6," on domain ",I3)' ) &
            & old_dt,grid%dt,grid%id
       CALL wrf_debug(200,message)
-      old_dt=min(old_dt,grid%dt)
+      old_dt=rp_min(old_dt,grid%dt)
       num = INT(old_dt * precision)
       den = precision
       CALL WRFU_TimeIntervalSet(dtInterval, Sn=num, Sd=den)
@@ -3799,14 +3799,14 @@ BENCH_END(advance_ppt_tim)
      scalar_tile_loop_1a: DO ij = 1 , grid%num_tiles
 
        IF ( config_flags%periodic_x ) THEN
-         its = max(grid%i_start(ij),ids)
-         ite = min(grid%i_end(ij),ide-1)
+         its = rp_max(grid%i_start(ij),ids)
+         ite = rp_min(grid%i_end(ij),ide-1)
        ELSE
-         its = max(grid%i_start(ij),ids+sz)
-         ite = min(grid%i_end(ij),ide-1-sz)
+         its = rp_max(grid%i_start(ij),ids+sz)
+         ite = rp_min(grid%i_end(ij),ide-1-sz)
        ENDIF
-       jts = max(grid%j_start(ij),jds+sz)
-       jte = min(grid%j_end(ij),jde-1-sz)
+       jts = rp_max(grid%j_start(ij),jds+sz)
+       jte = rp_min(grid%j_end(ij),jde-1-sz)
 
        if (config_flags%madwrf_opt == 2) then
          CALL wrf_debug ( 200 , ' call cloud_tracer_nudge' )
@@ -3939,9 +3939,9 @@ BENCH_START(micro_driver_tim)
       &        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde         &
       &        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme         &
       &        ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe         &
-      &        ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)         &
-      &        ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)         &
-      &        ,KTS=k_start, KTE=min(k_end,kde-1)                         &
+      &        ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)         &
+      &        ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)         &
+      &        ,KTS=k_start, KTE=rp_min(k_end,kde-1)                         &
       &        ,NUM_TILES=grid%num_tiles                                  &
       &        ,NAER=grid%naer                                            &
 !===================== IRRIGATION =========================
@@ -4178,10 +4178,10 @@ BENCH_START(moist_phys_end_tim)
 
      DO ij = 1 , grid%num_tiles
 
-       its = max(grid%i_start(ij),ids)
-       ite = min(grid%i_end(ij),ide-1)
-       jts = max(grid%j_start(ij),jds)
-       jte = min(grid%j_end(ij),jde-1)
+       its = rp_max(grid%i_start(ij),ids)
+       ite = rp_min(grid%i_end(ij),ide-1)
+       jts = rp_max(grid%j_start(ij),jds)
+       jte = rp_min(grid%j_end(ij),jde-1)
 
        IF ( config_flags%mp_zero_out > 0 ) THEN
        CALL microphysics_zero_outb (                                    &
@@ -4215,14 +4215,14 @@ BENCH_START(moist_phys_end_tim)
        ENDIF
 
        IF ( config_flags%periodic_x ) THEN
-         its = max(grid%i_start(ij),ids)
-         ite = min(grid%i_end(ij),ide-1)
+         its = rp_max(grid%i_start(ij),ids)
+         ite = rp_min(grid%i_end(ij),ide-1)
        ELSE
-         its = max(grid%i_start(ij),ids+sz)
-         ite = min(grid%i_end(ij),ide-1-sz)
+         its = rp_max(grid%i_start(ij),ids+sz)
+         ite = rp_min(grid%i_end(ij),ide-1-sz)
        ENDIF
-       jts = max(grid%j_start(ij),jds+sz)
-       jte = min(grid%j_end(ij),jde-1-sz)
+       jts = rp_max(grid%j_start(ij),jds+sz)
+       jte = rp_min(grid%j_end(ij),jde-1-sz)
 
        IF ( config_flags%mp_zero_out > 0 ) THEN
        CALL microphysics_zero_outa (                                    &
@@ -4354,14 +4354,14 @@ BENCH_START(moist_phys_end_tim)
    scalar_tile_loop_1ba: DO ij = 1 , grid%num_tiles
 
      IF ( config_flags%periodic_x ) THEN
-       its = max(grid%i_start(ij),ids)
-       ite = min(grid%i_end(ij),ide-1)
+       its = rp_max(grid%i_start(ij),ids)
+       ite = rp_min(grid%i_end(ij),ide-1)
      ELSE
-       its = max(grid%i_start(ij),ids+sz)
-       ite = min(grid%i_end(ij),ide-1-sz)
+       its = rp_max(grid%i_start(ij),ids+sz)
+       ite = rp_min(grid%i_end(ij),ide-1-sz)
      ENDIF
-     jts = max(grid%j_start(ij),jds+sz)
-     jte = min(grid%j_end(ij),jde-1-sz)
+     jts = rp_max(grid%j_start(ij),jds+sz)
+     jte = rp_min(grid%j_end(ij),jde-1-sz)
 
      CALL calc_p_rho_phi( moist, num_3d_m, config_flags%hypsometric_opt,                    &
                           grid%al, grid%alb, grid%mu_2, grid%muts,                          &

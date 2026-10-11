@@ -4,6 +4,7 @@
 #define DEBUG_OUT
 
 module module_fr_fire_driver_wrf
+   USE module_repro_math
 ! wrf-specific driver
 
 use module_fr_fire_driver
@@ -118,9 +119,9 @@ subroutine fire_driver_em_step (grid , config_flags               &
     do ij=1,grid%num_tiles
        ! FIRE works on domain by 1 smaller, in last row&col winds are not set properly
        its = grid%i_start(ij)             ! start atmospheric tile in i
-       ite = min(grid%i_end(ij),ide-1)    ! end atmospheric tile in i
+       ite = rp_min(grid%i_end(ij),ide-1)    ! end atmospheric tile in i
        jts = grid%j_start(ij)             ! start atmospheric tile in j
-       jte = min(grid%j_end(ij),jde-1)    ! end atmospheric tile in j
+       jte = rp_min(grid%j_end(ij),jde-1)    ! end atmospheric tile in j
        kts=kds
        kte=kde
 

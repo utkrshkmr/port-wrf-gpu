@@ -464,8 +464,8 @@ CONTAINS
 
                INTERP_FRACTION = ( SHDFAC - SHDMIN ) / ( SHDMAX - SHDMIN )
                ! Bound INTERP_FRACTION between 0 and 1
-               INTERP_FRACTION = MIN ( INTERP_FRACTION, 1.0 )
-               INTERP_FRACTION = MAX ( INTERP_FRACTION, 0.0 )
+               INTERP_FRACTION = rp_min ( INTERP_FRACTION, 1.0 )
+               INTERP_FRACTION = rp_max ( INTERP_FRACTION, 0.0 )
                ! Scale Emissivity and LAI between EMISSMIN and EMISSMAX by INTERP_FRACTION
                EMBRD = ( ( 1.0 - INTERP_FRACTION ) * EMISSMIN  ) + ( INTERP_FRACTION * EMISSMAX  )
                IF (.NOT. RDLAI2D) THEN
@@ -581,12 +581,12 @@ CONTAINS
               IF(SFCTMP <= T1) THEN
                 RU = 0.
               ELSE
-                RU = 100.*SHDFAC*FGSN*MIN((SFCTMP-T1)/5., 1.)*(1.-rp_exp(-XLAI))
+                RU = 100.*SHDFAC*FGSN*rp_min((SFCTMP-T1)/5., 1.)*(1.-rp_exp(-XLAI))
               ENDIF
               CH = CH/(1.+RU*CH)
             ENDIF
 
-            SNCOVR = MIN(SNCOVR,0.98) 
+            SNCOVR = rp_min(SNCOVR,0.98) 
 
             CALL ALCALC (ALB,SNOALB,EMBRD,SHDFAC,SHDMIN,SNCOVR,T1, &
                  ALBEDO,EMISSI,DT,SNOWNG,SNOTIME1,LVCOEF)
@@ -991,7 +991,7 @@ CONTAINS
 !               ENDIF
           ENDIF
 !
-           SNOALB2 = MAX ( SNOALB2, ALB )
+           SNOALB2 = rp_max ( SNOALB2, ALB )
            ALBEDO = ALB + SNCOVR*(SNOALB2-ALB)
            IF (ALBEDO .GT. SNOALB2) ALBEDO=SNOALB2
 
@@ -1080,21 +1080,21 @@ CONTAINS
 ! CONTRIBUTION DUE TO AIR TEMPERATURE AT FIRST MODEL LEVEL ABOVE GROUND
 ! RCT EXPRESSION FROM NOILHAN AND PLANTON (1989, MWR).
 ! ----------------------------------------------------------------------
-      RCS = MAX (RCS,0.0001)
+      RCS = rp_max (RCS,0.0001)
       RCT = 1.0- 0.0016* ( (TOPT - SFCTMP)**2)
 
 ! ----------------------------------------------------------------------
 ! CONTRIBUTION DUE TO VAPOR PRESSURE DEFICIT AT FIRST MODEL LEVEL.
 ! RCQ EXPRESSION FROM SSIB
 ! ----------------------------------------------------------------------
-      RCT = MAX (RCT,0.0001)
+      RCT = rp_max (RCT,0.0001)
       RCQ = 1.0/ (1.0+ HS * (Q2SAT - Q2))
 
 ! ----------------------------------------------------------------------
 ! CONTRIBUTION DUE TO SOIL MOISTURE AVAILABILITY.
 ! DETERMINE CONTRIBUTION FROM EACH SOIL LAYER, THEN ADD THEM UP.
 ! ----------------------------------------------------------------------
-      RCQ = MAX (RCQ,0.01)
+      RCQ = rp_max (RCQ,0.01)
       GX = (SMC (1) - SMCWLT) / (SMCREF - SMCWLT)
       IF (GX  >  1.) GX = 1.
       IF (GX  <  0.) GX = 0.
@@ -1131,7 +1131,7 @@ CONTAINS
 !   PC * LINERIZED PENMAN POTENTIAL EVAP =
 !   PENMAN-MONTEITH ACTUAL EVAPORATION (CONTAINING RC TERM).
 ! ----------------------------------------------------------------------
-      RCSOIL = MAX (RCSOIL,0.0001)
+      RCSOIL = rp_max (RCSOIL,0.0001)
 
       RC = RSMIN / (XLAI * RCS * RCT * RCQ * RCSOIL)
 !      RR = (4.* SIGMA * RD / CP)* (SFCTMP **4.)/ (SFCPRS * CH) + 1.0
@@ -1215,7 +1215,7 @@ CONTAINS
       SRATIO = (SMC - SMCDRY) / (SMCMAX - SMCDRY)
       IF (SRATIO > 0.) THEN
         FX = rp_pow(SRATIO, FXEXP)
-        FX = MAX ( MIN ( FX, 1. ) ,0. )
+        FX = rp_max ( rp_min ( FX, 1. ) ,0. )
       ELSE
         FX = 0.
       ENDIF
@@ -1262,7 +1262,7 @@ CONTAINS
       SRATIO = (SMC - SMCDRY) / (SMCMAX - SMCDRY)
       IF (SRATIO > 0.) THEN
         FX = rp_pow(SRATIO, FXEXP)
-        FX = MAX ( MIN ( FX, 1. ) ,0. )
+        FX = rp_max ( rp_min ( FX, 1. ) ,0. )
       ELSE
         FX = 0.
       ENDIF
@@ -1410,7 +1410,7 @@ CONTAINS
 ! CANOPY.  -F.CHEN, 18-OCT-1994
 ! ----------------------------------------------------------------------
             CMC2MS = CMC / DT
-            EC = MIN ( CMC2MS, EC )
+            EC = rp_min ( CMC2MS, EC )
          END IF
       END IF
 ! ----------------------------------------------------------------------
@@ -1576,7 +1576,7 @@ CONTAINS
                        ( (TKELV - T0)/ TKELV), ( -1/ BX)))* SMCMAX
 !            FRH2O = MIN (FK, SMC)
              IF (FK < 0.02) FK = 0.02
-             FREE = MIN (FK, SMC)
+             FREE = rp_min (FK, SMC)
 ! ----------------------------------------------------------------------
 ! END OPTION 2
 ! ----------------------------------------------------------------------
@@ -2264,12 +2264,12 @@ CONTAINS
         IF(SNEQV > 0. .AND. FNET > 0. .AND. SOLDN > 0. ) THEN
          TOTABS = (1.-ALBEDO)*SOLDN*FVB           ! solar radiation absorbed 
                                                   ! by vegetated fraction
-         UCABS = MIN(TOTABS,((1.0-ALGDSN)*(1.0-ALVGSN)*SOLDN*GAMA)*FVB)
+         UCABS = rp_min(TOTABS,((1.0-ALGDSN)*(1.0-ALVGSN)*SOLDN*GAMA)*FVB)
 !         print*,'penman',UCABS,TOTABS,SOLDN,GAMA,FVB
 !         UCABS = MIN(TOTABS,(0.44*SOLDN*GAMA)*FVB)  
                                                   ! UCABS -> solar radiation
 						  ! absorbed under canopy
-         FLX4 = MIN(TOTABS - UCABS, MIN(250., 0.5*(1.-ALBEDO)*SOLDN))
+         FLX4 = rp_min(TOTABS - UCABS, rp_min(250., 0.5*(1.-ALBEDO)*SOLDN))
         ENDIF
 
         SIGNCK = (STC1-273.15)*(SFCTMP-273.15)
@@ -2762,7 +2762,7 @@ CONTAINS
 !  FLIMIT is a limit value for FAC2
       FAC2=0.0
       DO I=1,NSOIL
-         FAC2=MAX(FAC2,SH2O(I)/SMCMAX)
+         FAC2=rp_max(FAC2,SH2O(I)/SMCMAX)
       ENDDO
       CALL FAC2MIT(SMCMAX,FLIMIT)
 
@@ -2890,7 +2890,7 @@ CONTAINS
           FBUR = 0.
         ENDIF
 
-        FBUR = MIN(MAX(FBUR,0.0),1.0)
+        FBUR = rp_min(rp_max(FBUR,0.0),1.0)
 
 ! XLAI IS ADJUSTED FOR VERTICAL BURYING BY SNOW
         XLAI = XLAI * (1.0 - FBUR)
@@ -3138,7 +3138,7 @@ CONTAINS
       BETA = 1.0
       IF (ETP <= 0.0) THEN
          IF ( ( RIBB >= 0.1 ) .AND. ( FDOWN > 150.0 ) ) THEN
-            ETP=(MIN(ETP*(1.0-RIBB),0.)*SNCOVR/0.980 + ETP*(0.980-SNCOVR))/0.980
+            ETP=(rp_min(ETP*(1.0-RIBB),0.)*SNCOVR/0.980 + ETP*(0.980-SNCOVR))/0.980
          ENDIF
          IF(ETP == 0.) BETA = 0.0
          ETP1 = ETP * 0.001
@@ -3252,7 +3252,7 @@ CONTAINS
          T1 = T12
          SSOIL = DF1 * (T1- STC (1)) / DTOT
 !        ESD = MAX (0.0, ESD- ETP2)
-         ESD = MAX(0.0, ESD-ESNOW2)
+         ESD = rp_max(0.0, ESD-ESNOW2)
          FLX3 = 0.0
          EX = 0.0
 
@@ -3276,7 +3276,7 @@ CONTAINS
       ELSE
 !     From V3.9 original code (commented) replaced to allow complete melting of small snow amounts
 !        T1 = TFREEZ * SNCOVR ** SNOEXP + T12 * (1.0- SNCOVR ** SNOEXP)
-         T1 = TFREEZ * max(0.01,SNCOVR**SNOEXP) + T12 * (1.0- max(0.01,SNCOVR**SNOEXP))
+         T1 = TFREEZ * rp_max(0.01,SNCOVR**SNOEXP) + T12 * (1.0- rp_max(0.01,SNCOVR**SNOEXP))
          BETA = 1.0
 
 ! ----------------------------------------------------------------------
@@ -3534,7 +3534,7 @@ CONTAINS
       IF (TSNOWC >=  0.) THEN
          DW = 0.13* DTHR /24.
          IF ( UA_PHYS .AND. TSOILC >= 0.) THEN
-             DW = MIN (DW, 0.13*SNOMLTC/(ESDCX+0.13*SNOMLTC))
+             DW = rp_min (DW, 0.13*SNOMLTC/(ESDCX+0.13*SNOMLTC))
          ENDIF
          SNDENS = SNDENS * (1. - DW) + DW
          IF (SNDENS >=  0.40) SNDENS = 0.40
@@ -3640,7 +3640,7 @@ CONTAINS
 ! ----------------------------------------------------------------------
       HNEWC = NEWSNC / DSNEW
       IF (SNOWHC + HNEWC .LT. 1.0E-3) THEN
-         SNDENS = MAX(DSNEW,SNDENS)
+         SNDENS = rp_max(DSNEW,SNDENS)
       ELSE
          SNDENS = (SNOWHC * SNDENS + HNEWC * DSNEW)/ (SNOWHC + HNEWC)
       ENDIF
@@ -3817,9 +3817,9 @@ CONTAINS
          MXSMC = SH2OA (1)
          CALL WDFCND (WDF,WCND,MXSMC,SMCMAX,BEXP,DKSAT,DWSAT,           &
                          SICEMAX)
-         INFMAX = MAX (INFMAX,WCND)
+         INFMAX = rp_max (INFMAX,WCND)
 
-         INFMAX = MIN (INFMAX,PX/DT)
+         INFMAX = rp_min (INFMAX,PX/DT)
 #ifdef WRF_HYDRO 
 !DJG NDHMS/WRF-Hydro edit...
 !DJG       IF (PCPDRP >  INFMAX) THEN
@@ -4024,8 +4024,8 @@ CONTAINS
          ELSE
             WPLUS = 0.
          END IF
-         SMC (K) = MAX ( MIN (STOT,SMCMAX),0.02 )
-         SH2OOUT (K) = MAX ( (SMC (K) - SICE (K)),0.0)
+         SMC (K) = rp_max ( rp_min (STOT,SMCMAX),0.02 )
+         SH2OOUT (K) = rp_max ( (SMC (K) - SICE (K)),0.0)
       END DO
 #ifdef WRF_HYDRO
 !DJG NDHMS/WRF-Hydro edit...
@@ -4057,7 +4057,7 @@ CONTAINS
                END IF
 
 !             SMC (K) = MAX ( MIN (STOT,SMCMAX),0.02 )
-             SH2OOUT (K) = MAX ( (SMC (K) - SICE (K)),0.0)
+             SH2OOUT (K) = rp_max ( (SMC (K) - SICE (K)),0.0)
 
            END DO
          END IF
@@ -4072,7 +4072,7 @@ CONTAINS
       RUNOFF3 = WPLUS
       CMC = CMC + DT * RHSCT
       IF (CMC < 1.E-20) CMC = 0.0
-      CMC = MIN (CMC,CMCMAX)
+      CMC = rp_min (CMC,CMCMAX)
 
 ! ----------------------------------------------------------------------
   END SUBROUTINE SSTEP
@@ -4410,7 +4410,7 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
       SGX = 0.0
       DO I = 1,NROOT
          GX (I) = ( SMC (I) - SMCWLT ) / ( SMCREF - SMCWLT )
-         GX (I) = MAX ( MIN ( GX (I), 1. ), 0. )
+         GX (I) = rp_max ( rp_min ( GX (I), 1. ), 0. )
          SGX = SGX + GX (I)
       END DO
 
@@ -4418,7 +4418,7 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
       DENOM = 0.
       DO I = 1,NROOT
          RTX = RTDIS (I) + GX (I) - SGX
-         GX (I) = GX (I) * MAX ( RTX, 0. )
+         GX (I) = GX (I) * rp_max ( RTX, 0. )
          DENOM = DENOM + GX (I)
       END DO
 
@@ -4490,7 +4490,7 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 ! PREP AN EXPNTL COEF AND CALC THE SOIL WATER DIFFUSIVITY
 ! ----------------------------------------------------------------------
       FACTR2 = SMC / SMCMAX
-      FACTR1 = MIN(FACTR1,FACTR2)
+      FACTR1 = rp_min(FACTR1,FACTR2)
       EXPON = BEXP + 2.0
 
 ! ----------------------------------------------------------------------
@@ -4602,7 +4602,7 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 ! ----------------------------------------------------------------------
 ! BELJARS CORRECTION OF USTAR
 ! ----------------------------------------------------------------------
-      DU2 = MAX (SFCSPD * SFCSPD,EPSU2)
+      DU2 = rp_max (SFCSPD * SFCSPD,EPSU2)
 !cc   If statements to avoid TANGENT LINEAR problems near zero
       BTGH = BTG * HPBL
       IF (BTGH * AKHS * DTHV .ne. 0.0) THEN
@@ -4614,7 +4614,7 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 ! ----------------------------------------------------------------------
 ! ZILITINKEVITCH APPROACH FOR ZT
 ! ----------------------------------------------------------------------
-      USTAR = MAX (SQRT (AKMS * SQRT (DU2+ WSTAR2)),EPSUST)
+      USTAR = rp_max (SQRT (AKMS * SQRT (DU2+ WSTAR2)),EPSUST)
 
 ! ----------------------------------------------------------------------
       ZT = rp_exp (ZILFC * SQRT (USTAR * Z0))* Z0
@@ -4633,12 +4633,12 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 !     PRINT*,'DTHV=',DTHV
 !     PRINT*,'USTAR=',USTAR
 
-      RLMO = ELFC * AKHS * DTHV / USTAR **3
+      RLMO = ELFC * AKHS * DTHV / rp_pow(USTAR, 3)
 ! ----------------------------------------------------------------------
 ! 1./MONIN-OBUKKHOV LENGTH-SCALE
 ! ----------------------------------------------------------------------
       DO ITR = 1,ITRMX
-         ZETALT = MAX (ZSLT * RLMO,ZTMIN)
+         ZETALT = rp_max (ZSLT * RLMO,ZTMIN)
          RLMO = ZETALT / ZSLT
          ZETALU = ZSLU * RLMO
          ZETAU = ZU * RLMO
@@ -4666,8 +4666,8 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
                PSHZ = PSPHU (XT)
                SIMH = PSPHU (XLT) - PSHZ + RLOGT
             ELSE
-               ZETALU = MIN (ZETALU,ZTMAX)
-               ZETALT = MIN (ZETALT,ZTMAX)
+               ZETALU = rp_min (ZETALU,ZTMAX)
+               ZETALT = rp_min (ZETALT,ZTMAX)
 !     PRINT*,'-----------2------------'
 !     PRINT*,'PSMZ=',PSMZ
 !     PRINT*,'PSPMS(ZETAU)=',PSPMS(ZETAU)
@@ -4693,9 +4693,9 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
                PSHZ = PSLHU (ZETAT)
                SIMH = PSLHU (ZETALT) - PSHZ + RLOGT
             ELSE
-               ZETALU = MIN (ZETALU,ZTMAX)
+               ZETALU = rp_min (ZETALU,ZTMAX)
 
-               ZETALT = MIN (ZETALT,ZTMAX)
+               ZETALT = rp_min (ZETALT,ZTMAX)
 !     PRINT*,'-----------4------------'
 !     PRINT*,'PSMZ=',PSMZ
 !     PRINT*,'PSLMS(ZETAU)=',PSLMS(ZETAU)
@@ -4714,25 +4714,25 @@ IF ( OPT_THCND == 1 .OR. ( OPT_THCND == 2 .AND. (SOILTYP /= 4 .AND. SOILTYP /= 3
 ! ----------------------------------------------------------------------
 ! ZILITINKEVITCH FIX FOR ZT
 ! ----------------------------------------------------------------------
-         USTAR = MAX (SQRT (AKMS * SQRT (DU2+ WSTAR2)),EPSUST)
+         USTAR = rp_max (SQRT (AKMS * SQRT (DU2+ WSTAR2)),EPSUST)
 
          ZT = rp_exp (ZILFC * SQRT (USTAR * Z0))* Z0
          ZSLT = ZLM + ZT
 !-----------------------------------------------------------------------
          RLOGT = rp_log (ZSLT / ZT)
          USTARK = USTAR * VKRM
-         AKMS = MAX (USTARK / SIMM,CXCH)
+         AKMS = rp_max (USTARK / SIMM,CXCH)
 !-----------------------------------------------------------------------
 ! IF STATEMENTS TO AVOID TANGENT LINEAR PROBLEMS NEAR ZERO
 !-----------------------------------------------------------------------
-         AKHS = MAX (USTARK / SIMH,CXCH)
+         AKHS = rp_max (USTARK / SIMH,CXCH)
          IF (BTGH * AKHS * DTHV .ne. 0.0) THEN
             WSTAR2 = WWST2* rp_pow(ABS (BTGH * AKHS * DTHV), (2./3.))
          ELSE
             WSTAR2 = 0.0
          END IF
 !-----------------------------------------------------------------------
-         RLMN = ELFC * AKHS * DTHV / USTAR **3
+         RLMN = ELFC * AKHS * DTHV / rp_pow(USTAR, 3)
 !-----------------------------------------------------------------------
 !     IF(ABS((RLMN-RLMO)/RLMA).LT.EPSIT)    GO TO 110
 !-----------------------------------------------------------------------

@@ -66,26 +66,26 @@ CONTAINS
 
       ibs = ids
       ibe = ide-1
-      itf = min(ite,ide-1)
+      itf = rp_min(ite,ide-1)
       jbs = jds
       jbe = jde-1
-      jtf = min(jte,jde-1)
+      jtf = rp_min(jte,jde-1)
       ktf = kde-1
       IF (variable == 'u') ibe = ide
-      IF (variable == 'u') itf = min(ite,ide)
+      IF (variable == 'u') itf = rp_min(ite,ide)
       IF (variable == 'v') jbe = jde
-      IF (variable == 'v') jtf = min(jte,jde)
+      IF (variable == 'v') jtf = rp_min(jte,jde)
       IF (variable == 'm') ktf = kte
       IF (variable == 'h') ktf = kte
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, min(jtf,jbs+spec_zone-1)
+        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
+            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -99,12 +99,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = max(jts,jbe-spec_zone+1), jtf
+        DO j = rp_max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
+            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -120,10 +120,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, min(itf,ibs+spec_zone-1)
+        DO i = its, rp_min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
+            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -138,10 +138,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = max(its,ibe-spec_zone+1), itf
+        DO i = rp_max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
+            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -267,10 +267,10 @@ CONTAINS
 ! rfield will be calculated beyond tile limits because relax_bdytend
 !   requires a 5-point stencil, and this avoids need for inter-tile/patch
 !   communication here
-           i_start = max(its-1, ids)
-           i_end = min(ite+1, ide-1)
-           j_start = max(jts-1, jds)
-           j_end = min(jte+1, jde-1)
+           i_start = rp_max(its-1, ids)
+           i_end = rp_min(ite+1, ide-1)
+           j_start = rp_max(jts-1, jds)
+           j_end = rp_min(jte+1, jde-1)
 
            CALL mass_weight ( ph , mut , rfield , c1f, c2f, &
                               ids,ide, jds,jde, kds,kde,    &        ! domain dims
@@ -320,10 +320,10 @@ CONTAINS
 
          IF( config_flags%nested) THEN
 
-           i_start = max(its-1, ids)
-           i_end = min(ite+1, ide-1)
-           j_start = max(jts-1, jds)
-           j_end = min(jte+1, jde-1)
+           i_start = rp_max(its-1, ids)
+           i_end = rp_min(ite+1, ide-1)
+           j_start = rp_max(jts-1, jds)
+           j_end = rp_min(jte+1, jde-1)
 
            CALL mass_weight ( w , mut , rfield , c1f, c2f, &
                               ids,ide, jds,jde, kds,kde,   &        ! domain dims
@@ -386,10 +386,10 @@ CONTAINS
 ! rscalar will be calculated beyond tile limits because relax_bdytend
 !   requires a 5-point stencil, and this avoids need for inter-tile/patch
 !   communication here
-           i_start = max(its-1, ids)
-           i_end = min(ite+1, ide-1)
-           j_start = max(jts-1, jds)
-           j_end = min(jte+1, jde-1)
+           i_start = rp_max(its-1, ids)
+           i_end = rp_min(ite+1, ide-1)
+           j_start = rp_max(jts-1, jds)
+           j_end = rp_min(jte+1, jde-1)
 
            CALL mass_weight ( scalar , mu , rscalar, c1h, c2h, &
                               ids,ide, jds,jde, kds,kde,   &          ! domain dims
@@ -1259,12 +1259,12 @@ CONTAINS
        jp1_limit = jde
      ENDIF
 
-     DO j = jts,min(jte,jde-1)
-       jm1 = max(j-1, jm1_limit)
-       jp1 = min(j+1, jp1_limit)
-     DO i = its,min(ite,ide-1)
-       im1 = max(i-1, im1_limit)
-       ip1 = min(i+1, ip1_limit)
+     DO j = jts,rp_min(jte,jde-1)
+       jm1 = rp_max(j-1, jm1_limit)
+       jp1 = rp_min(j+1, jp1_limit)
+     DO i = its,rp_min(ite,ide-1)
+       im1 = rp_max(i-1, im1_limit)
+       ip1 = rp_min(i+1, ip1_limit)
 
          w(i,1,j)=  msfty(i,j)*                              &
                   .5*rdy*(                                   &
@@ -1284,9 +1284,9 @@ CONTAINS
 
 ! Fill the atmospheric w field with smoothly decaying values
       IF (fill_w_flag) THEN
-        DO j = jts,min(jte,jde-1)
+        DO j = jts,rp_min(jte,jde-1)
         DO k = kts+1,kte
-        DO i = its,min(ite,ide-1)
+        DO i = its,rp_min(ite,ide-1)
           w(i,k,j) = w(i,1,j)*znw(k)*znw(k)
         ENDDO
         ENDDO
@@ -1480,7 +1480,7 @@ CONTAINS
       ELSE
          i_min = its
       END IF
-      i_min = MAX(ids,i_min)
+      i_min = rp_max(ids,i_min)
 
       IF      ( ite .EQ. ide ) THEN
          i_max = ite
@@ -1489,7 +1489,7 @@ CONTAINS
       ELSE
          i_max = ite
       END IF
-      i_max = MIN(i_max,ide-1)
+      i_max = rp_min(i_max,ide-1)
 
       !  South and north lateral boundaries.  This is the i-extent of its through ite, but j only
       !  goes to within spec_bdy_width of the top and bottom (north and south) boundaries.
@@ -1497,7 +1497,7 @@ CONTAINS
       !  South boundary: i,k,j
       !  jj increasing
 
-      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
+      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1506,7 +1506,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
+      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1534,7 +1534,7 @@ CONTAINS
       !  North boundary: i,k,j
       !  jj decreasing
 
-      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
+      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1543,7 +1543,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
+      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1579,7 +1579,7 @@ CONTAINS
       ELSE
          j_min = jts
       END IF
-      j_min = MAX(jds,j_min)
+      j_min = rp_max(jds,j_min)
 
       IF      ( jte .EQ. jde ) THEN
          j_max = jte
@@ -1588,7 +1588,7 @@ CONTAINS
       ELSE
          j_max = jte
       END IF
-      j_max = MIN(j_max,jde-1)
+      j_max = rp_min(j_max,jde-1)
 
       !  West and east lateral boundaries.  This is the j-extent of jts through jte, but i only
       !  goes to within spec_bdy_width of the left and right (west and east) boundaries.
@@ -1596,7 +1596,7 @@ CONTAINS
       !  West boundary: j,k,i
       !  ii increasing
 
-      DO ii = MAX(its,1) , MIN(ite,ide-1,spec_bdy_width)
+      DO ii = rp_max(its,1) , rp_min(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1605,7 +1605,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO ii = MAX(its,1) , MIN(ite,ide-1,spec_bdy_width)
+      DO ii = rp_max(its,1) , rp_min(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1633,7 +1633,7 @@ CONTAINS
       !  East boundary: j,k,i
       !  ii decreasing
 
-      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
+      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1642,7 +1642,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
+      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1670,7 +1670,7 @@ CONTAINS
       !  Put the final values for the tendencies into the arrays that get passed
       !  back out to the calling routine.
 
-      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
+      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1680,7 +1680,7 @@ CONTAINS
          END DO
       END DO
 
-      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
+      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1690,7 +1690,7 @@ CONTAINS
          END DO
       END DO
 
-      DO ii = its , MIN(ite,ide-1,spec_bdy_width)
+      DO ii = its , rp_min(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1700,7 +1700,7 @@ CONTAINS
          END DO
       END DO
 
-      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
+      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max

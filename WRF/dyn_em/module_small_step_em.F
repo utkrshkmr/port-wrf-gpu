@@ -114,11 +114,11 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
 !</DESCRIPTION>
 
     i_start = its
-    i_end   = min(ite,ide-1)
+    i_end   = rp_min(ite,ide-1)
     j_start = jts
-    j_end   = min(jte,jde-1)
+    j_end   = rp_min(jte,jde-1)
     k_start = kts
-    k_end = min(kte,kde-1)
+    k_end = rp_min(kte,kde-1)
 
     i_endu = ite
     j_endv = jte
@@ -162,7 +162,7 @@ SUBROUTINE small_step_prep( u_1, u_2, v_1, v_2, w_1, w_2, &
       ENDDO
 
       DO j=j_start, j_end
-      DO k=k_start, min(kde,kte)
+      DO k=k_start, rp_min(kde,kte)
       DO i=i_start, i_end
         w_1(i,k,j)  = w_2(i,k,j)
         ph_1(i,k,j) = ph_2(i,k,j)
@@ -368,9 +368,9 @@ SUBROUTINE small_step_finish( u_2, u_1, v_2, v_1, w_2, w_1,    &
 !</DESCRIPTION>
 
   i_start = its
-  i_end   = min(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = min(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   i_endu = ite
   j_endv = jte
@@ -507,11 +507,11 @@ SUBROUTINE calc_p_rho( al, p, ph,                    &
 !</DESCRIPTION>
 
    i_start = its
-   i_end   = min(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = min(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
    k_start = kts
-   k_end = min(kte,kde-1)
+   k_end = rp_min(kte,kde-1)
 
    IF (non_hydrostatic) THEN
      DO j=j_start, j_end
@@ -612,9 +612,9 @@ SUBROUTINE calc_coef_w( a,alpha,gamma,              &
 !
 !</DESCRIPTION>
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
       lid_flag=1
@@ -733,25 +733,25 @@ SUBROUTINE advance_uv ( u, ru_tend, v, rv_tend,        &
 !  now, the real work.
 !  set the loop bounds taking into account boundary conditions.
     IF( config_flags%nested .or. config_flags%specified ) THEN
-      i_start = max( its,ids+spec_zone )
-      i_end   = min( ite,ide-spec_zone-1 )
-      j_start = max( jts,jds+spec_zone )
-      j_end   = min( jte,jde-spec_zone-1 )
+      i_start = rp_max( its,ids+spec_zone )
+      i_end   = rp_min( ite,ide-spec_zone-1 )
+      j_start = rp_max( jts,jds+spec_zone )
+      j_end   = rp_min( jte,jde-spec_zone-1 )
       k_start = kts
-      k_end   = min( kte, kde-1 )
-      i_endu = min( ite,ide-spec_zone )
-      j_endv = min( jte,jde-spec_zone )
+      k_end   = rp_min( kte, kde-1 )
+      i_endu = rp_min( ite,ide-spec_zone )
+      j_endv = rp_min( jte,jde-spec_zone )
       k_endw = k_end
       IF( config_flags%periodic_x) THEN
         i_start = its
-        i_end   = min(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
         i_endu = ite
       ENDIF
     ELSE
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
       i_endu = ite
@@ -1047,20 +1047,20 @@ SUBROUTINE advance_mu_t( ww, ww_1, u, u_1, v, v_1,            &
 !  now, the real work.
 !  set the loop bounds taking into account boundary conditions.
   i_start = its
-  i_end   = min(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = min(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
   k_start = kts
   k_end   = kte-1
   IF ( .NOT. config_flags%periodic_x )THEN
      IF ( config_flags%specified .or. config_flags%nested ) then
-       i_start = max(its,ids+1)
-       i_end   = min(ite,ide-2)
+       i_start = rp_max(its,ids+1)
+       i_end   = rp_min(ite,ide-2)
      ENDIF
   ENDIF
   IF ( config_flags%specified .or. config_flags%nested ) then
-     j_start = max(jts,jds+1)
-     j_end   = min(jte,jde-2)
+     j_start = rp_max(jts,jds+1)
+     j_end   = rp_min(jte,jde-2)
   ENDIF
   i_endu = ite
   j_endv = jte
@@ -1266,20 +1266,20 @@ SUBROUTINE advance_w( w, rw_tend, ww, w_save, u, v,  &
 !  set loop limits.
 !  Currently set for periodic boundary conditions
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
       IF ( .NOT. config_flags%periodic_x )THEN
          IF ( config_flags%specified .or. config_flags%nested ) then
-           i_start = max(its,ids+1)
-           i_end   = min(ite,ide-2)
+           i_start = rp_max(its,ids+1)
+           i_end   = rp_min(ite,ide-2)
          ENDIF
       ENDIF
       IF ( config_flags%specified .or. config_flags%nested ) then
-         j_start = max(jts,jds+1)
-         j_end   = min(jte,jde-2)
+         j_start = rp_max(jts,jds+1)
+         j_end   = rp_min(jte,jde-2)
       ENDIF
    pi = 4.*rp_atan(1.)
    dampmag = dts*config_flags%dampcoef
@@ -1538,9 +1538,9 @@ SUBROUTINE sumflux ( ru, rv, ww,                             &
       ENDDO
     ENDIF
 
-  mini = min(ide-1,ite)
-  minj = min(jde-1,jte)
-  mink = min(kde-1,kte)
+  mini = rp_min(ide-1,ite)
+  minj = rp_min(jde-1,jte)
+  mink = rp_min(kde-1,kte)
 
 
     DO  j = jts, minj
@@ -1709,27 +1709,27 @@ SUBROUTINE advance_all (u, ru_tend,  v, rv_tend,       &
 !  set the loop bounds taking into account boundary conditions.
 
    IF( config_flags%nested .or. config_flags%specified ) THEN
-      i_start = max( its,ids+spec_zone )
-      i_end   = min( ite,ide-spec_zone-1 )
-      j_start = max( jts,jds+spec_zone )
-      j_end   = min( jte,jde-spec_zone-1 )
+      i_start = rp_max( its,ids+spec_zone )
+      i_end   = rp_min( ite,ide-spec_zone-1 )
+      j_start = rp_max( jts,jds+spec_zone )
+      j_end   = rp_min( jte,jde-spec_zone-1 )
       k_start = kts
-      k_end   = min( kte, kde-1 )
+      k_end   = rp_min( kte, kde-1 )
 
-      i_endu = min( ite,ide-spec_zone )
-      j_endv = min( jte,jde-spec_zone )
+      i_endu = rp_min( ite,ide-spec_zone )
+      j_endv = rp_min( jte,jde-spec_zone )
       k_endw = k_end
 
       IF( config_flags%periodic_x) THEN
         i_start = its
-        i_end   = min(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
         i_endu = ite
       ENDIF
    ELSE
       i_start = its
-      i_end   = min(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = min(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       k_start = kts
       k_end   = kte-1
 
@@ -1769,20 +1769,20 @@ SUBROUTINE advance_all (u, ru_tend,  v, rv_tend,       &
    ENDDO v_outer_j_loop
 
    i_start = its
-   i_end   = min(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = min(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
    k_start = kts
    k_end   = kte-1
    IF ( .NOT. config_flags%periodic_x )THEN
      IF ( config_flags%specified .or. config_flags%nested ) then
-       i_start = max(its,ids+1)
-       i_end   = min(ite,ide-2)
+       i_start = rp_max(its,ids+1)
+       i_end   = rp_min(ite,ide-2)
      ENDIF
    ENDIF
    IF ( config_flags%specified .or. config_flags%nested ) then
-     j_start = max(jts,jds+1)
-     j_end   = min(jte,jde-2)
+     j_start = rp_max(jts,jds+1)
+     j_end   = rp_min(jte,jde-2)
    ENDIF
 
    DO j = j_start, j_end
@@ -1800,20 +1800,20 @@ SUBROUTINE advance_all (u, ru_tend,  v, rv_tend,       &
    ENDDO   
 
    i_start = its
-   i_end   = min(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = min(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
    k_start = kts
    k_end   = kte-1
    IF ( .NOT. config_flags%periodic_x )THEN
       IF ( config_flags%specified .or. config_flags%nested ) then
-        i_start = max(its,ids+1)
-        i_end   = min(ite,ide-2)
+        i_start = rp_max(its,ids+1)
+        i_end   = rp_min(ite,ide-2)
       ENDIF
    ENDIF
    IF ( config_flags%specified .or. config_flags%nested ) then
-      j_start = max(jts,jds+1)
-      j_end   = min(jte,jde-2)
+      j_start = rp_max(jts,jds+1)
+      j_end   = rp_min(jte,jde-2)
    ENDIF
 
 IF ( config_flags%non_hydrostatic ) THEN
@@ -1861,11 +1861,11 @@ SUBROUTINE save_ph_mu ( ph_1, ph_2, ph_save, &
 
 
     i_start = its
-    i_end   = min(ite,ide-1)
+    i_end   = rp_min(ite,ide-1)
     j_start = jts
-    j_end   = min(jte,jde-1)
+    j_end   = rp_min(jte,jde-1)
     k_start = kts
-    k_end = min(kte,kde-1)
+    k_end = rp_min(kte,kde-1)
 
     !  if this is the first RK step, reset *_1 to *_2
     !  (we are replacing the t-dt fields with the time t fields)
@@ -1873,7 +1873,7 @@ SUBROUTINE save_ph_mu ( ph_1, ph_2, ph_save, &
     IF ((rk_step == 1) ) THEN
 
       DO j=j_start, j_end
-      DO k=k_start, min(kde,kte)
+      DO k=k_start, rp_min(kde,kte)
       DO i=i_start, i_end
         ph_1(i,k,j) = ph_2(i,k,j)
       ENDDO
@@ -1937,9 +1937,9 @@ SUBROUTINE restore_ph_mu ( ph_2, ph_save, &
 
 
   i_start = its
-  i_end   = min(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = min(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   DO j = j_start, j_end
   DO k = kds, kde

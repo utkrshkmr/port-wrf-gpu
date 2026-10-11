@@ -2,6 +2,7 @@
 #define DEBUG_OUT
 
 module module_fr_fire_model
+   USE module_repro_math
 
 use module_fr_fire_core
 use module_fr_fire_util
@@ -206,9 +207,9 @@ elseif(ifun.eq.2)then
             do i=ifts,ifte
                 erri = fp%dzdxf(i,j) - (fp%zsf(i+1,j)-fp%zsf(i-1,j))/(2.*fdx)
                 errj = fp%dzdyf(i,j) - (fp%zsf(i,j+1)-fp%zsf(i,j-1))/(2.*fdy)
-                err=max(err,abs(erri),abs(errj))
+                err=rp_max(err,abs(erri),abs(errj))
                 grad=sqrt(fp%dzdxf(i,j)**2+fp%dzdyf(i,j)**2)
-                maxgrad=max(maxgrad,grad)
+                maxgrad=rp_max(maxgrad,grad)
             enddo
         enddo
 !$OMP CRITICAL(FIRE_MODEL_CRIT)

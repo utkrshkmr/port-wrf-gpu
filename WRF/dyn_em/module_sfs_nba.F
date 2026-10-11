@@ -132,23 +132,23 @@ SUBROUTINE calc_smnsmn( smnsmn,                       &
 !
 !-----------------------------------------------------------------------------
    
-  ktf = min(kte,kde-1)
+  ktf = rp_min(kte,kde-1)
 
   i_start = its
-  i_end   = MIN(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = MIN(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   IF ( config_flags%open_xs .or. config_flags%specified .or. &
-       config_flags%nested) i_start = MAX(ids+1,its)
+       config_flags%nested) i_start = rp_max(ids+1,its)
   IF ( config_flags%open_xe .or. config_flags%specified .or. &
-       config_flags%nested) i_end   = MIN(ide-2,ite)
+       config_flags%nested) i_end   = rp_min(ide-2,ite)
   IF ( config_flags%open_ys .or. config_flags%specified .or. &
-       config_flags%nested) j_start = MAX(jds+1,jts)
+       config_flags%nested) j_start = rp_max(jds+1,jts)
   IF ( config_flags%open_ye .or. config_flags%specified .or. &
-       config_flags%nested) j_end   = MIN(jde-2,jte)
+       config_flags%nested) j_end   = rp_min(jde-2,jte)
   IF ( config_flags%periodic_x ) i_start = its
-  IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+  IF ( config_flags%periodic_x ) i_end = rp_min( ite, ide-1 )
 
 !-----------------------------------------------------------------------------
 
@@ -295,7 +295,7 @@ SUBROUTINE calc_mii( m11, m22, m33,                &
 !
 !-----------------------------------------------------------------------------
 
-  ktf = MIN( kte, kde-1 )
+  ktf = rp_min( kte, kde-1 )
 
   i_start = its
   i_end   = ite
@@ -303,13 +303,13 @@ SUBROUTINE calc_mii( m11, m22, m33,                &
   j_end   = jte
 
     IF ( config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = MAX( ids+1, its )
+         config_flags%nested) i_start = rp_max( ids+1, its )
     IF ( config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end   = MIN( ide-1, ite )
+         config_flags%nested) i_end   = rp_min( ide-1, ite )
     IF ( config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = MAX( jds+1, jts )
+         config_flags%nested) j_start = rp_max( jds+1, jts )
     IF ( config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end   = MIN( jde-1, jte )
+         config_flags%nested) j_end   = rp_min( jde-1, jte )
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -588,7 +588,7 @@ SUBROUTINE calc_m12( m12,                          &
 !
 !-----------------------------------------------------------------------------
 
-  ktf = MIN( kte, kde-1 )
+  ktf = rp_min( kte, kde-1 )
 
 ! Needs one more point in the x and y directions.
 
@@ -598,13 +598,13 @@ SUBROUTINE calc_m12( m12,                          &
   j_end   = jte
 
     IF ( config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested ) i_start = MAX( ids+1, its )
+         config_flags%nested ) i_start = rp_max( ids+1, its )
     IF ( config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested ) i_end   = MIN( ide-1, ite )
+         config_flags%nested ) i_end   = rp_min( ide-1, ite )
     IF ( config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested ) j_start = MAX( jds+1, jts )
+         config_flags%nested ) j_start = rp_max( jds+1, jts )
     IF ( config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested ) j_end   = MIN( jde-1, jte )
+         config_flags%nested ) j_end   = rp_min( jde-1, jte )
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -838,23 +838,23 @@ SUBROUTINE calc_m13( m13,                          &
 !
 !-----------------------------------------------------------------------------
 
-  ktf = MIN( kte, kde-1 )
+  ktf = rp_min( kte, kde-1 )
 
 ! Find ide-1 and jde-1 for averaging to p point.
 
   i_start = its
   i_end   = ite
   j_start = jts
-  j_end   = MIN( jte, jde-1 )
+  j_end   = rp_min( jte, jde-1 )
 
     IF ( config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = MAX( ids+1, its )
+         config_flags%nested) i_start = rp_max( ids+1, its )
     IF ( config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end   = MIN( ide-1, ite )
+         config_flags%nested) i_end   = rp_min( ide-1, ite )
     IF ( config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = MAX( jds+1, jts )
+         config_flags%nested) j_start = rp_max( jds+1, jts )
     IF ( config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end   = MIN( jde-2, jte )
+         config_flags%nested) j_end   = rp_min( jde-2, jte )
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -1076,25 +1076,25 @@ SUBROUTINE calc_m23( m23,                          &
 !
 !-----------------------------------------------------------------------------
 
-  ktf = MIN( kte, kde-1 )
+  ktf = rp_min( kte, kde-1 )
 
 ! Find ide-1 and jde-1 for averaging to p point.
 
   i_start = its
-  i_end   = MIN( ite, ide-1 )
+  i_end   = rp_min( ite, ide-1 )
   j_start = jts
   j_end   = jte
 
     IF ( config_flags%open_xs .OR. config_flags%specified .OR. &
-         config_flags%nested) i_start = MAX( ids+1, its )
+         config_flags%nested) i_start = rp_max( ids+1, its )
     IF ( config_flags%open_xe .OR. config_flags%specified .OR. &
-         config_flags%nested) i_end   = MIN( ide-2, ite )
+         config_flags%nested) i_end   = rp_min( ide-2, ite )
     IF ( config_flags%open_ys .OR. config_flags%specified .OR. &
-         config_flags%nested) j_start = MAX( jds+1, jts )
+         config_flags%nested) j_start = rp_max( jds+1, jts )
     IF ( config_flags%open_ye .OR. config_flags%specified .OR. &
-         config_flags%nested) j_end   = MIN( jde-1, jte )
+         config_flags%nested) j_end   = rp_min( jde-1, jte )
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN( ite, ide-1 )
+      IF ( config_flags%periodic_x ) i_end = rp_min( ite, ide-1 )
 
   je_ext = 1
   j_end = j_end + je_ext   

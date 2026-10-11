@@ -93,10 +93,10 @@ integer:: i,j,jts1,jte1,its1,ite1,jfts1,jfte1,ifts1,ifte1,itso,jtso,iteo,jteo
 
 ! terrain height
 
-    jts1=max(jts-1,jds) ! lower loop limit by one less when at end of domain
-    its1=max(its-1,ids) ! ASSUMES THE HALO IS THERE if patch != domain
-    jte1=min(jte+1,jde) 
-    ite1=min(ite+1,ide)
+    jts1=rp_max(jts-1,jds) ! lower loop limit by one less when at end of domain
+    its1=rp_max(its-1,ids) ! ASSUMES THE HALO IS THERE if patch != domain
+    jte1=rp_min(jte+1,jde) 
+    ite1=rp_min(ite+1,ide)
     do j = jts1,jte1
         do i = its1,ite1 
             ! copy to local array
@@ -131,7 +131,7 @@ integer:: i,j,jts1,jte1,its1,ite1,jfts1,jfte1,ifts1,ifte1,itso,jtso,iteo,jteo
 if (flag_z0 .eq. 1 ) then 
   do j=jfts1,jfte1
     do i=ifts1,ifte1
-      zsf(i,j)=max(zsf(i,j),0.001)
+      zsf(i,j)=rp_max(zsf(i,j),0.001)
     enddo
   enddo
 endif
@@ -387,7 +387,7 @@ contains
 real function EX(a,b)
 !*** statement function
 real a,b
-EX=(1.-bias)*(2.*a-b)+bias*max(2.*a-b,a,b)   ! extrapolation, max quarded
+EX=(1.-bias)*(2.*a-b)+bias*rp_max(2.*a-b,a,b)   ! extrapolation, max quarded
 end function EX
 end subroutine continue_at_boundary
 
@@ -560,12 +560,12 @@ ry=1./jr
 
 do j2=jts2,jte2-1               ! loop over mesh 2 cells
     rjo=rjp1+jr*(j2-rjp2)       ! mesh 1 coordinate of the mesh 2 patch start
-    js=max(jts1,ceiling(rjo))   ! lower bound of mesh 1 patch for this mesh 2 cell
-    je=min(jte1,floor(rjo)+jr)  ! upper bound of mesh 1 patch for this mesh 2 cell 
+    js=rp_max(jts1,ceiling(rjo))   ! lower bound of mesh 1 patch for this mesh 2 cell
+    je=rp_min(jte1,floor(rjo)+jr)  ! upper bound of mesh 1 patch for this mesh 2 cell 
     do i2=its2,ite2-1
         rio=rip1+ir*(i2-rip2)
-        is=max(its1,ceiling(rio))
-        ie=min(ite1,floor(rio)+ir)
+        is=rp_max(its1,ceiling(rio))
+        ie=rp_min(ite1,floor(rio)+ir)
         do j1=js,je
             ty = (j1-rjo)*ry
             do i1=is,ie
@@ -890,9 +890,9 @@ real tx,ty
 
 ! indices of the lower left corner of the cell in the mesh that contains (x,y)
 i = floor(x)
-i=max(min(i,ide),ids)
+i=rp_max(rp_min(i,ide),ids)
 j = floor(y)
-j=max(min(j,jde),jds)
+j=rp_max(rp_min(j,jde),jds)
 
 ! the leftover
 tx = x - real(i)
@@ -1039,7 +1039,7 @@ real:: t
 t=0.
 do j=jts,jte
     do i=its,ite
-        t=max(t,a(i,j))
+        t=rp_max(t,a(i,j))
     enddo
 enddo
 max_2darray = t
@@ -1069,8 +1069,8 @@ min_a= huge(min_a)
 do j=jps,jpe
     do i=ips,ipe
         t=sqrt(ax(i,j)**2+ay(i,j)**2)
-        max_a=max(max_a,t)
-        min_a=min(min_a,t)
+        max_a=rp_max(max_a,t)
+        min_a=rp_min(min_a,t)
         avg_a=avg_a+t
     enddo
 enddo
@@ -1150,8 +1150,8 @@ do j=jps,jpe
     do i=ips,ipe
         aa=a(i,k,j)
         if(aa.ne.aa.or..not.aa.le.t.or..not.aa.ge.-t)goto 9
-        max_a=max(max_a,aa)
-        min_a=min(min_a,aa)
+        max_a=rp_max(max_a,aa)
+        min_a=rp_min(min_a,aa)
         avg_a=avg_a+aa
     enddo
   enddo
@@ -1585,7 +1585,7 @@ elseif(fun.eq.REAL_MAX)then
   do j=jps,jpe1
     do k=kps,kpe1
       do i=ips,ipe1
-        lsum=max(lsum,a(i,k,j))
+        lsum=rp_max(lsum,a(i,k,j))
       enddo
     enddo
   enddo
@@ -1595,7 +1595,7 @@ elseif(fun.eq.RNRM_MAX)then
   do j=jps,jpe1
     do k=kps,kpe1
       do i=ips,ipe1
-        lsum=max(lsum,sqrt(a(i,k,j)*a(i,k,j)+b(i,k,j)*b(i,k,j)))
+        lsum=rp_max(lsum,sqrt(a(i,k,j)*a(i,k,j)+b(i,k,j)*b(i,k,j)))
       enddo
     enddo
   enddo
@@ -1619,7 +1619,7 @@ psum=void
 !$OMP CRITICAL(RDSUM)
 ! each thread adds its own lsum
 if(dosum)psum=psum+lsum
-if(domax)psum=max(psum,lsum)
+if(domax)psum=rp_max(psum,lsum)
 !$OMP END CRITICAL(RDSUM)
 
 ! wait till all theads are done

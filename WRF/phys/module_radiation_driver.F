@@ -1341,7 +1341,7 @@ CONTAINS
                 cldfra_cu(i,k,j)=cldfra_dp(i,k,j)+cldfra_sh(i,k,j) ! Cu cloud fraction
                 CLDFRA(i,k,j)=(1.-cldfra_cu(i,k,j))*CLDFRA(i,k,j)  ! Update resolved cloud fraction for Cu punch-through
                 CLDFRA(i,k,j)=CLDFRA(i,k,j)+cldfra_cu(i,k,j)       ! New total cloud fraction
-                CLDFRA(i,k,j)=AMIN1(1.0,CLDFRA(i,k,j))
+                CLDFRA(i,k,j)=rp_min(1.0,CLDFRA(i,k,j))
                 qc(i,k,j) = qc(i,k,j)+qc_cu(i,k,j)*cldfra_cu(i,k,j)
                 qi(i,k,j) = qi(i,k,j)+qi_cu(i,k,j)*cldfra_cu(i,k,j)
              ENDDO
@@ -1472,7 +1472,7 @@ CONTAINS
                 p_1d(k) = p(i,k,j)
                 if (pert_cld3 .and. multi_perturb == 1) then
                   t_1d(k) = (1.0 + perts_th(i, k, j) * pert_cld3_t) * t(i, k, j)
-                  qv_1d(k) = max (0.0, (1.0 + perts_qvapor(i, k, j) * pert_cld3_qv) * qv(i, k, j))
+                  qv_1d(k) = rp_max (0.0, (1.0 + perts_qvapor(i, k, j) * pert_cld3_qv) * qv(i, k, j))
                 else
                   t_1d(k) = t(i,k,j)
                   qv_1d(k) = qv(i,k,j)
@@ -1549,13 +1549,13 @@ CONTAINS
                        ! or the predicted value if it is greater.
 
                        cldfra_cup_mod = cldfra_cup(i,k,j) * 1.0e-3 !modified cloud fraction, assume QCLOUD is 1 g/kg -- LK Berg 4/26/17
-                       qc(i,k,j) = max(cldfra_cup_mod, qc(i,k,j) )!DE+LB 2012-Feb
+                       qc(i,k,j) = rp_max(cldfra_cup_mod, qc(i,k,j) )!DE+LB 2012-Feb
 
                        ! Override the cloud fraction values calculated above if shallow
                        ! convection triggered. For shallow convection, use a representative
                        ! cloud fraction. In this case, the median value for shallow Cu cases
                        ! at the ARM SGP site, 36%, Berg et al. 2008, J. Clim.
-                       if( shallowcu_forced_ra )cldfra(i,k,j) = max(0.36, cldfra(i,k,j)) ! Median shallow Cu frac at ARM SGP
+                       if( shallowcu_forced_ra )cldfra(i,k,j) = rp_max(0.36, cldfra(i,k,j)) ! Median shallow Cu frac at ARM SGP
                     endif
                  ENDDO
               ENDDO
@@ -1568,7 +1568,7 @@ CONTAINS
         DO j=jts,jte
         DO k=kts,kte
         DO i=its,ite
-           cldfra(I,K,J) = max(cldfra_sh(I,K,J), cldfra(I,K,J))
+           cldfra(I,K,J) = rp_max(cldfra_sh(I,K,J), cldfra(I,K,J))
            qc(I,K,J)=cw_rad(I,K,J)+qc(I,K,J)
         ENDDO
         ENDDO
@@ -1584,8 +1584,8 @@ CONTAINS
          DO i=its,ite
             qc(i,k,j) = qc(i,k,j) + QCCONV(i,k,j)
             qi(i,k,j) = qi(i,k,j) + QICONV(i,k,j)
-            ITRMX=MIN(cldfra(i,k,j),ccldfra(i,k,j))
-            ITRMN=MAX(0.,cldfra(i,k,j)+ccldfra(i,k,j)-1.)
+            ITRMX=rp_min(cldfra(i,k,j),ccldfra(i,k,j))
+            ITRMN=rp_max(0.,cldfra(i,k,j)+ccldfra(i,k,j)-1.)
             cldfra(i,k,j)=cldfra(i,k,j)+ccldfra(i,k,j)-0.5*(ITRMX+ITRMN)
          ENDDO
          ENDDO
@@ -1775,21 +1775,21 @@ CONTAINS
          do k = kts, kte  !corrected memory order
             do i = its, ite
                ! aero(i,k,j, 1) = max(0.0, chem(i,k,j,p_sulf)*1.0e-6*rho(i,k,j))             !  1 = SO4
-               aero(i,k,j, 1) = max(0.0, chem(i,k,j,p_sulf)*1.0e-6*p(i,k,j)*96.0/(8.314*t(i,k,j)))  ! 1 = SO4
-               aero(i,k,j, 2) = max(0.0, (chem(i,k,j,p_bc1)+chem(i,k,j,p_bc2))*1.0e-6*rho(i,k,j))  ! 2 = BC1+BC2
-               aero(i,k,j, 3) = max(0.0, chem(i,k,j,p_oc1)*1.0e-6*rho(i,k,j)*1.4e0)          !  3 = OC1
-               aero(i,k,j, 4) = max(0.0, chem(i,k,j,p_oc2)*1.0e-6*rho(i,k,j)*1.4e0)          !  4 = OC2
-               aero(i,k,j, 5) = max(0.0, chem(i,k,j,p_seas_1)*1.0e-6*rho(i,k,j))           !  5 = SS1
-               aero(i,k,j, 6) = max(0.0, (chem(i,k,j,p_seas_2)+chem(i,k,j,p_seas_3)+  &
+               aero(i,k,j, 1) = rp_max(0.0, chem(i,k,j,p_sulf)*1.0e-6*p(i,k,j)*96.0/(8.314*t(i,k,j)))  ! 1 = SO4
+               aero(i,k,j, 2) = rp_max(0.0, (chem(i,k,j,p_bc1)+chem(i,k,j,p_bc2))*1.0e-6*rho(i,k,j))  ! 2 = BC1+BC2
+               aero(i,k,j, 3) = rp_max(0.0, chem(i,k,j,p_oc1)*1.0e-6*rho(i,k,j)*1.4e0)          !  3 = OC1
+               aero(i,k,j, 4) = rp_max(0.0, chem(i,k,j,p_oc2)*1.0e-6*rho(i,k,j)*1.4e0)          !  4 = OC2
+               aero(i,k,j, 5) = rp_max(0.0, chem(i,k,j,p_seas_1)*1.0e-6*rho(i,k,j))           !  5 = SS1
+               aero(i,k,j, 6) = rp_max(0.0, (chem(i,k,j,p_seas_2)+chem(i,k,j,p_seas_3)+  &
                     chem(i,k,j,p_seas_4))*1.0e-6*rho(i,k,j))          !  6 = SS2+SS3+SS4
-               aero(i,k,j, 7) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(1))   !  7 = DU1 dust mode 1
-               aero(i,k,j, 8) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(2))   !  8 = DU1 dust mode 2
-               aero(i,k,j, 9) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(3))   !  9 = DU1 dust mode 3
-               aero(i,k,j,10) = max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(4))   ! 10 = DU1 dust mode 4
-               aero(i,k,j,11) = max(0.0, chem(i,k,j,p_dust_2)*1.0e-6*rho(i,k,j))           ! 11 = DU2 dust mode 5
-               aero(i,k,j,12) = max(0.0, chem(i,k,j,p_dust_3)*1.0e-6*rho(i,k,j))           ! 11 = DU3 dust mode 6
-               aero(i,k,j,13) = max(0.0, chem(i,k,j,p_dust_4)*1.0e-6*rho(i,k,j))           ! 11 = DU4 dust mode 7
-               aero(i,k,j,14) = max(0.0, chem(i,k,j,p_dust_5)*1.0e-6*rho(i,k,j))           ! 11 = DU5 dust mode 8
+               aero(i,k,j, 7) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(1))   !  7 = DU1 dust mode 1
+               aero(i,k,j, 8) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(2))   !  8 = DU1 dust mode 2
+               aero(i,k,j, 9) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(3))   !  9 = DU1 dust mode 3
+               aero(i,k,j,10) = rp_max(0.0, chem(i,k,j,p_dust_1)*1.0e-6*rho(i,k,j)*frac(4))   ! 10 = DU1 dust mode 4
+               aero(i,k,j,11) = rp_max(0.0, chem(i,k,j,p_dust_2)*1.0e-6*rho(i,k,j))           ! 11 = DU2 dust mode 5
+               aero(i,k,j,12) = rp_max(0.0, chem(i,k,j,p_dust_3)*1.0e-6*rho(i,k,j))           ! 11 = DU3 dust mode 6
+               aero(i,k,j,13) = rp_max(0.0, chem(i,k,j,p_dust_4)*1.0e-6*rho(i,k,j))           ! 11 = DU4 dust mode 7
+               aero(i,k,j,14) = rp_max(0.0, chem(i,k,j,p_dust_5)*1.0e-6*rho(i,k,j))           ! 11 = DU5 dust mode 8
             enddo ! i
          enddo ! k
       enddo ! j
@@ -2896,20 +2896,20 @@ CONTAINS
            DO i=its,ite
               IF (coszen(i,j).GT.1e-3) THEN
                  ioh=solcon*coszen(i,j) ! TOA irradiance
-                 kt=swdown(i,j)/max(ioh,1e-3) ! clearness index
+                 kt=swdown(i,j)/rp_max(ioh,1e-3) ! clearness index
                  ! Optical air mass: Rigollier et al. (2000) doi:
                  ! 10.1016/S0038-092X(99)00055-9
                  airmass=rp_exp(-ht(i,j)/8434.5)/(coszen(i,j)+ &
                         0.50572*rp_pow((rp_asin(coszen(i,j))*57.295779513082323+6.07995), (-1.6364)))
                  ! kt correction for air-mass at large sza: Perez et al. (1990)
                  ! doi: 10.1016/0038-092X(90)90036-C
-                 kt=kt/(0.1+1.031*rp_exp(-1.4/(0.9+(9.4/max(airmass,1e-3)))))
+                 kt=kt/(0.1+1.031*rp_exp(-1.4/(0.9+(9.4/rp_max(airmass,1e-3)))))
                  ! Diffuse fraction: Ruiz-Arias et al. (2010) (Eq 33) doi:
                  ! 10.1016/j.enconman.2009.11.024
                  kd=0.952-1.041*rp_exp(-rp_exp(2.300-4.702*kt))
                  swddif(i,j)=kd*swdown(i,j)
                  swddir(i,j)=(1.-kd)*swdown(i,j)
-                 swddni(i,j)=swddir(i,j)/max(coszen(i,j),1e-4)
+                 swddni(i,j)=swddir(i,j)/rp_max(coszen(i,j),1e-4)
               ENDIF
            ENDDO
         ENDDO
@@ -2920,7 +2920,7 @@ CONTAINS
          DO i=its,ite
            if (swdown(i,j).gt.0.001) then
               diffuse_frac(i,j) = swddif(i,j)/swdown(i,j)
-              diffuse_frac(i,j) = min(diffuse_frac(i,j),1.0)
+              diffuse_frac(i,j) = rp_min(diffuse_frac(i,j),1.0)
            else
               diffuse_frac(i,j) = 0.
            endif
@@ -3364,7 +3364,7 @@ CONTAINS
    if (itimestep .eq. 1) then
      psx = ipe-ips+1
      psy = jpe-jps+1
-     min_ptchsz = min(psx,psy)
+     min_ptchsz = rp_min(psx,psy)
      idum = 0
      jdum = 0
    endif
@@ -3373,7 +3373,7 @@ CONTAINS
    if (itimestep .eq. 1) then
      call wrf_dm_minval_integer (psx,idum,jdum)
      call wrf_dm_minval_integer (psy,idum,jdum)
-     min_ptchsz = min(psx,psy)
+     min_ptchsz = rp_min(psx,psy)
    endif
 # endif
 
@@ -3431,9 +3431,9 @@ CONTAINS
                        shadowmask,nested,ni,                         &
                        ids,ide, jds,jde, kds,kde,                    &
                        ims,ime, jms,jme, kms,kme,                    &
-                       ips,min(ipe,ide-1), jps,min(jpe,jde-1), kps,kpe,      &
-                       i_start(ij),min(i_end(ij), ide-1),j_start(ij),&
-                       min(j_end(ij), jde-1), kts, kte               )
+                       ips,rp_min(ipe,ide-1), jps,rp_min(jpe,jde-1), kps,kpe,      &
+                       i_start(ij),rp_min(i_end(ij), ide-1),j_start(ij),&
+                       rp_min(j_end(ij), jde-1), kts, kte               )
 
          enddo
    !$OMP END PARALLEL DO
@@ -3448,9 +3448,9 @@ CONTAINS
                        shadowmask,shadlen,                           &
                        ids,ide, jds,jde, kds,kde,                    &
                        ims,ime, jms,jme, kms,kme,                    &
-                       ips,min(ipe,ide-1), jps,min(jpe,jde-1), kps,kpe,        &
-                       i_start(ij),min(i_end(ij), ide-1),j_start(ij),&
-                       min(j_end(ij), jde-1), kts, kte               )
+                       ips,rp_min(ipe,ide-1), jps,rp_min(jpe,jde-1), kps,kpe,        &
+                       i_start(ij),rp_min(i_end(ij), ide-1),j_start(ij),&
+                       rp_min(j_end(ij), jde-1), kts, kte               )
 
        enddo
    !$OMP END PARALLEL DO
@@ -3536,7 +3536,7 @@ CONTAINS
              xxlat=xlat(i,j)*degrad
              coszen(i,j)=rp_sin(xxlat)*rp_sin(declin) &
                         +rp_cos(xxlat)*rp_cos(declin) *rp_cos(hrang(i,j))
-             coszen(i, j) = min (max (coszen(i, j), -1.0), 1.0)
+             coszen(i, j) = rp_min (rp_max (coszen(i, j), -1.0), 1.0)
           enddo
        enddo
    END SUBROUTINE calc_coszen
@@ -3570,13 +3570,13 @@ CONTAINS
                   coszen_0 =coszen_ref(i,j)
                end if
                if ((coszen(i,j)/coszen_0).lt.1.) then
-                  bb(i,j) =rp_log(max(1.,swddir(i,j))/max(1.,swddir_0)) / rp_log(min(1.-1e-4,coszen(i,j)/coszen_0))
+                  bb(i,j) =rp_log(rp_max(1.,swddir(i,j))/rp_max(1.,swddir_0)) / rp_log(rp_min(1.-1e-4,coszen(i,j)/coszen_0))
                elseif ((coszen(i,j)/coszen_0).gt.1) then
-                  bb(i,j) =rp_log(max(1.,swddir(i,j))/max(1.,swddir_0)) / rp_log(max(1.+1e-4,coszen(i,j)/coszen_0))
+                  bb(i,j) =rp_log(rp_max(1.,swddir(i,j))/rp_max(1.,swddir_0)) / rp_log(rp_max(1.+1e-4,coszen(i,j)/coszen_0))
                else
                   bb(i,j) =0.
                end if
-               bb(i,j) =max(-.5,min(2.5,bb(i,j)))
+               bb(i,j) =rp_max(-.5,rp_min(2.5,bb(i,j)))
                Bx(i,j) =swddir(i,j)/(rp_pow(coszen(i,j), bb(i,j)))
 
                !write(wrf_err_message,*) 'XXX I=',i,' J=',j,'  Bx=',Bx(i,j),'  bb=',bb(i,j),'  swddir=',swddir(i,j), &
@@ -3592,13 +3592,13 @@ CONTAINS
                   coszen_0 =coszen_ref(i,j)
                end if
                if ((coszen(i,j)/coszen_0).lt.1.) then
-                  gg(i,j) =rp_log(max(1.,swdown(i,j))/max(1.,swdown_0)) / rp_log(min(1.-1e-4,coszen(i,j)/coszen_0))
+                  gg(i,j) =rp_log(rp_max(1.,swdown(i,j))/rp_max(1.,swdown_0)) / rp_log(rp_min(1.-1e-4,coszen(i,j)/coszen_0))
                elseif ((coszen(i,j)/coszen_0).gt.1) then
-                  gg(i,j) =rp_log(max(1.,swdown(i,j))/max(1.,swdown_0)) / rp_log(max(1.+1e-4,coszen(i,j)/coszen_0))
+                  gg(i,j) =rp_log(rp_max(1.,swdown(i,j))/rp_max(1.,swdown_0)) / rp_log(rp_max(1.+1e-4,coszen(i,j)/coszen_0))
                else
                   gg(i,j) =0.
                end if
-               gg(i,j) =max(-.5,min(2.5,gg(i,j)))
+               gg(i,j) =rp_max(-.5,rp_min(2.5,gg(i,j)))
                Gx(i,j) =swdown(i,j)/(rp_pow(coszen(i,j), gg(i,j)))
             else
                Bx(i,j) =0.
@@ -3968,11 +3968,11 @@ CONTAINS
 !--- Adaptation of original algorithm (Randall, 1994; Zhao, 1995)
 !    modified based on assumed grid-scale saturation at RH=RHgrid.
 !
-        SUBSAT=MAX(1.E-10,RHGRID*QVS_WEIGHT-QV(i,k,j))
+        SUBSAT=rp_max(1.E-10,RHGRID*QVS_WEIGHT-QV(i,k,j))
         DENOM=rp_pow((SUBSAT), GAMMA)
-        ARG=MAX(-6.9, -ALPHA0*QCLD/DENOM)    ! <-- EXP(-6.9)=.001
+        ARG=rp_max(-6.9, -ALPHA0*QCLD/DENOM)    ! <-- EXP(-6.9)=.001
 ! prevent negative values  (new)
-        RHUM=MAX(1.E-10, RHUM)
+        RHUM=rp_max(1.E-10, RHUM)
         CLDFRA(i,k,j)=rp_pow((RHUM/RHGRID), PEXP)*(1.-rp_exp(ARG))
 !!              ARG=-1000*QCLD/(RHUM-RHGRID)
 !!              ARG=MAX(ARG, ARGMIN)
@@ -4046,16 +4046,16 @@ CONTAINS
 
             if (modify_qvapor) then
                if (qc(k).gt.1.E-8) then
-                  qv(k) = MAX(qv(k), qvsw)
+                  qv(k) = rp_max(qv(k), qvsw)
                   qvs(k) = qvsw
                endif
                if (qc(k).le.1.E-8 .and. qi(k).ge.1.E-9) then
-                  qv(k) = MAX(qv(k), qvsi*1.005)    !..To ensure a tiny bit ice supersaturation
+                  qv(k) = rp_max(qv(k), qvsi*1.005)    !..To ensure a tiny bit ice supersaturation
                   qvs(k) = qvsi
                endif
             endif
 
-            rh(k) = MAX(0.01, qv(k)/qvs(k))
+            rh(k) = rp_max(0.01, qv(k)/qvs(k))
             rhoa(k) = p(k)/(287.0*t(k))
          ENDDO
 
@@ -4068,9 +4068,9 @@ CONTAINS
 
       DO k = kts,kte
 
-         delz = MAX(100., dz(k))
-         RH_00L = 0.77 + MIN(0.22,SQRT(1./(50.0+gridkm*gridkm*delz*0.01)))
-         RH_00O = 0.85 + MIN(0.14,SQRT(1./(50.0+gridkm*gridkm*delz*0.01)))
+         delz = rp_max(100., dz(k))
+         RH_00L = 0.77 + rp_min(0.22,SQRT(1./(50.0+gridkm*gridkm*delz*0.01)))
+         RH_00O = 0.85 + rp_min(0.14,SQRT(1./(50.0+gridkm*gridkm*delz*0.01)))
          RHUM = rh(k)
 
          if (qc(k).gt.1.E-6 .or. qi(k).ge.1.E-7                         &
@@ -4078,7 +4078,7 @@ CONTAINS
             CLDFRA(K) = 1.0
          elseif (((qc(k)+qi(k)).gt.1.E-10) .and.                        &
      &                                    ((qc(k)+qi(k)).lt.1.E-6)) then
-            CLDFRA(K) = MIN(0.99, 0.1*(11.0 + rp_log10(qc(k)+qi(k))))
+            CLDFRA(K) = rp_min(0.99, 0.1*(11.0 + rp_log10(qc(k)+qi(k))))
          else
 
             IF ((XLAND-1.5).GT.0.) THEN                                  !--- Ocean
@@ -4087,28 +4087,28 @@ CONTAINS
                RH_00 = RH_00L
             ENDIF
 
-            tc = MAX(-80.0, t(k) - 273.15)
+            tc = rp_max(-80.0, t(k) - 273.15)
             if (tc .lt. -12.0) RH_00 = RH_00L
 
             if (tc .ge. 25.0) then
                CLDFRA(K) = 0.0
             elseif (tc .ge. -12.0) then
-               RHUM = MIN(rh(k), 1.0)
-               CLDFRA(K) = MAX(0., 1.0-SQRT((1.001-RHUM)/(1.001-RH_00)))
+               RHUM = rp_min(rh(k), 1.0)
+               CLDFRA(K) = rp_max(0., 1.0-SQRT((1.001-RHUM)/(1.001-RH_00)))
             else
                if (max_relh.gt.1.12 .or. (.NOT.(modify_qvapor)) ) then
 !..For HRRR model, the following look OK.
-                  RHUM = MIN(rh(k), 1.45)
+                  RHUM = rp_min(rh(k), 1.45)
                   RH_00 = RH_00 + (1.45-RH_00)*(-12.0-tc)/(-12.0+85.)
-                  CLDFRA(K) = MAX(0., 1.0-SQRT((1.46-RHUM)/(1.46-RH_00)))
+                  CLDFRA(K) = rp_max(0., 1.0-SQRT((1.46-RHUM)/(1.46-RH_00)))
                else
 !..but for the GFS model, RH is way lower.
-                  RHUM = MIN(rh(k), 1.05)
+                  RHUM = rp_min(rh(k), 1.05)
                   RH_00 = RH_00 + (1.05-RH_00)*(-12.0-tc)/(-12.0+85.)
-                  CLDFRA(K) = MAX(0., 1.0-SQRT((1.06-RHUM)/(1.06-RH_00)))
+                  CLDFRA(K) = rp_max(0., 1.0-SQRT((1.06-RHUM)/(1.06-RH_00)))
                endif
             endif
-            if (CLDFRA(K).gt.0.) CLDFRA(K) = MAX(0.01, MIN(CLDFRA(K),0.99))
+            if (CLDFRA(K).gt.0.) CLDFRA(K) = rp_max(0.01, rp_min(CLDFRA(K),0.99))
 
             if (debug_flag) then
               WRITE (dbg_msg,*) 'DEBUG-GT: cloud fraction (k,RH_00, RHUM, CF): ',k,RH_00,RHUM,CLDFRA(K)
@@ -4142,7 +4142,7 @@ CONTAINS
       if (modify_qvapor) then
          DO k = kts,kte
             if (cldfra(k).gt.0.20 .and. cldfra(k).lt.1.0) then
-               qv(k) = MAX(qv(k),qvs(k))
+               qv(k) = rp_max(qv(k),qvs(k))
             endif
          ENDDO
       endif
@@ -4179,7 +4179,7 @@ CONTAINS
       k_p150 = 0
       DO k = kte, kts, -1
          theta(k) = T1d(k)*(rp_pow((100000.0/P1d(k)), (287.05/1004.)))
-         if (T1d(k)-273.16 .gt. -12.0 .and. P1d(k).gt.10100.0) k_m12C = MAX(k_m12C, k)
+         if (T1d(k)-273.16 .gt. -12.0 .and. P1d(k).gt.10100.0) k_m12C = rp_max(k_m12C, k)
          if (P1d(k).gt.14999.0 .and. k_p150.eq.0) k_p150 = k
       ENDDO
       if (k_m12C .le. kts) k_m12C = kts
@@ -4211,7 +4211,7 @@ CONTAINS
          delz = 0.5*dz1d(k) + dz1d(k+1) + 0.5*dz1d(k+2)
          if ( (((theta2-theta1)/delz).lt.10./1500.) .OR. P1d(k).gt.70000.) EXIT
       ENDDO
-      k_tropo = MAX(kts+2, MIN(k+2, kte-1))
+      k_tropo = rp_max(kts+2, rp_min(k+2, kte-1))
 
       if (k_tropo .gt. k_p150) then
          DO k = kte-3, k_p150-2, -1
@@ -4220,7 +4220,7 @@ CONTAINS
             delz = 0.5*dz1d(k) + dz1d(k+1) + 0.5*dz1d(k+2)
             if ( (((theta2-theta1)/delz).lt.10./1500.) .AND. P1d(k).gt.9500.) EXIT
          ENDDO
-         k_tropo = MAX(k_p150-1, MIN(k+2, kte-1))
+         k_tropo = rp_max(k_p150-1, rp_min(k+2, kte-1))
       endif
 
       if (k_tropo.gt.kte-2) then
@@ -4249,12 +4249,12 @@ CONTAINS
       DO k = kbot, k_m12C
          if ( (theta(k)-theta(k-1)) .gt. 0.010E-3*Dz1d(k)) EXIT
       ENDDO
-      kbot = MAX(kts+1, k-2)
+      kbot = rp_max(kts+1, k-2)
       DO k = kts, kbot
-         if (cfr1d(k).gt.0.0 .and. cfr1d(k).lt.1.0) cfr1d(k) = MAX(0.01,0.5*cfr1d(k))
+         if (cfr1d(k).gt.0.0 .and. cfr1d(k).lt.1.0) cfr1d(k) = rp_max(0.01,0.5*cfr1d(k))
       ENDDO
       DO k = kts,k_tropo
-         if (cfr1d(k).gt.0.0) kbot = MIN(k,kbot)
+         if (cfr1d(k).gt.0.0) kbot = rp_min(k,kbot)
       ENDDO
 
 !..Starting below tropo height, if cloud fraction greater than 1 percent,
@@ -4270,7 +4270,7 @@ CONTAINS
          k_cldt = 0
          if (cfr1d(k).ge.0.01) then
             in_cloud = .true.
-            k_cldt = MAX(k_cldt, k)
+            k_cldt = rp_max(k_cldt, k)
          endif
          if (in_cloud) then
             DO k2 = k_cldt-1, k_m12C, -1
@@ -4310,7 +4310,7 @@ CONTAINS
          k_cldt = 0
          if (cfr1d(k).ge.0.01) then
             in_cloud = .true.
-            k_cldt = MAX(k_cldt, k)
+            k_cldt = rp_max(k_cldt, k)
          endif
          if (in_cloud) then
             DO k2 = k_cldt-1, kbot, -1
@@ -4359,13 +4359,13 @@ CONTAINS
          tdz = tdz + dz(k)
       enddo
 !     max_iwc = ABS(qvs(k2)-qvs(k1))
-      max_iwc = MAX(0.0, qvs(k1)-qvs(k2))
+      max_iwc = rp_max(0.0, qvs(k1)-qvs(k2))
 !     print*, ' max_iwc = ', max_iwc, ' over DZ=',tdz
 
       do k = k1, k2
-         max_iwc = MAX(1.E-6, max_iwc - (qi(k)+qs(k)))
+         max_iwc = rp_max(1.E-6, max_iwc - (qi(k)+qs(k)))
       enddo
-      max_iwc = MIN(1.E-4, max_iwc)
+      max_iwc = rp_min(1.E-4, max_iwc)
 
       this_dz = 0.0
       do k = k1, k2
@@ -4375,7 +4375,7 @@ CONTAINS
             this_dz = this_dz + dz(k)
          endif
          this_iwc = max_iwc*this_dz/tdz
-         iwc = MAX(1.E-6, this_iwc*(1.-entr))
+         iwc = rp_max(1.E-6, this_iwc*(1.-entr))
          if (cfr(k).gt.0.0.and.cfr(k).lt.1.0.and.T(k).ge.203.16) then
             qi(k) = qi(k) + cfr(k)*cfr(k)*iwc
          endif
@@ -4401,13 +4401,13 @@ CONTAINS
          tdz = tdz + dz(k)
       enddo
 !     max_lwc = ABS(qvs(k2)-qvs(k1))
-      max_lwc = MAX(0.0, qvs(k1)-qvs(k2))
+      max_lwc = rp_max(0.0, qvs(k1)-qvs(k2))
 !     print*, ' max_lwc = ', max_lwc, ' over DZ=',tdz
 
       do k = k1, k2
-         max_lwc = MAX(1.E-6, max_lwc - qc(k))
+         max_lwc = rp_max(1.E-6, max_lwc - qc(k))
       enddo
-      max_lwc = MIN(1.E-4, max_lwc)
+      max_lwc = rp_min(1.E-4, max_lwc)
 
       this_dz = 0.0
       do k = k1, k2
@@ -4417,7 +4417,7 @@ CONTAINS
             this_dz = this_dz + dz(k)
          endif
          this_lwc = max_lwc*this_dz/tdz
-         lwc = MAX(1.E-6, this_lwc*(1.-entr))
+         lwc = rp_max(1.E-6, this_lwc*(1.-entr))
          if (cfr(k).gt.0.0.and.cfr(k).lt.1.0.and.T(k).ge.258.16) then
             qc(k) = qc(k) + cfr(k)*cfr(k)*lwc
          endif
@@ -4510,8 +4510,8 @@ CONTAINS
 ! Initialize shading height 
 
    IF ( nested ) THEN  ! Do not overwrite input from parent domain
-     do j=max(jts,jds+2),min(jte,jde-3)
-     do i=max(its,ids+2),min(ite,ide-3)
+     do j=rp_max(jts,jds+2),rp_min(jte,jde-3)
+     do i=rp_max(its,ids+2),rp_min(ite,ide-3)
        ht_shad(i,j) = ht_loc(i,j)-0.001
      ENDDO
      ENDDO
@@ -4581,26 +4581,26 @@ CONTAINS
 
    if ((its.ne.ids).and.(its.eq.ips)) then
      do j=jts-2,jte+2
-       ht_loc(its-1,j) = max(ht_loc(its-1,j),ht_shad(its-1,j))
-       ht_loc(its-2,j) = max(ht_loc(its-2,j),ht_shad(its-2,j))
+       ht_loc(its-1,j) = rp_max(ht_loc(its-1,j),ht_shad(its-1,j))
+       ht_loc(its-2,j) = rp_max(ht_loc(its-2,j),ht_shad(its-2,j))
      enddo
    endif
    if ((ite.ne.ide-1).and.(ite.eq.ipe)) then
      do j=jts-2,jte+2
-       ht_loc(ite+1,j) = max(ht_loc(ite+1,j),ht_shad(ite+1,j))
-       ht_loc(ite+2,j) = max(ht_loc(ite+2,j),ht_shad(ite+2,j))
+       ht_loc(ite+1,j) = rp_max(ht_loc(ite+1,j),ht_shad(ite+1,j))
+       ht_loc(ite+2,j) = rp_max(ht_loc(ite+2,j),ht_shad(ite+2,j))
      enddo
    endif
    if ((jts.ne.jds).and.(jts.eq.jps)) then
      do i=its-2,ite+2
-       ht_loc(i,jts-1) = max(ht_loc(i,jts-1),ht_shad(i,jts-1))
-       ht_loc(i,jts-2) = max(ht_loc(i,jts-2),ht_shad(i,jts-2))
+       ht_loc(i,jts-1) = rp_max(ht_loc(i,jts-1),ht_shad(i,jts-1))
+       ht_loc(i,jts-2) = rp_max(ht_loc(i,jts-2),ht_shad(i,jts-2))
      enddo
    endif
    if ((jte.ne.jde-1).and.(jte.eq.jpe)) then
      do i=its-2,ite+2
-       ht_loc(i,jte+1) = max(ht_loc(i,jte+1),ht_shad(i,jte+1))
-       ht_loc(i,jte+2) = max(ht_loc(i,jte+2),ht_shad(i,jte+2))
+       ht_loc(i,jte+1) = rp_max(ht_loc(i,jte+1),ht_shad(i,jte+1))
+       ht_loc(i,jte+2) = rp_max(ht_loc(i,jte+2),ht_shad(i,jte+2))
      enddo
    endif
 
@@ -4693,7 +4693,7 @@ CONTAINS
               topoelev=rp_atan((wgt*ht_loc(i2,jj)+(1.-wgt)*ht_loc(i1,jj)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4711,7 +4711,7 @@ CONTAINS
               topoelev=rp_atan((wgt*ht_loc(ii,j2)+(1.-wgt)*ht_loc(ii,j1)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4729,7 +4729,7 @@ CONTAINS
               topoelev=rp_atan((wgt*ht_loc(i2,jj)+(1.-wgt)*ht_loc(i1,jj)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4747,7 +4747,7 @@ CONTAINS
               topoelev=rp_atan((wgt*ht_loc(ii,j2)+(1.-wgt)*ht_loc(ii,j1)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
           endif
@@ -4798,11 +4798,11 @@ CONTAINS
               i2 = i1+1
               wgt = ri-i1
               dxabs = sqrt((dy*(jj-j))**2+(dx*(ri-i))**2)
-              if ((jj.ge.min(jde,jpe+3)).or.(i1.le.max(ids-1,ips-3)).or.(i2.ge.min(ide,ipe+3))) goto 220
+              if ((jj.ge.rp_min(jde,jpe+3)).or.(i1.le.rp_max(ids-1,ips-3)).or.(i2.ge.rp_min(ide,ipe+3))) goto 220
               topoelev=rp_atan((wgt*ht_loc(i2,jj)+(1.-wgt)*ht_loc(i1,jj)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4813,11 +4813,11 @@ CONTAINS
               j2 = j1+1
               wgt = rj-j1
               dxabs = sqrt((dx*(ii-i))**2+(dy*(rj-j))**2)
-              if ((ii.ge.min(ide,ipe+3)).or.(j1.le.max(jds-1,jps-3)).or.(j2.ge.min(jde,jpe+3))) goto 220
+              if ((ii.ge.rp_min(ide,ipe+3)).or.(j1.le.rp_max(jds-1,jps-3)).or.(j2.ge.rp_min(jde,jpe+3))) goto 220
               topoelev=rp_atan((wgt*ht_loc(ii,j2)+(1.-wgt)*ht_loc(ii,j1)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4828,11 +4828,11 @@ CONTAINS
               i2 = i1+1
               wgt = ri-i1
               dxabs = sqrt((dy*(jj-j))**2+(dx*(ri-i))**2)
-              if ((jj.le.max(jds-1,jps-3)).or.(i1.le.max(ids-1,ips-3)).or.(i2.ge.min(ide,ipe+3))) goto 220
+              if ((jj.le.rp_max(jds-1,jps-3)).or.(i1.le.rp_max(ids-1,ips-3)).or.(i2.ge.rp_min(ide,ipe+3))) goto 220
               topoelev=rp_atan((wgt*ht_loc(i2,jj)+(1.-wgt)*ht_loc(i1,jj)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
 
@@ -4843,11 +4843,11 @@ CONTAINS
               j2 = j1+1
               wgt = rj-j1
               dxabs = sqrt((dx*(ii-i))**2+(dy*(rj-j))**2)
-              if ((ii.le.max(ids-1,ips-3)).or.(j1.le.max(jds-1,jps-3)).or.(j2.ge.min(jde,jpe+3))) goto 220
+              if ((ii.le.rp_max(ids-1,ips-3)).or.(j1.le.rp_max(jds-1,jps-3)).or.(j2.ge.rp_min(jde,jpe+3))) goto 220
               topoelev=rp_atan((wgt*ht_loc(ii,j2)+(1.-wgt)*ht_loc(ii,j1)-ht_loc(i,j))/dxabs)
               if (rp_sin(topoelev).ge.csza) then
                 shadowmask(i,j) = 1
-                ht_shad(i,j) = max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
+                ht_shad(i,j) = rp_max(ht_shad(i,j),ht_loc(i,j)+dxabs*(rp_tan(topoelev)-rp_tan(rp_asin(csza))))
               endif
             enddo
           endif
@@ -5527,9 +5527,9 @@ END SUBROUTINE aer_p_int
          DO k=kts,kte
             DO i=its,ite
                rhoa = p_phy(i,k,j)/(287.*t_phy(i,k,j))
-               t_idx = MAX(1, MIN(nint(10.999-0.0333*t_phy(i,k,j)),4))
+               t_idx = rp_max(1, rp_min(nint(10.999-0.0333*t_phy(i,k,j)),4))
                qvsat = rslf(p_phy(i,k,j),t_phy(i,k,j))
-               RH = MIN(99.1, MAX(10.1, qvapor(i,k,j)/qvsat*100.))
+               RH = rp_min(99.1, rp_max(10.1, qvapor(i,k,j)/qvsat*100.))
 
                !..Get the index for the RH array element
 
@@ -5555,7 +5555,7 @@ END SUBROUTINE aer_p_int
                else
                   a_RH = 0.2
                   b_RH = -12.
-                  RH_idx = MIN(rind, nint(a_RH*RH+b_RH))
+                  RH_idx = rp_min(rind, nint(a_RH*RH+b_RH))
                   rh_d = rh-rh_arr(rh_idx)
                   if (rh_d .lt. 0) then
                      RH_idx1 = RH_idx-1
@@ -5572,7 +5572,7 @@ END SUBROUTINE aer_p_int
 
                !..RH fraction to be used
 
-               rh_f = MAX(0., MIN(1.0, (rh/(100-rh)-rh_arr(rh_idx1)     &
+               rh_f = rp_max(0., rp_min(1.0, (rh/(100-rh)-rh_arr(rh_idx1)     &
      &                                  /(100-rh_arr(rh_idx1)))         &
      &                        /(rh_arr(rh_idx2)/(100-rh_arr(rh_idx2))   &
      &                        -rh_arr(rh_idx1)/(100-rh_arr(rh_idx1))) ))
@@ -5590,14 +5590,14 @@ END SUBROUTINE aer_p_int
      &                       - lookup_tabl(RH_idx1,t_idx,3))*rh_f
                end if
 
-               ntemp = MAX(1., MIN(99999.E6, nwfa(i,k,j)))
+               ntemp = rp_max(1., rp_min(99999.E6, nwfa(i,k,j)))
                AOD_wfa(i,k,j) = unit_bext1*ntemp*dz8w(i,k,j)*rhoa
 
-               ntemp = MAX(0.01, MIN(9999.E6, nifa(i,k,j)))
+               ntemp = rp_max(0.01, rp_min(9999.E6, nifa(i,k,j)))
                AOD_ifa(i,k,j) = unit_bext3*ntemp*dz8w(i,k,j)*rhoa
 
                if ( wif_input_opt .eq. 2 ) then
-                  ntemp = MAX(1., MIN(9999.E9, nbca(i,k,j)))
+                  ntemp = rp_max(1., rp_min(9999.E9, nbca(i,k,j)))
                   AOD_bca(i,k,j) = unit_bext4*ntemp*dz8w(i,k,j)*rhoa
                end if
 
@@ -5609,9 +5609,9 @@ END SUBROUTINE aer_p_int
          DO k=kts,kte
             DO i=its,ite
                if ( wif_input_opt .eq. 2 ) then
-                  taod5503d(i,k,j) = MAX(1.E-3, aod_wfa(i,k,j) + aod_ifa(i,k,j) + aod_bca(i,k,j))
+                  taod5503d(i,k,j) = rp_max(1.E-3, aod_wfa(i,k,j) + aod_ifa(i,k,j) + aod_bca(i,k,j))
                else
-                  taod5503d(i,k,j) = MAX(1.E-3, aod_wfa(i,k,j) + aod_ifa(i,k,j))
+                  taod5503d(i,k,j) = rp_max(1.E-3, aod_wfa(i,k,j) + aod_ifa(i,k,j))
                end if
             END DO
          END DO
@@ -5644,10 +5644,10 @@ END SUBROUTINE aer_p_int
      k = 1
      do j = jts, jte
        do i = its, ite
-         albedo(i, j) = min (max (ALBEDO_MIN, (1.0 + perts_albedo(i, k, j) * pert_farms_albedo) * albedo(i, j)), AERASY_MAX)
-         angexp2d(i, j) = max (ANGEXP_MIN, (1.0 + perts_angstrom(i, k, j) * pert_farms_angexp) * angexp2d(i, j))
-         aod5502d(i, j) = max (AOD_MIN, (1.0 + perts_aod(i, k, j) * pert_farms_aod) * aod5502d(i, j))
-         aerasy2d(i, j) = min (max (AERASY_MIN, (1.0 + perts_assymfac(i, k, j) * pert_farms_aerasy) * aerasy2d(i, j)), AERASY_MAX)
+         albedo(i, j) = rp_min (rp_max (ALBEDO_MIN, (1.0 + perts_albedo(i, k, j) * pert_farms_albedo) * albedo(i, j)), AERASY_MAX)
+         angexp2d(i, j) = rp_max (ANGEXP_MIN, (1.0 + perts_angstrom(i, k, j) * pert_farms_angexp) * angexp2d(i, j))
+         aod5502d(i, j) = rp_max (AOD_MIN, (1.0 + perts_aod(i, k, j) * pert_farms_aod) * aod5502d(i, j))
+         aerasy2d(i, j) = rp_min (rp_max (AERASY_MIN, (1.0 + perts_assymfac(i, k, j) * pert_farms_aerasy) * aerasy2d(i, j)), AERASY_MAX)
        end do
      end do
 
@@ -5655,11 +5655,11 @@ END SUBROUTINE aer_p_int
        do k = kts, kte
          do i = its, ite
            qv_tmp(i, k, j) = qv(i, k, j)
-           qv(i, k, j) = max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_farms_qv) * qv(i, k, j))
+           qv(i, k, j) = rp_max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_farms_qv) * qv(i, k, j))
            qc_tmp(i, k, j) = qc(i, k, j)
-           qc(i, k, j) = max (QCLOUD_MIN, (1.0 + perts_qcloud(i, k, j) * pert_farms_qc) * qc(i, k, j))
+           qc(i, k, j) = rp_max (QCLOUD_MIN, (1.0 + perts_qcloud(i, k, j) * pert_farms_qc) * qc(i, k, j))
            qs_tmp(i, k, j) = qs(i, k, j)
-           qs(i, k, j) = max (QSNOW_MIN, (1.0 + perts_qsnow(i, k, j) * pert_farms_qs) * qs(i, k, j))
+           qs(i, k, j) = rp_max (QSNOW_MIN, (1.0 + perts_qsnow(i, k, j) * pert_farms_qs) * qs(i, k, j))
          end do
        end do
      end do
@@ -5689,19 +5689,19 @@ END SUBROUTINE aer_p_int
      k = 1
      do j = jts, jte
        do i = its, ite
-         albedo(i, j) = min (max (ALBEDO_MIN, albedo(i, j) / (1.0 + perts_albedo(i, k, j) * pert_farms_albedo)), ALBEDO_MAX)
-         angexp2d(i, j) = max (ANGEXP_MIN, angexp2d(i, j) / (1.0 + perts_angstrom(i, k, j) * pert_farms_angexp))
-         aod5502d(i, j) = max (AOD_MIN, aod5502d(i, j) / (1.0 + perts_aod(i, k, j) * pert_farms_aod))
-         aerasy2d(i, j) = min (max (AERASY_MIN, aerasy2d(i, j) / (1.0 + perts_assymfac(i, k, j) * pert_farms_aerasy)), AERASY_MAX)
+         albedo(i, j) = rp_min (rp_max (ALBEDO_MIN, albedo(i, j) / (1.0 + perts_albedo(i, k, j) * pert_farms_albedo)), ALBEDO_MAX)
+         angexp2d(i, j) = rp_max (ANGEXP_MIN, angexp2d(i, j) / (1.0 + perts_angstrom(i, k, j) * pert_farms_angexp))
+         aod5502d(i, j) = rp_max (AOD_MIN, aod5502d(i, j) / (1.0 + perts_aod(i, k, j) * pert_farms_aod))
+         aerasy2d(i, j) = rp_min (rp_max (AERASY_MIN, aerasy2d(i, j) / (1.0 + perts_assymfac(i, k, j) * pert_farms_aerasy)), AERASY_MAX)
        end do
      end do
 
      do j = jts, jte
        do k = kts, kte
          do i = its, ite
-           qv(i, k, j) = max (QVAPOR_MIN, qv(i, k, j) - perts_qvapor(i, k, j) * pert_farms_qv * qv_tmp(i, k, j))
-           qc(i, k, j) = max (QCLOUD_MIN, qc(i, k, j) - perts_qcloud(i, k, j) * pert_farms_qc * qc_tmp(i, k, j))
-           qs(i, k, j) = max (QSNOW_MIN, qs(i, k, j) - perts_qsnow(i, k, j) * pert_farms_qs * qs_tmp(i, k, j))
+           qv(i, k, j) = rp_max (QVAPOR_MIN, qv(i, k, j) - perts_qvapor(i, k, j) * pert_farms_qv * qv_tmp(i, k, j))
+           qc(i, k, j) = rp_max (QCLOUD_MIN, qc(i, k, j) - perts_qcloud(i, k, j) * pert_farms_qc * qc_tmp(i, k, j))
+           qs(i, k, j) = rp_max (QSNOW_MIN, qs(i, k, j) - perts_qsnow(i, k, j) * pert_farms_qs * qs_tmp(i, k, j))
          end do
        end do
      end do

@@ -1566,7 +1566,7 @@ CONTAINS
       DO i=i_start(ij),i_end(ij)
          RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j) + RAINNCV(i,j)
          IF ( PRESENT( rainshv ))RAINBL(i,j) = RAINBL(i,j) + RAINSHV(i,j)
-         RAINBL(i,j) = MAX (RAINBL(i,j), 0.0)
+         RAINBL(i,j) = rp_max (RAINBL(i,j), 0.0)
 #if (EM_CORE==1)
          IRRIGATION_CHANNEL(i,j) = 0.
          sf_surf_irr: SELECT CASE(sf_surf_irr_scheme)
@@ -1602,7 +1602,7 @@ CONTAINS
       DO i=i_start(ij),i_end(ij)
          RAINBL(i,j) = RAINBL(i,j) + RAINCV(i,j)
          IF ( PRESENT( rainshv ))RAINBL(i,j) = RAINBL(i,j) + RAINSHV(i,j)
-         RAINBL(i,j) = MAX (RAINBL(i,j), 0.0)
+         RAINBL(i,j) = rp_max (RAINBL(i,j), 0.0)
 
 #if (EM_CORE==1)
           sf_surf_irr1: SELECT CASE(sf_surf_irr_scheme)
@@ -2227,7 +2227,7 @@ CONTAINS
          DO j = j_start(ij),j_end(ij)
             DO i = i_start(ij),i_end(ij)
                ustm(i,j) = ust(i,j)
-               wspd(i,j) = MAX(SQRT(u_phy(i,kts,j)**2+v_phy(i,kts,j)**2),0.001)
+               wspd(i,j) = rp_max(SQRT(u_phy(i,kts,j)**2+v_phy(i,kts,j)**2),0.001)
                ch(i,j) = chs (i,j)
             END DO
          END DO
@@ -2309,7 +2309,7 @@ CONTAINS
 #if ( EM_CORE==1)
          DO j = j_start(ij),j_end(ij)
             DO i = i_start(ij),i_end(ij)
-               wspd(i,j) = MAX(SQRT(u_phy(i,kts,j)**2+v_phy(i,kts,j)**2),0.001)
+               wspd(i,j) = rp_max(SQRT(u_phy(i,kts,j)**2+v_phy(i,kts,j)**2),0.001)
                ch(i,j) = chs (i,j)
 !!           ch(i,j) = flhc(i,j)/( cpm(i,j)*rho(i,kts,j) )
             END DO
@@ -2520,7 +2520,7 @@ CONTAINS
            DO j=j_start(ij),j_end(ij)
            DO i=i_start(ij),i_end(ij)
               RAINBL(i,j) = RAINBL(i,j) + dfgdp(i,j)
-              RAINBL(i,j) = MAX(RAINBL(i,j), 0.0)
+              RAINBL(i,j) = rp_max(RAINBL(i,j), 0.0)
            ENDDO
            ENDDO
 
@@ -4225,7 +4225,7 @@ CONTAINS
            CLOUDFRAC=0.
            IF(PRESENT(CLDFRA))THEN
            DO K=KMS,KME
-             CLOUDFRAC=AMAX1(CLOUDFRAC,AMIN1(CLDFRA(I,K,J),1.0))
+             CLOUDFRAC=rp_max(CLOUDFRAC,rp_min(CLDFRA(I,K,J),1.0))
            ENDDO
            ENDIF
 
@@ -4451,7 +4451,7 @@ CONTAINS
          DO j=j_start(ij),j_end(ij)
          DO i=i_start(ij),i_end(ij)
             IF (XLAND(I,J).LT.1.5) THEN
-            Q2(i,j) = MIN(Q2(i,j),1.05*QV_CURR(i,1,j))
+            Q2(i,j) = rp_min(Q2(i,j),1.05*QV_CURR(i,1,j))
             END IF
          ENDDO
          ENDDO
@@ -7186,7 +7186,7 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
 ! and low area-averaged temperatures.  This can happen when the initial ice fraction 
 ! and surface temperature come from different data sets.
 !------------------------------------------------------------------------------------
-                  TSK_ICE(i,j) = MIN( TSK(i,j), 273.15 )
+                  TSK_ICE(i,j) = rp_min( TSK(i,j), 273.15 )
                ELSE
                   TSK_ICE(i,j) = ( TSK(i,j) - (1.0-XICE(i,j)) * SST(i,j) ) / XICE(i,j)
                   IF ( TSK_ICE(i,j) < TICE_MIN ) TSK_ICE(i,j) = TICE_MIN
@@ -7231,7 +7231,7 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
      k = 1
      do j = jts, jte
        do i = its, ite
-           qv_curr(i, k, j) = max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_noah_qv) * qv_curr(i, k, j))
+           qv_curr(i, k, j) = rp_max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_noah_qv) * qv_curr(i, k, j))
            t_phy(i, k, j) = (1.0 + perts_th(i, k, j) * pert_noah_t) * t_phy(i, k, j)
        end do
      end do
@@ -7240,7 +7240,7 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
        do k = 1, num_soil_layers
          do i = its, ite
            smois_tmp(i, k, j) = smois(i, k, j)
-           smois(i, k, j) = min (SMOIS_MAX, max (SMOIS_MIN, (1.0 + perts_smois(i, k, j) * pert_noah_smois) * smois(i, k, j)))
+           smois(i, k, j) = rp_min (SMOIS_MAX, rp_max (SMOIS_MIN, (1.0 + perts_smois(i, k, j) * pert_noah_smois) * smois(i, k, j)))
            tslb_tmp(i, k, j) = tslb(i, k, j)
            tslb(i, k, j) = (1.0 + perts_tsoil(i, k, j) * pert_noah_tslb) * tslb(i, k, j)
          end do
@@ -7269,7 +7269,7 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
      k = 1
      do j = jts, jte
        do i = its, ite
-           qv_curr(i, k, j) = max (QVAPOR_MIN, qv_curr(i, k, j) / (1.0 + perts_qvapor(i, k, j) * pert_noah_qv))
+           qv_curr(i, k, j) = rp_max (QVAPOR_MIN, qv_curr(i, k, j) / (1.0 + perts_qvapor(i, k, j) * pert_noah_qv))
            t_phy(i, k, j) = t_phy(i, k, j) / (1.0 + perts_th(i, k, j) * pert_noah_t)
        end do
      end do
@@ -7277,7 +7277,7 @@ HFX_SEA, LH_SEA, QFX_SEA, QGH_SEA, QSFC_SEA, TSK_SEA,  &
      do j = jts, jte
        do k = 1, num_soil_layers
          do i = its, ite
-           smois(i, k, j) = min (SMOIS_MAX, max (SMOIS_MIN, smois(i, k, j) - perts_smois(i, k, j) * pert_noah_smois * smois_tmp(i, k, j)))
+           smois(i, k, j) = rp_min (SMOIS_MAX, rp_max (SMOIS_MIN, smois(i, k, j) - perts_smois(i, k, j) * pert_noah_smois * smois_tmp(i, k, j)))
            tslb(i, k, j) = tslb(i, k, j) - perts_tsoil(i, k, j) * pert_noah_tslb * tslb_tmp(i, k, j)
          end do
        end do

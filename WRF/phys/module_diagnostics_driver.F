@@ -399,9 +399,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                                                                     )
 
@@ -450,9 +450,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -500,9 +500,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -552,9 +552,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -601,9 +601,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -653,9 +653,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -727,9 +727,9 @@ CONTAINS
                 ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde   &
                 ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme   &
                 ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe   &
-                ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)   &
-                ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)   &
-                ,KTS=k_start, KTE=min(k_end,kde-1)                   &
+                ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)   &
+                ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)   &
+                ,KTS=k_start, KTE=rp_min(k_end,kde-1)                   &
                 ,NUM_TILES=grid%num_tiles                            &
                 ,MAX_TIME_STEP=grid%max_time_step                    &
                 ,ADAPTIVE_TS=config_flags%use_adaptive_time_step     &
@@ -791,8 +791,8 @@ CONTAINS
                     ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
                     ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
                     ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-                    ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)     &
-                    ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)     &
+                    ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)     &
+                    ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)     &
                     ,KTS=k_start, KTE=k_end                                &
                     ,NUM_TILES=grid%num_tiles                              &
                                                                    )
@@ -1030,8 +1030,8 @@ CONTAINS
                        ,IDS=ids,IDE=ide, JDS=jds,JDE=jde, KDS=kds,KDE=kde     &
                        ,IMS=ims,IME=ime, JMS=jms,JME=jme, KMS=kms,KME=kme     &
                        ,IPS=ips,IPE=ipe, JPS=jps,JPE=jpe, KPS=kps,KPE=kpe     &
-                       ,I_START=grid%i_start,I_END=min(grid%i_end, ide-1)     &
-                       ,J_START=grid%j_start,J_END=min(grid%j_end, jde-1)     &
+                       ,I_START=grid%i_start,I_END=rp_min(grid%i_end, ide-1)     &
+                       ,J_START=grid%j_start,J_END=rp_min(grid%j_end, jde-1)     &
                        ,NUM_TILES=grid%num_tiles                              &
                                                                       )
       END IF RASM_DIAGS_MEAN
@@ -1093,8 +1093,8 @@ CONTAINS
            ,IDS=ids, IDE=ide, JDS=jds, JDE=jde, KDS=kds, KDE=kde              &
            ,IMS=ims, IME=ime, JMS=jms, JME=jme, KMS=kms, KME=kme              & 
            ,IPS=ips, IPE=ipe, JPS=jps, JPE=jpe, KPS=kps, KPE=kpe              &         
-           ,I_START=grid%i_start, I_END=min(grid%i_end, ide-1)                &
-           ,J_START=grid%j_start, J_END=min(grid%j_end, jde-1)                &
+           ,I_START=grid%i_start, I_END=rp_min(grid%i_end, ide-1)                &
+           ,J_START=grid%j_start, J_END=rp_min(grid%j_end, jde-1)                &
            ,NUM_TILES=grid%num_tiles                                          &
                                                                    )
       END IF RASM_DIAGS_DIURNAL
@@ -1110,8 +1110,8 @@ CONTAINS
 
          CALL noahmp_output_calc(                                          &
            ims=ims, ime=ime, jms=jms, jme=jme                             ,&
-           i_start=grid%i_start, i_end=min(grid%i_end, ide-1)             ,&
-           j_start=grid%j_start, j_end=min(grid%j_end, jde-1)             ,&
+           i_start=grid%i_start, i_end=rp_min(grid%i_end, ide-1)             ,&
+           j_start=grid%j_start, j_end=rp_min(grid%j_end, jde-1)             ,&
            num_tiles=grid%num_tiles                                       ,&
            dt=grid%dt                                                     ,&
            noahmp_acc_dt=config_flags%noahmp_acc_dt                       ,&
@@ -1208,9 +1208,9 @@ CONTAINS
               ids=ids, ide=ide, jds=jds, jde=jde, kds=kds, kde=kde,         &
               ims=ims, ime=ime, jms=jms, jme=jme, kms=kms, kme=kme,         &
               ips=ips, ipe=ipe, jps=jps, jpe=jpe, kps=kps, kpe=kpe,         &
-              i_start=grid%i_start, i_end=min(grid%i_end, ide-1),           &
-              j_start=grid%j_start, j_end=min(grid%j_end, jde-1),           &
-              kts=k_start, kte=min(k_end,kde-1), num_tiles=grid%num_tiles   )
+              i_start=grid%i_start, i_end=rp_min(grid%i_end, ide-1),           &
+              j_start=grid%j_start, j_end=rp_min(grid%j_end, jde-1),           &
+              kts=k_start, kte=rp_min(k_end,kde-1), num_tiles=grid%num_tiles   )
       END IF SOLAR_FIELDS
 
 
@@ -1251,18 +1251,18 @@ CONTAINS
       !  Moist or dry theta
 
       IF ( config_flags%use_theta_m .EQ. 1 ) THEN
-         DO j = jps, MIN(jde-1, jpe)
+         DO j = jps, rp_min(jde-1, jpe)
             DO k = kps, kde-1
-               DO i = ips, MIN(ide-1, ipe)
+               DO i = ips, rp_min(ide-1, ipe)
                   grid%th_phy_m_t0(i,k,j) = (grid%t_2(i,k,j)+T0) / &
                                             (1.+(R_v/R_d)*moist(i,k,j,P_Qv)) - T0
                END  DO
             END  DO
          END  DO
       ELSE
-         DO j = jps, MIN(jde-1, jpe)
+         DO j = jps, rp_min(jde-1, jpe)
             DO k = kps, kde-1
-               DO i = ips, MIN(ide-1, ipe)
+               DO i = ips, rp_min(ide-1, ipe)
                   grid%th_phy_m_t0(i,k,j) =  grid%t_2(i,k,j)
                END  DO
             END  DO

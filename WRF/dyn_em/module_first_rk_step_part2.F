@@ -410,9 +410,9 @@ BENCH_START(cal_phy_tend)
                      tracer, tracer_tend, num_tracer,                  &
                      ids,ide, jds,jde, kds,kde,                        &
                      ims,ime, jms,jme, kms,kme,                        &
-                     grid%i_start(ij), min(grid%i_end(ij),ide-1),      &
-                     grid%j_start(ij), min(grid%j_end(ij),jde-1),      &
-                     k_start    , min(k_end,kde-1)                     )
+                     grid%i_start(ij), rp_min(grid%i_end(ij),ide-1),      &
+                     grid%j_start(ij), rp_min(grid%j_end(ij),jde-1),      &
+                     k_start    , rp_min(k_end,kde-1)                     )
 
       ENDDO
       !$OMP END PARALLEL DO
@@ -799,13 +799,13 @@ BENCH_START(update_phy_ten_tim)
 #if ( WRF_DFI_RADAR == 1 )
          if (config_flags%cu_physics .gt. 0) then
            i_start = grid%i_start(ij)
-           i_end   = min( grid%i_end(ij),ide-1 )
+           i_end   = rp_min( grid%i_end(ij),ide-1 )
            j_start = grid%j_start(ij)
-           j_end   = min( grid%j_end(ij),jde-1 )
+           j_end   = rp_min( grid%j_end(ij),jde-1 )
            if (grid%dfi_stage == DFI_FWD ) &
                  CALL wrf_debug ( 200 , ' Zero out cu_physics' )
            DO j = j_start, j_end
-           DO k = k_start, min( k_end,kde-1 ) - 1
+           DO k = k_start, rp_min( k_end,kde-1 ) - 1
            DO i = i_start, i_end
              if (grid%dfi_stage ==DFI_FWD  &
              .and. grid%dfi_tten_rad(i,k,j) >= 1.0e-7 .and.  &
@@ -1025,9 +1025,9 @@ BENCH_END(tke_rhs_tim)
                    grid%regime, grid%pblh, grid%z_at_w, grid%z,         &
                    ids,ide, jds,jde, kds,kde,                           &
                    ims,ime, jms,jme, kms,kme,                           &
-                   grid%i_start(ij), min(grid%i_end(ij),ide-1),         &
-                   grid%j_start(ij), min(grid%j_end(ij),jde-1),         &
-                   k_start    , min(k_end,kde-1)                     )
+                   grid%i_start(ij), rp_min(grid%i_end(ij),ide-1),         &
+                   grid%j_start(ij), rp_min(grid%j_end(ij),jde-1),         &
+                   k_start    , rp_min(k_end,kde-1)                     )
  
          ENDDO
          !$OMP END PARALLEL DO

@@ -402,10 +402,10 @@ do j=jfts,jfte
 enddo
 
 ! one beyond the tile but not beyond the domain boundary
-ibs=max(ids,its-1)
-ibe=min(ide,ite+1)
-jbs=max(jds,jts-1)
-jbe=min(jde,jte+1)
+ibs=rp_max(ids,its-1)
+ibe=rp_min(ide,ite+1)
+jbs=rp_max(jds,jts-1)
+jbe=rp_min(jde,jte+1)
 
 call check_mesh_2dim(ibs,ibe,jbs,jbe,ims,ime,jms,jme) ! check if tile with halo fits into memory
 
@@ -560,8 +560,8 @@ do j=jts,jte
             else
                 rain_int  = 0.
             endif
-            rainmax = max(rainmax,rain_int)
-            rainmin = min(rainmin,rain_int)
+            rainmax = rp_max(rainmax,rain_int)
+            rainmin = rp_min(rainmin,rain_int)
             R = rain_int - rain_threshold(k)
 
             ! average the inputs for second order accuracy
@@ -583,14 +583,14 @@ do j=jts,jte
             !realtive humidity [1]
             RH = Pw/Pws
             rh_fire(i,j)=RH
-            rhmax=max(RH,rhmax)         
-            rhmin=min(RH,rhmin)         
+            rhmax=rp_max(RH,rhmax)         
+            rhmin=rp_min(RH,rhmin)         
 
             deltaE = fmep(i,1,j)
             deltaS = fmep(i,2,j)
 
             if(.not.check_rh)then
-                RH = min(RH,1.0)
+                RH = rp_min(RH,1.0)
             else
                 if(RH < 0.0 .or. RH > 1.0 .or. RH .ne. RH )then
 !$OMP CRITICAL(SFIRE_PHYS_CRIT)
@@ -619,8 +619,8 @@ do j=jts,jte
                     if(d.ne.d.or.w.ne.w)call crash('equilibrium moisture calculation failed, result is NaN')
                     d = d*0.01
                     w = w*0.01
-                    EMC_d = max(max(d,w)+deltaE,0.0)
-                    EMC_w = max(min(d,w)+deltaE,0.0)
+                    EMC_d = rp_max(rp_max(d,w)+deltaE,0.0)
+                    EMC_w = rp_max(rp_min(d,w)+deltaE,0.0)
                     rlag=rec_drying_lag_sec(k)
                 end select
             endif
@@ -641,7 +641,7 @@ do j=jts,jte
                 else
                     call crash('bad value of fmc_gc_initialization(k), must be between 0 and 2')
                 endif
-                equi = max(min(fmc_old, EMC_d),EMC_w) ! take lower or upper equilibrium value 
+                equi = rp_max(rp_min(fmc_old, EMC_d),EMC_w) ! take lower or upper equilibrium value 
 
                 change = moisture_dt * rlag 
 
@@ -985,7 +985,7 @@ j=1    ! number of columns; max 5, but we do only one anyway, or would need to l
 10 format(a,2x,99(1x,f12.5))
 11 format(a,2x,99(1x,a12))
 do i=1,nfuelcats,j
-    k=min(i+j-1,nfuelcats)
+    k=rp_min(i+j-1,nfuelcats)
     call message(' ')
     write(msg,7)'CATEGORY  ',(ii,ii=i,k)
     call message(msg)
@@ -1034,7 +1034,7 @@ call message('**********************************************************')
 if(init_fuel_moisture)then
     j=1
     do i=1,moisture_classes,j
-        k=min(i+j-1,nfuelcats)
+        k=rp_min(i+j-1,nfuelcats)
         call message(' ')
         write(msg,7)'FUEL MOISTURE CLASS',(ii,ii=i,k)
         call message(msg)
@@ -1380,7 +1380,7 @@ do j=jfts,jfte
 
         wn = fuelload/(1 + st(k))       ! net fuel loading, lb/ft^2
         rtemp1 = fp%fmc_g(i,j)/fuelmce(k)
-        etam = 1.-2.59*rtemp1 +5.11*rtemp1**2 -3.52*rtemp1**3  !moist damp coef
+        etam = 1.-2.59*rtemp1 +5.11*rtemp1**2 -3.52*rp_pow(rtemp1, 3)  !moist damp coef
         etas = 0.174* rp_pow(se(k), (-0.19))                ! mineral damping coef
         ir = gamma * wn * fuelheat * etam * etas  !rxn intensity,btu/ft^2 min
         ! irm = ir * 1055./( 0.3048**2 * 60.) * 1.e-6     !for mw/m^2
@@ -1590,9 +1590,9 @@ if (fire_advection.ne.0) then ! from flags in module_fr_fire_util
     ! slope is total slope
     tanphi = sqrt(fp%dzdxf(i,j)*fp%dzdxf(i,j) + fp%dzdyf(i,j)*fp%dzdyf(i,j))+tiny(tanphi)
     ! cos of wind and spread, if >0
-    cor_wind =  max(0.,(fp%vx(i,j)*nvx + fp%vy(i,j)*nvy)/speed)
+    cor_wind =  rp_max(0.,(fp%vx(i,j)*nvx + fp%vy(i,j)*nvy)/speed)
     ! cos of slope and spread, if >0
-    cor_slope = max(0., (fp%dzdxf(i,j)*nvx + fp%dzdyf(i,j)*nvy)/tanphi)
+    cor_slope = rp_max(0., (fp%dzdxf(i,j)*nvx + fp%dzdyf(i,j)*nvy)/tanphi)
 else
     ! wind speed in spread direction
     speed =  fp%vx(i,j)*nvx + fp%vy(i,j)*nvy
@@ -1605,8 +1605,8 @@ endif
 if (.not. fp%ischap(i,j) > 0.) then      ! if fuel is not chaparral, calculate rate of spread one of these ways
     if (ibeh .eq. 1) then                ! use Rothermel formula
 !       ... if wind is 0 or into fireline, phiw = 0, &this reduces to backing ros.
-        spdms = max(speed,0.)            ! 
-        umidm = min(spdms,30.)           ! max input wind spd is 30 m/s   !param!
+        spdms = rp_max(speed,0.)            ! 
+        umidm = rp_min(spdms,30.)           ! max input wind spd is 30 m/s   !param!
         umid = umidm * 196.850           ! m/s to ft/min
         !  eqn.: phiw = c * umid**bbb(i,j) * (fp%betafl(i,j)/betaop)**(-e) ! wind coef
         phiw = rp_pow(umid, fp%bbb(i,j)) * fp%phiwc(i,j) ! wind coef
@@ -1623,13 +1623,13 @@ if (.not. fp%ischap(i,j) > 0.) then      ! if fuel is not chaparral, calculate r
     else                                   ! McArthur formula (Australian)
         ! rosm = 0.18*exp(0.8424*max(speed,0.))
         ros_base = 0.18*rp_exp(0.8424)
-        ros_wind = 0.18*rp_exp(0.8424*max(speed,0.))
+        ros_wind = 0.18*rp_exp(0.8424*rp_max(speed,0.))
         ros_slope =0.
     endif
 !
 else   ! chaparral
 !        .... spread rate has no dependency on fuel character, only windspeed.
-    spdms = max(speed,0.)      
+    spdms = rp_max(speed,0.)      
     ! rosm = 1.2974 * spdms**1.41       ! spread rate, m/s
     ! note: backing ros is 0 for chaparral without setting nozero value below
     !sp_n=.03333  
@@ -1638,7 +1638,7 @@ else   ! chaparral
 
     ros_back=.03333    ! chaparral backing fire spread rate 0.033 m/s   ! param!
     ros_wind = 1.2974 * rp_pow(spdms, 1.41)       ! spread rate, m/s
-    ros_wind = max(ros_wind, ros_back)
+    ros_wind = rp_max(ros_wind, ros_back)
     ros_slope =0.
 
 endif

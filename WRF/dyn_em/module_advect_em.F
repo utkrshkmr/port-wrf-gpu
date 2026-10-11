@@ -224,7 +224,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
    horz_order = config_flags%h_mom_adv_order
    vert_order = config_flags%v_mom_adv_order
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
 !  begin with horizontal flux divergence
 
@@ -259,13 +259,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -274,16 +274,16 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -392,7 +392,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_end   = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -401,12 +401,12 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-1,ite)
+        i_end = rp_min(ide-1,ite)
         i_end_f = ide-2
       ENDIF
 
@@ -520,13 +520,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -535,16 +535,16 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -653,7 +653,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_end   = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -662,12 +662,12 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-1,ite)
+        i_end = rp_min(ide-1,ite)
         i_end_f = ide-2
       ENDIF
 
@@ -777,7 +777,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -845,13 +845,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -870,7 +870,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  j flux loop for v flux of u momentum
 
@@ -983,7 +983,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -1050,13 +1050,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -1075,7 +1075,7 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  j flux loop for v flux of u momentum
 
@@ -1158,12 +1158,12 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe ) i_end   = MIN(ide-1,ite)
-      IF ( specified ) i_start = MAX(ids+2,its)
-      IF ( specified ) i_end   = MIN(ide-2,ite)
+      IF ( config_flags%open_xs ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe ) i_end   = rp_min(ide-1,ite)
+      IF ( specified ) i_start = rp_max(ids+2,its)
+      IF ( specified ) i_end   = rp_min(ide-2,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -1205,8 +1205,8 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
         ENDDO
       ENDIF
 
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-2,jte)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -1245,11 +1245,11 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       IF ( (config_flags%open_xs) .and. its == ids ) THEN
 
         j_start = jts
-        j_end   = MIN(jte,jde-1)
+        j_end   = rp_min(jte,jde-1)
 
         DO j = j_start, j_end
         DO k = kts, ktf
-          ub = MIN(ru(its,k,j)-cb*(c1(k)*mut(its,j)+c2(k)), 0.)
+          ub = rp_min(ru(its,k,j)-cb*(c1(k)*mut(its,j)+c2(k)), 0.)
           tendency(its,k,j) = tendency(its,k,j)                    &
                       - rdx*ub*(u_old(its+1,k,j) - u_old(its,k,j))
         ENDDO
@@ -1260,11 +1260,11 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       IF ( (config_flags%open_xe) .and. ite == ide ) THEN
 
         j_start = jts
-        j_end   = MIN(jte,jde-1)
+        j_end   = rp_min(jte,jde-1)
 
         DO j = j_start, j_end
         DO k = kts, ktf
-          ub = MAX(ru(ite,k,j)+cb*(c1(k)*mut(ite-1,j)+c2(k)), 0.)
+          ub = rp_max(ru(ite,k,j)+cb*(c1(k)*mut(ite-1,j)+c2(k)), 0.)
           tendency(ite,k,j) = tendency(ite,k,j)                    &
                       - rdx*ub*(u_old(ite,k,j) - u_old(ite-1,k,j))
         ENDDO
@@ -1277,16 +1277,16 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide)
+      i_end   = rp_min(ite,ide)
       imin    = ids
       imax    = ide-1
 
       IF (config_flags%open_xs) THEN
-        i_start = MAX(ids+1, its)
+        i_start = rp_max(ids+1, its)
         imin = ids
       ENDIF
       IF (config_flags%open_xe) THEN
-        i_end = MIN(ite,ide-1)
+        i_end = rp_min(ite,ide-1)
         imax = ide-1
       ENDIF
 
@@ -1295,13 +1295,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       DO i = i_start, i_end
 
          mrdy=msfux(i,jts)*rdy       ! ADT eqn 44, 2nd term on RHS
-         ip = MIN( imax, i   )
-         im = MAX( imin, i-1 )
+         ip = rp_min( imax, i   )
+         im = rp_max( imin, i-1 )
 
          DO k=kts,ktf
 
           vw = 0.5*(rv(ip,k,jts)+rv(im,k,jts))
-          vb = MIN( vw, 0. )
+          vb = rp_min( vw, 0. )
           dvm =  rv(ip,k,jts+1)-rv(ip,k,jts)
           dvp =  rv(im,k,jts+1)-rv(im,k,jts)
           tendency(i,k,jts)=tendency(i,k,jts)-mrdy*(                &
@@ -1317,13 +1317,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
       DO i = i_start, i_end
 
          mrdy=msfux(i,jte-1)*rdy     ! ADT eqn 44, 2nd term on RHS
-         ip = MIN( imax, i   )
-         im = MAX( imin, i-1 )
+         ip = rp_min( imax, i   )
+         im = rp_max( imin, i-1 )
 
          DO k=kts,ktf
 
           vw = 0.5*(rv(ip,k,jte)+rv(im,k,jte))
-          vb = MAX( vw, 0. )
+          vb = rp_max( vw, 0. )
           dvm =  rv(ip,k,jte)-rv(ip,k,jte-1)
           dvp =  rv(im,k,jte)-rv(im,k,jte-1)
           tendency(i,k,jte-1)=tendency(i,k,jte-1)-mrdy*(              &
@@ -1343,13 +1343,13 @@ SUBROUTINE advect_u   ( u, u_old, tendency,            &
    i_start = its
    i_end   = ite
    j_start = jts
-   j_end   = min(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
 !   IF ( config_flags%open_xs ) i_start = MAX(ids+1,its)
 !   IF ( config_flags%open_xe ) i_end   = MIN(ide-1,ite)
 
-   IF ( config_flags%open_ys .or. specified ) i_start = MAX(ids+1,its)
-   IF ( config_flags%open_ye .or. specified ) i_end   = MIN(ide-1,ite)
+   IF ( config_flags%open_ys .or. specified ) i_start = rp_max(ids+1,its)
+   IF ( config_flags%open_ye .or. specified ) i_end   = rp_min(ide-1,ite)
    IF ( config_flags%periodic_x ) i_start = its
    IF ( config_flags%periodic_x ) i_end = ite
 
@@ -1630,7 +1630,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
 ! set order for the advection schemes
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    horz_order = config_flags%h_mom_adv_order
    vert_order = config_flags%v_mom_adv_order
 
@@ -1668,7 +1668,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
@@ -1679,12 +1679,12 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-1)
+        j_end = rp_min(jte,jde-1)
         j_end_f = jde-2
       ENDIF
 
@@ -1800,13 +1800,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
       j_end   = jte
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -1815,13 +1815,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -1937,7 +1937,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
@@ -1948,12 +1948,12 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-1)
+        j_end = rp_min(jte,jde-1)
         j_end_f = jde-2
       ENDIF
 
@@ -2069,13 +2069,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
       j_end   = jte
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -2084,13 +2084,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -2201,10 +2201,10 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !--------------- y - advection first
 
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
@@ -2306,13 +2306,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
       j_end   = jte
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -2402,10 +2402,10 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !--------------- y - advection first
 
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
@@ -2507,13 +2507,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
       j_end   = jte
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -2577,16 +2577,16 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
-      IF ( config_flags%open_ys ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye ) j_end   = MIN(jde-1,jte)
-      IF ( specified ) j_start = MAX(jds+2,jts)
-      IF ( specified ) j_end   = MIN(jde-2,jte)
-      IF ( config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye ) j_end   = rp_min(jde-1,jte)
+      IF ( specified ) j_start = rp_max(jds+2,jts)
+      IF ( specified ) j_end   = rp_min(jde-2,jte)
+      IF ( config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -2658,11 +2658,11 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       ENDIF
 
       IF ( .NOT. config_flags%periodic_x ) THEN
-        IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-        IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
+        IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+        IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
       ENDIF
-      IF ( config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -2713,11 +2713,11 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       IF ( (config_flags%open_ys) .and. jts == jds ) THEN
 
         i_start = its
-        i_end   = MIN(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
 
         DO i = i_start, i_end
         DO k = kts, ktf
-          vb = MIN(rv(i,k,jts)-cb*(c1(k)*mut(i,jts)+c2(k)), 0.)
+          vb = rp_min(rv(i,k,jts)-cb*(c1(k)*mut(i,jts)+c2(k)), 0.)
           tendency(i,k,jts) = tendency(i,k,jts)                    &
                       - rdy*vb*(v_old(i,k,jts+1) - v_old(i,k,jts))
         ENDDO
@@ -2728,11 +2728,11 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       IF ( (config_flags%open_ye) .and. jte == jde ) THEN
 
         i_start = its
-        i_end   = MIN(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
 
         DO i = i_start, i_end
         DO k = kts, ktf
-          vb = MAX(rv(i,k,jte)+cb*(c1(k)*mut(i,jte-1)+c2(k)), 0.)
+          vb = rp_max(rv(i,k,jte)+cb*(c1(k)*mut(i,jte-1)+c2(k)), 0.)
           tendency(i,k,jte) = tendency(i,k,jte)                    &
                       - rdy*vb*(v_old(i,k,jte) - v_old(i,k,jte-1))
         ENDDO
@@ -2745,17 +2745,17 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 !  first, set to index ranges
 
       j_start = jts
-      j_end   = MIN(jte,jde)
+      j_end   = rp_min(jte,jde)
 
       jmin    = jds
       jmax    = jde-1
 
       IF (config_flags%open_ys) THEN
-          j_start = MAX(jds+1, jts)
+          j_start = rp_max(jds+1, jts)
           jmin = jds
       ENDIF
       IF (config_flags%open_ye) THEN
-          j_end = MIN(jte,jde-1)
+          j_end = rp_min(jte,jde-1)
           jmax = jde-1
       ENDIF
 
@@ -2766,13 +2766,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       DO j = j_start, j_end
 
          mrdx=msfvy(its,j)*rdx       ! ADT eqn 45, 1st term on RHS
-         jp = MIN( jmax, j   )
-         jm = MAX( jmin, j-1 )
+         jp = rp_min( jmax, j   )
+         jm = rp_max( jmin, j-1 )
 
          DO k=kts,ktf
 
           uw = 0.5*(ru(its,k,jp)+ru(its,k,jm))
-          ub = MIN( uw, 0. )
+          ub = rp_min( uw, 0. )
           dup =  ru(its+1,k,jp)-ru(its,k,jp)
           dum =  ru(its+1,k,jm)-ru(its,k,jm)
           tendency(its,k,j)=tendency(its,k,j)-mrdx*(               &
@@ -2787,13 +2787,13 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
       DO j = j_start, j_end
 
          mrdx=msfvy(ite-1,j)*rdx     ! ADT eqn 45, 1st term on RHS
-         jp = MIN( jmax, j   )
-         jm = MAX( jmin, j-1 )
+         jp = rp_min( jmax, j   )
+         jm = rp_max( jmin, j-1 )
 
          DO k=kts,ktf
 
           uw = 0.5*(ru(ite,k,jp)+ru(ite,k,jm))
-          ub = MAX( uw, 0. )
+          ub = rp_max( uw, 0. )
           dup = ru(ite,k,jp)-ru(ite-1,k,jp)
           dum = ru(ite,k,jm)-ru(ite-1,k,jm)
 
@@ -2820,7 +2820,7 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
 
     i_start = its
-    i_end   = MIN(ite,ide-1)
+    i_end   = rp_min(ite,ide-1)
     j_start = jts
     j_end   = jte
 
@@ -2831,8 +2831,8 @@ SUBROUTINE advect_v   ( v, v_old, tendency,            &
 
     ! Polar boundary conditions are like open or specified
     ! We don't want to calculate vertical v tendencies at the N or S pole
-    IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-    IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+    IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+    IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
     vert_order_test : IF (vert_order == 6) THEN    
 
@@ -3127,7 +3127,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
 ! set order for the advection schemes
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -3164,11 +3164,11 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
 !--------------- y - advection first
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3177,16 +3177,16 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -3293,10 +3293,10 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3305,13 +3305,13 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -3421,11 +3421,11 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
 !--------------- y - advection first
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3434,16 +3434,16 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -3550,10 +3550,10 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3562,13 +3562,13 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -3673,12 +3673,12 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  begin flux computations
 !  start with x flux divergence
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3742,9 +3742,9 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  next -> y flux divergence calculation
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3762,7 +3762,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
     jp1 = 2
     jp0 = 1
@@ -3862,12 +3862,12 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  begin flux computations
 !  start with x flux divergence
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3931,9 +3931,9 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  next -> y flux divergence calculation
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -3951,7 +3951,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
     jp1 = 2
     jp0 = 1
@@ -4030,13 +4030,13 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
    ELSE IF( horz_order == 2 ) THEN
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
       IF ( .NOT. config_flags%periodic_x ) THEN
-        IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-        IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
+        IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+        IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
       ENDIF
 
       DO j = j_start, j_end
@@ -4051,11 +4051,11 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
       ENDDO
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-2,jte)
 
       DO j = j_start, j_end
       DO k = kts, ktf
@@ -4107,9 +4107,9 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  compute x (u) conditions for v, w, or scalar
 
@@ -4117,7 +4117,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MIN( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
+         ub = rp_min( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
                        ub*(   field_old(its+1,k,j)                 &
@@ -4133,7 +4133,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MAX( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
+         ub = rp_max( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
          tendency(i_end,k,j) = tendency(i_end,k,j)                   &
                - rdx*(                                               &
                        ub*(  field_old(i_end  ,k,j)                  &
@@ -4149,7 +4149,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MIN( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
+         vb = rp_min( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -4165,7 +4165,7 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MAX( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
+         vb = rp_max( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -4184,9 +4184,9 @@ SUBROUTINE advect_scalar   ( field, field_old, tendency,    &
 !     So we don't need to make a correction for advect_scalar
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
       DO i = i_start, i_end
          vflux(i,kts)=0.
@@ -4460,7 +4460,7 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
 
 !  set order for the advection scheme
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -4498,9 +4498,9 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -4509,16 +4509,16 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -4658,10 +4658,10 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -4670,13 +4670,13 @@ SUBROUTINE advect_w    ( w, w_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -4812,9 +4812,9 @@ ELSE IF (horz_order == 5 ) THEN
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -4823,16 +4823,16 @@ ELSE IF (horz_order == 5 ) THEN
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -4972,10 +4972,10 @@ ELSE IF (horz_order == 5 ) THEN
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -4984,13 +4984,13 @@ ELSE IF (horz_order == 5 ) THEN
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -5121,12 +5121,12 @@ ELSE IF ( horz_order == 4 ) THEN
 
 !---------------
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -5204,9 +5204,9 @@ ELSE IF ( horz_order == 4 ) THEN
 !  next -> y flux divergence calculation
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
@@ -5225,7 +5225,7 @@ ELSE IF ( horz_order == 4 ) THEN
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
         jp1 = 2
         jp0 = 1
@@ -5353,12 +5353,12 @@ ELSE IF ( horz_order == 3 ) THEN
 
 !---------------
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -5436,9 +5436,9 @@ ELSE IF ( horz_order == 3 ) THEN
 !  next -> y flux divergence calculation
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 
 !  3rd or 4th order flux has a 5 point stencil, so compute
@@ -5457,7 +5457,7 @@ ELSE IF ( horz_order == 3 ) THEN
         j_end_f = jde-2
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
         jp1 = 2
         jp0 = 1
@@ -5563,13 +5563,13 @@ ELSE IF ( horz_order == 3 ) THEN
 ELSE IF (horz_order == 2 ) THEN
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
       IF ( .NOT. config_flags%periodic_x ) THEN
-        IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-        IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
+        IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+        IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
       ENDIF
 
       DO j = j_start, j_end
@@ -5603,10 +5603,10 @@ ELSE IF (horz_order == 2 ) THEN
       ENDDO
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-2,jte)
 
       DO j = j_start, j_end
       DO k=kts+1,ktf
@@ -5694,9 +5694,9 @@ ELSE IF (horz_order == 2 ) THEN
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
    IF( (config_flags%open_xs) .and. (its == ids)) THEN
 
@@ -5705,7 +5705,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          uw = 0.5*(fzm(k)*(ru(its,k  ,j)+ru(its+1,k  ,j)) +  &
                    fzp(k)*(ru(its,k-1,j)+ru(its+1,k-1,j))   )
-         ub = MIN( uw, 0. )
+         ub = rp_min( uw, 0. )
 
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
@@ -5722,7 +5722,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          uw = 0.5*( (2.-fzm(k-1))*(ru(its,k-1,j)+ru(its+1,k-1,j))   &
                    -fzp(k-1)*(ru(its,k-2,j)+ru(its+1,k-2,j))   )
-         ub = MIN( uw, 0. )
+         ub = rp_min( uw, 0. )
 
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
@@ -5742,7 +5742,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          uw = 0.5*(fzm(k)*(ru(ite-1,k  ,j)+ru(ite,k  ,j)) +  &
                    fzp(k)*(ru(ite-1,k-1,j)+ru(ite,k-1,j))   )
-         ub = MAX( uw, 0. )
+         ub = rp_max( uw, 0. )
 
          tendency(i_end,k,j) = tendency(i_end,k,j)                     &
                - rdx*(                                                 &
@@ -5759,7 +5759,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          uw = 0.5*( (2.-fzm(k-1))*(ru(ite-1,k-1,j)+ru(ite,k-1,j))    &
                    -fzp(k-1)*(ru(ite-1,k-2,j)+ru(ite,k-2,j))   )
-         ub = MAX( uw, 0. )
+         ub = rp_max( uw, 0. )
 
          tendency(i_end,k,j) = tendency(i_end,k,j)                     &
                - rdx*(                                                 &
@@ -5780,7 +5780,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          vw = 0.5*( fzm(k)*(rv(i,k  ,jts)+rv(i,k  ,jts+1)) +  &
                     fzp(k)*(rv(i,k-1,jts)+rv(i,k-1,jts+1))   )
-         vb = MIN( vw, 0. )
+         vb = rp_min( vw, 0. )
 
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
@@ -5796,7 +5796,7 @@ ELSE IF (horz_order == 2 ) THEN
        DO i = i_start, i_end
          vw = 0.5*( (2.-fzm(k-1))*(rv(i,k-1,jts)+rv(i,k-1,jts+1))    &
                    -fzp(k-1)*(rv(i,k-2,jts)+rv(i,k-2,jts+1))   )
-         vb = MIN( vw, 0. )
+         vb = rp_min( vw, 0. )
 
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
@@ -5816,7 +5816,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          vw = 0.5*( fzm(k)*(rv(i,k  ,jte-1)+rv(i,k  ,jte)) +  &
                     fzp(k)*(rv(i,k-1,jte-1)+rv(i,k-1,jte))   )
-         vb = MAX( vw, 0. )
+         vb = rp_max( vw, 0. )
 
          tendency(i,k,j_end) = tendency(i,k,j_end)                     &
                - rdy*(                                                 &
@@ -5833,7 +5833,7 @@ ELSE IF (horz_order == 2 ) THEN
 
          vw = 0.5*( (2.-fzm(k-1))*(rv(i,k-1,jte-1)+rv(i,k-1,jte))    &
                    -fzp(k-1)*(rv(i,k-2,jte-1)+rv(i,k-2,jte))   )
-         vb = MAX( vw, 0. )
+         vb = rp_max( vw, 0. )
 
          tendency(i,k,j_end) = tendency(i,k,j_end)                     &
                - rdy*(                                                 &
@@ -5852,9 +5852,9 @@ ELSE IF (horz_order == 2 ) THEN
 !     Therefore we don't need to make a correction for advect_w
 
     i_start = its
-    i_end   = MIN(ite,ide-1)
+    i_end   = rp_min(ite,ide-1)
     j_start = jts
-    j_end   = MIN(jte,jde-1)
+    j_end   = rp_min(jte,jde-1)
 
     DO i = i_start, i_end
        vflux(i,kts)=0.
@@ -6182,8 +6182,8 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
             -sign(1,time_step)*sign(1.,ua)*(1./60.)*(           &
               (q_ip2-q_im3)-5.*(q_ip1-q_im2)+10.*(q_i-q_im1) )
 
-      flux_upwind(q_im1, q_i, cr ) = 0.5*min( 1.0,(cr+abs(cr)))*q_im1 &
-                                    +0.5*max(-1.0,(cr-abs(cr)))*q_i
+      flux_upwind(q_im1, q_i, cr ) = 0.5*rp_min( 1.0,(cr+abs(cr)))*q_im1 &
+                                    +0.5*rp_max(-1.0,(cr-abs(cr)))*q_i
 
 !      flux_upwind(q_im1, q_i, cr ) = 0.5*(1.+sign(1.,cr))*q_im1 &
 !                                    +0.5*(1.-sign(1.,cr))*q_i
@@ -6207,7 +6207,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
        fqzl(:,:,:) = 0.
     END IF
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -6246,11 +6246,11 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
@@ -6258,16 +6258,16 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !      IF(degrade_xs) i_start = MAX(its-1,ids-1)
 !      IF(degrade_xe) i_end   = MIN(ite+1,ide-2)
-      IF(degrade_xs) i_start = MAX(its-1,ids)
-      IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
+      IF(degrade_xs) i_start = rp_max(its-1,ids)
+      IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
 
       IF(degrade_ys) then
-        j_start = MAX(jts-1,jds+1)
+        j_start = rp_max(jts-1,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte+1,jde-2)
+        j_end = rp_min(jte+1,jde-2)
         j_end_f = jde-3
       ENDIF
 
@@ -6378,27 +6378,27 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
 !      IF(degrade_ys) j_start = MAX(jts-1,jds+1)
 !      IF(degrade_ye) j_end   = MIN(jte+1,jde-2)
-      IF(degrade_ys) j_start = MAX(jts-1,jds)
-      IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+      IF(degrade_ys) j_start = rp_max(jts-1,jds)
+      IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its-1)
+        i_start = rp_max(ids+1,its-1)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite+1)
+        i_end = rp_min(ide-2,ite+1)
         i_end_f = ide-3
       ENDIF
 
@@ -6522,11 +6522,11 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
@@ -6534,16 +6534,16 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !      IF(degrade_xs) i_start = MAX(its-1,ids-1)
 !      IF(degrade_xe) i_end   = MIN(ite+1,ide-2)
-      IF(degrade_xs) i_start = MAX(its-1,ids)
-      IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
+      IF(degrade_xs) i_start = rp_max(its-1,ids)
+      IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
 
       IF(degrade_ys) then
-        j_start = MAX(jts-1,jds+1)
+        j_start = rp_max(jts-1,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte+1,jde-2)
+        j_end = rp_min(jte+1,jde-2)
         j_end_f = jde-3
       ENDIF
 
@@ -6654,27 +6654,27 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
 !      IF(degrade_ys) j_start = MAX(jts-1,jds+1)
 !      IF(degrade_ye) j_end   = MIN(jte+1,jde-2)
-      IF(degrade_ys) j_start = MAX(jts-1,jds)
-      IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+      IF(degrade_ys) j_start = rp_max(jts-1,jds)
+      IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its-1)
+        i_start = rp_max(ids+1,its-1)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite+1)
+        i_end = rp_min(ide-2,ite+1)
         i_end_f = ide-3
       ENDIF
 
@@ -6798,26 +6798,26 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
 !--  modify loop bounds if open or specified
 
       IF(degrade_xs) i_start = its
-      IF(degrade_xe) i_end   = MIN(ite,ide-1)
+      IF(degrade_xe) i_end   = rp_min(ite,ide-1)
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+2
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-2
       ENDIF
 
@@ -6890,25 +6890,25 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
       IF(degrade_ys) j_start = jts
-      IF(degrade_ye) j_end   = MIN(jte,jde-1)
+      IF(degrade_ye) j_end   = rp_min(jte,jde-1)
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
         i_start_f = i_start+1
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-2
       ENDIF
 
@@ -6996,26 +6996,26 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
 !--  modify loop bounds if open or specified
 
       IF(degrade_xs) i_start = its
-      IF(degrade_xe) i_end   = MIN(ite,ide-1)
+      IF(degrade_xe) i_end   = rp_min(ite,ide-1)
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+2
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-2
       ENDIF
 
@@ -7088,25 +7088,25 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
       IF(degrade_ys) j_start = jts
-      IF(degrade_ye) j_end   = MIN(jte,jde-1)
+      IF(degrade_ye) j_end   = rp_min(jte,jde-1)
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
         i_start_f = i_start+1
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-2
       ENDIF
 
@@ -7194,18 +7194,18 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds if open or specified
 
       IF(degrade_xs) i_start = its
-      IF(degrade_xe) i_end   = MIN(ite,ide-1)
-      IF(degrade_ys) j_start = MAX(jts,jds+1)
-      IF(degrade_ye) j_end = MIN(jte,jde-2)
+      IF(degrade_xe) i_end   = rp_min(ite,ide-1)
+      IF(degrade_ys) j_start = rp_max(jts,jds+1)
+      IF(degrade_ye) j_end = rp_min(jte,jde-2)
 
 !  compute fluxes, 2nd order, y flux
 
@@ -7258,9 +7258,9 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  compute x (u) conditions for v, w, or scalar
 
@@ -7268,7 +7268,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MIN( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
+         ub = rp_min( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
                        ub*(   field_old(its+1,k,j)                 &
@@ -7284,7 +7284,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MAX( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
+         ub = rp_max( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
          tendency(i_end,k,j) = tendency(i_end,k,j)                   &
                - rdx*(                                               &
                        ub*(  field_old(i_end  ,k,j)                  &
@@ -7300,7 +7300,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MIN( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
+         vb = rp_min( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -7316,7 +7316,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MAX( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
+         vb = rp_max( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -7333,7 +7333,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
        ! Assuming rv(i,k,jds) = 0.
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MIN( 0.5*rv(i,k,jts+1), 0. )
+         vb = rp_min( 0.5*rv(i,k,jts+1), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -7350,7 +7350,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
        ! Assuming rv(i,k,jde) = 0.
        DO k = kts, ktf
        DO i = i_start, i_end
-         vb = MAX( 0.5*rv(i,k,jte-1), 0. )
+         vb = rp_max( 0.5*rv(i,k,jte-1), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -7367,16 +7367,16 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !-- loop bounds for periodic or sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !-- loop bounds for open or specified conditions
 
-    IF(degrade_xs) i_start = MAX(its-1,ids)
-    IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-    IF(degrade_ys) j_start = MAX(jts-1,jds)
-    IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+    IF(degrade_xs) i_start = rp_max(its-1,ids)
+    IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+    IF(degrade_ys) j_start = rp_max(jts-1,jds)
+    IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
     vert_order_test : IF (vert_order == 6) THEN    
 
@@ -7684,35 +7684,35 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 ! positive definite filter
 
    i_start = its-1
-   i_end   = MIN(ite,ide-1)+1
+   i_end   = rp_min(ite,ide-1)+1
    j_start = jts-1
-   j_end   = MIN(jte,jde-1)+1
+   j_end   = rp_min(jte,jde-1)+1
 
 !-- loop bounds for open or specified conditions
 
-   IF(degrade_xs) i_start = MAX(its-1,ids)
-   IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-   IF(degrade_ys) j_start = MAX(jts-1,jds)
-   IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+   IF(degrade_xs) i_start = rp_max(its-1,ids)
+   IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+   IF(degrade_ys) j_start = rp_max(jts-1,jds)
+   IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
    IF(config_flags%specified .or. config_flags%nested) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
 
    IF(config_flags%open_xs) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
    END IF
    IF(config_flags%open_xe) THEN
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
    END IF
    IF(config_flags%open_ys) THEN
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
    END IF
    IF(config_flags%open_ye) THEN
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
    ! ADT note:
    ! We don't want to change j_start and j_end
@@ -7747,12 +7747,12 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
    DO i=i_start, i_end
 
      flux_out(i,k,j) = dt*( (msftx(i,j)*msfty(i,j))*( &
-                                rdx*(  max(0.,fqx (i+1,k,j))      &
-                                      -min(0.,fqx (i  ,k,j)) )    &
-                               +rdy*(  max(0.,fqy (i,k,j+1))      &
-                                      -min(0.,fqy (i,k,j  )) ) )  &
-                +msfty(i,j)*rdzw(k)*(  min(0.,fqz (i,k+1,j))      &
-                                      -max(0.,fqz (i,k  ,j)) )   )
+                                rdx*(  rp_max(0.,fqx (i+1,k,j))      &
+                                      -rp_min(0.,fqx (i  ,k,j)) )    &
+                               +rdy*(  rp_max(0.,fqy (i,k,j+1))      &
+                                      -rp_min(0.,fqy (i,k,j  )) ) )  &
+                +msfty(i,j)*rdzw(k)*(  rp_min(0.,fqz (i,k+1,j))      &
+                                      -rp_max(0.,fqz (i,k  ,j)) )   )
 
    ENDDO
    ENDDO
@@ -7763,7 +7763,7 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 !DIR$ vector always
    DO i=i_start, i_end
      IF( flux_out(i,k,j) .gt. ph_low(i,k,j) ) THEN
-       scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
+       scale = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
        IF( fqx (i+1,k,j) .gt. 0.) fqx(i+1,k,j) = scale*fqx(i+1,k,j)
        IF( fqx (i  ,k,j) .lt. 0.) fqx(i  ,k,j) = scale*fqx(i  ,k,j)
        IF( fqy (i,k,j+1) .gt. 0.) fqy(i,k,j+1) = scale*fqy(i,k,j+1)
@@ -7784,9 +7784,9 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 ! add in the pd-limited flux divergence
 
   i_start = its
-  i_end   = MIN(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = MIN(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -7816,8 +7816,8 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 
 ! x flux divergence
 !
-  IF(degrade_xs) i_start = MAX(its,ids+1)
-  IF(degrade_xe) i_end   = MIN(ite,ide-2)
+  IF(degrade_xs) i_start = rp_max(its,ids+1)
+  IF(degrade_xe) i_end   = rp_min(ite,ide-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -7850,9 +7850,9 @@ SUBROUTINE advect_scalar_pd   ( field, field_old, tendency,    &
 ! y flux divergence
 !
   i_start = its
-  i_end   = MIN(ite,ide-1)
-  IF(degrade_ys) j_start = MAX(jts,jds+1)
-  IF(degrade_ye) j_end   = MIN(jte,jde-2)
+  i_end   = rp_min(ite,ide-1)
+  IF(degrade_ys) j_start = rp_max(jts,jds+1)
+  IF(degrade_ye) j_end   = rp_min(jte,jde-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -8007,7 +8007,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
 ! set order for the advection schemes
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = 5 ! config_flags%h_sca_adv_order
   vert_order = 5 ! config_flags%v_sca_adv_order
 
@@ -8045,23 +8045,23 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
 !--------------- y - advection first
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
 
 ! check for U
       IF ( is == 1 ) THEN
         i_start = its
         i_end   = ite
-        IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-        IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+        IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+        IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
         IF ( config_flags%periodic_x ) i_start = its
         IF ( config_flags%periodic_x ) i_end = ite
       ENDIF
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -8070,16 +8070,16 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -8256,10 +8256,10 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -8268,13 +8268,13 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -8406,9 +8406,9 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  compute x (u) conditions for v, w, or scalar
 
@@ -8416,7 +8416,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MIN( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
+         ub = rp_min( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
                        ub*(   field_old(its+1,k,j)                 &
@@ -8432,7 +8432,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MAX( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
+         ub = rp_max( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
          tendency(i_end,k,j) = tendency(i_end,k,j)                   &
                - rdx*(                                               &
                        ub*(  field_old(i_end  ,k,j)                  &
@@ -8448,7 +8448,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MIN( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
+         vb = rp_min( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -8464,7 +8464,7 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MAX( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
+         vb = rp_max( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -8483,9 +8483,9 @@ SUBROUTINE advect_scalar_weno ( field, field_old, tendency,     &
 !     So we don't need to make a correction for advect_scalar
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
       DO i = i_start, i_end
          vflux(i,kts)=0.
@@ -8696,8 +8696,8 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
             -sign(1,time_step)*sign(1.,ua)*(1./60.)*(           &
               (q_ip2-q_im3)-5.*(q_ip1-q_im2)+10.*(q_i-q_im1) )
 
-      flux_upwind(q_im1, q_i, cr ) = 0.5*min( 1.0,(cr+abs(cr)))*q_im1 &
-                                    +0.5*max(-1.0,(cr-abs(cr)))*q_i
+      flux_upwind(q_im1, q_i, cr ) = 0.5*rp_min( 1.0,(cr+abs(cr)))*q_im1 &
+                                    +0.5*rp_max(-1.0,(cr-abs(cr)))*q_i
 
 !      flux_upwind(q_im1, q_i, cr ) = 0.5*(1.+sign(1.,cr))*q_im1 &
 !                                    +0.5*(1.-sign(1.,cr))*q_i
@@ -8721,7 +8721,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
        fqzl(:,:,:) = 0.
     END IF
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -8762,11 +8762,11 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
@@ -8774,16 +8774,16 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
 !      IF(degrade_xs) i_start = MAX(its-1,ids-1)
 !      IF(degrade_xe) i_end   = MIN(ite+1,ide-2)
-      IF(degrade_xs) i_start = MAX(its-1,ids)
-      IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
+      IF(degrade_xs) i_start = rp_max(its-1,ids)
+      IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
 
       IF(degrade_ys) then
-        j_start = MAX(jts-1,jds+1)
+        j_start = rp_max(jts-1,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte+1,jde-2)
+        j_end = rp_min(jte+1,jde-2)
         j_end_f = jde-3
       ENDIF
 
@@ -8924,27 +8924,27 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
 !      IF(degrade_ys) j_start = MAX(jts-1,jds+1)
 !      IF(degrade_ye) j_end   = MIN(jte+1,jde-2)
-      IF(degrade_ys) j_start = MAX(jts-1,jds)
-      IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+      IF(degrade_ys) j_start = rp_max(jts-1,jds)
+      IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its-1)
+        i_start = rp_max(ids+1,its-1)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite+1)
+        i_end = rp_min(ide-2,ite+1)
         i_end_f = ide-3
       ENDIF
 
@@ -9092,9 +9092,9 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  compute x (u) conditions for v, w, or scalar
 
@@ -9102,7 +9102,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MIN( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
+         ub = rp_min( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
                        ub*(   field_old(its+1,k,j)                 &
@@ -9118,7 +9118,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MAX( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
+         ub = rp_max( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
          tendency(i_end,k,j) = tendency(i_end,k,j)                   &
                - rdx*(                                               &
                        ub*(  field_old(i_end  ,k,j)                  &
@@ -9134,7 +9134,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MIN( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
+         vb = rp_min( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -9150,7 +9150,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MAX( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
+         vb = rp_max( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -9167,7 +9167,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
        ! Assuming rv(i,k,jds) = 0.
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MIN( 0.5*rv(i,k,jts+1), 0. )
+         vb = rp_min( 0.5*rv(i,k,jts+1), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -9184,7 +9184,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
        ! Assuming rv(i,k,jde) = 0.
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MAX( 0.5*rv(i,k,jte-1), 0. )
+         vb = rp_max( 0.5*rv(i,k,jte-1), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -9201,16 +9201,16 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 !-- loop bounds for periodic or sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !-- loop bounds for open or specified conditions
 
-    IF(degrade_xs) i_start = MAX(its-1,ids)
-    IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-    IF(degrade_ys) j_start = MAX(jts-1,jds)
-    IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+    IF(degrade_xs) i_start = rp_max(its-1,ids)
+    IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+    IF(degrade_ys) j_start = rp_max(jts-1,jds)
+    IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
 !    vert_order_test : IF (vert_order == 6) THEN    
 
@@ -9332,35 +9332,35 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 ! positive definite filter
 
    i_start = its-1
-   i_end   = MIN(ite,ide-1)+1
+   i_end   = rp_min(ite,ide-1)+1
    j_start = jts-1
-   j_end   = MIN(jte,jde-1)+1
+   j_end   = rp_min(jte,jde-1)+1
 
 !-- loop bounds for open or specified conditions
 
-   IF(degrade_xs) i_start = MAX(its-1,ids)
-   IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-   IF(degrade_ys) j_start = MAX(jts-1,jds)
-   IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+   IF(degrade_xs) i_start = rp_max(its-1,ids)
+   IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+   IF(degrade_ys) j_start = rp_max(jts-1,jds)
+   IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
    IF(config_flags%specified .or. config_flags%nested) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
 
    IF(config_flags%open_xs) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
    END IF
    IF(config_flags%open_xe) THEN
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
    END IF
    IF(config_flags%open_ys) THEN
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
    END IF
    IF(config_flags%open_ye) THEN
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
    ! ADT note:
    ! We don't want to change j_start and j_end
@@ -9395,12 +9395,12 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
    DO i=i_start, i_end
 
      flux_out(i,k,j) = dt*( (msftx(i,j)*msfty(i,j))*(                    &
-                                rdx*(  max(0.,fqx (i+1,k,j))      &
-                                      -min(0.,fqx (i  ,k,j)) )    &
-                               +rdy*(  max(0.,fqy (i,k,j+1))      &
-                                      -min(0.,fqy (i,k,j  )) ) )  &
-                +msfty(i,j)*rdzw(k)*(  min(0.,fqz (i,k+1,j))      &
-                                      -max(0.,fqz (i,k  ,j)) )   )
+                                rdx*(  rp_max(0.,fqx (i+1,k,j))      &
+                                      -rp_min(0.,fqx (i  ,k,j)) )    &
+                               +rdy*(  rp_max(0.,fqy (i,k,j+1))      &
+                                      -rp_min(0.,fqy (i,k,j  )) ) )  &
+                +msfty(i,j)*rdzw(k)*(  rp_min(0.,fqz (i,k+1,j))      &
+                                      -rp_max(0.,fqz (i,k  ,j)) )   )
 
    ENDDO
    ENDDO
@@ -9413,7 +9413,7 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
      IF( flux_out(i,k,j) .gt. ph_low(i,k,j) ) THEN
 
-       scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
+       scale = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
        IF( fqx (i+1,k,j) .gt. 0.) fqx(i+1,k,j) = scale*fqx(i+1,k,j)
        IF( fqx (i  ,k,j) .lt. 0.) fqx(i  ,k,j) = scale*fqx(i  ,k,j)
        IF( fqy (i,k,j+1) .gt. 0.) fqy(i,k,j+1) = scale*fqy(i,k,j+1)
@@ -9434,9 +9434,9 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 ! add in the pd-limited flux divergence
 
   i_start = its
-  i_end   = MIN(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = MIN(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -9452,8 +9452,8 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 
 ! x flux divergence
 !
-  IF(degrade_xs) i_start = MAX(its,ids+1)
-  IF(degrade_xe) i_end   = MIN(ite,ide-2)
+  IF(degrade_xs) i_start = rp_max(its,ids+1)
+  IF(degrade_xe) i_end   = rp_min(ite,ide-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -9471,9 +9471,9 @@ SUBROUTINE advect_scalar_wenopd ( field, field_old, tendency,    &
 ! y flux divergence
 !
   i_start = its
-  i_end   = MIN(ite,ide-1)
-  IF(degrade_ys) j_start = MAX(jts,jds+1)
-  IF(degrade_ye) j_end   = MIN(jte,jde-2)
+  i_end   = rp_min(ite,ide-1)
+  IF(degrade_ys) j_start = rp_max(jts,jds+1)
+  IF(degrade_ye) j_end   = rp_min(jte,jde-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -9616,7 +9616,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
 ! set order for the advection schemes
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -9672,11 +9672,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
 !--  y flux compute; these bounds are for periodic and sym b.c.
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
       j_start_f = j_start
       j_end_f   = j_end+1
 
@@ -9685,8 +9685,8 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !  WCS 20090218
 !      IF(degrade_xs) i_start = its
 !      IF(degrade_xe) i_end   = MIN(ite,ide-1)
-      IF(degrade_xs) i_start = MAX(its-1,ids)
-      IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
+      IF(degrade_xs) i_start = rp_max(its-1,ids)
+      IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
 
 !  WCS 20090218
 !      IF(degrade_ys) then
@@ -9700,12 +9700,12 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !      ENDIF
 
       IF(degrade_ys) then
-        j_start = MAX(jts-1,jds+1)
+        j_start = rp_max(jts-1,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte+1,jde-2)
+        j_end = rp_min(jte+1,jde-2)
         j_end_f = jde-3
       ENDIF
 
@@ -9729,11 +9729,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
           fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k,j-1))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k,j-1))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k,j-1))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k,j-1))
           else
-             qmax(i,k,j-1)  = amax1(qmax(i,k,j-1),field_old(i,k,j))
-             qmin(i,k,j-1)  = amin1(qmin(i,k,j-1),field_old(i,k,j))
+             qmax(i,k,j-1)  = rp_max(qmax(i,k,j-1),field_old(i,k,j))
+             qmin(i,k,j-1)  = rp_min(qmin(i,k,j-1),field_old(i,k,j))
           end if
 
         ENDDO
@@ -9754,11 +9754,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
               fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k,j-1))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k,j-1))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k,j-1))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k,j-1))
           else
-             qmax(i,k,j-1)  = amax1(qmax(i,k,j-1),field_old(i,k,j))
-             qmin(i,k,j-1)  = amin1(qmin(i,k,j-1),field_old(i,k,j))
+             qmax(i,k,j-1)  = rp_max(qmax(i,k,j-1),field_old(i,k,j))
+             qmin(i,k,j-1)  = rp_min(qmin(i,k,j-1),field_old(i,k,j))
           end if
 
             ENDDO
@@ -9778,11 +9778,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
               fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k,j-1))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k,j-1))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k,j-1))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k,j-1))
           else
-             qmax(i,k,j-1)  = amax1(qmax(i,k,j-1),field_old(i,k,j))
-             qmin(i,k,j-1)  = amin1(qmin(i,k,j-1),field_old(i,k,j))
+             qmax(i,k,j-1)  = rp_max(qmax(i,k,j-1),field_old(i,k,j))
+             qmin(i,k,j-1)  = rp_min(qmin(i,k,j-1),field_old(i,k,j))
           end if
 
             ENDDO
@@ -9802,11 +9802,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
               fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k,j-1))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k,j-1))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k,j-1))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k,j-1))
           else
-             qmax(i,k,j-1)  = amax1(qmax(i,k,j-1),field_old(i,k,j))
-             qmin(i,k,j-1)  = amin1(qmin(i,k,j-1),field_old(i,k,j))
+             qmax(i,k,j-1)  = rp_max(qmax(i,k,j-1),field_old(i,k,j))
+             qmin(i,k,j-1)  = rp_min(qmin(i,k,j-1),field_old(i,k,j))
           end if
 
             ENDDO
@@ -9827,11 +9827,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
               fqy(i,k,j) = fqy(i,k,j) - fqyl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k,j-1))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k,j-1))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k,j-1))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k,j-1))
           else
-             qmax(i,k,j-1)  = amax1(qmax(i,k,j-1),field_old(i,k,j))
-             qmin(i,k,j-1)  = amin1(qmin(i,k,j-1),field_old(i,k,j))
+             qmax(i,k,j-1)  = rp_max(qmax(i,k,j-1),field_old(i,k,j))
+             qmin(i,k,j-1)  = rp_min(qmin(i,k,j-1),field_old(i,k,j))
           end if
 
             ENDDO
@@ -9846,20 +9846,20 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !--  these bounds are for periodic and sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       i_start_f = i_start
       i_end_f   = i_end+1
 
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !--  modify loop bounds for open and specified b.c
 
 !  WCS 20090218
 !      IF(degrade_ys) j_start = jts
 !      IF(degrade_ye) j_end   = MIN(jte,jde-1)
-      IF(degrade_ys) j_start = MAX(jts-1,jds)
-      IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+      IF(degrade_ys) j_start = rp_max(jts-1,jds)
+      IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
 !  WCS 20090218
 !      IF(degrade_xs) then
@@ -9873,12 +9873,12 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !      ENDIF
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its-1)
+        i_start = rp_max(ids+1,its-1)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite+1)
+        i_end = rp_min(ide-2,ite+1)
         i_end_f = ide-3
       ENDIF
 
@@ -9902,11 +9902,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
           fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i-1,k,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i-1,k,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i-1,k,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i-1,k,j))
           else
-             qmax(i-1,k,j)  = amax1(qmax(i-1,k,j),field_old(i,k,j))
-             qmin(i-1,k,j)  = amin1(qmin(i-1,k,j),field_old(i,k,j))
+             qmax(i-1,k,j)  = rp_max(qmax(i-1,k,j),field_old(i,k,j))
+             qmin(i-1,k,j)  = rp_min(qmin(i-1,k,j),field_old(i,k,j))
           end if
 
         ENDDO
@@ -9932,11 +9932,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
                 if(cr.gt. 0) then
-                  qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i-1,k,j))
-                  qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i-1,k,j))
+                  qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i-1,k,j))
+                  qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i-1,k,j))
                 else
-                  qmax(i-1,k,j)  = amax1(qmax(i-1,k,j),field_old(i,k,j))
-                  qmin(i-1,k,j)  = amin1(qmin(i-1,k,j),field_old(i,k,j))
+                  qmax(i-1,k,j)  = rp_max(qmax(i-1,k,j),field_old(i,k,j))
+                  qmin(i-1,k,j)  = rp_min(qmin(i-1,k,j),field_old(i,k,j))
                 end if
               ENDDO
             ENDIF
@@ -9952,11 +9952,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
                 if(cr.gt. 0) then
-                  qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i-1,k,j))
-                  qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i-1,k,j))
+                  qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i-1,k,j))
+                  qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i-1,k,j))
                 else
-                  qmax(i-1,k,j)  = amax1(qmax(i-1,k,j),field_old(i,k,j))
-                  qmin(i-1,k,j)  = amin1(qmin(i-1,k,j),field_old(i,k,j))
+                  qmax(i-1,k,j)  = rp_max(qmax(i-1,k,j),field_old(i,k,j))
+                  qmin(i-1,k,j)  = rp_min(qmin(i-1,k,j),field_old(i,k,j))
                 end if
               ENDDO
             ENDIF
@@ -9979,11 +9979,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
                 if(cr.gt. 0) then
-                  qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i-1,k,j))
-                  qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i-1,k,j))
+                  qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i-1,k,j))
+                  qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i-1,k,j))
                 else
-                  qmax(i-1,k,j)  = amax1(qmax(i-1,k,j),field_old(i,k,j))
-                  qmin(i-1,k,j)  = amin1(qmin(i-1,k,j),field_old(i,k,j))
+                  qmax(i-1,k,j)  = rp_max(qmax(i-1,k,j),field_old(i,k,j))
+                  qmin(i-1,k,j)  = rp_min(qmin(i-1,k,j),field_old(i,k,j))
                 end if
               ENDDO
             ENDIF
@@ -9999,11 +9999,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
                 fqx(i,k,j) = fqx(i,k,j) - fqxl(i,k,j)
 
                 if(cr.gt. 0) then
-                  qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i-1,k,j))
-                  qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i-1,k,j))
+                  qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i-1,k,j))
+                  qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i-1,k,j))
                 else
-                  qmax(i-1,k,j)  = amax1(qmax(i-1,k,j),field_old(i,k,j))
-                  qmin(i-1,k,j)  = amin1(qmin(i-1,k,j),field_old(i,k,j))
+                  qmax(i-1,k,j)  = rp_max(qmax(i-1,k,j),field_old(i,k,j))
+                  qmin(i-1,k,j)  = rp_min(qmin(i-1,k,j),field_old(i,k,j))
                 end if
               ENDDO
             ENDIF
@@ -10024,9 +10024,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  compute x (u) conditions for v, w, or scalar
 
@@ -10034,7 +10034,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MIN( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
+         ub = rp_min( 0.5*(ru(its,k,j)+ru(its+1,k,j)), 0. )
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
                        ub*(   field_old(its+1,k,j)                 &
@@ -10050,7 +10050,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
        DO j = j_start, j_end
        DO k = kts, ktf
-         ub = MAX( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
+         ub = rp_max( 0.5*(ru(ite-1,k,j)+ru(ite,k,j)), 0. )
          tendency(i_end,k,j) = tendency(i_end,k,j)                   &
                - rdx*(                                               &
                        ub*(  field_old(i_end  ,k,j)                  &
@@ -10066,7 +10066,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MIN( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
+         vb = rp_min( 0.5*(rv(i,k,jts)+rv(i,k,jts+1)), 0. )
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
                        vb*(  field_old(i,k,jts+1)                  &
@@ -10082,7 +10082,7 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 
        DO i = i_start, i_end
        DO k = kts, ktf
-         vb = MAX( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
+         vb = rp_max( 0.5*(rv(i,k,jte-1)+rv(i,k,jte)), 0. )
          tendency(i,k,j_end) = tendency(i,k,j_end)                   &
                - rdy*(                                               &
                        vb*(   field_old(i,k,j_end  )                 &
@@ -10099,9 +10099,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !-- loop bounds for periodic or sym conditions
 
       i_start = its-1
-      i_end   = MIN(ite,ide-1)+1
+      i_end   = rp_min(ite,ide-1)+1
       j_start = jts-1
-      j_end   = MIN(jte,jde-1)+1
+      j_end   = rp_min(jte,jde-1)+1
 
 !-- loop bounds for open or specified conditions
 
@@ -10111,10 +10111,10 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !    IF(degrade_ys) j_start = jts
 !    IF(degrade_ye) j_end   = MIN(jte,jde-1)
 
-    IF(degrade_xs) i_start = MAX(its-1,ids)
-    IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-    IF(degrade_ys) j_start = MAX(jts-1,jds)
-    IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+    IF(degrade_xs) i_start = rp_max(its-1,ids)
+    IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+    IF(degrade_ys) j_start = rp_max(jts-1,jds)
+    IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
 
     vert_order_test : IF (vert_order == 3) THEN    
@@ -10141,11 +10141,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
          ENDDO
@@ -10161,11 +10161,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
            k=ktf
@@ -10176,11 +10176,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
          ENDDO
 
@@ -10210,11 +10210,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
          ENDDO
@@ -10230,11 +10230,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
            k=kts+2
@@ -10246,11 +10246,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
            k=ktf-1
@@ -10262,11 +10262,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
            k=ktf
@@ -10277,11 +10277,11 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
            fqz(i,k,j) = fqz(i,k,j) - fqzl(i,k,j)
 
           if(cr.gt. 0) then
-             qmax(i,k,j)  = amax1(qmax(i,k,j),field_old(i,k-1,j))
-             qmin(i,k,j)  = amin1(qmin(i,k,j),field_old(i,k-1,j))
+             qmax(i,k,j)  = rp_max(qmax(i,k,j),field_old(i,k-1,j))
+             qmin(i,k,j)  = rp_min(qmin(i,k,j),field_old(i,k-1,j))
           else
-             qmax(i,k-1,j)  = amax1(qmax(i,k-1,j),field_old(i,k,j))
-             qmin(i,k-1,j)  = amin1(qmin(i,k-1,j),field_old(i,k,j))
+             qmax(i,k-1,j)  = rp_max(qmax(i,k-1,j),field_old(i,k,j))
+             qmin(i,k-1,j)  = rp_min(qmin(i,k-1,j),field_old(i,k,j))
           end if
 
          ENDDO
@@ -10300,9 +10300,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 ! montonic filter
 
    i_start = its-1
-   i_end   = MIN(ite,ide-1)+1
+   i_end   = rp_min(ite,ide-1)+1
    j_start = jts-1
-   j_end   = MIN(jte,jde-1)+1
+   j_end   = rp_min(jte,jde-1)+1
 
 ! WCS 20090218
 
@@ -10333,29 +10333,29 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !     IF (degrade_ye) j_end   = MIN(jte,jde-2)
 !   END IF
 
-   IF(degrade_xs) i_start = MAX(its-1,ids)
-   IF(degrade_xe) i_end   = MIN(ite+1,ide-1)
-   IF(degrade_ys) j_start = MAX(jts-1,jds)
-   IF(degrade_ye) j_end   = MIN(jte+1,jde-1)
+   IF(degrade_xs) i_start = rp_max(its-1,ids)
+   IF(degrade_xe) i_end   = rp_min(ite+1,ide-1)
+   IF(degrade_ys) j_start = rp_max(jts-1,jds)
+   IF(degrade_ye) j_end   = rp_min(jte+1,jde-1)
 
    IF(config_flags%specified .or. config_flags%nested) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
 
    IF(config_flags%open_xs) THEN
-     IF (degrade_xs) i_start = MAX(its-1,ids+1)
+     IF (degrade_xs) i_start = rp_max(its-1,ids+1)
    END IF
    IF(config_flags%open_xe) THEN
-     IF (degrade_xe) i_end   = MIN(ite+1,ide-2)
+     IF (degrade_xe) i_end   = rp_min(ite+1,ide-2)
    END IF
    IF(config_flags%open_ys) THEN
-     IF (degrade_ys) j_start = MAX(jts-1,jds+1)
+     IF (degrade_ys) j_start = rp_max(jts-1,jds+1)
    END IF
    IF(config_flags%open_ye) THEN
-     IF (degrade_ye) j_end   = MIN(jte+1,jde-2)
+     IF (degrade_ye) j_end   = rp_min(jte+1,jde-2)
    END IF
 
 !-- here is the limiter...
@@ -10383,29 +10383,29 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
                          +msfty(i,j)*rdzw(k)*(fqzl(i,k+1,j)-fqzl(i,k,j)) )
 
      flux_in = -dt*( (msftx(i,j)*msfty(i,j))*(                   &
-                               rdx*(  min(0.,fqx (i+1,k,j))      &
-                                     -max(0.,fqx (i  ,k,j)) )    &
-                              +rdy*(  min(0.,fqy (i,k,j+1))      &
-                                     -max(0.,fqy (i,k,j  )) ) )  &
-               +msfty(i,j)*rdzw(k)*(  max(0.,fqz (i,k+1,j))      &
-                                     -min(0.,fqz (i,k  ,j)) )   )
+                               rdx*(  rp_min(0.,fqx (i+1,k,j))      &
+                                     -rp_max(0.,fqx (i  ,k,j)) )    &
+                              +rdy*(  rp_min(0.,fqy (i,k,j+1))      &
+                                     -rp_max(0.,fqy (i,k,j  )) ) )  &
+               +msfty(i,j)*rdzw(k)*(  rp_max(0.,fqz (i,k+1,j))      &
+                                     -rp_min(0.,fqz (i,k  ,j)) )   )
 
      ph_hi = ieva_corr*qmax(i,k,j) - ph_upwind
 
-     IF( flux_in .gt. ph_hi ) scale_in(i,k,j) = max(0.,ph_hi/(flux_in+eps))
+     IF( flux_in .gt. ph_hi ) scale_in(i,k,j) = rp_max(0.,ph_hi/(flux_in+eps))
 
 
      flux_out = dt*( (msftx(i,j)*msfty(i,j))*(                    &
-                                rdx*(  max(0.,fqx (i+1,k,j))      &
-                                      -min(0.,fqx (i  ,k,j)) )    &
-                               +rdy*(  max(0.,fqy (i,k,j+1))      &
-                                      -min(0.,fqy (i,k,j  )) ) )  &
-                +msfty(i,j)*rdzw(k)*(  min(0.,fqz (i,k+1,j))      &
-                                      -max(0.,fqz (i,k  ,j)) )   )
+                                rdx*(  rp_max(0.,fqx (i+1,k,j))      &
+                                      -rp_min(0.,fqx (i  ,k,j)) )    &
+                               +rdy*(  rp_max(0.,fqy (i,k,j+1))      &
+                                      -rp_min(0.,fqy (i,k,j  )) ) )  &
+                +msfty(i,j)*rdzw(k)*(  rp_min(0.,fqz (i,k+1,j))      &
+                                      -rp_max(0.,fqz (i,k  ,j)) )   )
  
      ph_low = ph_upwind - ieva_corr*qmin(i,k,j)
 
-     IF( flux_out .gt. ph_low ) scale_out(i,k,j) = max(0.,ph_low/(flux_out+eps))
+     IF( flux_out .gt. ph_low ) scale_out(i,k,j) = rp_max(0.,ph_low/(flux_out+eps))
 
    ENDDO
    ENDDO
@@ -10415,9 +10415,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
    DO k=kts, ktf
    DO i=i_start, i_end+1
        IF( fqx (i,k,j) .gt. 0.) then
-         fqx(i,k,j) = min(scale_in(i,k,j),scale_out(i-1,k,j))*fqx(i,k,j)
+         fqx(i,k,j) = rp_min(scale_in(i,k,j),scale_out(i-1,k,j))*fqx(i,k,j)
        ELSE
-         fqx(i,k,j) = min(scale_out(i,k,j),scale_in(i-1,k,j))*fqx(i,k,j)
+         fqx(i,k,j) = rp_min(scale_out(i,k,j),scale_in(i-1,k,j))*fqx(i,k,j)
        ENDIF
    ENDDO
    ENDDO
@@ -10427,9 +10427,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
    DO k=kts, ktf
    DO i=i_start, i_end
        IF( fqy (i,k,j) .gt. 0.) then
-         fqy(i,k,j) = min(scale_in(i,k,j),scale_out(i,k,j-1))*fqy(i,k,j)
+         fqy(i,k,j) = rp_min(scale_in(i,k,j),scale_out(i,k,j-1))*fqy(i,k,j)
        ELSE
-         fqy(i,k,j) = min(scale_out(i,k,j),scale_in(i,k,j-1))*fqy(i,k,j)
+         fqy(i,k,j) = rp_min(scale_out(i,k,j),scale_in(i,k,j-1))*fqy(i,k,j)
        ENDIF
    ENDDO
    ENDDO
@@ -10439,9 +10439,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
    DO k=kts+1, ktf
    DO i=i_start, i_end
        IF( fqz (i,k,j) .lt. 0.) then
-         fqz(i,k,j) = min(scale_in(i,k,j),scale_out(i,k-1,j))*fqz(i,k,j)
+         fqz(i,k,j) = rp_min(scale_in(i,k,j),scale_out(i,k-1,j))*fqz(i,k,j)
        ELSE
-         fqz(i,k,j) = min(scale_out(i,k,j),scale_in(i,k-1,j))*fqz(i,k,j)
+         fqz(i,k,j) = rp_min(scale_out(i,k,j),scale_in(i,k-1,j))*fqz(i,k,j)
        ENDIF
    ENDDO
    ENDDO
@@ -10453,9 +10453,9 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 ! we need to fix this for open b.c set ***********
 
   i_start = its
-  i_end   = MIN(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
   j_start = jts
-  j_end   = MIN(jte,jde-1)
+  j_end   = rp_min(jte,jde-1)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -10489,8 +10489,8 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 !  IF(degrade_xs) i_start = i_start + 1
 !  IF(degrade_xe) i_end   = i_end   - 1
 
-  IF(degrade_xs) i_start = MAX(its,ids+1)
-  IF(degrade_xe) i_end   = MIN(ite,ide-2)
+  IF(degrade_xs) i_start = rp_max(its,ids+1)
+  IF(degrade_xe) i_end   = rp_min(ite,ide-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -10522,14 +10522,14 @@ SUBROUTINE advect_scalar_mono   ( field, field_old, tendency,    &
 ! y flux divergence
 !
   i_start = its
-  i_end   = MIN(ite,ide-1)
+  i_end   = rp_min(ite,ide-1)
 
 ! WCS 20090218
 !  IF(degrade_ys) j_start = j_start + 1
 !  IF(degrade_ye) j_end   = j_end   - 1
 
-  IF(degrade_ys) j_start = MAX(jts,jds+1)
-  IF(degrade_ye) j_end   = MIN(jte,jde-2)
+  IF(degrade_ys) j_start = rp_max(jts,jds+1)
+  IF(degrade_ye) j_end   = rp_min(jte,jde-2)
 
   DO j = j_start, j_end
   DO k = kts, ktf
@@ -10996,7 +10996,7 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
    horz_order = config_flags%h_mom_adv_order
    vert_order = config_flags%v_mom_adv_order
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
 !  begin with horizontal flux divergence
 
@@ -11038,13 +11038,13 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -11053,16 +11053,16 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -11202,7 +11202,7 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       i_end   = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -11211,12 +11211,12 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
         i_start_f = ids+3
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-1,ite)
+        i_end = rp_min(ide-1,ite)
         i_end_f = ide-2
       ENDIF
 
@@ -11331,11 +11331,11 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       IF ( (config_flags%open_xs) .and. its == ids ) THEN
 
         j_start = jts
-        j_end   = MIN(jte,jde-1)
+        j_end   = rp_min(jte,jde-1)
 
         DO j = j_start, j_end
         DO k = kts, ktf
-          ub = MIN(ru(its,k,j)-cb*(c1(k)*mut(its,j)+c2(k)), 0.)
+          ub = rp_min(ru(its,k,j)-cb*(c1(k)*mut(its,j)+c2(k)), 0.)
           tendency(its,k,j) = tendency(its,k,j)                    &
                       - rdx*ub*(u_old(its+1,k,j) - u_old(its,k,j))
         ENDDO
@@ -11346,11 +11346,11 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       IF ( (config_flags%open_xe) .and. ite == ide ) THEN
 
         j_start = jts
-        j_end   = MIN(jte,jde-1)
+        j_end   = rp_min(jte,jde-1)
 
         DO j = j_start, j_end
         DO k = kts, ktf
-          ub = MAX(ru(ite,k,j)+cb*(c1(k)*mut(ite-1,j)+c2(k)), 0.)
+          ub = rp_max(ru(ite,k,j)+cb*(c1(k)*mut(ite-1,j)+c2(k)), 0.)
           tendency(ite,k,j) = tendency(ite,k,j)                    &
                       - rdx*ub*(u_old(ite,k,j) - u_old(ite-1,k,j))
         ENDDO
@@ -11363,16 +11363,16 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
 !  first, set to index ranges
 
       i_start = its
-      i_end   = MIN(ite,ide)
+      i_end   = rp_min(ite,ide)
       imin    = ids
       imax    = ide-1
 
       IF (config_flags%open_xs) THEN
-        i_start = MAX(ids+1, its)
+        i_start = rp_max(ids+1, its)
         imin = ids
       ENDIF
       IF (config_flags%open_xe) THEN
-        i_end = MIN(ite,ide-1)
+        i_end = rp_min(ite,ide-1)
         imax = ide-1
       ENDIF
 
@@ -11381,13 +11381,13 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       DO i = i_start, i_end
 
          mrdy=msfux(i,jts)*rdy       ! ADT eqn 44, 2nd term on RHS
-         ip = MIN( imax, i   )
-         im = MAX( imin, i-1 )
+         ip = rp_min( imax, i   )
+         im = rp_max( imin, i-1 )
 
          DO k=kts,ktf
 
           vw = 0.5*(rv(ip,k,jts)+rv(im,k,jts))
-          vb = MIN( vw, 0. )
+          vb = rp_min( vw, 0. )
           dvm =  rv(ip,k,jts+1)-rv(ip,k,jts)
           dvp =  rv(im,k,jts+1)-rv(im,k,jts)
           tendency(i,k,jts)=tendency(i,k,jts)-mrdy*(                &
@@ -11403,13 +11403,13 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
       DO i = i_start, i_end
 
          mrdy=msfux(i,jte-1)*rdy     ! ADT eqn 44, 2nd term on RHS
-         ip = MIN( imax, i   )
-         im = MAX( imin, i-1 )
+         ip = rp_min( imax, i   )
+         im = rp_max( imin, i-1 )
 
          DO k=kts,ktf
 
           vw = 0.5*(rv(ip,k,jte)+rv(im,k,jte))
-          vb = MAX( vw, 0. )
+          vb = rp_max( vw, 0. )
           dvm =  rv(ip,k,jte)-rv(ip,k,jte-1)
           dvp =  rv(im,k,jte)-rv(im,k,jte-1)
           tendency(i,k,jte-1)=tendency(i,k,jte-1)-mrdy*(              &
@@ -11429,13 +11429,13 @@ SUBROUTINE advect_weno_u ( u, u_old, tendency,            &
    i_start = its
    i_end   = ite
    j_start = jts
-   j_end   = min(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
 !   IF ( config_flags%open_xs ) i_start = MAX(ids+1,its)
 !   IF ( config_flags%open_xe ) i_end   = MIN(ide-1,ite)
 
-   IF ( config_flags%open_ys .or. specified ) i_start = MAX(ids+1,its)
-   IF ( config_flags%open_ye .or. specified ) i_end   = MIN(ide-1,ite)
+   IF ( config_flags%open_ys .or. specified ) i_start = rp_max(ids+1,its)
+   IF ( config_flags%open_ye .or. specified ) i_end   = rp_min(ide-1,ite)
    IF ( config_flags%periodic_x ) i_start = its
    IF ( config_flags%periodic_x ) i_end = ite
 
@@ -11646,7 +11646,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
 ! set order for the advection schemes
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    horz_order = config_flags%h_mom_adv_order
    vert_order = config_flags%v_mom_adv_order
 
@@ -11690,7 +11690,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
@@ -11701,12 +11701,12 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-1)
+        j_end = rp_min(jte,jde-1)
         j_end_f = jde-2
       ENDIF
 
@@ -11855,13 +11855,13 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
       j_end   = jte
       ! Polar boundary conditions are like open or specified
-      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -11870,13 +11870,13 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -12012,11 +12012,11 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       IF ( (config_flags%open_ys) .and. jts == jds ) THEN
 
         i_start = its
-        i_end   = MIN(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
 
         DO i = i_start, i_end
         DO k = kts, ktf
-          vb = MIN(rv(i,k,jts)-cb*(c1(k)*mut(i,jts)+c2(k)), 0.)
+          vb = rp_min(rv(i,k,jts)-cb*(c1(k)*mut(i,jts)+c2(k)), 0.)
           tendency(i,k,jts) = tendency(i,k,jts)                    &
                       - rdy*vb*(v_old(i,k,jts+1) - v_old(i,k,jts))
         ENDDO
@@ -12027,11 +12027,11 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       IF ( (config_flags%open_ye) .and. jte == jde ) THEN
 
         i_start = its
-        i_end   = MIN(ite,ide-1)
+        i_end   = rp_min(ite,ide-1)
 
         DO i = i_start, i_end
         DO k = kts, ktf
-          vb = MAX(rv(i,k,jte)+cb*(c1(k)*mut(i,jte-1)+c2(k)), 0.)
+          vb = rp_max(rv(i,k,jte)+cb*(c1(k)*mut(i,jte-1)+c2(k)), 0.)
           tendency(i,k,jte) = tendency(i,k,jte)                    &
                       - rdy*vb*(v_old(i,k,jte) - v_old(i,k,jte-1))
         ENDDO
@@ -12044,17 +12044,17 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 !  first, set to index ranges
 
       j_start = jts
-      j_end   = MIN(jte,jde)
+      j_end   = rp_min(jte,jde)
 
       jmin    = jds
       jmax    = jde-1
 
       IF (config_flags%open_ys) THEN
-          j_start = MAX(jds+1, jts)
+          j_start = rp_max(jds+1, jts)
           jmin = jds
       ENDIF
       IF (config_flags%open_ye) THEN
-          j_end = MIN(jte,jde-1)
+          j_end = rp_min(jte,jde-1)
           jmax = jde-1
       ENDIF
 
@@ -12065,13 +12065,13 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       DO j = j_start, j_end
 
          mrdx=msfvy(its,j)*rdx       ! ADT eqn 45, 1st term on RHS
-         jp = MIN( jmax, j   )
-         jm = MAX( jmin, j-1 )
+         jp = rp_min( jmax, j   )
+         jm = rp_max( jmin, j-1 )
 
          DO k=kts,ktf
 
           uw = 0.5*(ru(its,k,jp)+ru(its,k,jm))
-          ub = MIN( uw, 0. )
+          ub = rp_min( uw, 0. )
           dup =  ru(its+1,k,jp)-ru(its,k,jp)
           dum =  ru(its+1,k,jm)-ru(its,k,jm)
           tendency(its,k,j)=tendency(its,k,j)-mrdx*(               &
@@ -12086,13 +12086,13 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
       DO j = j_start, j_end
 
          mrdx=msfvy(ite-1,j)*rdx     ! ADT eqn 45, 1st term on RHS
-         jp = MIN( jmax, j   )
-         jm = MAX( jmin, j-1 )
+         jp = rp_min( jmax, j   )
+         jm = rp_max( jmin, j-1 )
 
          DO k=kts,ktf
 
           uw = 0.5*(ru(ite,k,jp)+ru(ite,k,jm))
-          ub = MAX( uw, 0. )
+          ub = rp_max( uw, 0. )
           dup = ru(ite,k,jp)-ru(ite-1,k,jp)
           dum = ru(ite,k,jm)-ru(ite-1,k,jm)
 
@@ -12119,7 +12119,7 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
 
     i_start = its
-    i_end   = MIN(ite,ide-1)
+    i_end   = rp_min(ite,ide-1)
     j_start = jts
     j_end   = jte
 
@@ -12130,8 +12130,8 @@ SUBROUTINE advect_weno_v   ( v, v_old, tendency,            &
 
     ! Polar boundary conditions are like open or specified
     ! We don't want to calculate vertical v tendencies at the N or S pole
-    IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = MAX(jds+1,jts)
-    IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = MIN(jde-1,jte)
+    IF ( config_flags%open_ys .or. specified .or. config_flags%polar ) j_start = rp_max(jds+1,jts)
+    IF ( config_flags%open_ye .or. specified .or. config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
 !    vert_order_test : IF (vert_order == 6) THEN    
 
@@ -12339,7 +12339,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
 !  set order for the advection scheme
 
-  ktf=MIN(kte,kde-1)
+  ktf=rp_min(kte,kde-1)
   horz_order = config_flags%h_sca_adv_order
   vert_order = config_flags%v_sca_adv_order
 
@@ -12378,9 +12378,9 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 !--------------- y - advection first
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -12389,16 +12389,16 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -12600,10 +12600,10 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 !  next, x - flux divergence
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -12612,13 +12612,13 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
       i_end_f   = i_end+1
 
       IF(degrade_xs) then
-        i_start = MAX(ids+1,its)
+        i_start = rp_max(ids+1,its)
 !        i_start_f = i_start+2
-        i_start_f = MIN(i_start+2,ids+3)
+        i_start_f = rp_min(i_start+2,ids+3)
       ENDIF
 
       IF(degrade_xe) then
-        i_end = MIN(ide-2,ite)
+        i_end = rp_min(ide-2,ite)
         i_end_f = ide-3
       ENDIF
 
@@ -12793,9 +12793,9 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
    IF( (config_flags%open_xs) .and. (its == ids)) THEN
 
@@ -12804,7 +12804,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          uw = 0.5*(fzm(k)*(ru(its,k  ,j)+ru(its+1,k  ,j)) +  &
                    fzp(k)*(ru(its,k-1,j)+ru(its+1,k-1,j))   )
-         ub = MIN( uw, 0. )
+         ub = rp_min( uw, 0. )
 
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
@@ -12821,7 +12821,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          uw = 0.5*( (2.-fzm(k-1))*(ru(its,k-1,j)+ru(its+1,k-1,j))   &
                    -fzp(k-1)*(ru(its,k-2,j)+ru(its+1,k-2,j))   )
-         ub = MIN( uw, 0. )
+         ub = rp_min( uw, 0. )
 
          tendency(its,k,j) = tendency(its,k,j)                     &
                - rdx*(                                             &
@@ -12841,7 +12841,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          uw = 0.5*(fzm(k)*(ru(ite-1,k  ,j)+ru(ite,k  ,j)) +  &
                    fzp(k)*(ru(ite-1,k-1,j)+ru(ite,k-1,j))   )
-         ub = MAX( uw, 0. )
+         ub = rp_max( uw, 0. )
 
          tendency(i_end,k,j) = tendency(i_end,k,j)                     &
                - rdx*(                                                 &
@@ -12858,7 +12858,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          uw = 0.5*( (2.-fzm(k-1))*(ru(ite-1,k-1,j)+ru(ite,k-1,j))    &
                    -fzp(k-1)*(ru(ite-1,k-2,j)+ru(ite,k-2,j))   )
-         ub = MAX( uw, 0. )
+         ub = rp_max( uw, 0. )
 
          tendency(i_end,k,j) = tendency(i_end,k,j)                     &
                - rdx*(                                                 &
@@ -12879,7 +12879,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          vw = 0.5*( fzm(k)*(rv(i,k  ,jts)+rv(i,k  ,jts+1)) +  &
                     fzp(k)*(rv(i,k-1,jts)+rv(i,k-1,jts+1))   )
-         vb = MIN( vw, 0. )
+         vb = rp_min( vw, 0. )
 
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
@@ -12895,7 +12895,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
        DO i = i_start, i_end
          vw = 0.5*( (2.-fzm(k-1))*(rv(i,k-1,jts)+rv(i,k-1,jts+1))    &
                    -fzp(k-1)*(rv(i,k-2,jts)+rv(i,k-2,jts+1))   )
-         vb = MIN( vw, 0. )
+         vb = rp_min( vw, 0. )
 
          tendency(i,k,jts) = tendency(i,k,jts)                     &
                - rdy*(                                             &
@@ -12915,7 +12915,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          vw = 0.5*( fzm(k)*(rv(i,k  ,jte-1)+rv(i,k  ,jte)) +  &
                     fzp(k)*(rv(i,k-1,jte-1)+rv(i,k-1,jte))   )
-         vb = MAX( vw, 0. )
+         vb = rp_max( vw, 0. )
 
          tendency(i,k,j_end) = tendency(i,k,j_end)                     &
                - rdy*(                                                 &
@@ -12932,7 +12932,7 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 
          vw = 0.5*( (2.-fzm(k-1))*(rv(i,k-1,jte-1)+rv(i,k-1,jte))    &
                    -fzp(k-1)*(rv(i,k-2,jte-1)+rv(i,k-2,jte))   )
-         vb = MAX( vw, 0. )
+         vb = rp_max( vw, 0. )
 
          tendency(i,k,j_end) = tendency(i,k,j_end)                     &
                - rdy*(                                                 &
@@ -12951,9 +12951,9 @@ SUBROUTINE advect_weno_w    ( w, w_old, tendency,            &
 !     Therefore we don't need to make a correction for advect_w
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
       DO i = i_start, i_end
          vflux(i,kts)=0.

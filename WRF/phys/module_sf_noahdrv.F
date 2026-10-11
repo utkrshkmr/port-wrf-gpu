@@ -1307,11 +1307,11 @@ CONTAINS
 
      IF ( UA_PHYS ) THEN
          noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-              - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3 - flx4
+              - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3 - flx4
 
      ELSE
          noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-              - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3
+              - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3
      ENDIF
 
 
@@ -1728,8 +1728,8 @@ CONTAINS
               rl_up_rural=-emiss_rural(i,j)*sigma_sb*(rp_pow(tsk_rural(i,j), 4.))-(1.-emiss_rural(i,j))*glw(i,j)
               rl_up_tot=(1.-frc_urb2d(i,j))*rl_up_rural+frc_urb2d(i,j)*rl_up_urb(i,j)   
               emiss(i,j)=(1.-frc_urb2d(i,j))*emiss_rural(i,j)+frc_urb2d(i,j)*emiss_urb(i,j)
-              ts_urb2d(i,j)=rp_pow((max(0.,(-rl_up_urb(i,j)-(1.-emiss_urb(i,j))*glw(i,j))/emiss_urb(i,j)/sigma_sb)), 0.25)
-              tsk(i,j)=rp_pow((max(0., (-1.*rl_up_tot-(1.-emiss(i,j))*glw(i,j) )/emiss(i,j)/sigma_sb)), .25)
+              ts_urb2d(i,j)=rp_pow((rp_max(0.,(-rl_up_urb(i,j)-(1.-emiss_urb(i,j))*glw(i,j))/emiss_urb(i,j)/sigma_sb)), 0.25)
+              tsk(i,j)=rp_pow((rp_max(0., (-1.*rl_up_tot-(1.-emiss(i,j))*glw(i,j) )/emiss(i,j)/sigma_sb)), .25)
            rs_abs_tot=(1.-frc_urb2d(i,j))*swdown(i,j)*(1.-albedo(i,j))+frc_urb2d(i,j)*rs_abs_urb(i,j)  
           if(swdown(i,j).gt.0.)then
            albedo(i,j)=1.-rs_abs_tot/swdown(i,j)
@@ -1942,7 +1942,7 @@ CONTAINS
               FK=( rp_pow( (HLICE/(GRAV*(-PSISAT))) *                       &
                  ((TSLB(I,NS,J)-T0)/TSLB(I,NS,J)) , (-1/BX)) )*SMCMAX
               IF (FK < 0.02) FK = 0.02
-              SH2O(I,NS,J) = MIN( FK, SMOIS(I,NS,J) )
+              SH2O(I,NS,J) = rp_min( FK, SMOIS(I,NS,J) )
 ! ----------------------------------------------------------------------
 ! now use iterative solution for liquid soil water content using
 ! FUNCTION FRH2O with the initial guess for SH2O from above explicit
@@ -3722,11 +3722,11 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       
            IF ( UA_PHYS ) THEN
                noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-                    - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3 - flx4
+                    - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3 - flx4
       
            ELSE
                noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-                    - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3
+                    - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3
            ENDIF
       
                ENDIF   !ENDIF FOR Noah_call
@@ -4139,7 +4139,7 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       
                   FAREA  = landusef2(i,mosaic_i,j)
       
-                  TSK_mosaic_avg(i,j) = TSK_mosaic_avg(i,j) + (EMISS_mosaic(i,mosaic_i,j)*TSK_mosaic(i,mosaic_i,j)**4)*FAREA    ! conserve the longwave radiation
+                  TSK_mosaic_avg(i,j) = TSK_mosaic_avg(i,j) + (EMISS_mosaic(i,mosaic_i,j)*rp_pow(TSK_mosaic(i,mosaic_i,j), 4))*FAREA    ! conserve the longwave radiation
                   
                   QSFC_mosaic_avg(i,j) = QSFC_mosaic_avg(i,j) + QSFC_mosaic(i,mosaic_i,j)*FAREA
                   CANWAT_mosaic_avg(i,j) = CANWAT_mosaic_avg(i,j) + CANWAT_mosaic(i,mosaic_i,j)*FAREA
@@ -4646,11 +4646,11 @@ SUBROUTINE lsm_mosaic(DZ8W,QV3D,P8W3D,T3D,TSK,                      &
       
            IF ( UA_PHYS ) THEN
                noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-                    - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3 - flx4
+                    - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3 - flx4
       
            ELSE
                noahres(i,j) = ( solnet + lwdn ) - sheat + ssoil - eta &
-                    - ( emissi * STBOLT * (t1**4) ) - flx1 - flx2 - flx3
+                    - ( emissi * STBOLT * (rp_pow(t1, 4)) ) - flx1 - flx2 - flx3
            ENDIF
       
               IF (SF_URBAN_PHYSICS == 1 ) THEN                                              ! Beginning of UCM CALL if block

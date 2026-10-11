@@ -1821,7 +1821,7 @@ contains
     nWraps  = 0
     twister = initialize_scalar(19650218_im)
     
-    nFirstLoop = max(blockSize, size(seed))
+    nFirstLoop = rp_max(blockSize, size(seed))
     do k = 1, nFirstLoop
        i = rp_mod(k + nWraps, blockSize)
        j = rp_mod(k - 1,      size(seed))
@@ -1914,10 +1914,10 @@ contains
     localInt = getRandomInt(twister)
     if(localInt < 0) then
 !      getRandomReal = dble(localInt + 2.0d0**32)/(2.0d0**32 - 1.0d0)
-      getRandomReal = (localInt + 2.0**32_rb)/(2.0**32_rb - 1.0_rb)
+      getRandomReal = (localInt + rp_pow(2.0, 32_rb))/(rp_pow(2.0, 32_rb) - 1.0_rb)
     else
 !      getRandomReal = dble(localInt            )/(2.0d0**32 - 1.0d0)
-      getRandomReal = (localInt            )/(2.0**32_rb - 1.0_rb)
+      getRandomReal = (localInt            )/(rp_pow(2.0, 32_rb) - 1.0_rb)
     end if
 
   end function getRandomReal
@@ -3805,14 +3805,14 @@ contains
 
          forfac(lay) = scalefac / (1.+water)
          factor = (332.0_rb-tavel(lay))/36.0_rb
-         indfor(lay) = min(2, max(1, int(factor)))
+         indfor(lay) = rp_min(2, rp_max(1, int(factor)))
          forfrac(lay) = factor - float(indfor(lay))
 
 !  Set up factors needed to separately include the water vapor
 !  self-continuum in the calculation of absorption coefficient.
          selffac(lay) = water * forfac(lay)
          factor = (tavel(lay)-188.0_rb)/7.2_rb
-         indself(lay) = min(9, max(1, int(factor)-7))
+         indself(lay) = rp_min(9, rp_max(1, int(factor)-7))
          selffrac(lay) = factor - float(indself(lay) + 7)
 
 !  Set up factors needed to separately include the minor gases
@@ -3821,7 +3821,7 @@ contains
          scaleminorn2(lay) = (pavel(lay)/tavel(lay)) &
              *(wbroad(lay)/(coldry(lay)+wkl(1,lay)))
          factor = (tavel(lay)-180.8_rb)/7.2_rb
-         indminor(lay) = min(18, max(1, int(factor)))
+         indminor(lay) = rp_min(18, rp_max(1, int(factor)))
          minorfrac(lay) = factor - float(indminor(lay))
 
 !  Setup reference ratio to be used in calculation of binary
@@ -3875,7 +3875,7 @@ contains
          scaleminorn2(lay) = (pavel(lay)/tavel(lay)) &
              * (wbroad(lay)/(coldry(lay)+wkl(1,lay)))
          factor = (tavel(lay)-180.8_rb)/7.2_rb
-         indminor(lay) = min(18, max(1, int(factor)))
+         indminor(lay) = rp_min(18, rp_max(1, int(factor)))
          minorfrac(lay) = factor - float(indminor(lay))
 
 !  Setup reference ratio to be used in calculation of binary
@@ -5347,7 +5347,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5359,7 +5359,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5377,7 +5377,7 @@ contains
          endif
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5389,7 +5389,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5629,7 +5629,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5641,7 +5641,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5660,7 +5660,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5672,7 +5672,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5908,7 +5908,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5920,7 +5920,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5939,7 +5939,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -5951,7 +5951,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6282,7 +6282,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6294,7 +6294,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6312,7 +6312,7 @@ contains
          endif
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6324,7 +6324,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6678,7 +6678,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6690,7 +6690,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6709,7 +6709,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -6721,7 +6721,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7058,7 +7058,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7070,7 +7070,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7089,7 +7089,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7101,7 +7101,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7303,7 +7303,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7315,7 +7315,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7334,7 +7334,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7346,7 +7346,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7599,7 +7599,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7611,7 +7611,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7629,7 +7629,7 @@ contains
          endif
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7641,7 +7641,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7807,7 +7807,7 @@ contains
 
          if (specparm .lt. 0.125_rb) then
             p = fs - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7819,7 +7819,7 @@ contains
             fac210 = fk2*fac10(lay)
          else if (specparm .gt. 0.875_rb) then
             p = -fs 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7838,7 +7838,7 @@ contains
 
          if (specparm1 .lt. 0.125_rb) then
             p = fs1 - 1
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -7850,7 +7850,7 @@ contains
             fac211 = fk2*fac11(lay)
          else if (specparm1 .gt. 0.875_rb) then
             p = -fs1 
-            p4 = p**4
+            p4 = rp_pow(p, 4)
             fk0 = p4
             fk1 = 1 - p - 2.0_rb*p4
             fk2 = p + p4
@@ -12013,7 +12013,7 @@ CONTAINS
 
          DO K=kts,kte
             QV1D(K)=QV3D(I,K,J)
-            QV1D(K)=max(0.,QV1D(K))
+            QV1D(K)=rp_max(0.,QV1D(K))
          ENDDO
 
          IF (o3input.eq.2) THEN
@@ -12047,7 +12047,7 @@ CONTAINS
               IF ( F_QC) THEN
                  DO K=kts,kte
                     QC1D(K)=QC3D(I,K,J)
-                    QC1D(K)=max(0.,QC1D(K))
+                    QC1D(K)=rp_max(0.,QC1D(K))
                  ENDDO
               ENDIF
             ENDIF
@@ -12056,7 +12056,7 @@ CONTAINS
               IF ( F_QR) THEN
                  DO K=kts,kte
                     QR1D(K)=QR3D(I,K,J)
-                    QR1D(K)=max(0.,QR1D(K))
+                    QR1D(K)=rp_max(0.,QR1D(K))
                  ENDDO
               ENDIF
             ENDIF
@@ -12095,7 +12095,7 @@ CONTAINS
                IF (F_QI) THEN
                   DO K=kts,kte
                      QI1D(K)=QI3D(I,K,J)
-                     QI1D(K)=max(0.,QI1D(K))
+                     QI1D(K)=rp_max(0.,QI1D(K))
                   ENDDO
                ENDIF
             ENDIF
@@ -12104,7 +12104,7 @@ CONTAINS
                IF (F_QS) THEN
                   DO K=kts,kte
                      QS1D(K)=QS3D(I,K,J)
-                     QS1D(K)=max(0.,QS1D(K))
+                     QS1D(K)=rp_max(0.,QS1D(K))
                   ENDDO
                ENDIF
             ENDIF
@@ -12113,7 +12113,7 @@ CONTAINS
                IF (F_QG) THEN
                   DO K=kts,kte
                      QG1D(K)=QG3D(I,K,J)
-                     QG1D(K)=max(0.,QG1D(K))
+                     QG1D(K)=rp_max(0.,QG1D(K))
                   ENDDO
                ENDIF
             ENDIF
@@ -12125,8 +12125,8 @@ CONTAINS
                      qi1d(k) = 0.1*qs3d(i,k,j)
                      qs1d(k) = 0.9*qs3d(i,k,j)
                      qc1d(k) = qc3d(i,k,j)
-                     qi1d(k) = max(0.,qi1d(k))
-                     qc1d(k) = max(0.,qc1d(k))
+                     qi1d(k) = rp_max(0.,qi1d(k))
+                     qc1d(k) = rp_max(0.,qc1d(k))
                   ENDDO
                ENDIF
             ENDIF
@@ -12146,8 +12146,8 @@ CONTAINS
                      qi1d(k) = qi3d(i,k,j)
                      qs1d(k) = 0.0
                      qc1d(k) = qc3d(i,k,j)
-                     qi1d(k) = max(0.,qi1d(k))
-                     qc1d(k) = max(0.,qc1d(k))
+                     qi1d(k) = rp_max(0.,qi1d(k))
+                     qc1d(k) = rp_max(0.,qc1d(k))
                   ENDDO
         ENDIF
 
@@ -12156,7 +12156,7 @@ CONTAINS
 !         OLR0=0. 
 !         TSFC=TSK(I,J)
          DO K=kts,kte
-            QV1D(K)=AMAX1(QV1D(K),1.E-12) 
+            QV1D(K)=rp_max(QV1D(K),1.E-12) 
          ENDDO
 
 ! Set up input for longwave
@@ -12188,7 +12188,7 @@ CONTAINS
             IF ( has_reqc .ne. 0) THEN
                inflglw = 3
                DO K=kts,kte
-                  recloud1D(ncol,K) = MAX(2.5, re_cloud(I,K,J)*1.E6)
+                  recloud1D(ncol,K) = rp_max(2.5, re_cloud(I,K,J)*1.E6)
                   if (recloud1D(ncol,K).LE.2.5.AND.cldfra3d(i,k,j).gt.0. &
      &                            .AND. (XLAND(I,J)-1.5).GT.0.) then     !--- Ocean
                      recloud1D(ncol,K) = 10.5
@@ -12207,14 +12207,14 @@ CONTAINS
                inflglw  = 4
                iceflglw = 4
                DO K=kts,kte
-                  reice1D(ncol,K) = MAX(5., re_ice(I,K,J)*1.E6)
+                  reice1D(ncol,K) = rp_max(5., re_ice(I,K,J)*1.E6)
                   if (reice1D(ncol,K).LE.5..AND.cldfra3d(i,k,j).gt.0.) then
                      idx_rei = int(t3d(i,k,j)-179.)
-                     idx_rei = min(max(idx_rei,1),75)
+                     idx_rei = rp_min(rp_max(idx_rei,1),75)
                      corr = t3d(i,k,j) - int(t3d(i,k,j))
                      reice1D(ncol,K) = retab(idx_rei)*(1.-corr) +       &
      &                                 retab(idx_rei+1)*corr
-                     reice1D(ncol,K) = MAX(reice1D(ncol,K), 5.0)
+                     reice1D(ncol,K) = rp_max(reice1D(ncol,K), 5.0)
                   endif
                ENDDO
             ELSE
@@ -12235,9 +12235,9 @@ CONTAINS
                     else
                       tem2 = re_20C*rp_pow(tem3, 0.031)
                     endif
-                    tem2 = max(25.,tem2)
+                    tem2 = rp_max(25.,tem2)
                   endif
-                  reice1D(ncol,K) = min(tem2, 135.72)   !- 1.0315*reice<= 140 microns
+                  reice1D(ncol,K) = rp_min(tem2, 135.72)   !- 1.0315*reice<= 140 microns
 #endif
                ENDDO
             ENDIF
@@ -12246,7 +12246,7 @@ CONTAINS
                inflglw  = 5
                iceflglw = 5
                DO K=kts,kte
-                  resnow1D(ncol,K) = MAX(10., re_snow(I,K,J)*1.E6)
+                  resnow1D(ncol,K) = rp_max(10., re_snow(I,K,J)*1.E6)
                ENDDO
             ELSE
                DO K=kts,kte
@@ -12260,7 +12260,7 @@ CONTAINS
                inflglw  = 5
                iceflglw = 5
                DO K=kts,kte
-                  resnow1D(ncol,K) = MAX(10., re_ice(I,K,J)*1.E6)
+                  resnow1D(ncol,K) = rp_max(10., re_ice(I,K,J)*1.E6)
                   QS1D(K)=QI3D(I,K,J)
                   QI1D(K)=0.
                   reice1D(ncol,K)=10.
@@ -12495,8 +12495,8 @@ CONTAINS
             do k = kts, kte
                gicewp = (qi1d(k)+qs1d(k)) * pdel(ncol,k)*100.0 / gravmks * 1000.0     ! Grid box ice water path.
                gliqwp = qc1d(k) * pdel(ncol,k)*100.0 / gravmks * 1000.0     ! Grid box liquid water path.
-               cicewp(ncol,k) = gicewp / max(0.01,cldfrac(ncol,k))               ! In-cloud ice water path.
-               cliqwp(ncol,k) = gliqwp / max(0.01,cldfrac(ncol,k))               ! In-cloud liquid water path.
+               cicewp(ncol,k) = gicewp / rp_max(0.01,cldfrac(ncol,k))               ! In-cloud ice water path.
+               cliqwp(ncol,k) = gliqwp / rp_max(0.01,cldfrac(ncol,k))               ! In-cloud liquid water path.
             end do
 
 
@@ -12507,7 +12507,7 @@ CONTAINS
            if(iceflglw.ge.4)then
               do k = kts, kte
                      gicewp = qi1d(k) * pdel(ncol,k)*100.0 / gravmks * 1000.0     ! Grid box ice water path.
-                     cicewp(ncol,k) = gicewp / max(0.01,cldfrac(ncol,k))               ! In-cloud ice water path.
+                     cicewp(ncol,k) = gicewp / rp_max(0.01,cldfrac(ncol,k))               ! In-cloud ice water path.
               end do
            end if
 
@@ -12524,7 +12524,7 @@ CONTAINS
                  snow_mass_factor = 0.99        ! Assume 1% of snow overlaps the cloud ice category
                  gicewp = gicewp + (qs1d(k)*(1.0-snow_mass_factor) * pdel(ncol,k)*100.0 / gravmks * 1000.0)
                  if (resnow1d(ncol,k) .gt. 130.)then
-                     snow_mass_factor = MIN(snow_mass_factor,                       &
+                     snow_mass_factor = rp_min(snow_mass_factor,                       &
      &                         (130.0/resnow1d(ncol,k))*(130.0/resnow1d(ncol,k)))
                      resnow1d(ncol,k)   = 130.0
                      IF ( wrf_dm_on_monitor() ) THEN
@@ -12534,7 +12534,7 @@ CONTAINS
                      ENDIF
                  endif
                  gsnowp = qs1d(k) * snow_mass_factor * pdel(ncol,k)*100.0 / gravmks * 1000.0     ! Grid box snow water path.
-                 csnowp(ncol,k) = gsnowp / max(0.01,cldfrac(ncol,k))
+                 csnowp(ncol,k) = gsnowp / rp_max(0.01,cldfrac(ncol,k))
               end do
            end if
 
@@ -12561,8 +12561,8 @@ CONTAINS
 !           apply scaling from Martin et al., JAS 51, 1830.
                reliq(ncol,k)=1.1*reliq(ncol,k)
                reliq(ncol,k)=reliq(ncol,k)*1.e6 ! convert from m to microns
-               reliq(ncol,k)=max(reliq(ncol,k),4.)
-               reliq(ncol,k)=min(reliq(ncol,k),20.)
+               reliq(ncol,k)=rp_max(reliq(ncol,k),4.)
+               reliq(ncol,k)=rp_min(reliq(ncol,k),20.)
               end if
             end if
          end if
@@ -12607,7 +12607,7 @@ CONTAINS
             if (iceflglw .eq. 3) then
                do k = kts, kte
                   reice(ncol,k) = reice(ncol,k) * 1.0315
-                  reice(ncol,k) = min(140.0,reice(ncol,k))
+                  reice(ncol,k) = rp_min(140.0,reice(ncol,k))
                end do
             endif
 !if CAMMGMP is used, use output from CAMMGMP
@@ -12618,13 +12618,13 @@ CONTAINS
                   else
                      reice(ncol,k) = 25.
                   end if
-                  reice(ncol,k) = max(5., min(140.0,reice(ncol,k)))
+                  reice(ncol,k) = rp_max(5., rp_min(140.0,reice(ncol,k)))
                   if ( qc1d(k) .gt. 1.e-20) then
                      reliq(ncol,k) = lradius(i,k,j)
                   else
                      reliq(ncol,k) = 10.
                   end if
-                  reliq(ncol,k) = max(2.5, min(60.0,reliq(ncol,k)))
+                  reliq(ncol,k) = rp_max(2.5, rp_min(60.0,reliq(ncol,k)))
                enddo
             endif
 
@@ -14595,13 +14595,13 @@ IMPLICIT NONE
 ! jrm Reworked effective radius algorithm
           ! Start with temperature-dependent value appropriate for continental air
           ! Note: findmcnew has a pressure dependence here
-          rel(i,k) = rliqland + (rliqocean-rliqland) * min(1.0,max(0.0,(tmelt-t(i,k))*0.05))
+          rel(i,k) = rliqland + (rliqocean-rliqland) * rp_min(1.0,rp_max(0.0,(tmelt-t(i,k))*0.05))
           ! Modify for snow depth over land
-          rel(i,k) = rel(i,k) + (rliqocean-rel(i,k)) * min(1.0,max(0.0,snowh(i)*10.))
+          rel(i,k) = rel(i,k) + (rliqocean-rel(i,k)) * rp_min(1.0,rp_max(0.0,snowh(i)*10.))
           ! Ramp between polluted value over land to clean value over ocean.
-          rel(i,k) = rel(i,k) + (rliqocean-rel(i,k)) * min(1.0,max(0.0,1.0-landm(i)))
+          rel(i,k) = rel(i,k) + (rliqocean-rel(i,k)) * rp_min(1.0,rp_max(0.0,1.0-landm(i)))
           ! Ramp between the resultant value and a sea ice value in the presence of ice.
-          rel(i,k) = rel(i,k) + (rliqice-rel(i,k)) * min(1.0,max(0.0,icefrac(i)))
+          rel(i,k) = rel(i,k) + (rliqice-rel(i,k)) * rp_min(1.0,rp_max(0.0,icefrac(i)))
 ! end jrm
        end do
     end do
@@ -14625,7 +14625,7 @@ IMPLICIT NONE
     do k=1,pver
        do i=1,ncol
           index = int(t(i,k)-179.)
-          index = min(max(index,1),94)
+          index = rp_min(rp_max(index,1),94)
           corr = t(i,k) - int(t(i,k))
           re(i,k) = retab(index)*(1.-corr)              &
                +retab(index+1)*corr

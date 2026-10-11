@@ -103,7 +103,7 @@
  pi = 4.*rp_atan(1.)
  xlv1 = cl-cpv
 !
- qc0  = 4./3.*pi*denr*r0**3*xncr/den0  ! 0.419e-3 -- .61e-3
+ qc0  = 4./3.*pi*denr*rp_pow(r0, 3)*xncr/den0  ! 0.419e-3 -- .61e-3
  qck1 = .104*9.8*peaut/rp_pow((xncr*denr), (1./3.))/xmyu*rp_pow(den0, (4./3.)) ! 7.03
  pidnc = pi*denr/6.        ! syb
 !
@@ -122,7 +122,7 @@
  pacrr = pi*n0r*avtr*g3pbr*.25*eacrr
  precr1 = 2.*pi*n0r*.78
  precr2 = 2.*pi*n0r*.31*rp_pow(avtr, .5)*g5pbro2
- roqimax = 2.08e22*dimax**8
+ roqimax = 2.08e22*rp_pow(dimax, 8)
 !
  bvts1 = 1.+bvts
  bvts2 = 2.5+.5*bvts
@@ -416,7 +416,7 @@
 
 ! compute internal functions
 !
- cpmcal(x) = cpd*(1.-max(x,qmin))+max(x,qmin)*cpv
+ cpmcal(x) = cpd*(1.-rp_max(x,qmin))+rp_max(x,qmin)*cpv
  xlcal(x) = xlv0-xlv1*(x-t0c)
 !----------------------------------------------------------------
 ! diffus: diffusion coefficient of the water vapor
@@ -429,7 +429,7 @@
  diffac(a,b,c,d,e) = d*a*a/(xka(c,d)*rv*c*c)+1./(e*diffus(c,b))
  venfac(a,b,c) = rp_exp(rp_log((viscos(b,c)/diffus(b,a)))*((.3333333))) &
                /sqrt(viscos(b,c))*sqrt(sqrt(den0/c))
- conden(a,b,c,d,e) = (max(b,qmin)-c)/(1.+d*d/(rv*e)*c/(a*a))
+ conden(a,b,c,d,e) = (rp_max(b,qmin)-c)/(1.+d*d/(rv*e)*c/(a*a))
 !
 !
  idim = ite-its+1
@@ -440,11 +440,11 @@
 !
  do k = kts, kte
    do i = its, ite
-     qc(i,k) = max(qc(i,k),0.0)
-     qr(i,k) = max(qr(i,k),0.0)
-     qi(i,k) = max(qi(i,k),0.0)
-     qs(i,k) = max(qs(i,k),0.0)
-     qg(i,k) = max(qg(i,k),0.0)
+     qc(i,k) = rp_max(qc(i,k),0.0)
+     qr(i,k) = rp_max(qr(i,k),0.0)
+     qi(i,k) = rp_max(qi(i,k),0.0)
+     qs(i,k) = rp_max(qs(i,k),0.0)
+     qg(i,k) = rp_max(qg(i,k),0.0)
    enddo
  enddo
 !
@@ -481,7 +481,7 @@
 !----------------------------------------------------------------
 ! compute the minor time steps.
 !
- loops = max(nint(delt/dtcldcr),1)
+ loops = rp_max(nint(delt/dtcldcr),1)
  dtcld = delt/loops
  if(delt.le.dtcldcr) dtcld = delt
 !
@@ -531,20 +531,20 @@
      do i = its, ite
        tr=ttp/t(i,k)
        qsat(i,k,1)=psat*rp_exp(rp_log(tr)*(xa))*rp_exp(xb*(1.-tr))
-       qsat(i,k,1) = min(qsat(i,k,1),0.99*p(i,k))
+       qsat(i,k,1) = rp_min(qsat(i,k,1),0.99*p(i,k))
        qsat(i,k,1) = ep2 * qsat(i,k,1) / (p(i,k) - qsat(i,k,1))
-       qsat(i,k,1) = max(qsat(i,k,1),qmin)
-       rh(i,k,1) = max(q(i,k) / qsat(i,k,1),qmin)
+       qsat(i,k,1) = rp_max(qsat(i,k,1),qmin)
+       rh(i,k,1) = rp_max(q(i,k) / qsat(i,k,1),qmin)
        tr=ttp/t(i,k)
        if(t(i,k).lt.ttp) then
          qsat(i,k,2)=psat*rp_exp(rp_log(tr)*(xai))*rp_exp(xbi*(1.-tr))
        else
          qsat(i,k,2)=psat*rp_exp(rp_log(tr)*(xa))*rp_exp(xb*(1.-tr))
        endif
-       qsat(i,k,2) = min(qsat(i,k,2),0.99*p(i,k))
+       qsat(i,k,2) = rp_min(qsat(i,k,2),0.99*p(i,k))
        qsat(i,k,2) = ep2 * qsat(i,k,2) / (p(i,k) - qsat(i,k,2))
-       qsat(i,k,2) = max(qsat(i,k,2),qmin)
-       rh(i,k,2) = max(q(i,k) / qsat(i,k,2),qmin)
+       qsat(i,k,2) = rp_max(qsat(i,k,2),qmin)
+       rh(i,k,2) = rp_max(q(i,k) / qsat(i,k,2),qmin)
      enddo
    enddo
 !
@@ -597,9 +597,9 @@
 !-------------------------------------------------------------
    do k = kts, kte
      do i = its, ite
-       temp = (den(i,k)*max(qi(i,k),qmin))
+       temp = (den(i,k)*rp_max(qi(i,k),qmin))
        temp = sqrt(sqrt(temp*temp*temp))
-       xni(i,k) = min(max(5.38e7*temp,1.e3),1.e6)
+       xni(i,k) = rp_min(rp_max(5.38e7*temp,1.e3),1.e6)
      enddo
    enddo
 !
@@ -620,7 +620,7 @@
    do k = kte, kts, -1
      do i = its, ite
        workr(i,k) = work1(i,k,1)
-       qsum(i,k) = max( (qs(i,k)+qg(i,k)), 1.E-15)
+       qsum(i,k) = rp_max( (qs(i,k)+qg(i,k)), 1.E-15)
        if( qsum(i,k) .gt. 1.e-15 ) then
          worka(i,k) = (work1(i,k,2)*qs(i,k) + work1(i,k,3)*qg(i,k)) &
                     / qsum(i,k)
@@ -639,9 +639,9 @@
                          denqrs2,denqrs3,delqrs2,delqrs3,dtcld,1,1)
    do k = kts, kte
      do i = its, ite
-       qr(i,k) = max(denqrs1(i,k)/den(i,k),0.)
-       qs(i,k) = max(denqrs2(i,k)/den(i,k),0.)
-       qg(i,k) = max(denqrs3(i,k)/den(i,k),0.)
+       qr(i,k) = rp_max(denqrs1(i,k)/den(i,k),0.)
+       qs(i,k) = rp_max(denqrs2(i,k)/den(i,k),0.)
+       qg(i,k) = rp_max(denqrs3(i,k)/den(i,k),0.)
        fall(i,k,1) = denqrs1(i,k)*workr(i,k)/delz(i,k)
        fall(i,k,2) = denqrs2(i,k)*worka(i,k)/delz(i,k)
        fall(i,k,3) = denqrs3(i,k)*worka(i,k)/delz(i,k)
@@ -665,7 +665,7 @@
    do k = kte, kts, -1
      do i = its, ite
        supcol = t0c-t(i,k)
-       n0sfac(i,k) = max(min(rp_exp(alpha*supcol),n0smax/n0s),1.)
+       n0sfac(i,k) = rp_max(rp_min(rp_exp(alpha*supcol),n0smax/n0s),1.)
        if(t(i,k).gt.t0c) then
 !---------------------------------------------------------------
 ! psmlt: melting of snow [HL A33] [RH83 A25]
@@ -678,7 +678,7 @@
            psmlt(i,k) = xka(t(i,k),den(i,k))/xlf*(t0c-t(i,k))*pi/2.         &
                       *n0sfac(i,k)*(precs1*rslope2(i,k,2)                   &
                       +precs2*work2(i,k)*coeres)/den(i,k)
-           psmlt(i,k) = min(max(psmlt(i,k)*dtcld/mstep(i),                  &
+           psmlt(i,k) = rp_min(rp_max(psmlt(i,k)*dtcld/mstep(i),                  &
                       -qs(i,k)/mstep(i)),0.)
            qs(i,k) = qs(i,k) + psmlt(i,k)
            qr(i,k) = qr(i,k) - psmlt(i,k)
@@ -693,7 +693,7 @@
            pgmlt(i,k) = xka(t(i,k),den(i,k))/xlf                            &
                       *(t0c-t(i,k))*(precg1*rslope2(i,k,3)                  &
                       +precg2*work2(i,k)*coeres)/den(i,k)
-           pgmlt(i,k) = min(max(pgmlt(i,k)*dtcld/mstep(i),                  &
+           pgmlt(i,k) = rp_min(rp_max(pgmlt(i,k)*dtcld/mstep(i),                  &
                      -qg(i,k)/mstep(i)),0.)
            qg(i,k) = qg(i,k) + pgmlt(i,k)
            qr(i,k) = qr(i,k) - pgmlt(i,k)
@@ -711,7 +711,7 @@
          work1c(i,k) = 0.
        else
          xmi = den(i,k)*qi(i,k)/xni(i,k)
-         diameter  = max(min(dicon * sqrt(xmi),dimax), 1.e-25)
+         diameter  = rp_max(rp_min(dicon * sqrt(xmi),dimax), 1.e-25)
          work1c(i,k) = 1.49e4*rp_exp(rp_log(diameter)*(1.31))
        endif
      enddo
@@ -728,7 +728,7 @@
                         delqi,dtcld,1,0)
    do k = kts, kte
      do i = its, ite
-       qi(i,k) = max(denqci(i,k)/den(i,k),0.)
+       qi(i,k) = rp_max(denqci(i,k)/den(i,k),0.)
      enddo
    enddo
    do i = its, ite
@@ -801,8 +801,8 @@
        if(supcol.gt.0..and.qc(i,k).gt.qmin) then
 !        pfrzdtc = min(pfrz1*(exp(pfrz2*supcol)-1.)                         &
 !                * den(i,k)/denr/xncr*qc(i,k)**2*dtcld,qc(i,k))
-         supcolt=min(supcol,50.)
-         pfrzdtc = min(pfrz1*(rp_exp(pfrz2*supcolt)-1.)                        &
+         supcolt=rp_min(supcol,50.)
+         pfrzdtc = rp_min(pfrz1*(rp_exp(pfrz2*supcolt)-1.)                        &
                  * den(i,k)/denr/xncr*qc(i,k)*qc(i,k)*dtcld,qc(i,k))
          qi(i,k) = qi(i,k) + pfrzdtc
          t(i,k) = t(i,k) + xlf/cpm(i,k)*pfrzdtc
@@ -818,8 +818,8 @@
 !                * rslope(i,k,1)*dtcld,qr(i,k))
          temp = rslope3(i,k,1)
          temp = temp*temp*rslope(i,k,1)
-         supcolt=min(supcol,50.)
-         pfrzdtr = min(20.*(pi*pi)*pfrz1*n0r*denr/den(i,k)                  &
+         supcolt=rp_min(supcol,50.)
+         pfrzdtr = rp_min(20.*(pi*pi)*pfrz1*n0r*denr/den(i,k)                  &
                  *(rp_exp(pfrz2*supcolt)-1.)*temp*dtcld,                       &
                    qr(i,k))
          qg(i,k) = qg(i,k) + pfrzdtr
@@ -866,7 +866,7 @@
 !
    do k = kts, kte
      do i = its, ite
-       supsat = max(q(i,k),qmin)-qsat(i,k,1)
+       supsat = rp_max(q(i,k),qmin)-qsat(i,k,1)
        satdt = supsat/dtcld
 !---------------------------------------------------------------
 ! praut: auto conversion rate from cloud to rain [HDC 16]
@@ -874,14 +874,14 @@
 !---------------------------------------------------------------
        if(qc(i,k).gt.qc0) then
          praut(i,k) = qck1*rp_pow(qc(i,k), (7./3.))
-         praut(i,k) = min(praut(i,k),qc(i,k)/dtcld)
+         praut(i,k) = rp_min(praut(i,k),qc(i,k)/dtcld)
        endif
 !---------------------------------------------------------------
 ! pracw: accretion of cloud water by rain [HL A40] [LFO 51]
 !        (C->R)
 !---------------------------------------------------------------
        if(qr(i,k).gt.qcrmin.and.qc(i,k).gt.qmin) then
-         pracw(i,k) = min(pacrr*rslope3(i,k,1)*rslopeb(i,k,1)               &
+         pracw(i,k) = rp_min(pacrr*rslope3(i,k,1)*rslopeb(i,k,1)               &
                     * qc(i,k)*denfac(i,k),qc(i,k)/dtcld)
        endif
 !---------------------------------------------------------------
@@ -893,10 +893,10 @@
          prevp(i,k) = (rh(i,k,1)-1.)*(precr1*rslope2(i,k,1)                 &
                     + precr2*work2(i,k)*coeres)/work1(i,k,1)
          if(prevp(i,k).lt.0.) then
-           prevp(i,k) = max(prevp(i,k),-qr(i,k)/dtcld)
-           prevp(i,k) = max(prevp(i,k),satdt/2)
+           prevp(i,k) = rp_max(prevp(i,k),-qr(i,k)/dtcld)
+           prevp(i,k) = rp_max(prevp(i,k),satdt/2)
          else
-           prevp(i,k) = min(prevp(i,k),satdt/2)
+           prevp(i,k) = rp_min(prevp(i,k),satdt/2)
          endif
        endif
      enddo
@@ -918,8 +918,8 @@
    do k = kts, kte
      do i = its, ite
        supcol = t0c-t(i,k)
-       n0sfac(i,k) = max(min(rp_exp(alpha*supcol),n0smax/n0s),1.)
-       supsat = max(q(i,k),qmin)-qsat(i,k,2)
+       n0sfac(i,k) = rp_max(rp_min(rp_exp(alpha*supcol),n0smax/n0s),1.)
+       supsat = rp_max(q(i,k),qmin)-qsat(i,k,2)
        satdt = supsat/dtcld
        ifsat = 0
 !-------------------------------------------------------------
@@ -927,18 +927,18 @@
 !-------------------------------------------------------------
 !      xni(i,k) = min(max(5.38e7*(den(i,k)                                  &
 !               * max(qi(i,k),qmin))**0.75,1.e3),1.e6)
-       temp = (den(i,k)*max(qi(i,k),qmin))
+       temp = (den(i,k)*rp_max(qi(i,k),qmin))
        temp = sqrt(sqrt(temp*temp*temp))
-       xni(i,k) = min(max(5.38e7*temp,1.e3),1.e6)
+       xni(i,k) = rp_min(rp_max(5.38e7*temp,1.e3),1.e6)
        eacrs = rp_exp(0.07*(-supcol))
 !
        xmi = den(i,k)*qi(i,k)/xni(i,k)
-       diameter  = min(dicon * sqrt(xmi),dimax)
+       diameter  = rp_min(dicon * sqrt(xmi),dimax)
        vt2i = 1.49e4*rp_pow(diameter, 1.31)
        vt2r=pvtr*rslopeb(i,k,1)*denfac(i,k)
        vt2s=pvts*rslopeb(i,k,2)*denfac(i,k)
        vt2g=pvtg*rslopeb(i,k,3)*denfac(i,k)
-       qsum(i,k) = max( (qs(i,k)+qg(i,k)), 1.E-15)
+       qsum(i,k) = rp_max( (qs(i,k)+qg(i,k)), 1.E-15)
        if(qsum(i,k) .gt. 1.e-15) then
          vt2ave=(vt2s*qs(i,k)+vt2g*qg(i,k))/(qsum(i,k))
        else
@@ -954,8 +954,8 @@
                   + diameter**2*rslope(i,k,1)
            praci(i,k) = pi*qi(i,k)*n0r*abs(vt2r-vt2i)*acrfac/4.
 ! reduce collection efficiency (suggested by B. Wilt)
-           praci(i,k) = praci(i,k)*min(max(0.0,qr(i,k)/qi(i,k)),1.)**2
-           praci(i,k) = min(praci(i,k),qi(i,k)/dtcld)
+           praci(i,k) = praci(i,k)*rp_min(rp_max(0.0,qr(i,k)/qi(i,k)),1.)**2
+           praci(i,k) = rp_min(praci(i,k),qi(i,k)/dtcld)
 !-------------------------------------------------------------
 ! piacr: accretion of rain by cloud ice [HL A19] [LFO 26]
 !        (T<T0: R->S or R->G)
@@ -964,8 +964,8 @@
                       * g6pbr*rslope3(i,k,1)*rslope3(i,k,1)                 &
                       * rslopeb(i,k,1)/24./den(i,k)
 ! reduce collection efficiency (suggested by B. Wilt)
-           piacr(i,k) = piacr(i,k)*min(max(0.0,qi(i,k)/qr(i,k)),1.)**2
-           piacr(i,k) = min(piacr(i,k),qr(i,k)/dtcld)
+           piacr(i,k) = piacr(i,k)*rp_min(rp_max(0.0,qi(i,k)/qr(i,k)),1.)**2
+           piacr(i,k) = rp_min(piacr(i,k),qr(i,k)/dtcld)
          endif
 !-------------------------------------------------------------
 ! psaci: accretion of cloud ice by snow [HDC 10]
@@ -976,7 +976,7 @@
                   + diameter**2*rslope(i,k,2)
            psaci(i,k) = pi*qi(i,k)*eacrs*n0s*n0sfac(i,k)                    &
                       * abs(vt2ave-vt2i)*acrfac/4.
-           psaci(i,k) = min(psaci(i,k),qi(i,k)/dtcld)
+           psaci(i,k) = rp_min(psaci(i,k),qi(i,k)/dtcld)
          endif
 !-------------------------------------------------------------
 ! pgaci: accretion of cloud ice by graupel [HL A17] [LFO 41]
@@ -987,7 +987,7 @@
            acrfac = 2.*rslope3(i,k,3)+2.*diameter*rslope2(i,k,3)            &
                   + diameter**2*rslope(i,k,3)
            pgaci(i,k) = pi*egi*qi(i,k)*n0g*abs(vt2ave-vt2i)*acrfac/4.
-           pgaci(i,k) = min(pgaci(i,k),qi(i,k)/dtcld)
+           pgaci(i,k) = rp_min(pgaci(i,k),qi(i,k)/dtcld)
          endif
        endif
 !-------------------------------------------------------------
@@ -995,9 +995,9 @@
 !        (T<T0: C->S, and T>=T0: C->R)
 !-------------------------------------------------------------
        if(qs(i,k).gt.qcrmin.and.qc(i,k).gt.qmin) then
-         psacw(i,k) = min(pacrc*n0sfac(i,k)*rslope3(i,k,2)*rslopeb(i,k,2)   &
+         psacw(i,k) = rp_min(pacrc*n0sfac(i,k)*rslope3(i,k,2)*rslopeb(i,k,2)   &
 ! reduce collection efficiency (suggested by B. Wilt)
-                    * min(max(0.0,qs(i,k)/qc(i,k)),1.)**2                   &
+                    * rp_min(rp_max(0.0,qs(i,k)/qc(i,k)),1.)**2                   &
                     * qc(i,k)*denfac(i,k),qc(i,k)/dtcld)
        endif
 !-------------------------------------------------------------
@@ -1005,9 +1005,9 @@
 !        (T<T0: C->G, and T>=T0: C->R)
 !-------------------------------------------------------------
        if(qg(i,k).gt.qcrmin.and.qc(i,k).gt.qmin) then
-         pgacw(i,k) = min(pacrg*rslope3(i,k,3)*rslopeb(i,k,3)               &
+         pgacw(i,k) = rp_min(pacrg*rslope3(i,k,3)*rslopeb(i,k,3)               &
 ! reduce collection efficiency (suggested by B. Wilt)
-                    * min(max(0.0,qg(i,k)/qc(i,k)),1.)**2                   &
+                    * rp_min(rp_max(0.0,qg(i,k)/qc(i,k)),1.)**2                   &
                     * qc(i,k)*denfac(i,k),qc(i,k)/dtcld)
        endif
 !-------------------------------------------------------------
@@ -1030,8 +1030,8 @@
            pracs(i,k) = pi**2*n0r*n0s*n0sfac(i,k)*abs(vt2r-vt2ave)          &
                       * (dens/den(i,k))*acrfac
 ! reduce collection efficiency (suggested by B. Wilt)
-           pracs(i,k) = pracs(i,k)*min(max(0.0,qr(i,k)/qs(i,k)),1.)**2
-           pracs(i,k) = min(pracs(i,k),qs(i,k)/dtcld)
+           pracs(i,k) = pracs(i,k)*rp_min(rp_max(0.0,qr(i,k)/qs(i,k)),1.)**2
+           pracs(i,k) = rp_min(pracs(i,k),qs(i,k)/dtcld)
          endif
 !-------------------------------------------------------------
 ! psacr: accretion of rain by snow [HL A10] [LFO 28]
@@ -1043,8 +1043,8 @@
          psacr(i,k) = pi**2*n0r*n0s*n0sfac(i,k)*abs(vt2ave-vt2r)            &
                     * (denr/den(i,k))*acrfac
 ! reduce collection efficiency (suggested by B. Wilt)
-         psacr(i,k) = psacr(i,k)*min(max(0.0,qs(i,k)/qr(i,k)),1.)**2
-         psacr(i,k) = min(psacr(i,k),qr(i,k)/dtcld)
+         psacr(i,k) = psacr(i,k)*rp_min(rp_max(0.0,qs(i,k)/qr(i,k)),1.)**2
+         psacr(i,k) = rp_min(psacr(i,k),qr(i,k)/dtcld)
        endif
 !-------------------------------------------------------------
 ! pgacr: accretion of rain by graupel [HL A12] [LFO 42]
@@ -1057,8 +1057,8 @@
          pgacr(i,k) = pi**2*n0r*n0g*abs(vt2ave-vt2r)*(denr/den(i,k))        &
                     * acrfac
 ! reduce collection efficiency (suggested by B. Wilt)
-         pgacr(i,k) = pgacr(i,k)*min(max(0.0,qg(i,k)/qr(i,k)),1.)**2
-         pgacr(i,k) = min(pgacr(i,k),qr(i,k)/dtcld)
+         pgacr(i,k) = pgacr(i,k)*rp_min(rp_max(0.0,qg(i,k)/qr(i,k)),1.)**2
+         pgacr(i,k) = rp_min(pgacr(i,k),qr(i,k)/dtcld)
        endif
 !
 !-------------------------------------------------------------
@@ -1076,14 +1076,14 @@
 !        (T>=T0: S->R)
 !-------------------------------------------------------------
          if(qs(i,k).gt.0.)                                                  &
-           pseml(i,k) = min(max(cliq*supcol*(paacw(i,k)+psacr(i,k))         &
+           pseml(i,k) = rp_min(rp_max(cliq*supcol*(paacw(i,k)+psacr(i,k))         &
                       / xlf,-qs(i,k)/dtcld),0.)
 !-------------------------------------------------------------
 ! pgeml: enhanced melting of graupel by accretion of water [HL A24] [RH84 A21-A22]
 !        (T>=T0: G->R)
 !-------------------------------------------------------------
          if(qg(i,k).gt.0.)                                                  &
-           pgeml(i,k) = min(max(cliq*supcol*(paacw(i,k)+pgacr(i,k))         &
+           pgeml(i,k) = rp_min(rp_max(cliq*supcol*(paacw(i,k)+pgacr(i,k))         &
                       / xlf,-qg(i,k)/dtcld),0.)
        endif
        if(supcol.gt.0) then
@@ -1095,10 +1095,10 @@
            pidep(i,k) = 4.*diameter*xni(i,k)*(rh(i,k,2)-1.)/work1(i,k,2)
            supice = satdt-prevp(i,k)
            if(pidep(i,k).lt.0.) then
-             pidep(i,k) = max(max(pidep(i,k),satdt/2),supice)
-             pidep(i,k) = max(pidep(i,k),-qi(i,k)/dtcld)
+             pidep(i,k) = rp_max(rp_max(pidep(i,k),satdt/2),supice)
+             pidep(i,k) = rp_max(pidep(i,k),-qi(i,k)/dtcld)
            else
-             pidep(i,k) = min(min(pidep(i,k),satdt/2),supice)
+             pidep(i,k) = rp_min(rp_min(pidep(i,k),satdt/2),supice)
            endif
            if(abs(prevp(i,k)+pidep(i,k)).ge.abs(satdt)) ifsat = 1
          endif
@@ -1112,10 +1112,10 @@
                       + precs2*work2(i,k)*coeres)/work1(i,k,2)
            supice = satdt-prevp(i,k)-pidep(i,k)
            if(psdep(i,k).lt.0.) then
-             psdep(i,k) = max(psdep(i,k),-qs(i,k)/dtcld)
-             psdep(i,k) = max(max(psdep(i,k),satdt/2),supice)
+             psdep(i,k) = rp_max(psdep(i,k),-qs(i,k)/dtcld)
+             psdep(i,k) = rp_max(rp_max(psdep(i,k),satdt/2),supice)
            else
-             psdep(i,k) = min(min(psdep(i,k),satdt/2),supice)
+             psdep(i,k) = rp_min(rp_min(psdep(i,k),satdt/2),supice)
            endif
            if(abs(prevp(i,k)+pidep(i,k)+psdep(i,k)).ge.abs(satdt))          &
              ifsat = 1
@@ -1130,10 +1130,10 @@
                       + precg2*work2(i,k)*coeres)/work1(i,k,2)
            supice = satdt-prevp(i,k)-pidep(i,k)-psdep(i,k)
            if(pgdep(i,k).lt.0.) then
-             pgdep(i,k) = max(pgdep(i,k),-qg(i,k)/dtcld)
-             pgdep(i,k) = max(max(pgdep(i,k),satdt/2),supice)
+             pgdep(i,k) = rp_max(pgdep(i,k),-qg(i,k)/dtcld)
+             pgdep(i,k) = rp_max(rp_max(pgdep(i,k),satdt/2),supice)
            else
-             pgdep(i,k) = min(min(pgdep(i,k),satdt/2),supice)
+             pgdep(i,k) = rp_min(rp_min(pgdep(i,k),satdt/2),supice)
            endif
            if(abs(prevp(i,k)+pidep(i,k)+psdep(i,k)+pgdep(i,k)).ge.          &
              abs(satdt)) ifsat = 1
@@ -1146,8 +1146,8 @@
            supice = satdt-prevp(i,k)-pidep(i,k)-psdep(i,k)-pgdep(i,k)
            xni0 = 1.e3*rp_exp(0.1*supcol)
            roqi0 = 4.92e-11*rp_pow(xni0, 1.33)
-           pigen(i,k) = max(0.,(roqi0/den(i,k)-max(qi(i,k),0.))/dtcld)
-           pigen(i,k) = min(min(pigen(i,k),satdt),supice)
+           pigen(i,k) = rp_max(0.,(roqi0/den(i,k)-rp_max(qi(i,k),0.))/dtcld)
+           pigen(i,k) = rp_min(rp_min(pigen(i,k),satdt),supice)
          endif
 !
 !-------------------------------------------------------------
@@ -1156,7 +1156,7 @@
 !-------------------------------------------------------------
          if(qi(i,k).gt.0.) then
            qimax = roqimax/den(i,k)
-           psaut(i,k) = max(0.,(qi(i,k)-qimax)/dtcld)
+           psaut(i,k) = rp_max(0.,(qi(i,k)-qimax)/dtcld)
          endif
 !
 !-------------------------------------------------------------
@@ -1165,7 +1165,7 @@
 !-------------------------------------------------------------
          if(qs(i,k).gt.0.) then
            alpha2 = 1.e-3*rp_exp(0.09*(-supcol))
-           pgaut(i,k) = min(max(0.,alpha2*(qs(i,k)-qs0)),qs(i,k)/dtcld)
+           pgaut(i,k) = rp_min(rp_max(0.,alpha2*(qs(i,k)-qs0)),qs(i,k)/dtcld)
          endif
        endif
 !
@@ -1179,7 +1179,7 @@
            psevp(i,k) = (rh(i,k,1)-1.)*n0sfac(i,k)*(precs1                  &
                       * rslope2(i,k,2)+precs2*work2(i,k)                    &
                       * coeres)/work1(i,k,1)
-           psevp(i,k) = min(max(psevp(i,k),-qs(i,k)/dtcld),0.)
+           psevp(i,k) = rp_min(rp_max(psevp(i,k),-qs(i,k)/dtcld),0.)
          endif
 !-------------------------------------------------------------
 ! pgevp: evaporation of melting graupel [HL A25] [RH84 A19]
@@ -1189,7 +1189,7 @@
            coeres = rslope2(i,k,3)*sqrt(rslope(i,k,3)*rslopeb(i,k,3))
            pgevp(i,k) = (rh(i,k,1)-1.)*(precg1*rslope2(i,k,3)               &
                       + precg2*work2(i,k)*coeres)/work1(i,k,1)
-           pgevp(i,k) = min(max(pgevp(i,k),-qg(i,k)/dtcld),0.)
+           pgevp(i,k) = rp_min(rp_max(pgevp(i,k),-qg(i,k)/dtcld),0.)
          endif
        endif
      enddo
@@ -1211,7 +1211,7 @@
 !
 ! cloud water
 !
-         value = max(qmin,qc(i,k))
+         value = rp_max(qmin,qc(i,k))
          source = (praut(i,k)+pracw(i,k)+paacw(i,k)+paacw(i,k))*dtcld
          if (source.gt.value) then
            factor = value/source
@@ -1222,7 +1222,7 @@
 !
 ! cloud ice
 !
-         value = max(qmin,qi(i,k))
+         value = rp_max(qmin,qi(i,k))
          source = (psaut(i,k)-pigen(i,k)-pidep(i,k)+praci(i,k)+psaci(i,k)   &
                 + pgaci(i,k))*dtcld
          if (source.gt.value) then
@@ -1237,7 +1237,7 @@
 !
 ! rain
 !
-         value = max(qmin,qr(i,k))
+         value = rp_max(qmin,qr(i,k))
          source = (-praut(i,k)-prevp(i,k)-pracw(i,k)+piacr(i,k)+psacr(i,k)  &
                 + pgacr(i,k))*dtcld
          if (source.gt.value) then
@@ -1252,7 +1252,7 @@
 !
 ! snow
 !
-         value = max(qmin,qs(i,k))
+         value = rp_max(qmin,qs(i,k))
          source = -(psdep(i,k)+psaut(i,k)-pgaut(i,k)+paacw(i,k)+piacr(i,k)  &
                 * delta3+praci(i,k)*delta3-pracs(i,k)*(1.-delta2)           &
                 + psacr(i,k)*delta2+psaci(i,k)-pgacs(i,k) )*dtcld
@@ -1272,7 +1272,7 @@
 !
 ! graupel
 !
-         value = max(qmin,qg(i,k))
+         value = rp_max(qmin,qg(i,k))
          source = -(pgdep(i,k)+pgaut(i,k)                                   &
                 + piacr(i,k)*(1.-delta3)+praci(i,k)*(1.-delta3)             &
                 + psacr(i,k)*(1.-delta2)+pracs(i,k)*(1.-delta2)             &
@@ -1294,20 +1294,20 @@
          work2(i,k)=-(prevp(i,k)+psdep(i,k)+pgdep(i,k)+pigen(i,k)+pidep(i,k))
 ! update
          q(i,k) = q(i,k)+work2(i,k)*dtcld
-         qc(i,k) = max(qc(i,k)-(praut(i,k)+pracw(i,k)                       &
+         qc(i,k) = rp_max(qc(i,k)-(praut(i,k)+pracw(i,k)                       &
                  + paacw(i,k)+paacw(i,k))*dtcld,0.)
-         qr(i,k) = max(qr(i,k)+(praut(i,k)+pracw(i,k)                       &
+         qr(i,k) = rp_max(qr(i,k)+(praut(i,k)+pracw(i,k)                       &
                  + prevp(i,k)-piacr(i,k)-pgacr(i,k)                         &
                  - psacr(i,k))*dtcld,0.)
-         qi(i,k) = max(qi(i,k)-(psaut(i,k)+praci(i,k)                       &
+         qi(i,k) = rp_max(qi(i,k)-(psaut(i,k)+praci(i,k)                       &
                  + psaci(i,k)+pgaci(i,k)-pigen(i,k)-pidep(i,k))             &
                  * dtcld,0.)
-         qs(i,k) = max(qs(i,k)+(psdep(i,k)+psaut(i,k)+paacw(i,k)            &
+         qs(i,k) = rp_max(qs(i,k)+(psdep(i,k)+psaut(i,k)+paacw(i,k)            &
                  - pgaut(i,k)+piacr(i,k)*delta3                             &
                  + praci(i,k)*delta3+psaci(i,k)-pgacs(i,k)                  &
                  - pracs(i,k)*(1.-delta2)+psacr(i,k)*delta2)                &
                  * dtcld,0.)
-         qg(i,k) = max(qg(i,k)+(pgdep(i,k)+pgaut(i,k)                       &
+         qg(i,k) = rp_max(qg(i,k)+(pgdep(i,k)+pgaut(i,k)                       &
                  + piacr(i,k)*(1.-delta3)                                   &
                  + praci(i,k)*(1.-delta3)+psacr(i,k)*(1.-delta2)            &
                  + pracs(i,k)*(1.-delta2)+pgaci(i,k)+paacw(i,k)             &
@@ -1321,7 +1321,7 @@
 !
 ! cloud water
 !
-         value = max(qmin,qc(i,k))
+         value = rp_max(qmin,qc(i,k))
          source=(praut(i,k)+pracw(i,k)+paacw(i,k)+paacw(i,k))*dtcld
          if (source.gt.value) then
            factor = value/source
@@ -1332,7 +1332,7 @@
 !
 ! rain
 !
-         value = max(qmin,qr(i,k))
+         value = rp_max(qmin,qr(i,k))
          source = (-paacw(i,k)-praut(i,k)+pseml(i,k)+pgeml(i,k)-pracw(i,k)  &
                    -paacw(i,k)-prevp(i,k))*dtcld
          if (source.gt.value) then
@@ -1347,7 +1347,7 @@
 !
 ! snow
 !
-         value = max(qcrmin,qs(i,k))
+         value = rp_max(qcrmin,qs(i,k))
          source=(pgacs(i,k)-pseml(i,k)-psevp(i,k))*dtcld
          if (source.gt.value) then
            factor = value/source
@@ -1358,7 +1358,7 @@
 !
 ! graupel
 !
-         value = max(qcrmin,qg(i,k))
+         value = rp_max(qcrmin,qg(i,k))
          source=-(pgacs(i,k)+pgevp(i,k)+pgeml(i,k))*dtcld
          if (source.gt.value) then
            factor = value/source
@@ -1370,14 +1370,14 @@
          work2(i,k)=-(prevp(i,k)+psevp(i,k)+pgevp(i,k))
 ! update
          q(i,k) = q(i,k)+work2(i,k)*dtcld
-         qc(i,k) = max(qc(i,k)-(praut(i,k)+pracw(i,k)                       &
+         qc(i,k) = rp_max(qc(i,k)-(praut(i,k)+pracw(i,k)                       &
                  + paacw(i,k)+paacw(i,k))*dtcld,0.)
-         qr(i,k) = max(qr(i,k)+(praut(i,k)+pracw(i,k)                       &
+         qr(i,k) = rp_max(qr(i,k)+(praut(i,k)+pracw(i,k)                       &
                  + prevp(i,k)+paacw(i,k)+paacw(i,k)-pseml(i,k)              &
                - pgeml(i,k))*dtcld,0.)
-         qs(i,k) = max(qs(i,k)+(psevp(i,k)-pgacs(i,k)                       &
+         qs(i,k) = rp_max(qs(i,k)+(psevp(i,k)-pgacs(i,k)                       &
                  + pseml(i,k))*dtcld,0.)
-         qg(i,k) = max(qg(i,k)+(pgacs(i,k)+pgevp(i,k)                       &
+         qg(i,k) = rp_max(qg(i,k)+(pgacs(i,k)+pgevp(i,k)                       &
                  + pgeml(i,k))*dtcld,0.)
          xlf = xls-xl(i,k)
          xlwork2 = -xl(i,k)*(prevp(i,k)+psevp(i,k)+pgevp(i,k))              &
@@ -1404,18 +1404,18 @@
      do i = its, ite
        tr=ttp/t(i,k)
        qsat(i,k,1)=psat*rp_exp(rp_log(tr)*(xa))*rp_exp(xb*(1.-tr))
-       qsat(i,k,1) = min(qsat(i,k,1),0.99*p(i,k))
+       qsat(i,k,1) = rp_min(qsat(i,k,1),0.99*p(i,k))
        qsat(i,k,1) = ep2 * qsat(i,k,1) / (p(i,k) - qsat(i,k,1))
-       qsat(i,k,1) = max(qsat(i,k,1),qmin)
+       qsat(i,k,1) = rp_max(qsat(i,k,1),qmin)
        tr=ttp/t(i,k)
        if(t(i,k).lt.ttp) then
          qsat(i,k,2)=psat*rp_exp(rp_log(tr)*(xai))*rp_exp(xbi*(1.-tr))
        else
          qsat(i,k,2)=psat*rp_exp(rp_log(tr)*(xa))*rp_exp(xb*(1.-tr))
        endif
-       qsat(i,k,2) = min(qsat(i,k,2),0.99*p(i,k))
+       qsat(i,k,2) = rp_min(qsat(i,k,2),0.99*p(i,k))
        qsat(i,k,2) = ep2 * qsat(i,k,2) / (p(i,k) - qsat(i,k,2))
-       qsat(i,k,2) = max(qsat(i,k,2),qmin)
+       qsat(i,k,2) = rp_max(qsat(i,k,2),qmin)
      enddo
    enddo
 !
@@ -1428,11 +1428,11 @@
      do i = its, ite
        work1(i,k,1) = conden(t(i,k),q(i,k),qsat(i,k,1),xl(i,k),cpm(i,k))
        work2(i,k) = qc(i,k)+work1(i,k,1)
-       pcond(i,k) = min(max(work1(i,k,1)/dtcld,0.),max(q(i,k),0.)/dtcld)
+       pcond(i,k) = rp_min(rp_max(work1(i,k,1)/dtcld,0.),rp_max(q(i,k),0.)/dtcld)
        if(qc(i,k).gt.0..and.work1(i,k,1).lt.0.)                          &
-         pcond(i,k) = max(work1(i,k,1),-qc(i,k))/dtcld
+         pcond(i,k) = rp_max(work1(i,k,1),-qc(i,k))/dtcld
          q(i,k) = q(i,k)-pcond(i,k)*dtcld
-         qc(i,k) = max(qc(i,k)+pcond(i,k)*dtcld,0.)
+         qc(i,k) = rp_max(qc(i,k)+pcond(i,k)*dtcld,0.)
          t(i,k) = t(i,k)+pcond(i,k)*xl(i,k)/cpm(i,k)*dtcld
      enddo
    enddo
@@ -1557,7 +1557,7 @@
 !---------------------------------------------------------------
 ! n0s: Intercept parameter for snow [m-4] [HDC 6]
 !---------------------------------------------------------------
-     n0sfac(i,k) = max(min(rp_exp(alpha*supcol),n0smax/n0s),1.)
+     n0sfac(i,k) = rp_max(rp_min(rp_exp(alpha*supcol),n0smax/n0s),1.)
      if(qrs(i,k,1).le.qcrmin)then
        rslope(i,k,1) = rslopermax
        rslopeb(i,k,1) = rsloperbmax
@@ -1680,7 +1680,7 @@
 !---------------------------------------------------------------
 ! n0s: Intercept parameter for snow [m-4] [HDC 6]
 !---------------------------------------------------------------
-     n0sfac(i,k) = max(min(rp_exp(alpha*supcol),n0smax/n0s),1.)
+     n0sfac(i,k) = rp_max(rp_min(rp_exp(alpha*supcol),n0smax/n0s),1.)
      if(qrs(i,k).le.qcrmin)then
        rslope(i,k) = rslopesmax
        rslopeb(i,k) = rslopesbmax
@@ -1916,8 +1916,8 @@
     kb=1
     kt=1
     intp : do k=1,km
-       kb=max(kb-1,1)
-       kt=max(kt-1,1)
+       kb=rp_max(kb-1,1)
+       kt=rp_max(kt-1,1)
 ! find kb and kt
        if( zi(k).ge.za(km+1) ) then
           exit intp
@@ -2132,7 +2132,7 @@
        call slope_snow(qr,den,denfac,tk,tmp,tmp1,tmp2,tmp3,wa,1,1,1,km)
        call slope_graup(qr2,den,denfac,tk,tmp,tmp1,tmp2,tmp3,wa2,1,1,1,km)
        do k = 1, km
-          tmp(k) = max((qr(k)+qr2(k)), 1.E-15)
+          tmp(k) = rp_max((qr(k)+qr2(k)), 1.E-15)
           if( tmp(k) .gt. 1.e-15 ) then
              wa(k) = (wa(k)*qr(k) + wa2(k)*qr2(k))/tmp(k)
           else
@@ -2186,8 +2186,8 @@
        kb=1
        kt=1
        intp : do k=1,km
-          kb=max(kb-1,1)
-          kt=max(kt-1,1)
+          kb=rp_max(kb-1,1)
+          kt=rp_max(kt-1,1)
 ! find kb and kt
           if( zi(k).ge.za(km+1) ) then
              exit intp
@@ -2311,8 +2311,8 @@
 !+---+-----------------------------------------------------------------+
  do k = kts, kte
     temp(k) = t1d(k)
-    temp_c = min(-0.001, temp(k)-273.15)
-    qv(k) = max(1.e-10, qv1d(k))
+    temp_c = rp_min(-0.001, temp(k)-273.15)
+    qv(k) = rp_max(1.e-10, qv1d(k))
     pres(k) = p1d(k)
     rho(k) = 0.622*pres(k)/(R*temp(k)*(qv(k)+0.622))
 
@@ -2329,7 +2329,7 @@
 
     if (qs1d(k) .gt. 1.e-9) then
        rs(k) = qs1d(k)*rho(k)
-       n0_s(k) = min(n0smax, n0s*rp_exp(-alpha*temp_c))
+       n0_s(k) = rp_min(n0smax, n0s*rp_exp(-alpha*temp_c))
        lams = rp_pow((xam_s*xcsg(3)*n0_s(k)/rs(k)), (1./xcse(1)))
        ilams(k) = 1./lams
        l_qs(k) = .true.
@@ -2358,7 +2358,7 @@
       do k = kte-1, kts, -1
          if ( (temp(k).gt.273.15) .and. L_qr(k)                         &
                                   .and. (L_qs(k+1).or.L_qg(k+1)) ) then
-            k_0 = MAX(k+1, k_0)
+            k_0 = rp_max(k+1, k_0)
             melti=.true.
             goto 195
          endif
@@ -2398,7 +2398,7 @@
 
 !..Reflectivity contributed by melting snow
        if (L_qs(k) .and. L_qs(k_0) ) then
-          fmelt_s = MAX(0.005d0, MIN(1.0d0-rs(k)/rs(k_0), 0.99d0))
+          fmelt_s = rp_max(0.005d0, rp_min(1.0d0-rs(k)/rs(k_0), 0.99d0))
           eta = 0.d0
           lams = 1./ilams(k)
           do n = 1, nrbins
@@ -2418,7 +2418,7 @@
 !..Reflectivity contributed by melting graupel
 
        if (l_qg(k) .and. l_qg(k_0) ) then
-          fmelt_g = max(0.005d0, min(1.0d0-rg(k)/rg(k_0), 0.99d0))
+          fmelt_g = rp_max(0.005d0, rp_min(1.0d0-rg(k)/rg(k_0), 0.99d0))
           eta = 0.d0
           lamg = 1./ilamg(k)
           do n = 1, nrbins

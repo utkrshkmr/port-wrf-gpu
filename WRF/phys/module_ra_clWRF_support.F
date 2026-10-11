@@ -340,7 +340,7 @@ CONTAINS
           ENDIF
        ENDIF
        
-       yr_loc = min(yr_loc-1, yr2-1)
+       yr_loc = rp_min(yr_loc-1, yr2-1)
        IF (gas(yr_loc) < 0.) THEN
           
           ! Find the closest valid year, lower than yr1
@@ -378,8 +378,8 @@ CONTAINS
     ! Add support for leap-years
 
     ! Find smallest and largest year: yearf >= yeari since the file is ordered with increasing dates.
-    minyear = MIN(yr,yeari)
-    maxyear = MAX(yr,yearf)
+    minyear = rp_min(yr,yeari)
+    maxyear = rp_max(yr,yearf)
 
     ! Initialise with the day in the year for each date.
     fact2 = juli

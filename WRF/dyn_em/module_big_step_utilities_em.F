@@ -57,7 +57,7 @@ SUBROUTINE calc_mu_uv ( config_flags,                 &
 
 
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       IF      ( ( its .NE. ids ) .AND. ( ite .NE. ide ) ) THEN
          DO j=jts,jtf
@@ -117,7 +117,7 @@ SUBROUTINE calc_mu_uv ( config_flags,                 &
          ENDDO
       END IF
 
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       IF      ( ( jts .NE. jds ) .AND. ( jte .NE. jde ) ) THEN
@@ -214,7 +214,7 @@ SUBROUTINE calc_mu_uv_1 ( config_flags,                 &
 !</DESCRIPTION>
    
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       IF      ( ( its .NE. ids ) .AND. ( ite .NE. ide ) ) THEN
          DO j=jts,jtf
@@ -266,7 +266,7 @@ SUBROUTINE calc_mu_uv_1 ( config_flags,                 &
          ENDDO
       END IF
 
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       IF      ( ( jts .NE. jds ) .AND. ( jte .NE. jde ) ) THEN
@@ -362,10 +362,10 @@ SUBROUTINE couple_momentum ( muu, ru, u, msfu,              &
 !
 !</DESCRIPTION>
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       DO j=jts,jtf
       DO k=kts,ktf
@@ -375,7 +375,7 @@ SUBROUTINE couple_momentum ( muu, ru, u, msfu,              &
       ENDDO
       ENDDO
 
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       DO j=jts,jtf
@@ -386,8 +386,8 @@ SUBROUTINE couple_momentum ( muu, ru, u, msfu,              &
       ENDDO
       ENDDO
 
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
 
       DO j=jts,jtf
       DO k=kts,kte
@@ -429,7 +429,7 @@ SUBROUTINE calc_mu_staggered ( mu, mub, muu, muv,            &
 !</DESCRIPTION>
    
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       IF      ( ( its .NE. ids ) .AND. ( ite .NE. ide ) ) THEN
          DO j=jts,jtf
@@ -473,7 +473,7 @@ SUBROUTINE calc_mu_staggered ( mu, mub, muu, muv,            &
          ENDDO
       END IF
 
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       IF      ( ( jts .NE. jds ) .AND. ( jte .NE. jde ) ) THEN
@@ -559,7 +559,7 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
 !</DESCRIPTION>
 
    
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
    IF (name .EQ. 'u')THEN
 
@@ -569,7 +569,7 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
                                   its, ite, jts, jte, kts, kte )
 
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       DO j=jts,jtf
       DO k=kts,ktf
@@ -587,7 +587,7 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
                                its, ite, jts, jte, kts, kte )
 
       itf=ite
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       DO j=jts,jtf
@@ -599,8 +599,8 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
       ENDDO
 
    ELSE IF (name .EQ. 'w')THEN
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
       DO j=jts,jtf
       DO k=kts,kte
       DO i=its,itf
@@ -610,8 +610,8 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
       ENDDO
 
    ELSE IF (name .EQ. 'h')THEN
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
       DO j=jts,jtf
       DO k=kts,kte
       DO i=its,itf
@@ -621,8 +621,8 @@ SUBROUTINE couple ( mu, mub, rfield, field, name, &
       ENDDO
 
    ELSE
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
       DO j=jts,jtf
       DO k=kts,ktf
       DO i=its,itf
@@ -690,19 +690,19 @@ SUBROUTINE calc_ww_cp ( u, v, mup, mub, c1h, c2h, ww,    &
 !
 !</DESCRIPTION>
 
-    jtf=MIN(jte,jde-1)
-    ktf=MIN(kte,kde-1)  
-    itf=MIN(ite,ide-1)
+    jtf=rp_min(jte,jde-1)
+    ktf=rp_min(kte,kde-1)  
+    itf=rp_min(ite,ide-1)
 
 !  mu coupled with the appropriate map factor
 
       DO j=jts,jtf
-      DO i=its,min(ite+1,ide)
+      DO i=its,rp_min(ite+1,ide)
         MUU(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i-1,j)+MUB(i-1,j))
       ENDDO
       ENDDO
 
-      DO j=jts,min(jte+1,jde)
+      DO j=jts,rp_min(jte+1,jde)
       DO i=its,itf
         MUV(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i,j-1)+MUB(i,j-1))
       ENDDO
@@ -818,12 +818,12 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
 !
 !</DESCRIPTION>
 
-      ktf=MIN(kte,kde-1)
+      ktf=rp_min(kte,kde-1)
 
       IF(  n_moist >= PARAM_FIRST_SCALAR ) THEN
 
         itf=ite
-        jtf=MIN(jte,jde-1)
+        jtf=rp_min(jte,jde-1)
         DO j=jts,jtf
           DO k=kts,ktf
             qtot = 0.
@@ -838,7 +838,7 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
         ENDDO
         ENDDO
 
-        itf=MIN(ite,ide-1)
+        itf=rp_min(ite,ide-1)
         jtf=jte
         DO j=jts,jtf
           DO k=kts,ktf
@@ -854,8 +854,8 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
           ENDDO
         ENDDO
 
-        itf=MIN(ite,ide-1)
-        jtf=MIN(jte,jde-1)
+        itf=rp_min(ite,ide-1)
+        jtf=rp_min(jte,jde-1)
         DO j=jts,jtf
           DO k=kts+1,ktf
             qtot = 0.
@@ -873,7 +873,7 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
       ELSE
 
         itf=ite
-        jtf=MIN(jte,jde-1)
+        jtf=rp_min(jte,jde-1)
         DO j=jts,jtf
         DO k=kts,ktf
         DO i=its,itf
@@ -882,7 +882,7 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
         ENDDO
         ENDDO
 
-        itf=MIN(ite,ide-1)
+        itf=rp_min(ite,ide-1)
         jtf=jte
         DO j=jts,jtf
         DO k=kts,ktf
@@ -892,8 +892,8 @@ SUBROUTINE calc_cq ( moist, cqu, cqv, cqw, n_moist, &
         ENDDO
         ENDDO
 
-        itf=MIN(ite,ide-1)
-        jtf=MIN(jte,jde-1)
+        itf=rp_min(ite,ide-1)
+        jtf=rp_min(jte,jde-1)
         DO j=jts,jtf
         DO k=kts+1,ktf
         DO i=its,itf
@@ -934,9 +934,9 @@ SUBROUTINE calc_alt ( alt, al, alb,                  &
 !
 !</DESCRIPTION>
 
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
-      ktf=MIN(kte,kde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
+      ktf=rp_min(kte,kde-1)
 
       DO j=jts,jtf
       DO k=kts,ktf
@@ -1013,9 +1013,9 @@ SUBROUTINE calc_p_rho_phi ( moist, n_moist, hypsometric_opt,      &
 !
 !</DESCRIPTION>
 
-  itf=MIN(ite,ide-1)
-  jtf=MIN(jte,jde-1)
-  ktf=MIN(kte,kde-1)
+  itf=rp_min(ite,ide-1)
+  jtf=rp_min(jte,jde-1)
+  ktf=rp_min(kte,kde-1)
 
 #ifndef INTELMKL
   cpovcv_v = cpovcv
@@ -1252,9 +1252,9 @@ SUBROUTINE calc_php ( php, ph, phb,                  &
 !
 !</DESCRIPTION>
 
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
-      ktf=MIN(kte,kde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
+      ktf=rp_min(kte,kde-1)
 
       DO j=jts,jtf
       DO k=kts,ktf
@@ -1300,8 +1300,8 @@ SUBROUTINE diagnose_w( ph_tend, ph_new, ph_old, w, mut,     &
 
    INTEGER :: i, j, k, itf, jtf
 
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
 !<DESCRIPTION>
 !
@@ -1435,9 +1435,9 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    advective_order = config_flags%h_sca_adv_order
 
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
-   ktf=MIN(kte,kde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
+   ktf=rp_min(kte,kde-1)
 
 !  Notes on map scale factors (WCS, 2 march 2008)
 !  phi equation is:   mu/my d/dt(phi) = -(1/my) mx mu u  d/dx(phi)
@@ -1522,8 +1522,8 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    IF ( (config_flags%open_ys .or. specified) .and. jts == jds ) j_start = jts+1
    IF ( (config_flags%open_ye .or. specified) .and. jte == jde ) jtf = jte-2
@@ -1555,8 +1555,8 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    IF ( (config_flags%open_xs .or. specified) .and. its == ids ) i_start = its+1
    IF ( (config_flags%open_xe .or. specified) .and. ite == ide ) itf = ite-2
@@ -1590,8 +1590,8 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    IF ( (config_flags%open_ys .or. specified) .and. jts == jds ) j_start = jts+2
    IF ( (config_flags%open_ye .or. specified) .and. jte == jde ) jtf = jte-3
@@ -1680,8 +1680,8 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    IF ( (config_flags%open_xs) .and. its == ids ) i_start = its+2
    IF ( (config_flags%open_xe) .and. ite == ide ) itf = ite-3
@@ -1775,11 +1775,11 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
-   IF (config_flags%open_ys .or. specified ) j_start = max(jts,jds+3)
-   IF (config_flags%open_ye .or. specified ) jtf     = min(jtf,jde-4)
+   IF (config_flags%open_ys .or. specified ) j_start = rp_max(jts,jds+3)
+   IF (config_flags%open_ye .or. specified ) jtf     = rp_min(jtf,jde-4)
 
    DO j = j_start, jtf
 
@@ -1932,11 +1932,11 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 
    i_start = its
    j_start = jts
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
-   IF (config_flags%open_xs .or. specified ) i_start = max(its,ids+3)
-   IF (config_flags%open_xe .or. specified ) itf     = min(itf,ide-4)
+   IF (config_flags%open_xs .or. specified ) i_start = rp_max(its,ids+3)
+   IF (config_flags%open_xe .or. specified ) itf     = rp_min(itf,ide-4)
 
    DO j = j_start, jtf
 
@@ -2076,7 +2076,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
 !  start with north and south (y) boundaries
 
    i_start = its
-   itf=MIN(ite,ide-1)
+   itf=rp_min(ite,ide-1)
 
    !  south
 
@@ -2085,11 +2085,11 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
      j=jts
 
      DO k=2,kde
-       kz = min(k,kde-1)
+       kz = rp_min(k,kde-1)
        DO i = its,itf
          vb =.5*( fnm(kz)*(v(i,kz  ,j+1)+v(i,kz  ,j  ))    &
                  +fnp(kz)*(v(i,kz-1,j+1)+v(i,kz-1,j  )) )
-         vl=amin1(vb,0.)
+         vl=rp_min(vb,0.)
          ph_tend(i,k,j)=ph_tend(i,k,j)-rdy*(c1f(k)*mut(i,j)+c2f(k))*(      &
                               +vl*(ph_old(i,k,j+1)-ph_old(i,k,j)))
        ENDDO
@@ -2104,11 +2104,11 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
      j=jte-1
 
      DO k=2,kde
-       kz = min(k,kde-1)
+       kz = rp_min(k,kde-1)
        DO i = its,itf
         vb=.5*( fnm(kz)*(v(i,kz  ,j+1)+v(i,kz  ,j))   &
                +fnp(kz)*(v(i,kz-1,j+1)+v(i,kz-1,j)) )
-        vr=amax1(vb,0.)
+        vr=rp_max(vb,0.)
         ph_tend(i,k,j)=ph_tend(i,k,j)-rdy*(c1f(k)*mut(i,j)+c2f(k))*(      &
                    +vr*(ph_old(i,k,j)-ph_old(i,k,j-1)))
        ENDDO
@@ -2119,7 +2119,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
    !  now the east and west (y) boundaries
 
    j_start = its
-   jtf=MIN(jte,jde-1)
+   jtf=rp_min(jte,jde-1)
 
    !  west
 
@@ -2132,7 +2132,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
          kz = k
          ub =.5*( fnm(kz)*(u(i+1,kz  ,j)+u(i  ,kz  ,j))     &
                  +fnp(kz)*(u(i+1,kz-1,j)+u(i  ,kz-1,j)) )
-         ul=amin1(ub,0.)
+         ul=rp_min(ub,0.)
          ph_tend(i,k,j)=ph_tend(i,k,j)-(msftx(i,j)/msfty(i,j))*rdx*(c1f(k)*mut(i,j)+c2f(k))*(       &
                               +ul*(ph_old(i+1,k,j)-ph_old(i,k,j)))
        ENDDO
@@ -2141,7 +2141,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
          kz = k
          ub =.5*( fnm(kz)*(u(i+1,kz  ,j)+u(i  ,kz  ,j))     &
                  +fnp(kz)*(u(i+1,kz-1,j)+u(i  ,kz-1,j)) )
-         ul=amin1(ub,0.)
+         ul=rp_min(ub,0.)
          ph_tend(i,k,j)=ph_tend(i,k,j)-(msftx(i,j)/msfty(i,j))*rdx*(c1f(k)*mut(i,j)+c2f(k))*(       &
                               +ul*(ph_old(i+1,k,j)-ph_old(i,k,j)))
      ENDDO
@@ -2159,7 +2159,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
         kz = k
         ub=.5*( fnm(kz)*(u(i+1,kz  ,j)+u(i,kz  ,j))  &
                +fnp(kz)*(u(i+1,kz-1,j)+u(i,kz-1,j)) )
-        ur=amax1(ub,0.)
+        ur=rp_max(ub,0.)
         ph_tend(i,k,j)=ph_tend(i,k,j)-(msftx(i,j)/msfty(i,j))*rdx*(c1f(k)*mut(i,j)+c2f(k))*( &
                    +ur*(ph_old(i,k,j)-ph_old(i-1,k,j)))
        ENDDO
@@ -2168,7 +2168,7 @@ SUBROUTINE rhs_ph( ph_tend, u, v, ww,               &
         kz = k-1
         ub=.5*( fnm(kz)*(u(i+1,kz  ,j)+u(i,kz  ,j))   &
                +fnp(kz)*(u(i+1,kz-1,j)+u(i,kz-1,j)) )
-        ur=amax1(ub,0.)
+        ur=rp_max(ub,0.)
         ph_tend(i,k,j)=ph_tend(i,k,j)-(msftx(i,j)/msfty(i,j))*rdx*(c1f(k)*mut(i,j)+c2f(k))*(  &
                    +ur*(ph_old(i,k,j)-ph_old(i-1,k,j)))
 
@@ -2267,9 +2267,9 @@ SUBROUTINE horizontal_pressure_gradient( ru_tend,rv_tend,                &
 
 ! start with the north-south (y) pressure gradient
 
-   itf=MIN(ite,ide-1)
+   itf=rp_min(ite,ide-1)
    jtf=jte
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    i_start = its
    j_start = jts
    IF ( (config_flags%open_ys .or. specified .or. &
@@ -2341,8 +2341,8 @@ SUBROUTINE horizontal_pressure_gradient( ru_tend,rv_tend,                &
 !  now the east-west (x) pressure gradient
 
    itf=ite
-   jtf=MIN(jte,jde-1)
-   ktf=MIN(kte,kde-1)
+   jtf=rp_min(jte,jde-1)
+   ktf=rp_min(kte,kde-1)
    i_start = its
    j_start = jts
    IF ( (config_flags%open_xs .or. specified .or. &
@@ -2469,8 +2469,8 @@ SUBROUTINE pg_buoy_w( rw_tend, p, cqw, muf, mubf,     &
 !  For moisture-free atmosphere, cq1=1, cq2=0
 !  => (1./msft(i,j)) * g * [rdn(k)*{p(i,k,j)-p(i,k-1,j)}-(c1(k)*mu(i,j))]
 
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    DO j = jts,jtf
 
@@ -2589,8 +2589,8 @@ SUBROUTINE w_damp( rw_tend, max_vert_cfl,max_horiz_cfl, &
 !
 !</DESCRIPTION>
 
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
 
    some1 = 0
    some2 = 0
@@ -2649,7 +2649,7 @@ SUBROUTINE w_damp( rw_tend, max_vert_cfl,max_horiz_cfl, &
          ENDIF
 # else
          IF(config_flags%polar ) THEN
-            msfuxt = MIN(msfux(i,j), msfxffl)
+            msfuxt = rp_min(msfux(i,j), msfxffl)
          ELSE
             msfuxt = msfux(i,j)
          ENDIF
@@ -2660,7 +2660,7 @@ SUBROUTINE w_damp( rw_tend, max_vert_cfl,max_horiz_cfl, &
          ENDIF
 # endif
         
-         horiz_cfl = max( abs(u(i,k,j) * rdx * msfuxt     * dt),    &
+         horiz_cfl = rp_max( abs(u(i,k,j) * rdx * msfuxt     * dt),    &
                           abs(v(i,k,j) * rdy * msfvy(i,j) * dt) )
 
          IF (horiz_cfl > max_horiz_cfl) THEN
@@ -2775,19 +2775,19 @@ SUBROUTINE horizontal_diffusion ( name, field, tendency, MUT, c1, c2,  &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
    IF (name .EQ. 'u') THEN
 
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -2828,18 +2828,18 @@ SUBROUTINE horizontal_diffusion ( name, field, tendency, MUT, c1, c2,  &
    ELSE IF (name .EQ. 'v')THEN
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
       j_end   = jte
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-1,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN(ite,ide-1)
-      IF ( config_flags%polar ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%polar ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%periodic_x ) i_end = rp_min(ite,ide-1)
+      IF ( config_flags%polar ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%polar ) j_end   = rp_min(jde-1,jte)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -2868,16 +2868,16 @@ SUBROUTINE horizontal_diffusion ( name, field, tendency, MUT, c1, c2,  &
    ELSE IF (name .EQ. 'w')THEN
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN(ite,ide-1)
+      IF ( config_flags%periodic_x ) i_end = rp_min(ite,ide-1)
 
       DO j = j_start, j_end
       DO k=kts+1,ktf
@@ -2913,16 +2913,16 @@ SUBROUTINE horizontal_diffusion ( name, field, tendency, MUT, c1, c2,  &
 
 
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN(ite,ide-1)
+      IF ( config_flags%periodic_x ) i_end = rp_min(ite,ide-1)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -3017,19 +3017,19 @@ SUBROUTINE horizontal_diffusion_3dmp ( name, field, tendency, MUT, c1, c2,  &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-2,ite)
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-2,jte)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-2,ite)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-2,jte)
       IF ( config_flags%periodic_x ) i_start = its
-      IF ( config_flags%periodic_x ) i_end = MIN(ite,ide-1)
+      IF ( config_flags%periodic_x ) i_end = rp_min(ite,ide-1)
 
       DO j = j_start, j_end
       DO k=kts,ktf
@@ -3118,15 +3118,15 @@ SUBROUTINE vertical_diffusion ( name, field, tendency,        &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
    IF (name .EQ. 'w')THEN
 
    
    i_start = its
-   i_end   = MIN(ite,ide-1)
+   i_end   = rp_min(ite,ide-1)
    j_start = jts
-   j_end   = MIN(jte,jde-1)
+   j_end   = rp_min(jte,jde-1)
 
 j_loop_w : DO j = j_start, j_end
 
@@ -3153,9 +3153,9 @@ j_loop_w : DO j = j_start, j_end
    ELSE IF(name .EQ. 'm')THEN
 
      i_start = its
-     i_end   = MIN(ite,ide-1)
+     i_end   = rp_min(ite,ide-1)
      j_start = jts
-     j_end   = MIN(jte,jde-1)
+     j_end   = rp_min(jte,jde-1)
 
 j_loop_s : DO j = j_start, j_end
 
@@ -3246,12 +3246,12 @@ SUBROUTINE vertical_diffusion_mp ( field, tendency, config_flags, &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
      i_start = its
-     i_end   = MIN(ite,ide-1)
+     i_end   = rp_min(ite,ide-1)
      j_start = jts
-     j_end   = MIN(jte,jde-1)
+     j_end   = rp_min(jte,jde-1)
 
 j_loop_s : DO j = j_start, j_end
 
@@ -3340,12 +3340,12 @@ SUBROUTINE vertical_diffusion_3dmp ( field, tendency, config_flags, &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
      i_start = its
-     i_end   = MIN(ite,ide-1)
+     i_end   = rp_min(ite,ide-1)
      j_start = jts
-     j_end   = MIN(jte,jde-1)
+     j_end   = rp_min(jte,jde-1)
 
 j_loop_s : DO j = j_start, j_end
 
@@ -3434,15 +3434,15 @@ SUBROUTINE vertical_diffusion_u ( field, tendency,              &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
@@ -3536,15 +3536,15 @@ SUBROUTINE vertical_diffusion_v ( field, tendency,              &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
       i_start = its
-      i_end   = MIN(ite,ide-1)
+      i_end   = rp_min(ite,ide-1)
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
-      IF ( config_flags%open_ys .or. specified ) j_start = MAX(jds+1,jts)
-      IF ( config_flags%open_ye .or. specified ) j_end   = MIN(jde-1,jte)
+      IF ( config_flags%open_ys .or. specified ) j_start = rp_max(jds+1,jts)
+      IF ( config_flags%open_ye .or. specified ) j_end   = rp_min(jde-1,jte)
 
 j_loop_v : DO j = j_start, j_end
 !     jm1 = max(j-1,1)
@@ -3619,9 +3619,9 @@ SUBROUTINE calculate_full ( rfield, rfieldb, rfieldp,     &
 !
 !</DESCRIPTION>
 
-   itf=MIN(ite,ide-1)
-   jtf=MIN(jte,jde-1)
-   ktf=MIN(kte,kde-1)
+   itf=rp_min(ite,ide-1)
+   jtf=rp_min(jte,jde-1)
+   ktf=rp_min(kte,kde-1)
 
    i_start=its-1
    j_start=jts-1
@@ -3696,7 +3696,7 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
 ! coriolis for u-momentum equation
 
@@ -3713,13 +3713,13 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
    i_start = its
    i_end   = ite
    IF ( config_flags%open_xs .or. specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%open_xe .or. specified .or. &
-        config_flags%nested) i_end   = MIN(ide-1,ite)
+        config_flags%nested) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
-   DO j = jts, MIN(jte,jde-1)
+   DO j = jts, rp_min(jte,jde-1)
 
    DO k=kts,ktf
    DO i = i_start, i_end
@@ -3774,9 +3774,9 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
    j_end   = jte
 
    IF ( config_flags%open_ys .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_start = MAX(jds+1,jts)
+        config_flags%nested .or. config_flags%polar) j_start = rp_max(jds+1,jts)
    IF ( config_flags%open_ye .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_end   = MIN(jde-1,jte)
+        config_flags%nested .or. config_flags%polar) j_end   = rp_min(jde-1,jte)
 
 ! boundary loops for coriolis not needed for open bdy  (commented out 20100611 JD)
 !  IF ( (config_flags%open_ys) .and. (jts == jds) ) THEN
@@ -3796,7 +3796,7 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
 
    DO j=j_start, j_end
    DO k=kts,ktf
-   DO i=its,MIN(ide-1,ite)
+   DO i=its,rp_min(ide-1,ite)
    
       rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*0.5*(f(i,j)+f(i,j-1))    &
        *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -3833,9 +3833,9 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
 ! ru = mu u / my ; ru = mu v / mx
 !  => terms are: e ru + ???
 
-   DO j=jts,MIN(jte, jde-1)
+   DO j=jts,rp_min(jte, jde-1)
    DO k=kts+1,ktf
-   DO i=its,MIN(ite, ide-1)
+   DO i=its,rp_min(ite, ide-1)
 
        rw_tend(i,k,j)=rw_tend(i,k,j) + e(i,j)*           &
           (cosa(i,j)*0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j)) &
@@ -3933,30 +3933,30 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
 ! coriolis for u-momentum equation
 
    i_start = its
    i_end   = ite
    IF ( config_flags%open_xs .or. specified .or. &
-        config_flags%nested) i_start = MAX(ids+1,its)
+        config_flags%nested) i_start = rp_max(ids+1,its)
    IF ( config_flags%open_xe .or. specified .or. &
-        config_flags%nested) i_end   = MIN(ide-1,ite)
+        config_flags%nested) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
 !  compute perturbation mu*v for use in u momentum equation
 
-   DO j = jts, MIN(jte,jde-1)+1
+   DO j = jts, rp_min(jte,jde-1)+1
    DO k=kts+1,ktf-1
    DO i = i_start-1, i_end
      z_at_v = 0.25*( phb(i,k,j  )+phb(i,k+1,j  )  &
                     +phb(i,k,j-1)+phb(i,k+1,j-1)  &
                     +ph(i,k,j  )+ph(i,k+1,j  )    &
                     +ph(i,k,j-1)+ph(i,k+1,j-1))/g
-     wkp1 = min(1.,max(0.,z_at_v-z_base(k))/(z_base(k+1)-z_base(k)))
-     wkm1 = min(1.,max(0.,z_base(k)-z_at_v)/(z_base(k)-z_base(k-1)))
+     wkp1 = rp_min(1.,rp_max(0.,z_at_v-z_base(k))/(z_base(k+1)-z_base(k)))
+     wkm1 = rp_min(1.,rp_max(0.,z_base(k)-z_at_v)/(z_base(k)-z_base(k-1)))
      wk   = 1.-wkp1-wkm1
      rv(i,k,j) = rv_in(i,k,j) - (c1h(k)*muv(i,j)+c2h(k))*(            &
                                   wkm1*v_base(k-1)    &
@@ -3969,7 +3969,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
 !  pick up top and bottom v
 
-   DO j = jts, MIN(jte,jde-1)+1
+   DO j = jts, rp_min(jte,jde-1)+1
    DO i = i_start-1, i_end
 
      k = kts
@@ -3977,7 +3977,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
                     +phb(i,k,j-1)+phb(i,k+1,j-1)  &
                     +ph(i,k,j  )+ph(i,k+1,j  )    &
                     +ph(i,k,j-1)+ph(i,k+1,j-1))/g
-     wkp1 = min(1.,max(0.,z_at_v-z_base(k))/(z_base(k+1)-z_base(k)))
+     wkp1 = rp_min(1.,rp_max(0.,z_at_v-z_base(k))/(z_base(k+1)-z_base(k)))
      wk   = 1.-wkp1
      rv(i,k,j) = rv_in(i,k,j) - (c1h(k)*muv(i,j)+c2h(k))*(            &
                                  +wk  *v_base(k  )    &
@@ -3988,7 +3988,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
                     +phb(i,k,j-1)+phb(i,k+1,j-1)  &
                     +ph(i,k,j  )+ph(i,k+1,j  )    &
                     +ph(i,k,j-1)+ph(i,k+1,j-1))/g
-     wkm1 = min(1.,max(0.,z_base(k)-z_at_v)/(z_base(k)-z_base(k-1)))
+     wkm1 = rp_min(1.,rp_max(0.,z_base(k)-z_at_v)/(z_base(k)-z_base(k-1)))
      wk   = 1.-wkm1
      rv(i,k,j) = rv_in(i,k,j) - (c1h(k)*muv(i,j)+c2h(k))*(            &
                                   wkm1*v_base(k-1)    &
@@ -4001,7 +4001,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
 !  Map scale factors: see comments above for Coriolis
 
-   DO j = jts, MIN(jte,jde-1)
+   DO j = jts, rp_min(jte,jde-1)
 
    DO k=kts,ktf
      DO i = i_start, i_end
@@ -4048,21 +4048,21 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    j_end   = jte
 
    IF ( config_flags%open_ys .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_start = MAX(jds+1,jts)
+        config_flags%nested .or. config_flags%polar) j_start = rp_max(jds+1,jts)
    IF ( config_flags%open_ye .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_end   = MIN(jde-1,jte)
+        config_flags%nested .or. config_flags%polar) j_end   = rp_min(jde-1,jte)
 
 !  compute perturbation mu*u for use in v momentum equation
 
    DO j = j_start-1,j_end
    DO k=kts+1,ktf-1
-   DO i = its, MIN(ite,ide-1)+1
+   DO i = its, rp_min(ite,ide-1)+1
      z_at_u = 0.25*( phb(i  ,k,j)+phb(i  ,k+1,j)  &
                     +phb(i-1,k,j)+phb(i-1,k+1,j)  &
                     +ph(i  ,k,j)+ph(i  ,k+1,j)    &
                     +ph(i-1,k,j)+ph(i-1,k+1,j))/g
-     wkp1 = min(1.,max(0.,z_at_u-z_base(k))/(z_base(k+1)-z_base(k)))
-     wkm1 = min(1.,max(0.,z_base(k)-z_at_u)/(z_base(k)-z_base(k-1)))
+     wkp1 = rp_min(1.,rp_max(0.,z_at_u-z_base(k))/(z_base(k+1)-z_base(k)))
+     wkm1 = rp_min(1.,rp_max(0.,z_base(k)-z_at_u)/(z_base(k)-z_base(k-1)))
      wk   = 1.-wkp1-wkm1
      ru(i,k,j) = ru_in(i,k,j) - (c1h(k)*muu(i,j)+c2h(k))*(            &
                                   wkm1*u_base(k-1)    &
@@ -4075,14 +4075,14 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 !  pick up top and bottom u
 
    DO j = j_start-1,j_end
-   DO i = its, MIN(ite,ide-1)+1
+   DO i = its, rp_min(ite,ide-1)+1
 
      k = kts
      z_at_u = 0.25*( phb(i  ,k,j)+phb(i  ,k+1,j)  &
                     +phb(i-1,k,j)+phb(i-1,k+1,j)  &
                     +ph(i  ,k,j)+ph(i  ,k+1,j)    &
                     +ph(i-1,k,j)+ph(i-1,k+1,j))/g
-     wkp1 = min(1.,max(0.,z_at_u-z_base(k))/(z_base(k+1)-z_base(k)))
+     wkp1 = rp_min(1.,rp_max(0.,z_at_u-z_base(k))/(z_base(k+1)-z_base(k)))
      wk   = 1.-wkp1
      ru(i,k,j) = ru_in(i,k,j) - (c1h(k)*muu(i,j)+c2h(k))*(            &
                                  +wk  *u_base(k  )    &
@@ -4094,7 +4094,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
                     +phb(i-1,k,j)+phb(i-1,k+1,j)  &
                     +ph(i  ,k,j)+ph(i  ,k+1,j)    &
                     +ph(i-1,k,j)+ph(i-1,k+1,j))/g
-     wkm1 = min(1.,max(0.,z_base(k)-z_at_u)/(z_base(k)-z_base(k-1)))
+     wkm1 = rp_min(1.,rp_max(0.,z_base(k)-z_at_u)/(z_base(k)-z_base(k-1)))
      wk   = 1.-wkm1
      ru(i,k,j) = ru_in(i,k,j) - (c1h(k)*muu(i,j)+c2h(k))*(            &
                                   wkm1*u_base(k-1)    &
@@ -4110,7 +4110,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    IF ( (config_flags%open_ys) .and. (jts == jds) ) THEN
 
      DO k=kts,ktf
-     DO i=its,MIN(ide-1,ite)
+     DO i=its,rp_min(ide-1,ite)
    
         rv_tend(i,k,jts)=rv_tend(i,k,jts) - (msfvy(i,jts)/msfvx(i,jts))*0.5*(f(i,jts)+f(i,jts))    &
          *0.25*(ru(i,k,jts)+ru(i+1,k,jts)+ru(i,k,jts)+ru(i+1,k,jts))   &
@@ -4124,7 +4124,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
    DO j=j_start, j_end
    DO k=kts,ktf
-   DO i=its,MIN(ide-1,ite)
+   DO i=its,rp_min(ide-1,ite)
    
       rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*0.5*(f(i,j)+f(i,j-1))    &
        *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -4140,7 +4140,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    IF ( (config_flags%open_ye) .and. (jte == jde) ) THEN
 
      DO k=kts,ktf
-     DO i=its,MIN(ide-1,ite)
+     DO i=its,rp_min(ide-1,ite)
    
         rv_tend(i,k,jte)=rv_tend(i,k,jte) - (msfvy(i,jte)/msfvx(i,jte))*0.5*(f(i,jte-1)+f(i,jte-1))        &
          *0.25*(ru(i,k,jte-1)+ru(i+1,k,jte-1)+ru(i,k,jte-1)+ru(i+1,k,jte-1))   &
@@ -4155,9 +4155,9 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 ! coriolis term for w-mometum
 !  Map scale factors: see comments above for Coriolis
 
-   DO j=jts,MIN(jte, jde-1)
+   DO j=jts,rp_min(jte, jde-1)
    DO k=kts+1,ktf
-   DO i=its,MIN(ite, ide-1)
+   DO i=its,rp_min(ite, ide-1)
 
        rw_tend(i,k,j)=rw_tend(i,k,j) + e(i,j)*           &
           (cosa(i,j)*0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j)) &
@@ -4240,9 +4240,9 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
 
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
-      ktf=MIN(kte,kde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
+      ktf=rp_min(kte,kde-1)
 
 !   irmin = ims
 !   irmax = ime
@@ -4354,16 +4354,16 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 
    i_start = its
    IF ( config_flags%open_xs .or. specified .or. &
-        config_flags%nested) i_start = MAX ( ids+1 , its )
+        config_flags%nested) i_start = rp_max ( ids+1 , its )
    IF ( config_flags%open_xe .or. specified .or. &
-        config_flags%nested) i_end   = MIN ( ide-1 , ite )
+        config_flags%nested) i_end   = rp_min ( ide-1 , ite )
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
 !  Polar boundary condition
    IF ((config_flags%map_proj == 6) .OR. (config_flags%polar)) THEN
 
-      DO j=jts,MIN(jde-1,jte)
+      DO j=jts,rp_min(jde-1,jte)
       DO k=kts,ktf
       DO i=i_start,i_end
 
@@ -4378,7 +4378,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
    ELSE  ! normal code
 
 
-      DO j=jts,MIN(jde-1,jte)
+      DO j=jts,rp_min(jde-1,jte)
       DO k=kts,ktf
       DO i=i_start,i_end
 
@@ -4410,15 +4410,15 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 
    j_start = jts
    IF ( config_flags%open_ys .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_start = MAX ( jds+1 , jts )
+        config_flags%nested .or. config_flags%polar) j_start = rp_max ( jds+1 , jts )
    IF ( config_flags%open_ye .or. specified .or. &
-        config_flags%nested .or. config_flags%polar) j_end   = MIN ( jde-1 , jte )
+        config_flags%nested .or. config_flags%polar) j_end   = rp_min ( jde-1 , jte )
 
    IF ((config_flags%map_proj == 6) .OR. (config_flags%polar)) THEN
 
       DO j=j_start,j_end
       DO k=kts,ktf
-      DO i=its,MIN(ite,ide-1)
+      DO i=its,rp_min(ite,ide-1)
             rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*reradius*   (  &
                         0.25*(u(i,k,j)+u(i+1,k,j)+u(i,k,j-1)+u(i+1,k,j-1))*     &
                         rp_tan((xlat(i,j)+xlat(i,j-1))*0.5*degrad)*                &
@@ -4433,7 +4433,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 
       DO j=j_start,j_end
       DO k=kts,ktf
-      DO i=its,MIN(ite,ide-1)
+      DO i=its,rp_min(ite,ide-1)
 
          rv_tend(i,k,j)=rv_tend(i,k,j) - 0.5*(vxgm(i,k,j)+vxgm(i,k,j-1)) &
                  *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -4453,9 +4453,9 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 !  ru = mu u / my ; rw = mu w / my ; rv = mu v / mx
 !  terms are: u ru / a + (mx/my)v rv / a
 
-   DO j=jts,MIN(jte,jde-1)
-   DO k=MAX(2,kts),ktf
-   DO i=its,MIN(ite,ide-1)
+   DO j=jts,rp_min(jte,jde-1)
+   DO k=rp_max(2,kts),ktf
+   DO i=its,rp_min(ite,ide-1)
 
       rw_tend(i,k,j)=rw_tend(i,k,j) + reradius*                              &
     (0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j))+fzp(k)*(ru(i,k-1,j)+ru(i+1,k-1,j))) &
@@ -4509,11 +4509,11 @@ SUBROUTINE decouple ( rr, rfield, field, name, config_flags, &
 !
 !</DESCRIPTION>
 
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
    
    IF (name .EQ. 'u')THEN
       itf=ite
-      jtf=MIN(jte,jde-1)
+      jtf=rp_min(jte,jde-1)
 
       DO j=jts,jtf
       DO k=kts,ktf
@@ -4524,7 +4524,7 @@ SUBROUTINE decouple ( rr, rfield, field, name, config_flags, &
       ENDDO
 
    ELSE IF (name .EQ. 'v')THEN
-      itf=MIN(ite,ide-1)
+      itf=rp_min(ite,ide-1)
       jtf=jte
 
       DO j=jts,jtf
@@ -4536,8 +4536,8 @@ SUBROUTINE decouple ( rr, rfield, field, name, config_flags, &
       ENDDO
 
    ELSE IF (name .EQ. 'w')THEN
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
       DO j=jts,jtf
       DO k=kts+1,ktf
       DO i=its,itf
@@ -4553,8 +4553,8 @@ SUBROUTINE decouple ( rr, rfield, field, name, config_flags, &
       ENDDO
 
    ELSE
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
    ! For theta we will decouple tb and tp and add them to give t afterwards
       DO j=jts,jtf
       DO k=kts,ktf
@@ -4819,12 +4819,12 @@ END SUBROUTINE pole_point_bc
 !  set up loop bounds for this grid's boundary conditions
 
     i_start = its
-    i_end   = min( ite,ide-1 )
+    i_end   = rp_min( ite,ide-1 )
     j_start = jts
-    j_end   = min( jte,jde-1 )
+    j_end   = rp_min( jte,jde-1 )
 
     k_start = kts
-    k_end = min( kte, kde-1 )
+    k_end = rp_min( kte, kde-1 )
 
 !  compute thermodynamics and velocities at pressure points (or half levels)
 
@@ -5079,12 +5079,12 @@ END SUBROUTINE phy_prep
 !  set up loop bounds for this grid's boundary conditions
 
     i_start = its
-    i_end   = min( ite,ide-1 )
+    i_end   = rp_min( ite,ide-1 )
     j_start = jts
-    j_end   = min( jte,jde-1 )
+    j_end   = rp_min( jte,jde-1 )
 
     k_start = kts
-    k_end = min( kte, kde-1 )
+    k_end = rp_min( kte, kde-1 )
 
     c1 = c1h
     c2 = c2h
@@ -5340,8 +5340,8 @@ END SUBROUTINE phy_prep
 
    IF (config_flags%grid_fdda .gt. 0) THEN
 
-      i_startu=MAX(its,ids+1)
-      j_startv=MAX(jts,jds+1)
+      i_startu=rp_max(its,ids+1)
+      j_startv=rp_max(jts,jds+1)
 
       DO J=j_start,j_end
       DO K=k_start,k_end
@@ -5468,12 +5468,12 @@ END SUBROUTINE phy_prep_part2
 !  set up loop bounds for this grid's boundary conditions
 
     i_start = its    
-    i_end   = min( ite,ide-1 )
+    i_end   = rp_min( ite,ide-1 )
     j_start = jts    
-    j_end   = min( jte,jde-1 )
+    j_end   = rp_min( jte,jde-1 )
 
     k_start = kts
-    k_end = min( kte, kde-1 )
+    k_end = rp_min( kte, kde-1 )
 
      DO j = j_start, j_end
      DO k = k_start, kte
@@ -5661,11 +5661,11 @@ END SUBROUTINE phy_prep_part2
 
 
     i_start = its    
-    i_end   = min( ite,ide-1 )
+    i_end   = rp_min( ite,ide-1 )
     j_start = jts    
-    j_end   = min( jte,jde-1 )
+    j_end   = rp_min( jte,jde-1 )
     k_start = kts
-    k_end = min( kte, kde-1 )
+    k_end = rp_min( kte, kde-1 )
 
 #if ( WRF_DFI_RADAR == 1 )
          IF ( PRESENT(dfi_stage) .and.  PRESENT(dfi_tten_rad) ) THEN
@@ -5704,8 +5704,8 @@ END SUBROUTINE phy_prep_part2
           imin=i
           jmin=j
        endif
-          mpten=min(config_flags%mp_tend_lim*dt, mpten)
-          mpten=max(-config_flags%mp_tend_lim*dt, mpten)
+          mpten=rp_min(config_flags%mp_tend_lim*dt, mpten)
+          mpten=rp_max(-config_flags%mp_tend_lim*dt, mpten)
 
 #if ( WRF_DFI_RADAR == 1 )
 !compiler error, not handled yet
@@ -5819,9 +5819,9 @@ SUBROUTINE set_tend ( field, field_adv_tend, msf,       &
 !
 !</DESCRIPTION>
 
-      jtf = MIN(jte,jde-1)
-      ktf = MIN(kte,kde-1)
-      itf = MIN(ite,ide-1)
+      jtf = rp_min(jte,jde-1)
+      ktf = rp_min(kte,kde-1)
+      itf = rp_min(ite,ide-1)
       DO j = jts, jtf
       DO k = kts, ktf
       DO i = its, itf
@@ -5923,13 +5923,13 @@ END SUBROUTINE set_tend
 
     pii = 2.0 * rp_asin(1.0)
 
-    ktf = MIN( kte,   kde-1 )
+    ktf = rp_min( kte,   kde-1 )
 
 !-----------------------------------------------------------------------
 ! Adjust u to base state.
 
-    DO j = jts, MIN( jte, jde-1 )
-    DO i = its, MIN( ite, ide   )
+    DO j = jts, rp_min( jte, jde-1 )
+    DO i = its, rp_min( ite, ide   )
 
       ! Get height at top of model
       ztop = 0.5*( phb(i  ,kde,j)+phb(i-1,kde,j)   &
@@ -5967,7 +5967,7 @@ END SUBROUTINE set_tend
 
       ! Apply the Rayleigh damper
       DO k = k1, ktf
-        dcoef = 1.0 - MIN( 1.0, ( ztop - z00(k) ) / zdamp )
+        dcoef = 1.0 - rp_min( 1.0, ( ztop - z00(k) ) / zdamp )
         dcoef = (rp_sin( 0.5 * pii * dcoef ) )**2
         ru_tendf(i,k,j) = ru_tendf(i,k,j) -                    &
                           (c1h(k)*muu(i,j)+c2h(k)) * ( dcoef * dampcoef ) *    &
@@ -5983,8 +5983,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust v to base state.
 
-    DO j = jts, MIN( jte, jde   )
-    DO i = its, MIN( ite, ide-1 )
+    DO j = jts, rp_min( jte, jde   )
+    DO i = its, rp_min( ite, ide-1 )
 
       ! Get height at top of model
       ztop = 0.5*( phb(i,kde,j  )+phb(i,kde,j-1)   &
@@ -6022,7 +6022,7 @@ END SUBROUTINE set_tend
 
       ! Apply the Rayleigh damper
       DO k = k1, ktf
-        dcoef = 1.0 - MIN( 1.0, ( ztop - z00(k) ) / zdamp )
+        dcoef = 1.0 - rp_min( 1.0, ( ztop - z00(k) ) / zdamp )
         dcoef = (rp_sin( 0.5 * pii * dcoef ) )**2
         rv_tendf(i,k,j) = rv_tendf(i,k,j) -                    &
                           (c1h(k)*muv(i,j)+c2h(k)) * ( dcoef * dampcoef ) *    &
@@ -6038,13 +6038,13 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust w to base state.
 
-    DO j = jts, MIN( jte,   jde-1 )
-    DO i = its, MIN( ite,   ide-1 )
+    DO j = jts, rp_min( jte,   jde-1 )
+    DO i = its, rp_min( ite,   ide-1 )
       ztop = ( phb(i,kde,j) + ph(i,kde,j) ) / g
-      DO k = kts, MIN( kte,   kde   )
+      DO k = kts, rp_min( kte,   kde   )
         z = ( phb(i,k,j) + ph(i,k,j) ) / g
         IF ( z >= (ztop-zdamp) ) THEN
-          dcoef = 1.0 - MIN( 1.0, ( ztop - z ) / zdamp )
+          dcoef = 1.0 - rp_min( 1.0, ( ztop - z ) / zdamp )
           dcoef = ( rp_sin( 0.5 * pii * dcoef ) )**2
           rw_tendf(i,k,j) = rw_tendf(i,k,j) -  &
                             (c1f(k)*mut(i,j)+c2f(k)) * ( dcoef * dampcoef ) * w(i,k,j)
@@ -6059,8 +6059,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust potential temperature to base state.
 
-    DO j = jts, MIN( jte,   jde-1 )
-    DO i = its, MIN( ite,   ide-1 )
+    DO j = jts, rp_min( jte,   jde-1 )
+    DO i = its, rp_min( ite,   ide-1 )
 
       ! Get height at top of model
       ztop = ( phb(i,kde,j) + ph(i,kde,j) ) / g
@@ -6095,7 +6095,7 @@ END SUBROUTINE set_tend
 
       ! Apply the Rayleigh damper
       DO k = k1, ktf
-        dcoef = 1.0 - MIN( 1.0, ( ztop - z00(k) ) / zdamp )
+        dcoef = 1.0 - rp_min( 1.0, ( ztop - z00(k) ) / zdamp )
         dcoef = (rp_sin( 0.5 * pii * dcoef ) )**2
         t_tendf(i,k,j) = t_tendf(i,k,j) -                      &
                          (c1(k)*MUT(i,j)+c2(k)) * ( dcoef * dampcoef )  *    &
@@ -6169,15 +6169,15 @@ END SUBROUTINE set_tend
     rmax =  2.0/86400.0
     rmin = -rmax
 
-    ktf = MIN( kte,   kde-1 )
+    ktf = rp_min( kte,   kde-1 )
     inv_tau_r = 1.0/tau_r
     inv_g = 1.0/g
 
 !-----------------------------------------------------------------------
 ! Adjust potential temperature to base state.
 
-    DO j = jts, MIN( jte,   jde-1 )
-    DO i = its, MIN( ite,   ide-1 )
+    DO j = jts, rp_min( jte,   jde-1 )
+    DO i = its, rp_min( ite,   ide-1 )
 
       ! Get height of model levels:
       DO k = kts, ktf
@@ -6206,8 +6206,8 @@ END SUBROUTINE set_tend
       DO k = kts, ktf
         rterm = -( t(i,k,j) - t00(k) )*inv_tau_r
         ! limit rterm:
-        rterm = min( rterm , rmax )
-        rterm = max( rterm , rmin )
+        rterm = rp_min( rterm , rmax )
+        rterm = rp_max( rterm , rmin )
         t_tendf(i,k,j) = t_tendf(i,k,j) + (c1(k)*MUT(i,j)+c2(k))*rterm
       END DO
 
@@ -6330,7 +6330,7 @@ END SUBROUTINE set_tend
 ! indices should start 3 rows and columns in for specified boundary conditions.
 ! Also modified to work with idealized boundary conditions.
 
-    ktf = MIN( kte, kde-1 )
+    ktf = rp_min( kte, kde-1 )
     specified = .false.
     if(config_flags%specified .or. config_flags%nested) specified = .true.
 
@@ -6339,24 +6339,24 @@ END SUBROUTINE set_tend
       i_start = its
       i_end   = ite
       j_start = jts
-      j_end   = MIN(jde-1,jte)
+      j_end   = rp_min(jde-1,jte)
       IF ( config_flags%open_xs ) THEN
-        i_start = MAX(its,ids+3)
+        i_start = rp_max(its,ids+3)
       END IF
       IF ( config_flags%open_ys ) THEN
-        j_start = MAX(jts,jds+3)
+        j_start = rp_max(jts,jds+3)
       END IF
       IF ( config_flags%open_xe ) THEN
-        i_end   = MIN(ite,ide-3)
+        i_end   = rp_min(ite,ide-3)
       END IF
       IF ( config_flags%open_ye ) THEN
-        j_end   = MIN(jte,jde-4)
+        j_end   = rp_min(jte,jde-4)
       END IF
       IF ( specified ) THEN
-        i_start = MAX(its,ids+3)
-        i_end   = MIN(ite,ide-3)
-        j_start = MAX(jts,jds+3)
-        j_end   = MIN(jte,jde-4)
+        i_start = rp_max(its,ids+3)
+        i_end   = rp_min(ite,ide-3)
+        j_start = rp_max(jts,jds+3)
+        j_end   = rp_min(jte,jde-4)
       END IF
       k_start = kts
       k_end   = ktf
@@ -6364,26 +6364,26 @@ END SUBROUTINE set_tend
     ELSE IF ( name .EQ. 'v' ) THEN
 
       i_start = its
-      i_end   = MIN(ide-1,ite)
+      i_end   = rp_min(ide-1,ite)
       j_start = jts
       j_end   = jte
       IF ( config_flags%open_xs ) THEN
-        i_start = MAX(its,ids+3)
+        i_start = rp_max(its,ids+3)
       END IF
       IF ( config_flags%open_ys ) THEN
-        j_start = MAX(jts,jds+3)
+        j_start = rp_max(jts,jds+3)
       END IF
       IF ( config_flags%open_xe ) THEN
-        i_end   = MIN(ite,ide-4)
+        i_end   = rp_min(ite,ide-4)
       END IF
       IF ( config_flags%open_ye ) THEN
-        j_end   = MIN(jte,jde-3)
+        j_end   = rp_min(jte,jde-3)
       END IF
       IF ( config_flags%open_xs .or. specified ) THEN
-        i_start = MAX(its,ids+3)
-        i_end   = MIN(ite,ide-4)
-        j_start = MAX(jts,jds+3)
-        j_end   = MIN(jte,jde-3)
+        i_start = rp_max(its,ids+3)
+        i_end   = rp_min(ite,ide-4)
+        j_start = rp_max(jts,jds+3)
+        j_end   = rp_min(jte,jde-3)
       END IF
       k_start = kts
       k_end   = ktf
@@ -6391,26 +6391,26 @@ END SUBROUTINE set_tend
     ELSE IF ( name .EQ. 'w' ) THEN
 
       i_start = its
-      i_end   = MIN(ide-1,ite)
+      i_end   = rp_min(ide-1,ite)
       j_start = jts
-      j_end   = MIN(jde-1,jte)
+      j_end   = rp_min(jde-1,jte)
       IF ( config_flags%open_xs ) THEN
-        i_start = MAX(its,ids+3)
+        i_start = rp_max(its,ids+3)
       END IF
       IF ( config_flags%open_ys ) THEN
-        j_start = MAX(jts,jds+3)
+        j_start = rp_max(jts,jds+3)
       END IF
       IF ( config_flags%open_xe ) THEN
-        i_end   = MIN(ite,ide-4)
+        i_end   = rp_min(ite,ide-4)
       END IF
       IF ( config_flags%open_ye ) THEN
-        j_end   = MIN(jte,jde-4)
+        j_end   = rp_min(jte,jde-4)
       END IF
       IF ( specified ) THEN
-        i_start = MAX(its,ids+3)
-        i_end   = MIN(ide-4,ite)
-        j_start = MAX(jts,jds+3)
-        j_end   = MIN(jde-4,jte)
+        i_start = rp_max(its,ids+3)
+        i_end   = rp_min(ide-4,ite)
+        j_start = rp_max(jts,jds+3)
+        j_end   = rp_min(jde-4,jte)
       END IF
       k_start = kts+1
       k_end   = ktf
@@ -6418,26 +6418,26 @@ END SUBROUTINE set_tend
     ELSE
 
       i_start = its
-      i_end   = MIN(ide-1,ite)
+      i_end   = rp_min(ide-1,ite)
       j_start = jts
-      j_end   = MIN(jde-1,jte)
+      j_end   = rp_min(jde-1,jte)
       IF ( config_flags%open_xs ) THEN
-        i_start = MAX(its,ids+3)
+        i_start = rp_max(its,ids+3)
       END IF
       IF ( config_flags%open_ys ) THEN
-        j_start = MAX(jts,jds+3)
+        j_start = rp_max(jts,jds+3)
       END IF
       IF ( config_flags%open_xe ) THEN
-        i_end   = MIN(ite,ide-4)
+        i_end   = rp_min(ite,ide-4)
       END IF
       IF ( config_flags%open_ye ) THEN
-        j_end   = MIN(jte,jde-4)
+        j_end   = rp_min(jte,jde-4)
       END IF
       IF ( specified ) THEN
-        i_start = MAX(its,ids+3)
-        i_end   = MIN(ide-4,ite)
-        j_start = MAX(jts,jds+3)
-        j_end   = MIN(jde-4,jte)
+        i_start = rp_max(its,ids+3)
+        i_end   = rp_min(ide-4,ite)
+        j_start = rp_max(jts,jds+3)
+        j_end   = rp_min(jde-4,jte)
       END IF
       k_start = kts
       k_end   = ktf
@@ -6489,17 +6489,17 @@ END SUBROUTINE set_tend
          dx=1./rdx
          dzthresh = config_flags%diff_6th_thresh*9.81*dx
          IF      ( name .EQ. 'u' ) THEN
-           dzmax_p0 = MAX( ABS(phb(i  ,k,j)-phb(i-1,k,j))*msfux(i  ,j), ABS(phb(i-1,k,j)-phb(i-2,k,j))*msfux(i-1,j) )
-           dzmax_p1 = MAX( ABS(phb(i+1,k,j)-phb(i  ,k,j))*msfux(i+1,j), ABS(phb(i  ,k,j)-phb(i-1,k,j))*msfux(i  ,j) )
+           dzmax_p0 = rp_max( ABS(phb(i  ,k,j)-phb(i-1,k,j))*msfux(i  ,j), ABS(phb(i-1,k,j)-phb(i-2,k,j))*msfux(i-1,j) )
+           dzmax_p1 = rp_max( ABS(phb(i+1,k,j)-phb(i  ,k,j))*msfux(i+1,j), ABS(phb(i  ,k,j)-phb(i-1,k,j))*msfux(i  ,j) )
          ELSE IF ( name .EQ. 'v' ) THEN
-           dzmax_p0 = max( ABS(phb(i  ,k,j) - phb(i-1,k,j))*msfux(i  ,j), ABS(phb(i  ,k,j-1) - phb(i-1,k,j-1))*msfux(i  ,j-1) )
-           dzmax_p1 = max( ABS(phb(i+1,k,j) - phb(i  ,k,j))*msfux(i+1,j), ABS(phb(i+1,k,j-1) - phb(i  ,k,j-1))*msfux(i+1,j-1) )
+           dzmax_p0 = rp_max( ABS(phb(i  ,k,j) - phb(i-1,k,j))*msfux(i  ,j), ABS(phb(i  ,k,j-1) - phb(i-1,k,j-1))*msfux(i  ,j-1) )
+           dzmax_p1 = rp_max( ABS(phb(i+1,k,j) - phb(i  ,k,j))*msfux(i+1,j), ABS(phb(i+1,k,j-1) - phb(i  ,k,j-1))*msfux(i+1,j-1) )
          ELSE
            dzmax_p0 = ABS(phb(i  ,k,j) - phb(i-1,k,j))*msfux(i,j)
            dzmax_p1 = ABS(phb(i+1,k,j) - phb(i  ,k,j))*msfux(i+1,j)
          END IF
-         slopedamp_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
-         slopedamp_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         slopedamp_p0 = rp_max(1.- (dzmax_p0/dzthresh) , 0.)
+         slopedamp_p1 = rp_max(1.- (dzmax_p1/dzthresh) , 0.)
       ENDIF
 
 ! Apply 6th-order diffusion in x direction.
@@ -6571,17 +6571,17 @@ END SUBROUTINE set_tend
          dy=1./rdy
          dzthresh = config_flags%diff_6th_thresh*9.81*dy
          IF      ( name .EQ. 'u' ) THEN
-           dzmax_p0 = max( ABS(phb(i,k,j  ) - phb(i,k,j-1))*msfvy(i,j  ), ABS(phb(i-1,k,j  ) - phb(i-1,k,j-1))*msfvy(i-1,j  ) )
-           dzmax_p1 = max( ABS(phb(i,k,j+1) - phb(i,k,j  ))*msfvy(i,j+1), ABS(phb(i-1,k,j+1) - phb(i-1,k,j  ))*msfvy(i-1,j+1) )
+           dzmax_p0 = rp_max( ABS(phb(i,k,j  ) - phb(i,k,j-1))*msfvy(i,j  ), ABS(phb(i-1,k,j  ) - phb(i-1,k,j-1))*msfvy(i-1,j  ) )
+           dzmax_p1 = rp_max( ABS(phb(i,k,j+1) - phb(i,k,j  ))*msfvy(i,j+1), ABS(phb(i-1,k,j+1) - phb(i-1,k,j  ))*msfvy(i-1,j+1) )
          ELSE IF ( name .EQ. 'v' ) THEN
-           dzmax_p0 = MAX( ABS(phb(i,k,j  )-phb(i,k,j-1))*msfvy(i,j  ), ABS(phb(i,k,j-1)-phb(i,k,j-2))*msfvy(i,j-1) )
-           dzmax_p1 = MAX( ABS(phb(i,k,j+1)-phb(i,k,j  ))*msfvy(i,j+1), ABS(phb(i,k,j  )-phb(i,k,j-1))*msfvy(i,j  ) )
+           dzmax_p0 = rp_max( ABS(phb(i,k,j  )-phb(i,k,j-1))*msfvy(i,j  ), ABS(phb(i,k,j-1)-phb(i,k,j-2))*msfvy(i,j-1) )
+           dzmax_p1 = rp_max( ABS(phb(i,k,j+1)-phb(i,k,j  ))*msfvy(i,j+1), ABS(phb(i,k,j  )-phb(i,k,j-1))*msfvy(i,j  ) )
          ELSE
            dzmax_p0 = ABS(phb(i,k,j  ) - phb(i,k,j-1))*msfvy(i,j  )
            dzmax_p1 = ABS(phb(i,k,j+1) - phb(i,k,j  ))*msfvy(i,j+1)
          END IF
-         slopedamp_p0 = MAX(1.- (dzmax_p0/dzthresh) , 0.)
-         slopedamp_p1 = MAX(1.- (dzmax_p1/dzthresh) , 0.)
+         slopedamp_p0 = rp_max(1.- (dzmax_p0/dzthresh) , 0.)
+         slopedamp_p1 = rp_max(1.- (dzmax_p1/dzthresh) , 0.)
       ENDIF
 
 ! Apply 6th-order diffusion in y direction.
@@ -6660,9 +6660,9 @@ SUBROUTINE initialize_moist_old ( moist_old , moist , &
 
    INTEGER :: i , j , k
 
-   DO j = jts , MIN(jte,jde-1)
+   DO j = jts , rp_min(jte,jde-1)
       DO k = kts , kte-1
-         DO i = its , MIN(ite,ide-1)
+         DO i = its , rp_min(ite,ide-1)
             moist_old(i,k,j) = moist(i,k,j)
          END DO
       END DO
@@ -6696,9 +6696,9 @@ SUBROUTINE conv_t_tendf_to_moist ( t_1 , moist_old ,                &
    !  This dry tendency is from the physics packages.  It is modified immediately after the
    !  call to the physics schemes, and the remains constant for the remainder of the RK loops.
 
-   DO j = jts , MIN(jte,jde-1)
+   DO j = jts , rp_min(jte,jde-1)
       DO k = kts , kte-1
-         DO i = its , MIN(ite,ide-1)
+         DO i = its , rp_min(ite,ide-1)
             t_tendf(i,k,j) = (1. + (R_v/R_d) * moist_old(i,k,j))*t_tendf(i,k,j) + &
                              (R_v/R_d)*(t_1(i,k,j)+T0)/(1.+R_v/R_d*moist_old(i,k,j))*moist_tend(i,k,j)
          END DO
@@ -6735,11 +6735,11 @@ END SUBROUTINE conv_t_tendf_to_moist
 
       ! Set up loop bounds
     i_start = its
-    i_end = min (ite, ide - 1)
+    i_end = rp_min (ite, ide - 1)
     j_start = jts
-    j_end = min (jte, jde - 1)
+    j_end = rp_min (jte, jde - 1)
     k_start = kts
-    k_end = min (kte, kde - 1)
+    k_end = rp_min (kte, kde - 1)
 
       ! Nudge
     if (xtime < dt_nudge) then

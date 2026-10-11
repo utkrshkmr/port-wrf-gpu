@@ -1034,7 +1034,7 @@ CONTAINS
 
          PSFC(I,J)=p8w(I,kms,J)
 
-         DO k=kts,min(kte+1,kde)
+         DO k=kts,rp_min(kte+1,kde)
             RTHBLTEN(I,K,J)=0.
             RUBLTEN(I,K,J)=0.
             RVBLTEN(I,K,J)=0.
@@ -1043,13 +1043,13 @@ CONTAINS
          ENDDO
 
          IF (flag_QI .AND. PRESENT(RQIBLTEN) ) THEN
-            DO k=kts,min(kte+1,kde)
+            DO k=kts,rp_min(kte+1,kde)
                RQIBLTEN(I,K,J)=0.
             ENDDO
          ENDIF
          !Following if condition is added for CAMUWPBL scheme
          IF (flag_QNI .AND. PRESENT(RQNIBLTEN) ) THEN
-            DO k=kts,min(kte+1,kde)
+            DO k=kts,rp_min(kte+1,kde)
                RQNIBLTEN(I,K,J)=0.
             ENDDO
          ENDIF
@@ -1261,8 +1261,8 @@ CONTAINS
                      scrp1 = rqvblten(i,1,j)
                      scrp1 = scrp1*(2.0*DT)/qv_curr(i,1,j)
                      scrp1 = scrp1*100.0
-                     scrp1 = amax1(0.0,scrp1)
-                     scrp1 = amin1(5.0,scrp1)
+                     scrp1 = rp_max(0.0,scrp1)
+                     scrp1 = rp_min(5.0,scrp1)
                      QNORM(I,J)= scrp1/100.0
                   ENDDO
                   ENDDO
@@ -2311,8 +2311,8 @@ CONTAINS
      do j = jts, jte
        do k = kts, kte 
          do i = its, ite 
-           qc_curr(i, k, j) = max (QCLOUD_MIN, (1.0 + perts_qcloud(i, k, j) * pert_mynn_qc) * qc_curr(i, k, j))
-           qv_curr(i, k, j) = max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_mynn_qv) * qv_curr(i, k, j))
+           qc_curr(i, k, j) = rp_max (QCLOUD_MIN, (1.0 + perts_qcloud(i, k, j) * pert_mynn_qc) * qc_curr(i, k, j))
+           qv_curr(i, k, j) = rp_max (QVAPOR_MIN, (1.0 + perts_qvapor(i, k, j) * pert_mynn_qv) * qv_curr(i, k, j))
            th_phy(i, k, j) = (1.0 + perts_th(i, k, j) * pert_mynn_t) * th_phy(i, k, j)
          end do
        end do
@@ -2323,7 +2323,7 @@ CONTAINS
          do k = kts, kte
            do i = its, ite
              qke_tmp(i, k, j) = qke_adv(i, k, j)
-             qke_adv(i, k, j) = max (QKE_MIN, (1.0 + perts_tke(i, k, j) * pert_mynn_qke) * qke_adv(i, k, j))
+             qke_adv(i, k, j) = rp_max (QKE_MIN, (1.0 + perts_tke(i, k, j) * pert_mynn_qke) * qke_adv(i, k, j))
            end do
          end do
        end do
@@ -2332,7 +2332,7 @@ CONTAINS
          do k = kts, kte
            do i = its, ite
              qke_tmp(i, k, j) = qke(i, k, j)
-             qke(i, k, j) = max (QKE_MIN, (1.0 + perts_tke(i, k, j) * pert_mynn_qke) * qke(i, k, j))
+             qke(i, k, j) = rp_max (QKE_MIN, (1.0 + perts_tke(i, k, j) * pert_mynn_qke) * qke(i, k, j))
            end do
          end do
        end do
@@ -2363,8 +2363,8 @@ CONTAINS
      do j = jts, jte
        do k = kts, kte
          do i = its, ite
-           qc_curr(i, k, j) = max (QCLOUD_MIN, qc_curr(i, k, j) / (1.0 + perts_qcloud(i, k, j) * pert_mynn_qc))
-           qv_curr(i, k, j) = max (QVAPOR_MIN, qv_curr(i, k, j) / (1.0 + perts_qvapor(i, k, j) * pert_mynn_qv))
+           qc_curr(i, k, j) = rp_max (QCLOUD_MIN, qc_curr(i, k, j) / (1.0 + perts_qcloud(i, k, j) * pert_mynn_qc))
+           qv_curr(i, k, j) = rp_max (QVAPOR_MIN, qv_curr(i, k, j) / (1.0 + perts_qvapor(i, k, j) * pert_mynn_qv))
            th_phy(i, k, j) = th_phy(i, k, j) / (1.0 + perts_th(i, k, j) * pert_mynn_t)
          end do
        end do
@@ -2374,7 +2374,7 @@ CONTAINS
        do j = jts, jte
          do k = kts, kte
            do i = its, ite
-             qke_adv(i, k, j) = max (QKE_MIN, qke_adv(i, k, j) - perts_tke(i, k, j) * pert_mynn_qke * qke_tmp(i, k, j))
+             qke_adv(i, k, j) = rp_max (QKE_MIN, qke_adv(i, k, j) - perts_tke(i, k, j) * pert_mynn_qke * qke_tmp(i, k, j))
              qke(i, k, j) = qke_adv(i, k, j)
            end do
          end do
@@ -2383,7 +2383,7 @@ CONTAINS
        do j = jts, jte
          do k = kts, kte
            do i = its, ite
-             qke(i, k, j) = max (QKE_MIN, qke(i, k, j) - perts_tke(i, k, j) * pert_mynn_qke * qke_tmp(i, k, j))
+             qke(i, k, j) = rp_max (QKE_MIN, qke(i, k, j) - perts_tke(i, k, j) * pert_mynn_qke * qke_tmp(i, k, j))
            end do
          end do
        end do

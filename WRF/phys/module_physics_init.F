@@ -2147,7 +2147,7 @@ CHARACTER(LEN=8) :: name
 !-- calculate radiation time step
 
     STEPRA = nint(RADT*60./DT)
-    STEPRA = max(STEPRA,1)
+    STEPRA = rp_max(STEPRA,1)
 
 !-- initialization
 
@@ -3108,7 +3108,7 @@ CHARACTER(LEN=8) :: name
 !-- calculate pbl time step
 
    STEPBL = nint(BLDT*60./DT)
-   STEPBL = max(STEPBL,1)
+   STEPBL = rp_max(STEPBL,1)
 !-- initialization
 
    IF(PRESENT(ACHFX))THEN
@@ -4024,7 +4024,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
    jtf=min0(jte,jde-1)
 !
    STEPCU = nint(CUDT*60./DT)
-   STEPCU = max(STEPCU,1)
+   STEPCU = rp_max(STEPCU,1)
 
 !-- initialization
 
@@ -4294,7 +4294,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
    jtf=min0(jte,jde-1)
 !
    STEPCU = nint(CUDT*60./DT)
-   STEPCU = max(STEPCU,1)
+   STEPCU = rp_max(STEPCU,1)
 
 !-- initialization
 
@@ -4723,7 +4723,7 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
 !-- calculate pbl time step
 
    STEPFG = nint(FGDT*60./DT)
-   STEPFG = max(STEPFG,1)
+   STEPFG = rp_max(STEPFG,1)
 
 
 !-- initialize fdda scheme
@@ -5647,15 +5647,15 @@ subroutine interp_vec_cu(locvec,locwant,periodic,loc1,loc2,wght1,wght2)
      integer :: i, j
 
 #if 0
-     do j = jts, min(jde-1,jte)
-        do i = its, min(ide-1,ite)
+     do j = jts, rp_min(jde-1,jte)
+        do i = its, rp_min(ide-1,ite)
            area2d(i,j) = dx/msftx(i,j) * dy/msfty(i,j)
            dx2d  (i,j) = sqrt ( area2d(i,j) )
         end do
      end do
 #else
-     do j = jts, min(jde-1,jte)
-        do i = its, min(ide-1,ite)
+     do j = jts, rp_min(jde-1,jte)
+        do i = its, rp_min(ide-1,ite)
            area2d(i,j) = dx * dy
            dx2d  (i,j) = dx
         end do

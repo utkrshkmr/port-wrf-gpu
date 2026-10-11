@@ -442,13 +442,13 @@ CONTAINS
          ENDIF
          prec_acc_c(i,j)  = prec_acc_c(i,j)  +  RAINCV(i,j)
          prec_acc_nc(i,j) = prec_acc_nc(i,j) + RAINNCV(i,j)
-         prec_acc_c(i,j)  = MAX (prec_acc_c(i,j), 0.0)
-         prec_acc_nc(i,j) = MAX (prec_acc_nc(i,j), 0.0)
+         prec_acc_c(i,j)  = rp_max (prec_acc_c(i,j), 0.0)
+         prec_acc_nc(i,j) = rp_max (prec_acc_nc(i,j), 0.0)
          snow_acc_nc(i,j)   = snow_acc_nc(i,j) + SNOWNCV(I,J)
 ! add convective precip to snow bucket if t2 < 273.15
          IF ( t2(i,j) .lt. 273.15 ) THEN
          snow_acc_nc(i,j)   = snow_acc_nc(i,j) +  RAINCV(i,j)
-         snow_acc_nc(i,j)   = MAX (snow_acc_nc(i,j), 0.0)
+         snow_acc_nc(i,j)   = rp_max (snow_acc_nc(i,j), 0.0)
          ENDIF
       ENDDO     
       ENDDO     
@@ -498,8 +498,8 @@ CONTAINS
    dpsdt_sum = 0.
    dmudt_sum = 0.
 
-   DO j = jps, min(jpe,jde-1)
-     DO i = ips, min(ipe,ide-1)
+   DO j = jps, rp_min(jpe,jde-1)
+     DO i = ips, rp_min(ipe,ide-1)
        dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
        dmudt_sum = dmudt_sum + abs(dmudt(i,j))
      ENDDO
@@ -524,8 +524,8 @@ CONTAINS
    raincmax = 0.
    rainncmax = 0.
 
-   DO j = jps, min(jpe,jde-1)
-     DO i = ips, min(ipe,ide-1)
+   DO j = jps, rp_min(jpe,jde-1)
+     DO i = ips, rp_min(ipe,ide-1)
        drcdt_sum = drcdt_sum + abs(raincv(i,j))
        drndt_sum = drndt_sum + abs(rainncv(i,j))
        dardt_sum = dardt_sum + abs(raincv(i,j)) + abs(rainncv(i,j))

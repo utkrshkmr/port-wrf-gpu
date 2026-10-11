@@ -153,7 +153,7 @@ CONTAINS
                DO K=kts,kte
                   NK=kme-1-K+kms
                   QV1D(K)=QV3D(I,NK,J)
-                  QV1D(K)=max(0.,QV1D(K))
+                  QV1D(K)=rp_max(0.,QV1D(K))
                ENDDO
             ENDIF
          ENDIF
@@ -163,7 +163,7 @@ CONTAINS
                DO K=kts,kte
                   NK=kme-1-K+kms
                   QC1D(K)=QC3D(I,NK,J)
-                  QC1D(K)=max(0.,QC1D(K))
+                  QC1D(K)=rp_max(0.,QC1D(K))
                ENDDO
             ENDIF
          ENDIF
@@ -173,7 +173,7 @@ CONTAINS
                DO K=kts,kte
                   NK=kme-1-K+kms
                   QR1D(K)=QR3D(I,NK,J)
-                  QR1D(K)=max(0.,QR1D(K))
+                  QR1D(K)=rp_max(0.,QR1D(K))
                ENDDO
             ENDIF
          ENDIF
@@ -189,7 +189,7 @@ CONTAINS
             DO K=kts,kte
                NK=kme-1-K+kms
                QI1D(K)=QI3D(I,NK,J)
-               QI1D(K)=max(0.,QI1D(K))
+               QI1D(K)=rp_max(0.,QI1D(K))
             ENDDO
          ELSE
             IF (.not. warm_rain) THEN
@@ -209,7 +209,7 @@ CONTAINS
                DO K=kts,kte          
                   NK=kme-1-K+kms
                   QS1D(K)=QS3D(I,NK,J)
-                  QS1D(K)=max(0.,QS1D(K))
+                  QS1D(K)=rp_max(0.,QS1D(K))
                ENDDO
             ENDIF
          ENDIF
@@ -219,7 +219,7 @@ CONTAINS
                DO K=kts,kte          
                   NK=kme-1-K+kms
                   QG1D(K)=QG3D(I,NK,J)
-                  QG1D(K)=max(0.,QG1D(K))
+                  QG1D(K)=rp_max(0.,QG1D(K))
                ENDDO
             ENDIF
          ENDIF
@@ -468,7 +468,7 @@ CONTAINS
            XSCA=XSCA*FF
            TRANS0=1.
          ENDIF
-         SDOWN(K+1)=AMAX1(1.E-9,SDOWN(K)*TRANS0*0.01)
+         SDOWN(K+1)=rp_max(1.E-9,SDOWN(K)*TRANS0*0.01)
          TTEN(K)=SDOWN(K)*(XABSC+XABS*100.+XABSA*100.)*0.01/( &
                  RO(K)*CP*DZ(K))
   200   CONTINUE
@@ -482,7 +482,7 @@ CONTAINS
 
 !  Parameterize diffuse fraction of global solar radiation as a function of the ratio between TOA radiation and surface global radiation
 
-        diffuse_frac = min(1.,1/(max(0.1,2.1-2.8*rp_log(rp_log(SDOWN(kts)/max(SDOWN(kte+1),1.e-3))))))
+        diffuse_frac = rp_min(1.,1/(rp_max(0.1,2.1-2.8*rp_log(rp_log(SDOWN(kts)/rp_max(SDOWN(kte+1),1.e-3))))))
         if ((slope.eq.0).or.(diffuse_frac.eq.1).or.(csza.lt.1.e-2)) then  ! no topographic effects when all radiation is diffuse or the sun is too close to the horizon
         corr_fac = 1
         goto 140

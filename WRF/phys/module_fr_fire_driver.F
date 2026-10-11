@@ -263,14 +263,14 @@ halo_fire_mag_sub
             fire_ifun,need_lfn_update,                  &
             ids,ide-1, kds,kde, jds,jde-1,                          &
             ims,ime, kms,kme, jms,jme,                          &
-            ips,min(ipe,ide-1), kps,kpe, jps,min(jpe,jde-1),                          & 
+            ips,rp_min(ipe,ide-1), kps,kpe, jps,rp_min(jpe,jde-1),                          & 
             ifds,ifde-ir, jfds,jfde-jr,                    &
             ifms,ifme, jfms,jfme,                    &
-            ifps,min(ifpe,ifde-ir), jfps,min(jfpe,jfde-jr),      &
+            ifps,rp_min(ifpe,ifde-ir), jfps,rp_min(jfpe,jfde-jr),      &
             ir,jr,                                      & ! atm/fire grid ratio
             grid%num_tiles,                             & ! atm grid tiling
-            grid%i_start,min(grid%i_end,ide-1),                    &
-            grid%j_start,min(grid%j_end,jde-1),                    &
+            grid%i_start,rp_min(grid%i_end,ide-1),                    &
+            grid%j_start,rp_min(grid%j_end,jde-1),                    &
             time_start,                                 &
             itimestep,restart,config_flags%fire_fuel_read,config_flags%fire_fuel_cat, &  ! in scalars
             grid%dt,grid%dx,grid%dy,                    &
@@ -1140,7 +1140,7 @@ subroutine fire_ignition_convert (config_flags,fire_max_ignitions,fire_ignition_
 
     ! 
         fire_num_ignitions=0      
-        do i=1,min(5,config_flags%fire_num_ignitions)
+        do i=1,rp_min(5,config_flags%fire_num_ignitions)
             ! count the ignitions 
             if(ignition_line(i)%radius.gt.0.)fire_num_ignitions=i
             ! expand ignition data given as zero
@@ -1581,7 +1581,7 @@ if (fire_lsm_zcoupling) then
     do i = ifts,ifte
       uf_temp=uf(i,j)
       vf_temp=vf(i,j)
-      wsf=max(sqrt(uf_temp**2+vf_temp**2),0.1)
+      wsf=rp_max(sqrt(uf_temp**2+vf_temp**2),0.1)
       z0fc=z0f(i,j)
       ust_d=wsf*vk_kappa/rp_log(fire_lsm_zcoupling_ref/z0fc)
       wsf1=(ust_d/vk_kappa)*rp_log((fire_wind_height+z0fc)/z0fc)

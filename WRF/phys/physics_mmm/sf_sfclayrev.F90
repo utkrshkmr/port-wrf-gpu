@@ -340,7 +340,7 @@
 !   vconv = 0.25*sqrt(g/tskv*pblh(i)*dthvm)
 !   USE BELJAARS OVER LAND, OLD MM5 (WYNGAARD) FORMULA OVER WATER
     if(xland(i).lt.1.5) then
-       fluxc = max(hfx(i)/rhox(i)/cp                    &
+       fluxc = rp_max(hfx(i)/rhox(i)/cp                    &
              + ep1*tskv*qfx(i)/rhox(i),0.)
        vconv = vconvc*rp_pow((g/tgdsa(i)*pblh(i)*fluxc), .33)
     else
@@ -354,12 +354,12 @@
        vconv = sqrt(dthvm)
     endif
 ! MAHRT AND SUN LOW-RES CORRECTION
-    vsgd = 0.32 * rp_pow((max(dx(i)/5000.-1.,0.)), .33)
+    vsgd = 0.32 * rp_pow((rp_max(dx(i)/5000.-1.,0.)), .33)
     wspd(i)=sqrt(wspd(i)*wspd(i)+vconv*vconv+vsgd*vsgd)
-    wspd(i)=amax1(wspd(i),0.1)
+    wspd(i)=rp_max(wspd(i),0.1)
     br(i)=govrth(i)*za(i)*dthvdz/(wspd(i)*wspd(i))                        
 !-----IF PREVIOUSLY UNSTABLE, DO NOT LET INTO REGIMES 1 AND 2
-    if(mol(i).lt.0.)br(i)=amin1(br(i),0.0)
+    if(mol(i).lt.0.)br(i)=rp_min(br(i),0.0)
     rmol(i)=-govrth(i)*dthvdz*za(i)*karman
  260 continue
 
@@ -493,13 +493,13 @@
 !
 !-----LIMIT PSIH AND PSIM IN THE CASE OF THIN LAYERS AND HIGH ROUGHNESS            
 !-----THIS PREVENTS DENOMINATOR IN FLUXES FROM GETTING TOO SMALL                 
-     psih(i)=amin1(psih(i),0.9*gz1oz0(i))
-     psim(i)=amin1(psim(i),0.9*gz1oz0(i))
-     psih2(i)=amin1(psih2(i),0.9*gz2oz0(i))
-     psim10(i)=amin1(psim10(i),0.9*gz10oz0(i))
+     psih(i)=rp_min(psih(i),0.9*gz1oz0(i))
+     psim(i)=rp_min(psim(i),0.9*gz1oz0(i))
+     psih2(i)=rp_min(psih2(i),0.9*gz2oz0(i))
+     psim10(i)=rp_min(psim10(i),0.9*gz10oz0(i))
 !
 ! AHW: mods to compute ck, cd
-     psih10(i)=amin1(psih10(i),0.9*gz10oz0(i))
+     psih10(i)=rp_min(psih10(i),0.9*gz10oz0(i))
      rmol(i) = zol(i)/za(i)  
 
  320 continue                                                                   
@@ -536,8 +536,8 @@
        visc=(1.32+0.009*(scr3(i)-273.15))*1.e-5
        restar=ust(i)*znt(i)/visc
        z0t = (5.5e-5)*(rp_pow(restar, (-0.60)))
-       z0t = min(z0t,1.0e-4)
-       z0t = max(z0t,2.0e-9)
+       z0t = rp_min(z0t,1.0e-4)
+       z0t = rp_max(z0t,2.0e-9)
        z0q = z0t
 
 ! following paj:
@@ -773,7 +773,7 @@
     t2(i) = th2(i)*rp_pow((psfcpa(i)/p1000mb), rovcp)                     
 !                                                                                
     if((xland(i)-1.5).lt.0.)then                                            
-       ust(i)=amax1(ust(i),0.001)
+       ust(i)=rp_max(ust(i),0.001)
     endif                                                                    
     mol(i)=karman*dtg/psit/prt                              
     denomq(i)=psiq
@@ -809,7 +809,7 @@
           !Since V3.7 (ref: EC Physics document for Cy36r1)
           znt(i)=czo*ust(i)*ust(i)/g+0.11*1.5e-5/ust(i)
           ! v3.9: add limit as in isftcflx = 1,2
-          znt(i)=min(znt(i),2.85e-3)
+          znt(i)=rp_min(znt(i),2.85e-3)
        endif
 ! COARE 3.5 (Edson et al. 2013)
 !      czc = 0.0017*wspd(i)-0.005
@@ -824,13 +824,13 @@
 !            znt(i)=0.011*ust(i)*ust(i)/g+ozo
 !            znt(i)=max(znt(i),3.50e-5)
 ! AHW 2012:
-             zw  = min(rp_pow((ust(i)/1.06), (0.3)),1.0)
+             zw  = rp_min(rp_pow((ust(i)/1.06), (0.3)),1.0)
              zn1 = 0.011*ust(i)*ust(i)/g + ozo
              zn2 = 10.*rp_exp(-9.5*rp_pow(ust(i), (-.3333))) + &
-                   0.11*1.5e-5/amax1(ust(i),0.01)
+                   0.11*1.5e-5/rp_max(ust(i),0.01)
              znt(i)=(1.0-zw) * zn1 + zw * zn2
-             znt(i)=min(znt(i),2.85e-3)
-             znt(i)=max(znt(i),1.27e-7)
+             znt(i)=rp_min(znt(i),2.85e-3)
+             znt(i)=rp_max(znt(i),1.27e-7)
           endif
        endif
        zl = znt(i)
@@ -1121,7 +1121,7 @@
  
  depth_b = 1 / 30.0 * rp_log (1260.0 / effective_depth)
  depth_dependent_z0 = rp_exp((2.7 * ust - 1.8 / depth_b) / (ust + 0.17 / depth_b) )
- depth_dependent_z0 = MIN(depth_dependent_z0,0.1)
+ depth_dependent_z0 = rp_min(depth_dependent_z0,0.1)
 
  return
  end function depth_dependent_z0
