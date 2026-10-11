@@ -53,7 +53,7 @@ else step T-MACHINE-a PASS "no nvfortran yet (S0-04); driver $(mpy get driver "$
   pending+=(S0-04); fi
 
 # b: device arithmetic and probes, once per GPU model + driver + compiler
-devkey="$gpu-$(mpy get driver "$MJSON")"
+devkey="$gpu-$(mpy get driver "$MJSON")-nvfortran$(mpy get compiler "$MJSON")"
 devok=$MDIR/devtests/$devkey.ok
 if [ -f "$devok" ]; then step T-MACHINE-b PASS "device tests already passed for $devkey ($(head -1 "$devok"))"
 elif [ -z "$fc" ]; then step T-MACHINE-b PASS "pending S0-05/S0-06: no compiler to build the device tests yet"; pending+=(S0-05 S0-06)

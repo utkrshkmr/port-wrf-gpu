@@ -54,3 +54,16 @@ Format:
   differently, then decide; (c) both. Until then S0-06 and the machine-change protocol (step b) stay FAIL, and
   GPU gates refuse to run on this machine (`machine.sh check`).
 
+## B4 2026-10-11 nvfortran 26.5 cannot build WRF at the CPU-REF flags   [open]
+- Task / kernel: S0-07.1 (CPU-REF build), and every NVHPC build.
+- What happens (command and output): `build.sh cpu-ref --worktree` -> `nvfortran-Fatal-.../tools/fort2 TERMINATED
+  by signal 11` on 12 files at `-O2` (module_dm, module_bittrace, module_cpl, module_optional_input, mediation_integrate,
+  module_wrf_top, real_em, module_initialize_real, module_madwrf, tc_em, solve_em, nest_init_utils; list in
+  `$WORK/logs/crash_files.txt`), reproducible serially, with plain nvfortran too, gone at -O1/-O0; and
+  `NVFORTRAN-S-0038-Symbol, isnan, has not been explicitly declared` (module_wind_mav.F: 26.5 dropped the `isnan`
+  extension).
+- What was tried: 16 instead of 56 make jobs (same crashes); bisection of the flags (only -O2 matters; -O2 is locked
+  by check_build_flags.py); isnan -> `ieee_is_nan` in module_wind_mav.F (standard Fortran, in the B3 refactor).
+- What is needed: NVHPC 25.1, the version the plan pins (ENV_H100.md §1), is being installed next to 26.5
+  (`<checkout>/Linux_x86_64/25.1`) to check the build, T-IPOW and T-MINMAX with it; the owner then chooses the pin.
+

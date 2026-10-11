@@ -306,6 +306,7 @@ def detect(raw):
         "host": host,
         "container": {"runtime": extra.get("container", "unknown"), "usable": extra.get("container_usable", "unknown"),
                       "detected_in": extra.get("detected_in", "sample")},
+        "compiler": extra.get("compiler", "unknown"),
     }
     rec["capabilities"] = capabilities(gpus, host)
     return rec
@@ -326,7 +327,7 @@ def summary(rec):
     out.append(f"host      {h['cpu_model']}  {h['sockets']} x {h['cores_per_socket']} cores  {h['ram_gb']} GB RAM  "
                f"host key {h['key']}  RAPL {h['rapl_readable']}")
     out.append(f"container {rec['container']['runtime']} (usable: {rec['container']['usable']}; "
-               f"detected in {rec['container']['detected_in']})")
+               f"detected in {rec['container']['detected_in']}); nvfortran {rec.get('compiler', 'unknown')}")
     if not c["ok"]:
         out.append(f"STOP      {c['stop']}")
         return "\n".join(out)
@@ -358,9 +359,11 @@ def get(rec, key):
 def diff(old, new):
     gpu = old["gpu_key"] != new["gpu_key"] or old["driver"] != new["driver"]
     host = old["host"]["key"] != new["host"]["key"]
-    if old["machine_id"] == new["machine_id"] and not gpu and not host:
+    # the device tests are properties of the GPU, the driver and the compiler (ADR-006 rev 2, 6.2)
+    comp = old.get("compiler", "unknown") != new.get("compiler", "unknown")
+    if old["machine_id"] == new["machine_id"] and not gpu and not host and not comp:
         return "same"
-    return "+".join(x for x, y in (("gpu", gpu), ("host", host)) if y) or "machine"
+    return "+".join(x for x, y in (("gpu", gpu), ("host", host), ("compiler", comp)) if y) or "machine"
 
 
 def capabilities_md(samples):

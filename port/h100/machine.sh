@@ -53,6 +53,7 @@ detect() {
     echo "container=${CONTAINER:-none}"
     echo "container_usable=$(container_usable && echo yes || echo no)"
     echo "detected_in=$where"
+    container_usable && echo "compiler=$(x nvfortran --version 2>/dev/null | awk 'NF {print $2; exit}')"
   } > "$raw/host.txt"
   [ -f "$MJSON" ] && cp "$MJSON" "$MDIR/machine.prev.json"
   mpy detect "$raw" --out "$MJSON"; local rc=$?
@@ -62,8 +63,9 @@ detect() {
     echo "protocol  never run on this work area: bash port/gates/t_machine.sh"
   else
     local d; d=$(mpy diff "$PROTO" "$MJSON")
-    if [ "$d" = same ]; then echo "protocol  passed for this machine ($(mpy get protocol_date "$PROTO" 2>/dev/null || echo '?'))"
-    else echo "protocol  REQUIRED (changed: $d): bash port/gates/t_machine.sh"; fi
+    if [ "$d" != same ]; then echo "protocol  REQUIRED (changed: $d): bash port/gates/t_machine.sh"
+    elif [ "$(mpy get protocol_result "$PROTO")" = PASS ]; then echo "protocol  passed for this machine ($(mpy get protocol_date "$PROTO"))"
+    else echo "protocol  FAILED for this machine ($(mpy get protocol_date "$PROTO")): see $PROTO; rerun bash port/gates/t_machine.sh after the fix"; fi
   fi
   return 0
 }

@@ -86,7 +86,9 @@ case ${1:-check} in
     fetch https://github.com/Unidata/netcdf-fortran/archive/refs/tags/v$NETCDF_F_VERSION.tar.gz nf.tar.gz || die "download netCDF-Fortran"
     rm -rf netcdf-fortran-*/; tar xzf nf.tar.gz
     note "building netCDF-Fortran with gfortran into $G"
-    x bash -c "cd netcdf-fortran-$NETCDF_F_VERSION && CC=gcc FC=gfortran F77=gfortran CFLAGS='-O2 -fPIC' FCFLAGS='-O2 -fPIC' FFLAGS='-O2 -fPIC' CPPFLAGS=-I$NETCDF/include LDFLAGS=-L$NETCDF/lib LD_LIBRARY_PATH=$NETCDF/lib ./configure --prefix=$G && make -j $BUILD_JOBS && make install" > netcdf-f-gnu.log 2>&1 || die "netCDF-Fortran (gfortran) build failed ($src/netcdf-f-gnu.log)"
+    # only the C headers of $NETCDF: its include/ also holds the nvfortran .mod files, which gfortran cannot read
+    ci=$src/netcdf-c-headers; rm -rf "$ci"; mkdir -p "$ci"; ln -sf "$NETCDF"/include/*.h "$ci"/
+    x bash -c "cd netcdf-fortran-$NETCDF_F_VERSION && CC=gcc FC=gfortran F77=gfortran CFLAGS='-O2 -fPIC' FCFLAGS='-O2 -fPIC' FFLAGS='-O2 -fPIC' CPPFLAGS=-I$ci LDFLAGS=-L$NETCDF/lib LD_LIBRARY_PATH=$NETCDF/lib ./configure --prefix=$G && make -j $BUILD_JOBS && make install" > netcdf-f-gnu.log 2>&1 || die "netCDF-Fortran (gfortran) build failed ($src/netcdf-f-gnu.log)"
     for d in include lib; do for f in "$NETCDF"/$d/libnetcdf.* "$NETCDF"/$d/netcdf.h "$NETCDF"/$d/netcdf_*.h "$NETCDF"/$d/libhdf5*; do
       [ -e "$f" ] && ln -sf "$f" "$G/$d/"; done; done
     [ -x "$G/bin/nf-config" ] && ln -sf "$NETCDF/bin/nc-config" "$G/bin/nc-config"
