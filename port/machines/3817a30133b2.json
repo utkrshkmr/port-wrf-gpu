@@ -49,9 +49,9 @@
   "rrtmg_batch": 4096
  },
  "container": {
-  "detected_in": "host",
+  "detected_in": "container",
   "runtime": "none",
-  "usable": "no"
+  "usable": "yes"
  },
  "cuda": "13.2",
  "driver": "595.91.07",
@@ -95,13 +95,13 @@
  },
  "last_protocol_steps": [
   {
-   "detail": "no nvfortran yet (S0-04); driver 595.91.07, CUDA 13.2 recorded",
+   "detail": "nvfortran 26.5-0 64-bit target on x86-64 Linux -tp icelake-server ; driver 595.91.07; CUDA 13.2",
    "result": "PASS",
    "step": "T-MACHINE-a"
   },
   {
-   "detail": "pending S0-05/S0-06: no compiler to build the device tests yet",
-   "result": "PASS",
+   "detail": "a100-pcie-40gb-595.91.07:  repro_math GPU 0 FAIL (/home/csgrad/utkarshk/port-wrf-gpu/work/gates/315fbccb05b1/repro_math_gpu0/run.log); repro_math GPU 1 FAIL (/home/csgrad/utkarshk/port-wrf-gpu/work/gates/315fbccb05b1/repro_math_gpu1/run.log); ref tests PASS; acc_features 0 PASS (logs in /home/csgrad/utkarshk/port-wrf-gpu/work/gates/315fbccb05b1)",
+   "result": "FAIL",
    "step": "T-MACHINE-b"
   },
   {
@@ -110,21 +110,17 @@
    "step": "T-MACHINE-c"
   },
   {
-   "detail": "T-XG: no GPU traces of commit 1c31bce701e1 from another GPU model: nothing to compare",
+   "detail": "T-XG: no GPU traces of commit 857912cde42b from another GPU model: nothing to compare",
    "result": "PASS",
    "step": "T-MACHINE-d"
   }
  ],
  "machine_id": "3817a30133b2",
- "pending": [
-  "S0-04",
-  "S0-05",
-  "S0-06"
- ],
+ "pending": [],
  "profile": "a100-40x2",
  "protocol_change": "new",
- "protocol_commit": "1c31bce701e1",
- "protocol_date": "2026-10-11 01:32 UTC",
+ "protocol_commit": "857912cde42b",
+ "protocol_date": "2026-10-11 04:45 UTC",
  "protocol_history": [
   {
    "pending": [
@@ -136,8 +132,15 @@
    "protocol_commit": "1c31bce701e1",
    "protocol_date": "2026-10-11 01:32 UTC",
    "protocol_result": "PASS"
+  },
+  {
+   "pending": [],
+   "protocol_change": "new",
+   "protocol_commit": "857912cde42b",
+   "protocol_date": "2026-10-11 04:45 UTC",
+   "protocol_result": "FAIL"
   }
  ],
- "protocol_result": "PASS",
+ "protocol_result": "FAIL",
  "schema": 1
 }

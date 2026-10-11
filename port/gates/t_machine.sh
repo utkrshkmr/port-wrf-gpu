@@ -76,7 +76,7 @@ else
     detail="$detail ref tests $rr"
   fi
   if [ -f "$PORT_REPO/port/tests/acc_features/run.sh" ]; then
-    bash "$PORT_REPO/port/tests/acc_features/run.sh" > "$GATE_DIR/machine_acc_features.log" 2>&1 || ok=0
+    TC="bash $H100/x.sh" bash "$PORT_REPO/port/tests/acc_features/run.sh" > "$GATE_DIR/machine_acc_features.log" 2>&1 || ok=0
     detail="$detail; acc_features $(grep -c PASS "$GATE_DIR/machine_acc_features.log") PASS"
   else pending+=(S0-05); detail="$detail; acc_features pending S0-05"; fi
   if [ $ok = 1 ]; then mkdir -p "$MDIR/devtests"; echo "$(date -u +%F) $fc" > "$devok"; step T-MACHINE-b PASS "$devkey: $detail"
