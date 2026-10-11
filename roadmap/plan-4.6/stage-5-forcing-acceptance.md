@@ -77,6 +77,8 @@ Depends S5-03
 | S5-07.1 | W-1H on GPU 0 | WS-A100 | M | bitwise traces and files |
 | S5-07.2 | W-1H on GPU 1, at the same time | WS-A100 | M | bitwise, and identical to GPU 0 |
 | S5-07.3 | First speed numbers on A100 (dev case): wall seconds per simulated hour, per domain | WS-A100 | S | RESULTS.md |
+| S5-07.4 | Whole-step CPU/GPU comparison of W-1H with everything on the device: CPU-REF (best rank count) and CPU-PROD on the host vs GPU-REPRO on one A100, per range (plan-profiler PR-C3) | WS-A100 | M | `perf/reports/cpu-vs-gpu-eaton_small-<sha>.md` |
+| S5-07.5 | First energy to solution of the same runs (plan-profiler PR-C4; GPU power, host RAPL if readable) | WS-A100 | S | joules per simulated hour in the report |
 
 ## S5-08 · Acceptance case: memory and first hour
 

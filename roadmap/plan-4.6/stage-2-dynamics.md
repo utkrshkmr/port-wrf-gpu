@@ -267,5 +267,6 @@ Work package P2-G3 · Depends S2-19 … S2-21
 | S2-23.3 | T-DRIFT: CPU-REF at this commit vs the dev reference, 1 h, on the host cores | WS-A100 | S | bitwise |
 | S2-23.4 | First dynamics profile on A100: kernel table, launches per step, bandwidth per kernel (plan-profiler PR-R1) | WS-A100 | M | `perf/reports/S2-dynamics-a100.md` |
 | S2-23.5 | Book: dynamics chapters get their "port" sections ([plan-book.md](../plan-book.md)) | CLOUD | M | CI builds the PDF |
+| S2-23.6 | First CPU/GPU comparison of the dynamics: the same W-100 on the host (CPU-REF at the best rank count, CPU-PROD) and on one A100, per dynamics range (`cpu_gpu_compare.py`, plan-profiler PR-C3); measured vs bandwidth-predicted speedup | WS-A100 | M | `perf/reports/cpu-vs-gpu-eaton_small-<sha>.md` |
 
 **Stage gate G2:** `bash port/gates/g2.sh` PASS, plus S2-23.

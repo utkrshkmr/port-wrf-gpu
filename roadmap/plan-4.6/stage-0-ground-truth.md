@@ -92,6 +92,7 @@ after P1-WORK and the `gpu_work_ensure` call of P1-SYNC (I-3). This phase is the
 | S0-04.3 | gfortran netCDF for the `gnu-*` builds (`setup_toolchain.sh deps-gnu`) | S | gnu builds work on WS-A100 too |
 | S0-04.4 | Spell-check every flag of the stanzas against `nvfortran -help -gpu` (`-acc=gpu -cuda -gpu=cc80,cc90,nofma,noflushz`); `check_build_flags.py` | S | PASS |
 | S0-04.5 | Device query of both A100s: SMs, clocks, memory, L2, ECC, MIG off; `deviceQuery`-style program (CUDA Fortran) | S | numbers in ENVIRONMENT.md (feeds plan-profiler PR-H1) |
+| S0-04.6 | Host ceilings: STREAM-style bandwidth of the host CPUs at 1 … 56 threads and per socket (plan-profiler PR-C1) | S | measured host bandwidth in `perf/db/hw.csv` |
 
 **Gate S0-04:** a hello-world OpenACC kernel and a CUDA Fortran kernel run on GPU 0 and GPU 1, with
 `ACC_DEVICE_TYPE=nvidia`.
@@ -172,6 +173,8 @@ and CODE_ONLY.md updated by the reviewer).
 | S0-08.4 | T-RST: continuous vs restart at 02:00, compared at 03:00 | M | bitwise, or documented |
 | S0-08.5 | Cost table: wall time of the dev and acceptance cases on 56 ranks, per simulated hour (sets the plan for S0-10 and S5-09) | S | numbers in ENVIRONMENT.md |
 
+| S0-08.6 | CPU profile of the dev case on the host at 1, 14, 28 and 56 ranks, per `solve_em` section (`port/h100/prof_cpu.sh`, plan-profiler PR-C2); the CPU-PROD build (production flags, timing only, PR-C2b) profiled the same way | M | `perf/reports/cpu-profile-eaton_small.md` |
+
 T-XM (the same binary on two machines) is dropped: there is one machine (ADR-006).
 
 ## S0-09 · Dev case `eaton_small`, acceptance case `eaton_mid`, and their references
@@ -202,7 +205,7 @@ each run takes; the owner decides the run length if 17 h is too costly (ADR-006)
 | S0-10.2 | 02:00 restart run with `restart_interval = 20` (the 02:20 restart) | WS-A100 host | S |
 | S0-10.3 | Archive with md5 list; E1 (1-ulp perturbation of `eaton_mid`) recorded | WS-A100 host | M |
 | S0-10.4 | E0: the original CCR run (its history files, copied as data) vs CPU-REF of the **full** case over the first hours, with `compare_fields.py` and `compare_fire.py`: a statistical comparison that documents how far a different build on a different machine moves the fire. Not a gate. The full-case CPU-REF run is made here on the host for as many hours as the cost table allows | WS-A100 host | M |
-| S0-10.5 | Prof-CPU table (`port/prof_cpu.py`) for the dev and acceptance cases on 56 ranks | WS-A100 host | S |
+| S0-10.5 | Prof-CPU table (`port/prof_cpu.py`) for the acceptance case at the best rank count, CPU-REF and CPU-PROD (plan-profiler PR-C2, PR-C2b) | WS-A100 host | S |
 
 ## S0-11 · T-UNINIT, once
 

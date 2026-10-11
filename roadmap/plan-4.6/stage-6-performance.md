@@ -31,7 +31,7 @@ A rejected optimization is recorded with its numbers, so it is not tried again.
 
 | Phase | Title | Tasks (each S/M) | Machine |
 |---|---|---|---|
-| **S6-01** | Baseline profiles | .1 dev case on A100: nsys of W-100 and W-RAD, ncu of the top-30 kernels; .2 acceptance case `eaton_mid` on A100: 1 h nsys, ncu top-30 (an H100, if available, repeats both); .3 bandwidth floor and roofline per kernel (PR-M1, PR-M2); .4 time per NVTX range vs Prof-CPU; .5 report `perf/reports/S6-01-baseline.md` | WS-A100 (H100 optional) |
+| **S6-01** | Baseline profiles | .1 dev case on A100: nsys of W-100 and W-RAD, ncu of the top-30 kernels; .2 acceptance case `eaton_mid` on A100: 1 h nsys, ncu top-30 (an H100, if available, repeats both); .3 bandwidth floor and roofline per kernel (PR-M1, PR-M2); .4 time per NVTX range vs Prof-CPU; .5 report `perf/reports/S6-01-baseline.md`; .6 CPU/GPU comparison of the acceptance case, 1 h, with predicted vs measured speedup per range (PR-C3); .7 energy to solution of the same runs (PR-C4) | WS-A100 (H100 optional) |
 | **S6-02** | Opportunity reports | .1 fusion finder (PR-A1); .2 cache and reuse report (PR-A2); .3 tiling candidates (PR-A3); .4 warp report: divergence, coalescing, occupancy, spills (PR-A4); .5 launch and gap report (PR-A5); .6 ranked list with expected gains, one row per later phase | WS-A100 |
 | **S6-03** | O1: fire NaN-check kernels out of production builds (they touch no state; kept in GPU-DEBUG) | .1 code; .2 bitwise; .3 measure | WS-A100 |
 | **S6-04** | O2: merge boundary-strip kernels (4 strips → 1 with an index map) and zero/copy kernels | .1 BC family; .2 spec/relax family; .3 acoustic-loop BC updates; .4 bitwise; .5 measure | WS-A100 |
@@ -46,7 +46,7 @@ A rejected optimization is recorded with its numbers, so it is not tried again.
 | **S6-13** | Column physics: RRTMG performance version (O6: (b, layer) and (b, g) parallelism; g-point sums kept in the original order); WSM6 and Noah occupancy | .1 K-RRTMG-TAU; .2 K-RRTMG-RT1; .3 K-RRTMG-RT2 (ordered sums); .4 WSM6 batch shape; .5 bitwise (T-RRTMG-COL, T-TRACE-RAD), measure | WS-A100 (H100 optional) |
 | **S6-14** | I/O and transfers: pinned buffers and asynchronous history D2H (O8); lazy `o3rad` (O10); parent-side forcing pack (O11); quilting | .1 O8; .2 O10 with the restart rule; .3 O11; .4 T-OUT, T-O3 bitwise, measure | WS-A100 (H100 optional) |
 | **S6-15** | Per-GPU tuning (O4/O5): `vector_length`, `num_gangs`, register caps per kernel for A100 and for H100; settings files | .1 A100 sweep (dev case); .2 sweep on the acceptance case (H100 sweep optional); .3 settings in ENVIRONMENT.md | WS-A100 (H100 optional) |
-| **S6-16** | Stage closure (G6) | .1 the tuned binary repeats G5 bitwise on WS-A100; .2 PERF.md complete for A100 (speedups vs CPU-REF on the 56 host cores and, statistically, vs the original CCR run; H100 if available); .3 book Part VII results chapter | WS-A100, CLOUD |
+| **S6-16** | Stage closure (G6) | .1 the tuned binary repeats G5 bitwise on WS-A100; .2 PERF.md complete for A100: final CPU/GPU comparison and energy (PR-C3, PR-C4) against CPU-REF and CPU-PROD on the host cores, and statistically against the original CCR run; H100 if available; .3 book Part VII results chapter | WS-A100, CLOUD |
 
 ## Beyond bit-neutral
 

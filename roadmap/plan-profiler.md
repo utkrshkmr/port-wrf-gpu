@@ -25,12 +25,18 @@ A plan only: nothing here is built yet. The profiler grows in layers, each built
    - fusion, caching, tiling, warp-level fixes, fewer launches, overlap;
    - with an estimate of the gain before anyone writes code.
 4. Did a commit make anything slower (performance regression)?
+5. **What does the GPU gain over the CPU, and why?** The same case, window and commit on the workstation's own host
+   cores and on one A100: time per NVTX range, the measured bandwidth of each side, scaling of the CPU with ranks, and
+   energy to solution. The answer must hold against a CPU build with production flags, not only against the slower
+   reproducible CPU-REF (§9).
 
 ## 2. Hardware (to be measured, not assumed)
 
 Datasheet values below are a starting point only. PR-H1 … PR-H4 measure the real ceilings on the owner's machines,
 and the models use the measured numbers. The owner's machine has two A100 40 GB ([ADR-006](decisions/ADR-006-machines.md));
-the H100 columns are kept for the optional case that one becomes available.
+the H100 columns are kept for the optional case that one becomes available. The host of the workstation (2× Xeon Gold
+6330, 56 cores, 8 DDR4 channels per socket; datasheet about 400 GB/s in total) is measured the same way (PR-C1), since
+the CPU side of every CPU/GPU comparison runs there (§9).
 
 | | A100 40 GB (PCIe / SXM) | A100 80 GB SXM | H100 PCIe 80 GB | H100 SXM 80 GB |
 |---|---|---|---|---|
@@ -177,6 +183,26 @@ Size S ≤ ¼ day, M ≤ ½ day. "Built in" refers to the phase of [plan-4.6](pl
 | PR-R5 | Final tuned report, both A100s (H100 optional) | WS-A100 | M | S6-16 | PERF.md |
 | PR-V1 | Repeatability: 5 runs, coefficient of variation < 2 % per range | WS-A100 | S | S2-23 | measured |
 | PR-V2 | Model sanity: L3 DRAM bytes vs the static traffic model per kernel (P-03) within 20 % | CLOUD | S | S6-01 | table |
+| PR-C1 | Host ceilings: STREAM-style copy/scale/add/triad on the 2× Xeon Gold 6330 (OpenMP, 1 … 56 threads, `numactl` bound per socket and across both), plus one MPI rank per core; working-set sweep across the host caches | WS-A100 host | S | S0-04 | `perf/db/hw.csv` host rows; measured host bandwidth replaces the ~400 GB/s datasheet estimate |
+| PR-C2 | CPU profile on the workstation: `port/h100/prof_cpu.sh` (replaces the CCR runner) runs a build on the host with `-DBENCH`, per `solve_em` section; dev case at 1, 14, 28, 56 ranks (strong scaling per section); acceptance case at the best rank count; bandwidth-bound check per section (bytes from the traffic model / host bandwidth vs measured time) | WS-A100 host | M | S0-08 (dev), S0-10 (acceptance) | `perf/reports/cpu-profile-<case>.md`, CSV |
+| PR-C2b | CPU-PROD build mode (`build.sh cpu-prod`): the stock nvfortran stanza with production flags (FMA, vendor math, vectorized reductions, no `REPRO_MATH`), timing only, never compared bitwise; profiled like PR-C2 | WS-A100 host | S | S0-08 | timing rows; the cost of reproducibility on the CPU |
+| PR-C3 | Same-case CPU/GPU comparison: `perf/tools/cpu_gpu_compare.py` joins the CPU section times (PR-C2) with the GPU NVTX ranges (L1/L2) of the same case, window and commit; per range: CPU-REF time (best rank count), CPU-PROD time, GPU time, speedup, GPU bound class, and the speedup predicted by the measured bandwidth ratio (PR-C1, PR-H2); whole step and per simulated hour | CLOUD (tool) → WS-A100 | M | S2-23 (dynamics), S5-07 (dev, all on device), S6-01 (acceptance baseline), S6-16 (final) | `perf/reports/cpu-vs-gpu-<case>-<sha>.md` + book CSV (chapter 37) |
+| PR-C4 | Energy to solution: `perf/tools/energy_sample.sh` samples GPU power (`nvidia-smi --query-gpu=power.draw`, 100 ms) and host package and DRAM energy (RAPL counters in `/sys/class/powercap`, if readable without root; otherwise recorded as unavailable and a TDP bound reported, labeled as such) during both runs; the energy of a GPU run includes the host; backlog card P-15 | WS-A100 | S | S5-07 (first), S6-01, S6-16 | joules per simulated hour for CPU-REF, CPU-PROD and GPU-REPRO |
+
+## 9. Measuring the GPU against the CPU
+
+The question "is the GPU faster, and why" (§1 item 5) is answered on one machine, the workstation, with these rules:
+
+1. **Same case, window and commit.** CPU and GPU runs of a comparison start from the same restart and run the same
+   simulated time; the commit and build modes are recorded in the report.
+2. **The CPU at its best.** CPU-REF is measured at 1, 14, 28 and 56 ranks and the fastest is used. CPU-PROD (production
+   flags, PR-C2b) is reported beside it, so the GPU is never compared only with a CPU slowed down by the reproducible
+   flags. GPU-REPRO is reported, and GPU-FAST once it exists (ADR-003).
+3. **Explained, not only measured.** Each part of the step gets the speedup the bandwidth ratio predicts (measured host
+   against measured GPU bandwidth, PR-C1 and PR-H2) beside the measured one. A part far below its prediction is a
+   bottleneck to explain: launch-bound, latency-bound column physics, host work (Amdahl), or transfers.
+4. **Energy as well as time** (PR-C4), for the same simulated hours.
+5. **Repeatable.** Five repetitions and the clocks recorded, as for every other measurement of the profiler.
 
 ## 7. How a finding becomes an optimization
 
