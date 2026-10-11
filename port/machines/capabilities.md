@@ -13,7 +13,7 @@ never from the profile name, so a machine that is not listed gets its column fro
 | Compute capability | ≥ 8.0, else stop | 8.0 | 8.0 | 9.0 |
 | Memory gate G-MEM | peak ≤ 85 % of one GPU's memory | 34 GB | 68 GB | 68 GB |
 | `eaton_small` on one GPU | memory estimate (RRTMG 4096, else 2048) ≤ G-MEM | yes (24.2 GB, 4096) | yes (24.2 GB, 4096) | yes (25.7 GB, 4096) |
-| `eaton_mid` on one GPU | memory estimate (RRTMG 4096, else 2048) ≤ G-MEM | yes (33.9 GB, 2048) | yes (36.1 GB, 4096) | yes (37.6 GB, 4096) |
+| `eaton_mid` on one GPU | memory estimate (RRTMG 4096, else 2048) ≤ G-MEM | yes (32.3 GB, 2048) | yes (34.6 GB, 4096) | yes (36.1 GB, 4096) |
 | `eaton_full` on one GPU | memory estimate (RRTMG 4096, else 2048) ≤ G-MEM | no (52.9 GB, 2048) | yes (55.1 GB, 4096) | yes (56.6 GB, 4096) |
 | Runs at once | one per GPU | 2 | 1 | 2 |
 | "GPU 0 equals GPU 1" checks | on two GPUs, else the same GPU twice | two GPUs | same GPU twice | two GPUs |
@@ -26,7 +26,7 @@ never from the profile name, so a machine that is not listed gets its column fro
 
 Notes:
 - Memory estimates: `port/gpu_mem_estimate.py` with resident threads = SMs × 2048 of the GPU model. `eaton_small` from `cases/eaton_small/namelist.input`; it must also stay within 25 GB on every profile.
-- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits the gate of one 40 GB GPU. Estimated d02: 550×550. S0-09.5 decides and writes `cases/eaton_mid/`.
+- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits the gate of one 40 GB GPU. Estimated d02: from its namelist. S0-09.5 decides and writes `cases/eaton_mid/`.
 - A GPU below compute capability 8.0 stops every script (sample `v100-16x1`).
 
 Samples the table is computed from (`port/machines/samples/`):
