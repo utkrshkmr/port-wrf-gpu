@@ -415,9 +415,11 @@ def capabilities_md(samples):
            if os.path.exists(os.path.join(REPO, "cases", "eaton_small", "namelist.input")) else
            f"`eaton_small` is the full case with d02 {DEV_D02}×{DEV_D02} until S0-09.1 writes `cases/eaton_small/`; ")
         + f"it must also stay within {DEV_GMEM_GB} GB on every profile.",
-        f"- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits "
-        f"the gate of one 40 GB GPU. Estimated d02: {', '.join(f'{m}×{m}' for m in sorted(mids)) or 'from its namelist'}."
-        " S0-09.5 decides and writes `cases/eaton_mid/`.",
+        (f"- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits "
+         f"the gate of one 40 GB GPU. Estimated d02: {', '.join(f'{m}×{m}' for m in sorted(mids))}."
+         " S0-09.5 decides and writes `cases/eaton_mid/`." if mids else
+         "- `eaton_mid` from `cases/eaton_mid/namelist.input` (S0-09.5: d02 523×523 with RRTMG 2048, 5 % under the "
+         "40 GB gate; `cases/eaton_mid/README.md`)."),
         "- A GPU below compute capability 8.0 stops every script (sample `v100-16x1`).",
         "",
         "Samples the table is computed from (`port/machines/samples/`):",

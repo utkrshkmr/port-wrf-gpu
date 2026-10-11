@@ -26,7 +26,7 @@ never from the profile name, so a machine that is not listed gets its column fro
 
 Notes:
 - Memory estimates: `port/gpu_mem_estimate.py` with resident threads = SMs × 2048 of the GPU model. `eaton_small` from `cases/eaton_small/namelist.input`; it must also stay within 25 GB on every profile.
-- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits the gate of one 40 GB GPU. Estimated d02: from its namelist. S0-09.5 decides and writes `cases/eaton_mid/`.
+- `eaton_mid` from `cases/eaton_mid/namelist.input` (S0-09.5: d02 523×523 with RRTMG 2048, 5 % under the 40 GB gate; `cases/eaton_mid/README.md`).
 - A GPU below compute capability 8.0 stops every script (sample `v100-16x1`).
 
 Samples the table is computed from (`port/machines/samples/`):
