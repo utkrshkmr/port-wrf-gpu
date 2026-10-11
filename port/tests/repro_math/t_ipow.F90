@@ -1,13 +1,14 @@
 ! T-IPOW (plan.md P0.6): integer powers, host vs device.
 !
-! rp_subst.py leaves integer-literal exponents alone; the compilers expand
-! x**n into multiplications, and host and device must use the same order.
-! The literal exponents below are those found by port/ipow_scan.py in the
-! rewritten files (2, 3, 4, 8; 2.0**32 is exact).  Exponents that are named
-! constants the compiler folds (REAL 2.0, -1.0, 0.0 as in YSU's zfac**pfac, and
-! INTEGER constants as in the WENO pw = 2) stay powers too and are tested with
-! such constants.  Integer-variable exponents go through rp_pow (x**n
-! unchanged) and are tested for n = -8..32.
+! NVHPC 26.5 evaluates x**n on the host with library calls (__py_powi1_4,
+! __pmth_i_dpowi, ...) but multiplies on the device, so x**n differs (BLOCKERS
+! B3).  rp_subst.py therefore keeps only the exponents 0, 1, 2 as powers (x**2
+! is x*x on both) and rewrites every other integer exponent, literal or named
+! constant, and a REAL constant exponent -1, to rp_pow, which multiplies
+! explicitly (module_repro_math).  Cases: the powers left in the code (x**2,
+! x**2.0 and x**0.0 through named constants, the INTEGER constant 2), and
+! rp_pow with the literal exponents ipow_scan.py found before the rewrite (3, 4,
+! 8), with the REAL constant -1.0, and with INTEGER variables n = -8..32.
 ! Pass: identical bits.
 !
 ! Usage: t_ipow [log2_values]   (default 26)
@@ -64,7 +65,7 @@ PROGRAM t_ipow
       END IF
       total_bad = total_bad + nb
    END DO
-   CALL report('T-IPOW (literal 2,3,4,8, named constants, variable -8..32; REAL(4) and REAL(8))', total_bad, &
+   CALL report('T-IPOW (x**2, named constants, rp_pow 3,4,8,-1.0, variable -8..32; REAL(4) and REAL(8))', total_bad, &
                2_i8*n*(nlit + nvar))
    IF (total_bad /= 0_i8) STOP 1
 
@@ -78,20 +79,20 @@ CONTAINS
       INTEGER(i8), INTENT(OUT) :: r8o(nlit + nvar)
       INTEGER :: m
       r4o(1) = bits4(x**2)
-      r4o(2) = bits4(x**3)
-      r4o(3) = bits4(x**4)
-      r4o(4) = bits4(x**8)
+      r4o(2) = bits4(rp_pow(x, 3))
+      r4o(3) = bits4(rp_pow(x, 4))
+      r4o(4) = bits4(rp_pow(x, 8))
       r4o(5) = bits4(x**p2)
       r4o(6) = bits4(x**(p2 - p2))
-      r4o(7) = bits4(x**pm1)
+      r4o(7) = bits4(rp_pow(x, pm1))
       r4o(8) = bits4(x**ipw)
       r8o(1) = bits8(x8**2)
-      r8o(2) = bits8(x8**3)
-      r8o(3) = bits8(x8**4)
-      r8o(4) = bits8(x8**8)
+      r8o(2) = bits8(rp_pow(x8, 3))
+      r8o(3) = bits8(rp_pow(x8, 4))
+      r8o(4) = bits8(rp_pow(x8, 8))
       r8o(5) = bits8(x8**p2)
       r8o(6) = bits8(x8**(p2 - p2))
-      r8o(7) = bits8(x8**pm1)
+      r8o(7) = bits8(rp_pow(x8, pm1))
       r8o(8) = bits8(x8**ipw)
       DO m = -8, 32
          r4o(nlit + m + 9) = bits4(rp_pow(x, m))

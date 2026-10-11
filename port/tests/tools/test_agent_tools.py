@@ -547,5 +547,26 @@ check(rc == 1 and "closed" in out, "check_area_scope: a closed area (stage gate)
 rc, out = run(os.path.join(TOOLS, "check_area_scope.py"), "--check-config")
 check(rc == 0, "check_area_scope --check-config on the repository", out)
 
+# ---- rp_subst: MAX/MIN and integer powers (T-MINMAX, T-IPOW failed with NVHPC 26.5, BLOCKERS B3)
+rs = tempfile.mkdtemp()
+src_rs = ("MODULE m\nCONTAINS\n   SUBROUTINE s(x, y, n)\n      REAL :: x, y, z\n      INTEGER :: n, i\n"
+          "      REAL, PARAMETER :: p2 = 2.0, pm1 = -1.0\n      INTEGER, PARAMETER :: i3 = 3\n"
+          "      z = MAX(x, 0.) + AMIN1(x, y, 1.) + dmax1(x, y)\n"
+          "      z = x**2 + x**3 + x**(-1.0) + x**p2 + x**pm1 + x**i3 + x**n + x**2.0 + x**4\n"
+          "      i = max(n, 1)\n"
+          "      z = a%max + maxval(y)\n"
+          "   END SUBROUTINE s\nEND MODULE m\n")
+open(os.path.join(rs, "t.F"), "w").write(src_rs)
+rc, out = run(os.path.join(PORT, "rp_subst.py"), os.path.join(rs, "t.F"))
+got = open(os.path.join(rs, "t.F")).read()
+want_rs = ["rp_max(x, 0.)", "rp_min(x, y, 1.)", "rp_max(x, y)", "x**2 +", "rp_pow(x, 3)", "rp_pow(x, (-1))",
+           "x**p2", "rp_pow(x, pm1)", "rp_pow(x, i3)", "rp_pow(x, n)", "+ x**2 +", "rp_pow(x, 4)",
+           "i = rp_max(n, 1)", "a%max", "maxval(y)", "USE module_repro_math"]
+miss = [w for w in want_rs if w not in got]
+check(rc == 0 and not miss, "rp_subst: MAX/MIN -> rp_max/rp_min; powers other than 0, 1, 2 -> rp_pow",
+      f"missing {miss}\n{got}\n{out}")
+rc, out = run(os.path.join(PORT, "rp_subst.py"), os.path.join(rs, "t.F"))
+check(open(os.path.join(rs, "t.F")).read() == got, "rp_subst: a second run changes nothing", out)
+
 print("RESULT:", "PASS" if bad == 0 else f"FAIL ({bad})")
 sys.exit(1 if bad else 0)

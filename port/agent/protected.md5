@@ -123,7 +123,7 @@ d52aee2db07aefbcca94810770047ff0  ../ipow_scan.py
 7a1332ba02d51effb45f6fe387d763a8  ../manifest.py
 82904225d9959377d55f9b78da04443b  ../perturb_input.py
 06a6da8191d90c48e15713a2cfc3535e  ../prof_cpu.py
-f2fcc8ce6d8322353ad8d940c68c3333  ../rp_subst.py
+f39e38bda6890590ffd10ae7754d7f8e  ../rp_subst.py
 1f917fe43dac748ab76e6eaca07cd3e2  ../rp_subst_files.txt
 06877667652d28c41208c8a6f0714765  ../sym_allow.txt
 a772082de33580f3a5ae5f29541b85af  ../sym_audit.sh
@@ -195,8 +195,8 @@ e84b14b81efa922dea6a2034186c9b9c  ../tests/pdlim/Makefile
 a09afe8ff62d8749e492912e59658e55  ../tests/repro_math/rm_testlib.F90
 7e854ea4276143e589e3c25648a59ec7  ../tests/repro_math/run_tests.sh
 f95311e6dd4e2a84ef2d640741d9a110  ../tests/repro_math/t_fma.F90
-59f7132b7882dc065728976f6a068899  ../tests/repro_math/t_ieee.F90
-43d59ced91c41f756fc9c1db6af27009  ../tests/repro_math/t_ipow.F90
+1c2a7e8612328beefa66b3d0b66b1bbf  ../tests/repro_math/t_ieee.F90
+f347111f8952eafc53f2d9258b172f30  ../tests/repro_math/t_ipow.F90
 788b3d1e6c776dc14072637e4247b163  ../tests/repro_math/t_rm_d.F90
 177e130ce78a7970081000bf1a19c10d  ../tests/repro_math/t_rm_exh.F90
 8f32b01707406783b9dd83258f2a8587  ../tests/repro_math/t_rm_pow.F90
@@ -213,7 +213,7 @@ bc4cae48494ee30cb133affd905f0161  ../tests/templates/mutants_cp.py
 4b766de04a05ddb72a53c296450cc224  ../tests/templates/t_tmpl_g.F90
 1ddbf346c4f48b9bded77a5e5e330980  ../tests/tools/calc_coef_w_gpu.inc
 57c53117fd459c10fbc38429004426fe  ../tests/tools/example_calc_alt.F
-0e73825a24282cd7056c0a6e43dffdb7  ../tests/tools/test_agent_tools.py
+ed58b2dfefc836f9e3bc4fb96323fcb1  ../tests/tools/test_agent_tools.py
 a693cf5df9e33639c140417b107e05f6  ../tests/tools/test_tools.py
 f74a2e8b178936a582e062fab146b40c  ../tools/add_to_build.py
 4b2a32abd4917041230ed5bf316a8f7d  ../tools/arith_guard.py

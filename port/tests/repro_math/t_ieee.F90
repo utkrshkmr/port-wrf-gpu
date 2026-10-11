@@ -1,5 +1,8 @@
-! T-SIGNZERO, T-MINMAX, T-SUBNORM (plan.md P0.5): basic operations and
-! sign/min/max intrinsics, host vs device, REAL(4) and REAL(8).
+! T-SIGNZERO, T-MINMAX, T-SUBNORM (plan.md P0.5): basic operations, SIGN, and
+! MAX/MIN as the in-scope WRF files compute them, host vs device, REAL(4) and REAL(8).
+! MAX/MIN are rp_max/rp_min of module_repro_math: the intrinsics return different
+! signed zeros on host and device with NVHPC 26.5 (BLOCKERS B3), so rp_subst.py
+! replaces them (plan.md P0.5: "otherwise add rp_max/rp_min").
 !
 !   special operands : +-0, +-min subnormal, +-max subnormal, +-min normal,
 !                      +-1, +-max, +-Inf, NaN, ordinary values; all ordered
@@ -27,9 +30,9 @@ PROGRAM t_ieee
    INTEGER(i8) :: n, k, seed, nbad(nops), total_bad, nchunks, c
    INTEGER :: i, j, op, lg, nargs
    CHARACTER(LEN=16) :: arg
-   CHARACTER(LEN=10), PARAMETER :: opname(nops) = (/ 'SIGN(1,x) ', 'SIGN(a,b) ', 'MAX(a,b)  ', &
-      'MIN(a,b)  ', 'ABS(a)    ', 'a+b       ', 'a-b       ', 'a*b       ', 'a/b       ',       &
-      'SQRT(a)   ', 'REAL8->4  ', 'MAX(b,a)  ' /)
+   CHARACTER(LEN=11), PARAMETER :: opname(nops) = (/ 'SIGN(1,x)  ', 'SIGN(a,b)  ', 'rp_max(a,b)', &
+      'rp_min(a,b)', 'ABS(a)     ', 'a+b        ', 'a-b        ', 'a*b        ', 'a/b        ',   &
+      'SQRT(a)    ', 'REAL8->4   ', 'rp_max(b,a)' /)
    REAL(r4) :: zero
 
    lg = 30
@@ -46,6 +49,9 @@ PROGRAM t_ieee
            -TINY(1.0_r4), 1.0_r4, -1.0_r4, HUGE(1.0_r4), -HUGE(1.0_r4), f4(2139095040_i8),      &
            f4(4286578688_i8), f4(2143289344_i8), 0.5_r4, -0.5_r4, 3.0_r4, 1.0e-30_r4, 1.0e30_r4,   &
            2.0_r4, -7.25_r4, 1.1754942e-38_r4, 5.8774718e-39_r4 /)
+
+   ! --- the defined rules of rp_max/rp_min (module_repro_math header), on the host and the device
+   CALL check_rules()
 
    ! --- special operand pairs, REAL(4)
    n = INT(ns4*ns4, i8)
@@ -129,8 +135,8 @@ CONTAINS
       INTEGER(i4), INTENT(OUT) :: r(nops)
       r(1)  = bits4(SIGN(1.0_r4, x))
       r(2)  = bits4(SIGN(x, y))
-      r(3)  = bits4(MAX(x, y))
-      r(4)  = bits4(MIN(x, y))
+      r(3)  = bits4(rp_max(x, y))
+      r(4)  = bits4(rp_min(x, y))
       r(5)  = bits4(ABS(x))
       r(6)  = bits4(x + y)
       r(7)  = bits4(x - y)
@@ -138,8 +144,47 @@ CONTAINS
       r(9)  = bits4(x/y)
       r(10) = bits4(SQRT(ABS(x)))
       r(11) = bits4(REAL(REAL(x, r8)*REAL(y, r8)*1.0000001_r8, r4))
-      r(12) = bits4(MAX(y, x))
+      r(12) = bits4(rp_max(y, x))
    END SUBROUTINE ops4
+
+   SUBROUTINE check_rules()
+      REAL(r4) :: z, nz, qn, v(8)
+      INTEGER(i4) :: hb(8), db(8), want(8)
+      INTEGER :: q
+      z = 0.0_r4
+      nz = -z
+      qn = f4(2143289344_i8)
+      v = (/ z, nz, qn, 1.0_r4, 0.0_r4, 0.0_r4, 0.0_r4, 0.0_r4 /)
+      CALL rules(v, hb)
+!$acc parallel loop copyin(v) copyout(db)
+      DO q = 1, 1
+         CALL rules(v, db)
+      END DO
+      ! max(+0,-0) max(-0,+0) min(+0,-0) min(-0,+0) max(NaN,1) min(1,NaN) max(NaN,NaN) rp_max(-0,-0,+0)
+      want = (/ 0, 0, INT(Z'80000000', i4), INT(Z'80000000', i4), INT(Z'3F800000', i4), INT(Z'3F800000', i4), &
+                INT(Z'7FC00000', i4), 0 /)
+      IF (ALL(hb == want) .AND. ALL(db == want)) THEN
+         PRINT '(a)', 'PASS  T-MINMAX rules of rp_max/rp_min (-0 < +0, NaN skipped, canonical NaN), host and device'
+      ELSE
+         PRINT '(a,8z9.8)', 'FAIL  T-MINMAX rules: host  ', hb
+         PRINT '(a,8z9.8)', '                      device', db
+         total_bad = total_bad + 1_i8
+      END IF
+   END SUBROUTINE check_rules
+
+   SUBROUTINE rules(v, r)
+!$acc routine seq
+      REAL(r4), INTENT(IN) :: v(8)
+      INTEGER(i4), INTENT(OUT) :: r(8)
+      r(1) = bits4(rp_max(v(1), v(2)))
+      r(2) = bits4(rp_max(v(2), v(1)))
+      r(3) = bits4(rp_min(v(1), v(2)))
+      r(4) = bits4(rp_min(v(2), v(1)))
+      r(5) = bits4(rp_max(v(3), v(4)))
+      r(6) = bits4(rp_min(v(4), v(3)))
+      r(7) = bits4(rp_max(v(3), v(3)))
+      r(8) = bits4(rp_max(v(2), v(2), v(1)))
+   END SUBROUTINE rules
 
    ! NaN results compare equal whatever their payload
    LOGICAL FUNCTION same4(p, q)
@@ -205,8 +250,8 @@ CONTAINS
       INTEGER(i8), INTENT(OUT) :: r(nops)
       r(1)  = bits8(SIGN(1.0_r8, x))
       r(2)  = bits8(SIGN(x, y))
-      r(3)  = bits8(MAX(x, y))
-      r(4)  = bits8(MIN(x, y))
+      r(3)  = bits8(rp_max(x, y))
+      r(4)  = bits8(rp_min(x, y))
       r(5)  = bits8(ABS(x))
       r(6)  = bits8(x + y)
       r(7)  = bits8(x - y)
@@ -214,7 +259,7 @@ CONTAINS
       r(9)  = bits8(x/y)
       r(10) = bits8(SQRT(ABS(x)))
       r(11) = INT(bits4(REAL(x, r4)), i8)
-      r(12) = bits8(MAX(y, x))
+      r(12) = bits8(rp_max(y, x))
    END SUBROUTINE ops8
 
 END PROGRAM t_ieee

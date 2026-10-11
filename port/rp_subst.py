@@ -6,22 +6,30 @@ For each free-form Fortran file given:
 
   EXP LOG LOG10 SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH MOD and their
   specific names (ALOG, ALOG10, AMOD, DEXP, DLOG, DSIN, ...)  ->  rp_exp(...), ...
-  a**b where b is not an integer literal                      ->  rp_pow(a, b)
+  MAX MIN AMAX1 AMIN1 DMAX1 DMIN1                             ->  rp_max(...), rp_min(...)
+  a**b unless b is 0, 1 or 2 (see below)                      ->  rp_pow(a, b)
+
+MAX and MIN: NVHPC 26.5 returns different signed zeros for MAX/MIN on the host
+and on the device (T-MINMAX, BLOCKERS B3); rp_max/rp_min define the result.
+Integer powers: NVHPC 26.5 calls a host library for x**n but multiplies on the
+device (T-IPOW, BLOCKERS B3); rp_pow with an INTEGER exponent multiplies
+explicitly.  Only x**0, x**1 and x**2 (x*x on both) stay powers.
 
 and adds "USE module_repro_math" to every program unit it changes.
 
 Operands of ** are parsed on Fortran tokens (primaries: literals, names with
 component and argument lists, parenthesized expressions), so precedence is
 kept: -a**b becomes -rp_pow(a,b), a**b**c becomes rp_pow(a, rp_pow(b,c)).
-Integer-literal exponents (x**2, x**3) are left alone; they are checked by
-T-IPOW.  A real-literal exponent with the value -1, 0, 1 or 2 (x**2., x**2.0,
-x**(-1.0), ...) becomes the integer literal (x**2): compilers fold x**2.0 into
-x*x (GCC always does for these four values), which is what the integer power
-computes, while a call to pow() could round an exact tie differently.  For the
-same reason a power whose exponent is a constant expression of named constants
-with such a value (x**pfac with 'parameter :: pfac = 2.0') is left as written.  A
-non-literal exponent is always wrapped: the generic rp_pow resolves INTEGER
-exponents to x**n unchanged.
+Integer-literal exponents 0, 1 and 2 are left alone (checked by T-IPOW); every
+other integer literal (x**3, x**(-1)) becomes rp_pow(x, 3).  A real-literal
+exponent with the value -1, 0, 1 or 2 (x**2., x**2.0, x**(-1.0), ...) becomes the
+integer literal first (x**2; x**(-1.0) then rp_pow(x, (-1))): compilers fold
+x**2.0 into x*x, which is what the integer power computes, while a call to pow()
+could round an exact tie differently.  For the same reason a power whose exponent
+is a constant expression of named constants with the value 0, 1 or 2 (x**pfac
+with 'parameter :: pfac = 2.0') is left as written; any other constant exponent
+is wrapped.  A non-literal exponent is always wrapped: the generic rp_pow
+resolves INTEGER exponents to the explicit product.
 
 Not rewritten, and reported:
   - type declaration, PARAMETER, DATA, FORMAT, INTRINSIC and EXTERNAL
@@ -56,7 +64,10 @@ FUNC_MAP = {
     "cosh": "rp_cosh", "dcosh": "rp_cosh",
     "tanh": "rp_tanh", "dtanh": "rp_tanh",
     "mod": "rp_mod", "amod": "rp_mod", "dmod": "rp_mod",
+    "max": "rp_max", "amax1": "rp_max", "dmax1": "rp_max",
+    "min": "rp_min", "amin1": "rp_min", "dmin1": "rp_min",
 }
+KEPT_EXPONENTS = (0, 1, 2)      # x**0, x**1, x**2: the same bits on host and device (T-IPOW)
 REFUSED = {"erf", "erfc", "derf", "derfc", "gamma", "dgamma", "lgamma", "log_gamma", "hypot",
            "asinh", "acosh", "atanh", "bessel_j0", "bessel_j1", "bessel_jn", "bessel_y0",
            "bessel_y1", "bessel_yn", "cexp", "clog", "csin", "ccos", "erfc_scaled", "expm1",
@@ -76,7 +87,7 @@ UNIT_START = re.compile(
     r"(subroutine|function|program|module)\s+(\w+)", re.I)
 MODULE_PROC = re.compile(r"^\s*module\s+procedure\b", re.I)
 USE_LINE = re.compile(r"^   USE module_repro_math\s*$")
-RP_CALL = re.compile(r"\brp_(exp|log|log10|pow|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|mod)\s*\(", re.I)
+RP_CALL = re.compile(r"\brp_(exp|log|log10|pow|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|mod|max|min)\s*\(", re.I)
 
 TOKEN_RE = re.compile(r"""
     (?P<ws>\s+)
@@ -125,6 +136,11 @@ def is_int_literal(text):
     return re.fullmatch(r"[+-]?\d+(_\w+)?|\([+-]?\d+(_\w+)?\)", text) is not None
 
 
+def int_literal_value(text):
+    """Value of an integer literal exponent ('3', '(-1)', '2_i4')."""
+    return int(re.sub(r"_\w+", "", text.replace(" ", "")).strip("()"))
+
+
 FOLDED_REAL = re.compile(r"(\()?([+-]?)([012])\.0*(?:[eEdD][+-]?0+)?(?:_\w+)?(\))?")
 
 
@@ -162,10 +178,9 @@ def real_parameters(text):
 
 def folded_param_exponent(text, params):
     """True if the exponent is a constant expression of literals and named
-    constants (params) that is INTEGER, or REAL with the value -1, 0, 1 or 2:
-    the compiler turns such a power into multiplications at compile time
-    (x**pfac with pfac = 2.0 becomes x*x), so it must stay a power for the
-    rewrite to be a pure refactor."""
+    constants (params) with the value 0, 1 or 2 (INTEGER or REAL): the
+    compiler turns such a power into x*x, 1 or x on host and device alike
+    (x**pfac with pfac = 2.0 becomes x*x), so it stays a power."""
     if not params or not re.search(r"[A-Za-z_]", text):
         return False
     expr = text
@@ -181,11 +196,9 @@ def folded_param_exponent(text, params):
         val = eval(expr, {"__builtins__": {}}, {})
     except Exception:
         return False
-    if isinstance(val, int):
-        # INTEGER constant exponent: the compiler expands x**n into a fixed
-        # chain of multiplications, a runtime power would use another chain
-        return True
-    return val in (-1.0, 0.0, 1.0, 2.0)
+    # x**0, x**1, x**2 (INTEGER or REAL constant) give the same bits on host and
+    # device; any other constant exponent goes to rp_pow (T-IPOW, BLOCKERS B3)
+    return val in KEPT_EXPONENTS
 
 
 class NeedManual(Exception):
@@ -308,7 +321,7 @@ def rewrite_powers(code, report, params=None):
                 done.add(key)
                 continue
             exp_text = code[toks[si + 1].start:toks[r_end].end]
-            if is_int_literal(exp_text.replace(" ", "")):
+            if is_int_literal(exp_text.replace(" ", "")) and int_literal_value(exp_text) in KEPT_EXPONENTS:
                 done.add(key)
                 continue
             if folded_param_exponent(exp_text.replace(" ", ""), params):
