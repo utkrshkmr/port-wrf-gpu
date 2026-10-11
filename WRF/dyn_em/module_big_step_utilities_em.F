@@ -697,12 +697,12 @@ SUBROUTINE calc_ww_cp ( u, v, mup, mub, c1h, c2h, ww,    &
 !  mu coupled with the appropriate map factor
 
       DO j=jts,jtf
-      DO i=its,rp_min(ite+1,ide)
+      DO i=its,min(ite+1,ide)
         MUU(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i-1,j)+MUB(i-1,j))
       ENDDO
       ENDDO
 
-      DO j=jts,rp_min(jte+1,jde)
+      DO j=jts,min(jte+1,jde)
       DO i=its,itf
         MUV(i,j) = 0.5*(MUP(i,j)+MUB(i,j)+MUP(i,j-1)+MUB(i,j-1))
       ENDDO
@@ -3719,7 +3719,7 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
-   DO j = jts, rp_min(jte,jde-1)
+   DO j = jts, MIN(jte,jde-1)
 
    DO k=kts,ktf
    DO i = i_start, i_end
@@ -3796,7 +3796,7 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
 
    DO j=j_start, j_end
    DO k=kts,ktf
-   DO i=its,rp_min(ide-1,ite)
+   DO i=its,MIN(ide-1,ite)
    
       rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*0.5*(f(i,j)+f(i,j-1))    &
        *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -3833,9 +3833,9 @@ SUBROUTINE coriolis ( ru, rv, rw, ru_tend, rv_tend, rw_tend, &
 ! ru = mu u / my ; ru = mu v / mx
 !  => terms are: e ru + ???
 
-   DO j=jts,rp_min(jte, jde-1)
+   DO j=jts,MIN(jte, jde-1)
    DO k=kts+1,ktf
-   DO i=its,rp_min(ite, ide-1)
+   DO i=its,MIN(ite, ide-1)
 
        rw_tend(i,k,j)=rw_tend(i,k,j) + e(i,j)*           &
           (cosa(i,j)*0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j)) &
@@ -3948,7 +3948,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
 !  compute perturbation mu*v for use in u momentum equation
 
-   DO j = jts, rp_min(jte,jde-1)+1
+   DO j = jts, MIN(jte,jde-1)+1
    DO k=kts+1,ktf-1
    DO i = i_start-1, i_end
      z_at_v = 0.25*( phb(i,k,j  )+phb(i,k+1,j  )  &
@@ -3969,7 +3969,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
 !  pick up top and bottom v
 
-   DO j = jts, rp_min(jte,jde-1)+1
+   DO j = jts, MIN(jte,jde-1)+1
    DO i = i_start-1, i_end
 
      k = kts
@@ -4001,7 +4001,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
 !  Map scale factors: see comments above for Coriolis
 
-   DO j = jts, rp_min(jte,jde-1)
+   DO j = jts, MIN(jte,jde-1)
 
    DO k=kts,ktf
      DO i = i_start, i_end
@@ -4056,7 +4056,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
    DO j = j_start-1,j_end
    DO k=kts+1,ktf-1
-   DO i = its, rp_min(ite,ide-1)+1
+   DO i = its, MIN(ite,ide-1)+1
      z_at_u = 0.25*( phb(i  ,k,j)+phb(i  ,k+1,j)  &
                     +phb(i-1,k,j)+phb(i-1,k+1,j)  &
                     +ph(i  ,k,j)+ph(i  ,k+1,j)    &
@@ -4075,7 +4075,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 !  pick up top and bottom u
 
    DO j = j_start-1,j_end
-   DO i = its, rp_min(ite,ide-1)+1
+   DO i = its, MIN(ite,ide-1)+1
 
      k = kts
      z_at_u = 0.25*( phb(i  ,k,j)+phb(i  ,k+1,j)  &
@@ -4110,7 +4110,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    IF ( (config_flags%open_ys) .and. (jts == jds) ) THEN
 
      DO k=kts,ktf
-     DO i=its,rp_min(ide-1,ite)
+     DO i=its,MIN(ide-1,ite)
    
         rv_tend(i,k,jts)=rv_tend(i,k,jts) - (msfvy(i,jts)/msfvx(i,jts))*0.5*(f(i,jts)+f(i,jts))    &
          *0.25*(ru(i,k,jts)+ru(i+1,k,jts)+ru(i,k,jts)+ru(i+1,k,jts))   &
@@ -4124,7 +4124,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 
    DO j=j_start, j_end
    DO k=kts,ktf
-   DO i=its,rp_min(ide-1,ite)
+   DO i=its,MIN(ide-1,ite)
    
       rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*0.5*(f(i,j)+f(i,j-1))    &
        *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -4140,7 +4140,7 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
    IF ( (config_flags%open_ye) .and. (jte == jde) ) THEN
 
      DO k=kts,ktf
-     DO i=its,rp_min(ide-1,ite)
+     DO i=its,MIN(ide-1,ite)
    
         rv_tend(i,k,jte)=rv_tend(i,k,jte) - (msfvy(i,jte)/msfvx(i,jte))*0.5*(f(i,jte-1)+f(i,jte-1))        &
          *0.25*(ru(i,k,jte-1)+ru(i+1,k,jte-1)+ru(i,k,jte-1)+ru(i+1,k,jte-1))   &
@@ -4155,9 +4155,9 @@ SUBROUTINE perturbation_coriolis ( ru_in, rv_in, rw, ru_tend, rv_tend, rw_tend, 
 ! coriolis term for w-mometum
 !  Map scale factors: see comments above for Coriolis
 
-   DO j=jts,rp_min(jte, jde-1)
+   DO j=jts,MIN(jte, jde-1)
    DO k=kts+1,ktf
-   DO i=its,rp_min(ite, ide-1)
+   DO i=its,MIN(ite, ide-1)
 
        rw_tend(i,k,j)=rw_tend(i,k,j) + e(i,j)*           &
           (cosa(i,j)*0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j)) &
@@ -4363,7 +4363,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 !  Polar boundary condition
    IF ((config_flags%map_proj == 6) .OR. (config_flags%polar)) THEN
 
-      DO j=jts,rp_min(jde-1,jte)
+      DO j=jts,MIN(jde-1,jte)
       DO k=kts,ktf
       DO i=i_start,i_end
 
@@ -4378,7 +4378,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
    ELSE  ! normal code
 
 
-      DO j=jts,rp_min(jde-1,jte)
+      DO j=jts,MIN(jde-1,jte)
       DO k=kts,ktf
       DO i=i_start,i_end
 
@@ -4418,7 +4418,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 
       DO j=j_start,j_end
       DO k=kts,ktf
-      DO i=its,rp_min(ite,ide-1)
+      DO i=its,MIN(ite,ide-1)
             rv_tend(i,k,j)=rv_tend(i,k,j) - (msfvy(i,j)/msfvx(i,j))*reradius*   (  &
                         0.25*(u(i,k,j)+u(i+1,k,j)+u(i,k,j-1)+u(i+1,k,j-1))*     &
                         rp_tan((xlat(i,j)+xlat(i,j-1))*0.5*degrad)*                &
@@ -4433,7 +4433,7 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 
       DO j=j_start,j_end
       DO k=kts,ktf
-      DO i=its,rp_min(ite,ide-1)
+      DO i=its,MIN(ite,ide-1)
 
          rv_tend(i,k,j)=rv_tend(i,k,j) - 0.5*(vxgm(i,k,j)+vxgm(i,k,j-1)) &
                  *0.25*(ru(i,k,j)+ru(i+1,k,j)+ru(i,k,j-1)+ru(i+1,k,j-1)) &
@@ -4453,9 +4453,9 @@ SUBROUTINE curvature ( ru, rv, rw, u, v, w, ru_tend, rv_tend, rw_tend, &
 !  ru = mu u / my ; rw = mu w / my ; rv = mu v / mx
 !  terms are: u ru / a + (mx/my)v rv / a
 
-   DO j=jts,rp_min(jte,jde-1)
-   DO k=rp_max(2,kts),ktf
-   DO i=its,rp_min(ite,ide-1)
+   DO j=jts,MIN(jte,jde-1)
+   DO k=MAX(2,kts),ktf
+   DO i=its,MIN(ite,ide-1)
 
       rw_tend(i,k,j)=rw_tend(i,k,j) + reradius*                              &
     (0.5*(fzm(k)*(ru(i,k,j)+ru(i+1,k,j))+fzp(k)*(ru(i,k-1,j)+ru(i+1,k-1,j))) &
@@ -5928,8 +5928,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust u to base state.
 
-    DO j = jts, rp_min( jte, jde-1 )
-    DO i = its, rp_min( ite, ide   )
+    DO j = jts, MIN( jte, jde-1 )
+    DO i = its, MIN( ite, ide   )
 
       ! Get height at top of model
       ztop = 0.5*( phb(i  ,kde,j)+phb(i-1,kde,j)   &
@@ -5983,8 +5983,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust v to base state.
 
-    DO j = jts, rp_min( jte, jde   )
-    DO i = its, rp_min( ite, ide-1 )
+    DO j = jts, MIN( jte, jde   )
+    DO i = its, MIN( ite, ide-1 )
 
       ! Get height at top of model
       ztop = 0.5*( phb(i,kde,j  )+phb(i,kde,j-1)   &
@@ -6038,10 +6038,10 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust w to base state.
 
-    DO j = jts, rp_min( jte,   jde-1 )
-    DO i = its, rp_min( ite,   ide-1 )
+    DO j = jts, MIN( jte,   jde-1 )
+    DO i = its, MIN( ite,   ide-1 )
       ztop = ( phb(i,kde,j) + ph(i,kde,j) ) / g
-      DO k = kts, rp_min( kte,   kde   )
+      DO k = kts, MIN( kte,   kde   )
         z = ( phb(i,k,j) + ph(i,k,j) ) / g
         IF ( z >= (ztop-zdamp) ) THEN
           dcoef = 1.0 - rp_min( 1.0, ( ztop - z ) / zdamp )
@@ -6059,8 +6059,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust potential temperature to base state.
 
-    DO j = jts, rp_min( jte,   jde-1 )
-    DO i = its, rp_min( ite,   ide-1 )
+    DO j = jts, MIN( jte,   jde-1 )
+    DO i = its, MIN( ite,   ide-1 )
 
       ! Get height at top of model
       ztop = ( phb(i,kde,j) + ph(i,kde,j) ) / g
@@ -6176,8 +6176,8 @@ END SUBROUTINE set_tend
 !-----------------------------------------------------------------------
 ! Adjust potential temperature to base state.
 
-    DO j = jts, rp_min( jte,   jde-1 )
-    DO i = its, rp_min( ite,   ide-1 )
+    DO j = jts, MIN( jte,   jde-1 )
+    DO i = its, MIN( ite,   ide-1 )
 
       ! Get height of model levels:
       DO k = kts, ktf
@@ -6660,9 +6660,9 @@ SUBROUTINE initialize_moist_old ( moist_old , moist , &
 
    INTEGER :: i , j , k
 
-   DO j = jts , rp_min(jte,jde-1)
+   DO j = jts , MIN(jte,jde-1)
       DO k = kts , kte-1
-         DO i = its , rp_min(ite,ide-1)
+         DO i = its , MIN(ite,ide-1)
             moist_old(i,k,j) = moist(i,k,j)
          END DO
       END DO
@@ -6696,9 +6696,9 @@ SUBROUTINE conv_t_tendf_to_moist ( t_1 , moist_old ,                &
    !  This dry tendency is from the physics packages.  It is modified immediately after the
    !  call to the physics schemes, and the remains constant for the remainder of the RK loops.
 
-   DO j = jts , rp_min(jte,jde-1)
+   DO j = jts , MIN(jte,jde-1)
       DO k = kts , kte-1
-         DO i = its , rp_min(ite,ide-1)
+         DO i = its , MIN(ite,ide-1)
             t_tendf(i,k,j) = (1. + (R_v/R_d) * moist_old(i,k,j))*t_tendf(i,k,j) + &
                              (R_v/R_d)*(t_1(i,k,j)+T0)/(1.+R_v/R_d*moist_old(i,k,j))*moist_tend(i,k,j)
          END DO

@@ -80,12 +80,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -99,12 +99,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -120,10 +120,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -138,10 +138,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
 
               MU_OLD(i,j) = MUTS(i,j) - dt*MU_TEND(i,j)
 
@@ -1259,10 +1259,10 @@ CONTAINS
        jp1_limit = jde
      ENDIF
 
-     DO j = jts,rp_min(jte,jde-1)
+     DO j = jts,min(jte,jde-1)
        jm1 = rp_max(j-1, jm1_limit)
        jp1 = rp_min(j+1, jp1_limit)
-     DO i = its,rp_min(ite,ide-1)
+     DO i = its,min(ite,ide-1)
        im1 = rp_max(i-1, im1_limit)
        ip1 = rp_min(i+1, ip1_limit)
 
@@ -1284,9 +1284,9 @@ CONTAINS
 
 ! Fill the atmospheric w field with smoothly decaying values
       IF (fill_w_flag) THEN
-        DO j = jts,rp_min(jte,jde-1)
+        DO j = jts,min(jte,jde-1)
         DO k = kts+1,kte
-        DO i = its,rp_min(ite,ide-1)
+        DO i = its,min(ite,ide-1)
           w(i,k,j) = w(i,1,j)*znw(k)*znw(k)
         ENDDO
         ENDDO
@@ -1497,7 +1497,7 @@ CONTAINS
       !  South boundary: i,k,j
       !  jj increasing
 
-      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
+      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1506,7 +1506,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
+      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1534,7 +1534,7 @@ CONTAINS
       !  North boundary: i,k,j
       !  jj decreasing
 
-      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
+      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1543,7 +1543,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
+      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1596,7 +1596,7 @@ CONTAINS
       !  West boundary: j,k,i
       !  ii increasing
 
-      DO ii = rp_max(its,1) , rp_min(ite,ide-1,spec_bdy_width)
+      DO ii = MAX(its,1) , MIN(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1605,7 +1605,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO ii = rp_max(its,1) , rp_min(ite,ide-1,spec_bdy_width)
+      DO ii = MAX(its,1) , MIN(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1633,7 +1633,7 @@ CONTAINS
       !  East boundary: j,k,i
       !  ii decreasing
 
-      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
+      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1642,7 +1642,7 @@ CONTAINS
             END DO
          END DO
       END DO
-      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
+      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1670,7 +1670,7 @@ CONTAINS
       !  Put the final values for the tendencies into the arrays that get passed
       !  back out to the calling routine.
 
-      DO jj = rp_max(jts,1) , rp_min(jte,jde-1,spec_bdy_width)
+      DO jj = MAX(jts,1) , MIN(jte,jde-1,spec_bdy_width)
          j = jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1680,7 +1680,7 @@ CONTAINS
          END DO
       END DO
 
-      DO jj = rp_min(jde-1,jte) , rp_max(jde-spec_bdy_width,jts) , -1
+      DO jj = MIN(jde-1,jte) , MAX(jde-spec_bdy_width,jts) , -1
          j = jde-jj
          DO k = kts , kte-1
             DO i = i_min , i_max
@@ -1690,7 +1690,7 @@ CONTAINS
          END DO
       END DO
 
-      DO ii = its , rp_min(ite,ide-1,spec_bdy_width)
+      DO ii = its , MIN(ite,ide-1,spec_bdy_width)
          i = ii
          DO k = kts , kte-1
             DO j = j_min , j_max
@@ -1700,7 +1700,7 @@ CONTAINS
          END DO
       END DO
 
-      DO ii = rp_min(ide-1,ite) , rp_max(ide-spec_bdy_width,its) , -1
+      DO ii = MIN(ide-1,ite) , MAX(ide-spec_bdy_width,its) , -1
          i = ide-ii
          DO k = kts , kte-1
             DO j = j_min , j_max

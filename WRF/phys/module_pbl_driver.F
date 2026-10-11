@@ -1034,7 +1034,7 @@ CONTAINS
 
          PSFC(I,J)=p8w(I,kms,J)
 
-         DO k=kts,rp_min(kte+1,kde)
+         DO k=kts,min(kte+1,kde)
             RTHBLTEN(I,K,J)=0.
             RUBLTEN(I,K,J)=0.
             RVBLTEN(I,K,J)=0.
@@ -1043,13 +1043,13 @@ CONTAINS
          ENDDO
 
          IF (flag_QI .AND. PRESENT(RQIBLTEN) ) THEN
-            DO k=kts,rp_min(kte+1,kde)
+            DO k=kts,min(kte+1,kde)
                RQIBLTEN(I,K,J)=0.
             ENDDO
          ENDIF
          !Following if condition is added for CAMUWPBL scheme
          IF (flag_QNI .AND. PRESENT(RQNIBLTEN) ) THEN
-            DO k=kts,rp_min(kte+1,kde)
+            DO k=kts,min(kte+1,kde)
                RQNIBLTEN(I,K,J)=0.
             ENDDO
          ENDIF

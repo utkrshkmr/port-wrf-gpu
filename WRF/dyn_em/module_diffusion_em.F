@@ -770,7 +770,7 @@
     END DO
 
     i = i_start-1
-    DO j = j_start, rp_min( jte, jde-1 )
+    DO j = j_start, MIN( jte, jde-1 )
     DO k = kts, kte
       hat(i,k,j) = w(i,k,j) / msfty(i,j)
     END DO
@@ -778,7 +778,7 @@
 
     j = j_start-1
     DO k = kts, kte
-    DO i = i_start, rp_min( ite, ide-1 )
+    DO i = i_start, MIN( ite, ide-1 )
       hat(i,k,j) = w(i,k,j) / msfty(i,j)
     END DO
     END DO
@@ -945,7 +945,7 @@
     END DO
 
     i = i_start-1
-    DO j = j_start, rp_min( jte, jde-1 )
+    DO j = j_start, MIN( jte, jde-1 )
     DO k = kts, kte
       hat(i,k,j) = w(i,k,j) / msftx(i,j)
     END DO
@@ -953,7 +953,7 @@
 
     j = j_start-1
     DO k = kts, kte
-    DO i = i_start, rp_min( ite, ide-1 )
+    DO i = i_start, MIN( ite, ide-1 )
       hat(i,k,j) = w(i,k,j) / msftx(i,j)
     END DO
     END DO
@@ -4251,9 +4251,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    IF ( config_flags%mix_full_fields ) THEN
 
-     DO j=jts,rp_min(jte,jde-1)
+     DO j=jts,min(jte,jde-1)
      DO k=kts,kte-1
-     DO i=its,rp_min(ite,ide-1)
+     DO i=its,min(ite,ide-1)
        var_mix(i,k,j) = thp(i,k,j)
      ENDDO
      ENDDO
@@ -4261,9 +4261,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
    ELSE
 
-     DO j=jts,rp_min(jte,jde-1)
+     DO j=jts,min(jte,jde-1)
      DO k=kts,kte-1
-     DO i=its,rp_min(ite,ide-1)
+     DO i=its,min(ite,ide-1)
        var_mix(i,k,j) = thp(i,k,j) - t_base(k)
      ENDDO
      ENDDO
@@ -4347,9 +4347,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
        IF ( (.not. config_flags%mix_full_fields) .and. (im == P_QV) ) THEN
 
-         DO j=jts,rp_min(jte,jde-1)
+         DO j=jts,min(jte,jde-1)
          DO k=kts,kte-1
-         DO i=its,rp_min(ite,ide-1)
+         DO i=its,min(ite,ide-1)
           var_mix(i,k,j) = moist(i,k,j,im) - qv_base(k)
          ENDDO
          ENDDO
@@ -4357,9 +4357,9 @@ SUBROUTINE vertical_diffusion_2   ( ru_tendf, rv_tendf, rw_tendf, rt_tendf,   &
 
        ELSE
 
-         DO j=jts,rp_min(jte,jde-1)
+         DO j=jts,min(jte,jde-1)
          DO k=kts,kte-1
-         DO i=its,rp_min(ite,ide-1)
+         DO i=its,min(ite,ide-1)
           var_mix(i,k,j) = moist(i,k,j,im)
          ENDDO
          ENDDO
@@ -6985,7 +6985,7 @@ END SUBROUTINE phy_bc
 
     DO j = j_start, j_end
     DO k = 1, kte
-    DO i = rp_max( ids+1, its ), i_end
+    DO i = MAX( ids+1, its ), i_end
       zx(i,k,j) = rdx * ( phb(i,k,j) - phb(i-1,k,j) ) / g
     END DO
     END DO
@@ -6993,13 +6993,13 @@ END SUBROUTINE phy_bc
 
     DO j = j_start, j_end
     DO k = 1, kte
-    DO i = rp_max( ids+1, its ), i_end
+    DO i = MAX( ids+1, its ), i_end
       zx(i,k,j) = zx(i,k,j) + rdx * ( ph(i,k,j) - ph(i-1,k,j) ) / g
     END DO
     END DO
     END DO
 
-    DO j = rp_max( jds+1, jts ), j_end
+    DO j = MAX( jds+1, jts ), j_end
     DO k = 1, kte
     DO i = i_start, i_end
       zy(i,k,j) = rdy * ( phb(i,k,j) - phb(i,k,j-1) ) / g
@@ -7007,7 +7007,7 @@ END SUBROUTINE phy_bc
     END DO
     END DO
 
-    DO j = rp_max( jds+1, jts ), j_end
+    DO j = MAX( jds+1, jts ), j_end
     DO k = 1, kte
     DO i = i_start, i_end
       zy(i,k,j) = zy(i,k,j) + rdy * ( ph(i,k,j) - ph(i,k,j-1) ) / g
@@ -7513,8 +7513,8 @@ END SUBROUTINE phy_bc
 
 ! Apply a smoother
 
-    DO j = rp_max(jds+1,jts),rp_min(jde-2,jte)
-    DO i = rp_max(ids+1,its),rp_min(ide-2,ite)
+    DO j = MAX(jds+1,jts),MIN(jde-2,jte)
+    DO i = MAX(ids+1,its),MIN(ide-2,ite)
       uh_smth = 0.25   *   uh(i  ,j  ) + &
                 0.125  * ( uh(i+1,j  ) + uh(i-1,j  ) + &
                            uh(i  ,j+1) + uh(i  ,j-1) ) + &
@@ -8044,17 +8044,17 @@ END SUBROUTINE phy_bc
       IF ( config_flags%periodic_x ) i_end = rp_min(ite,ide-1)
  
    IF ( config_flags%mix_full_fields ) THEN
-     DO j = jts,rp_min(jte,jde-1)
+     DO j = jts,min(jte,jde-1)
      DO k = kts,kte-1
-     DO i = its,rp_min(ite,ide-1)
+     DO i = its,min(ite,ide-1)
        var_mix(i,k,j) = thp(i,k,j)
      ENDDO
      ENDDO
      ENDDO
    ELSE
-     DO j = jts,rp_min(jte,jde-1)
+     DO j = jts,min(jte,jde-1)
      DO k = kts,kte-1
-     DO i = its,rp_min(ite,ide-1)
+     DO i = its,min(ite,ide-1)
        var_mix(i,k,j) = thp(i,k,j) - t_base(k)
      ENDDO
      ENDDO
@@ -8230,17 +8230,17 @@ END SUBROUTINE phy_bc
    IF (n_moist .ge. PARAM_FIRST_SCALAR) THEN
      moist_loop: do im = PARAM_FIRST_SCALAR, n_moist
        IF ( (.not. config_flags%mix_full_fields) .and. (im == P_QV) ) THEN
-         DO j = jts,rp_min(jte,jde-1)
+         DO j = jts,min(jte,jde-1)
          DO k = kts,kte-1
-         DO i = its,rp_min(ite,ide-1)
+         DO i = its,min(ite,ide-1)
           var_mix(i,k,j) = moist(i,k,j,im) - qv_base(k)
          ENDDO
          ENDDO
          ENDDO
        ELSE
-         DO j = jts,rp_min(jte,jde-1)
+         DO j = jts,min(jte,jde-1)
          DO k = kts,kte-1
-         DO i = its,rp_min(ite,ide-1)
+         DO i = its,min(ite,ide-1)
           var_mix(i,k,j) = moist(i,k,j,im)
          ENDDO
          ENDDO
@@ -8342,9 +8342,9 @@ END SUBROUTINE phy_bc
 ! need to avoid mixing scalars associated with precipitating species (e.g. Nr)
     IF(im.NE.P_QNS .AND. im.NE.P_QNR .AND. im.NE.P_QNG .AND. im.NE.P_QNH .AND. &
        im.NE.P_QT .AND. im.NE.P_QVOLG) THEN
-         DO j = jts, rp_min(jte,jde-1)
+         DO j = jts, min(jte,jde-1)
          DO k = kts, kte-1
-         DO i = its, rp_min(ite,ide-1)
+         DO i = its, min(ite,ide-1)
           var_mix(i,k,j) = scalar(i,k,j,im)
          ENDDO
          ENDDO
@@ -8388,9 +8388,9 @@ END SUBROUTINE phy_bc
 !!============================================
    IF (n_tracer .ge. PARAM_FIRST_SCALAR) THEN
      tracer_loop: do im = PARAM_FIRST_SCALAR, n_tracer
-         DO j = jts, rp_min(jte,jde-1)
+         DO j = jts, min(jte,jde-1)
          DO k = kts, kte-1
-         DO i = its, rp_min(ite,ide-1)
+         DO i = its, min(ite,ide-1)
           var_mix(i,k,j) = tracer(i,k,j,im)
          ENDDO
          ENDDO
@@ -8433,9 +8433,9 @@ END SUBROUTINE phy_bc
 !!============================================
    IF (n_chem .ge. PARAM_FIRST_SCALAR) THEN
      chem_loop: do im = PARAM_FIRST_SCALAR, n_chem
-         DO j = jts,rp_min(jte,jde-1)
+         DO j = jts,min(jte,jde-1)
          DO k = kts,kte-1
-         DO i = its,rp_min(ite,ide-1)
+         DO i = its,min(ite,ide-1)
           var_mix(i,k,j) = chem(i,k,j,im)
          ENDDO
          ENDDO

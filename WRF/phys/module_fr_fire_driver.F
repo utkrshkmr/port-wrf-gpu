@@ -1140,7 +1140,7 @@ subroutine fire_ignition_convert (config_flags,fire_max_ignitions,fire_ignition_
 
     ! 
         fire_num_ignitions=0      
-        do i=1,rp_min(5,config_flags%fire_num_ignitions)
+        do i=1,min(5,config_flags%fire_num_ignitions)
             ! count the ignitions 
             if(ignition_line(i)%radius.gt.0.)fire_num_ignitions=i
             ! expand ignition data given as zero

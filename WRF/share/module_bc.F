@@ -287,7 +287,7 @@ CONTAINS
         IF ( ( ids == ips ) .and.  ( ide == ipe ) ) THEN  ! test if east and west both on-processor
           IF ( its == ids ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO i = 0,-(bdyzone-1),-1
               dat(ids+i-1,j) = dat(ide+i-1,j)
             ENDDO
@@ -297,7 +297,7 @@ CONTAINS
 
           IF ( ite == ide ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
 !!          DO i = 1 , bdyzone
             DO i = -istag , bdyzone
               dat(ide+i+istag,j) = dat(ids+i+istag,j)
@@ -314,7 +314,7 @@ CONTAINS
 
           IF ( (variable /= 'u') .and. (variable /= 'x') ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO i = 1, bdyzone
               dat(ids-i,j) = dat(ids+i-1,j) !  here, dat(0) = dat(1), etc
             ENDDO                             !  symmetry about dat(0.5) (u=0 pt)
@@ -324,7 +324,7 @@ CONTAINS
 
             IF( variable == 'u' ) THEN
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO i = 0, bdyzone-1
                 dat(ids-i,j) = - dat(ids+i,j) ! here, u(0) = - u(2), etc
               ENDDO                             !  normal b.c symmetry at u(1)
@@ -332,7 +332,7 @@ CONTAINS
 
             ELSE
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO i = 0, bdyzone-1
                 dat(ids-i,j) =   dat(ids+i,j) ! here, phi(0) = phi(2), etc
               ENDDO                             !  normal b.c symmetry at phi(1)
@@ -352,7 +352,7 @@ CONTAINS
 
           IF ( (variable /= 'u') .and. (variable /= 'x') ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO i = 1, bdyzone
               dat(ide+i-1,j) = dat(ide-i,j)  !  sym. about dat(ide-0.5)
             ENDDO
@@ -362,7 +362,7 @@ CONTAINS
 
             IF (variable == 'u' ) THEN
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO i = 0, bdyzone-1
                 dat(ide+i,j) = - dat(ide-i,j)  ! u(ide+1) = - u(ide-1), etc.
               ENDDO
@@ -371,7 +371,7 @@ CONTAINS
 
             ELSE
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO i = 0, bdyzone-1
                 dat(ide+i,j) = dat(ide-i,j)  !  phi(ide+1) = phi(ide-1), etc.
               ENDDO
@@ -391,7 +391,7 @@ CONTAINS
                        config_flags%nested            ) .and.  &
                          ( its == ids ) .and. open_bc_copy  )  THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               dat(ids-1,j) = dat(ids,j) !  here, dat(0) = dat(1)
               dat(ids-2,j) = dat(ids,j)
               dat(ids-3,j) = dat(ids,j)
@@ -409,7 +409,7 @@ CONTAINS
 
           IF ( variable /= 'u' .and. variable /= 'x') THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               dat(ide  ,j) = dat(ide-1,j)
               dat(ide+1,j) = dat(ide-1,j)
               dat(ide+2,j) = dat(ide-1,j)
@@ -417,7 +417,7 @@ CONTAINS
 
           ELSE
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               dat(ide+1,j) = dat(ide,j)
               dat(ide+2,j) = dat(ide,j)
               dat(ide+3,j) = dat(ide,j)
@@ -751,7 +751,7 @@ CONTAINS
         IF ( ( ids == ips ) .and. ( ide == ipe ) ) THEN  ! test if both east and west on-processor
           IF ( its == ids ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO k = kts, k_end
             DO i = 0,-(bdyzone-1),-1
               dat(ids+i-1,k,j) = dat(ide+i-1,k,j)
@@ -764,7 +764,7 @@ CONTAINS
 
           IF ( ite == ide ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO k = kts, k_end
             DO i = -istag , bdyzone
               dat(ide+i+istag,k,j) = dat(ids+i+istag,k,j)
@@ -783,7 +783,7 @@ CONTAINS
 
           IF ( istag == -1 ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO k = kts, k_end
             DO i = 1, bdyzone
               dat(ids-i,k,j) = dat(ids+i-1,k,j) !  here, dat(0) = dat(1), etc
@@ -795,7 +795,7 @@ CONTAINS
 
             IF ( variable == 'u' ) THEN
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO k = kts, k_end
               DO i = 1, bdyzone
                 dat(ids-i,k,j) = - dat(ids+i,k,j) ! here, u(0) = - u(2), etc
@@ -805,7 +805,7 @@ CONTAINS
 
             ELSE
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO k = kts, k_end
               DO i = 1, bdyzone
                 dat(ids-i,k,j) = dat(ids+i,k,j) ! here, phi(0) = phi(2), etc
@@ -827,7 +827,7 @@ CONTAINS
 
           IF ( istag == -1 ) THEN
 
-            DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+            DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
             DO k = kts, k_end
             DO i = 1, bdyzone
               dat(ide+i-1,k,j) = dat(ide-i,k,j)  !  sym. about dat(ide-0.5)
@@ -839,7 +839,7 @@ CONTAINS
 
             IF (variable == 'u') THEN
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO k = kts, k_end
               DO i = 1, bdyzone
                 dat(ide+i,k,j) = - dat(ide-i,k,j)  ! u(ide+1) = - u(ide-1), etc.
@@ -849,7 +849,7 @@ CONTAINS
 
             ELSE
 
-              DO j = rp_max(jds,jts-1), rp_min(jte+1,jde+jstag)
+              DO j = MAX(jds,jts-1), MIN(jte+1,jde+jstag)
               DO k = kts, k_end
               DO i = 1, bdyzone
                 dat(ide+i,k,j) = dat(ide-i,k,j)  ! phi(ide+1) = - phi(ide-1), etc.
@@ -870,7 +870,7 @@ CONTAINS
                        config_flags%nested            ) .and.  &
                          ( its == ids ) .and. open_bc_copy  )  THEN
 
-            DO j = jts-bdyzone, rp_min(jte,jde+jstag)+bdyzone
+            DO j = jts-bdyzone, MIN(jte,jde+jstag)+bdyzone
 #if defined(INTEL_ALIGN64)
 !DEC$ ASSUME_ALIGNED dat:64
 !DEC$ UNROLL(4)
@@ -895,7 +895,7 @@ CONTAINS
 
           IF (variable /= 'u' .and. variable /= 'x' ) THEN
 
-            DO j = jts-bdyzone, rp_min(jte,jde+jstag)+bdyzone
+            DO j = jts-bdyzone, MIN(jte,jde+jstag)+bdyzone
 #if defined(INTEL_ALIGN64)
 !DEC$ ASSUME_ALIGNED dat:64
 !DEC$ UNROLL(4)
@@ -911,7 +911,7 @@ CONTAINS
           ELSE
 
 !!!!!!! I am not sure about this one!  JM 20020402
-            DO j = rp_max(jds,jts-1)-bdyzone, rp_min(jte+1,jde+jstag)+bdyzone
+            DO j = MAX(jds,jts-1)-bdyzone, MIN(jte+1,jde+jstag)+bdyzone
             DO k = kts, k_end
               dat(ide+1,k,j) = dat(ide,k,j)
               dat(ide+2,k,j) = dat(ide,k,j)
@@ -1293,12 +1293,12 @@ CONTAINS
 
       IF (jts - jbs .lt. relax_zone) THEN
 ! Y-start boundary
-        DO j = rp_max(jts,jbs+spec_zone), rp_min(jtf,jbs+relax_zone-1)
+        DO j = max(jts,jbs+spec_zone), min(jtf,jbs+relax_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               im1 = rp_max(i-1,ibs)
               ip1 = rp_min(i+1,ibe)
               fls0 = field_bdy_ys(i, k, b_dist+1) &
@@ -1328,14 +1328,14 @@ CONTAINS
 
 
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-relax_zone+1), rp_min(jtf,jbe-spec_zone)
+        DO j = max(jts,jbe-relax_zone+1), min(jtf,jbe-spec_zone)
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
 
 
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               im1 = rp_max(i-1,ibs)
               ip1 = rp_min(i+1,ibe)
               fls0 = field_bdy_ye(i, k, b_dist+1) &
@@ -1365,10 +1365,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. relax_zone) THEN
 ! X-start boundary
-        DO i = rp_max(its,ibs+spec_zone), rp_min(itf,ibs+relax_zone-1)
+        DO i = max(its,ibs+spec_zone), min(itf,ibs+relax_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               fls0 = field_bdy_xs(j, k, b_dist+1) &
                    + dtbc * field_bdy_tend_xs(j, k, b_dist+1) &
                    - field(i,k,j)
@@ -1395,10 +1395,10 @@ CONTAINS
 
       IF (ibe - itf .lt. relax_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-relax_zone+1), rp_min(itf,ibe-spec_zone)
+        DO i = max(its,ibe-relax_zone+1), min(itf,ibe-spec_zone)
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               fls0 = field_bdy_xe(j, k, b_dist+1) &
                    + dtbc * field_bdy_tend_xe(j, k, b_dist+1) &
                    - field(i,k,j)
@@ -1492,12 +1492,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field_tend(i,k,j) = field_bdy_tend_ys(i, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1507,14 +1507,14 @@ CONTAINS
 
 
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
 
 
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field_tend(i,k,j) = field_bdy_tend_ye(i, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1524,10 +1524,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field_tend(i,k,j) = field_bdy_tend_xs(j, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1536,10 +1536,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field_tend(i,k,j) = field_bdy_tend_xe(j, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1624,12 +1624,12 @@ CONTAINS
       IF (jts - jbs .lt. spec_zone) THEN
 
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
             IF (variable == 't') THEN
               field_tend(i,k,j) = field_tend(i,k,j) + &
                                   field_tend_perturb(i,rp_min(k,kme_stoch),j) * &
@@ -1653,12 +1653,12 @@ CONTAINS
 
 
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
             IF (variable == 't') THEN
               field_tend(i,k,j) = field_tend(i,k,j) + &
                                   field_tend_perturb(i,rp_min(k,kme_stoch),j) * ((c1(k)*mu_2(i,j))+(c1(k)*mub(i,j)+c2(k)))
@@ -1679,10 +1679,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
             IF (variable == 't') THEN
               field_tend(i,k,j) = field_tend(i,k,j) + &
                                   field_tend_perturb(i,rp_min(k,kme_stoch),j) * ((c1(k)*mu_2(i,j))+(c1(k)*mub(i,j)+c2(k)))
@@ -1702,10 +1702,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
             IF (variable == 't') THEN
               field_tend(i,k,j) = field_tend(i,k,j) + &
                                   field_tend_perturb(i,rp_min(k,kme_stoch),j) * ((c1(k)*mu_2(i,j))+(c1(k)*mub(i,j)+c2(k)))
@@ -1778,12 +1778,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
            b_dist = j - jbs
            b_limit = b_dist
            IF(periodic_x)b_limit = 0
            DO k = kts, ktf
-              DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+              DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
                  field_bdy_tend_ys(i,k,b_dist+1) = field_bdy_tend_ys(i,k,b_dist+1) * &
                                                    (1.0 + field_scalar_perturb(i,rp_min(k,kme_stoch),j))
               ENDDO
@@ -1793,12 +1793,12 @@ CONTAINS
 
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
            b_dist = jbe - j
            b_limit = b_dist
            IF(periodic_x)b_limit = 0
            DO k = kts, ktf
-              DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+              DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
                  field_bdy_tend_ye(i,k,b_dist+1) = field_bdy_tend_ye(i,k,b_dist+1) * &
                                                    (1.0 + field_scalar_perturb(i,rp_min(k,kme_stoch),j))
               ENDDO
@@ -1810,10 +1810,10 @@ CONTAINS
 
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
            b_dist = i - ibs
            DO k = kts, ktf
-              DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+              DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
                  field_bdy_tend_xs(j,k,b_dist+1) = field_bdy_tend_xs(j,k,b_dist+1) * &
                                                    (1.0 + field_scalar_perturb(i,rp_min(k,kme_stoch),j))
               ENDDO
@@ -1823,10 +1823,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
            b_dist = ibe - i
            DO k = kts, ktf
-             DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+             DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
                  field_bdy_tend_xe(j,k,b_dist+1) = field_bdy_tend_xe(j,k,b_dist+1) * (1.0 + field_scalar_perturb(i,k,j))
               ENDDO
            ENDDO
@@ -1899,12 +1899,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field(i,k,j) = field_bdy_ys(i, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1912,12 +1912,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field(i,k,j) = field_bdy_ye(i, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1927,10 +1927,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field(i,k,j) = field_bdy_xs(j, k, b_dist+1)
             ENDDO
           ENDDO
@@ -1939,10 +1939,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field(i,k,j) = field_bdy_xe(j, k, b_dist+1)
             ENDDO
           ENDDO
@@ -2011,12 +2011,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field(i,k,j) = field(i,k,j) + dt*field_tend(i,k,j)
             ENDDO
           ENDDO
@@ -2024,12 +2024,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               field(i,k,j) = field(i,k,j) + dt*field_tend(i,k,j)
             ENDDO
           ENDDO
@@ -2039,10 +2039,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field(i,k,j) = field(i,k,j) + dt*field_tend(i,k,j)
             ENDDO
           ENDDO
@@ -2051,10 +2051,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               field(i,k,j) = field(i,k,j) + dt*field_tend(i,k,j)
             ENDDO
           ENDDO
@@ -2146,12 +2146,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               bfield = field_bdy_ys(i, k, b_dist+1) &
                    + dtbc * field_bdy_tend_ys(i, k, b_dist+1)
               if(msfcouple)xmsf = msf(i,j)
@@ -2164,12 +2164,12 @@ CONTAINS
 
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               bfield = field_bdy_ye(i, k, b_dist+1) &
                    + dtbc * field_bdy_tend_ye(i, k, b_dist+1)
               if(msfcouple)xmsf = msf(i,j)
@@ -2183,10 +2183,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               bfield = field_bdy_xs(j, k, b_dist+1) &
                    + dtbc * field_bdy_tend_xs(j, k, b_dist+1)
               if(msfcouple)xmsf = msf(i,j)
@@ -2199,10 +2199,10 @@ CONTAINS
 
      IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               bfield = field_bdy_xe(j, k, b_dist+1) &
                    + dtbc * field_bdy_tend_xe(j, k, b_dist+1)
               if(msfcouple)xmsf = msf(i,j)
@@ -2269,12 +2269,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2285,12 +2285,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2303,10 +2303,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               field(i,k,j) = field(ibs+spec_zone,k,j_inner)
@@ -2317,10 +2317,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               field(i,k,j) = field(ibe-spec_zone,k,j_inner)
@@ -2377,12 +2377,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2397,12 +2397,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2419,10 +2419,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               IF(u(i,k,j) .lt. 0.)THEN
@@ -2437,10 +2437,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               IF(u(i+1,k,j) .gt. 0.)THEN
@@ -2504,12 +2504,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2524,12 +2524,12 @@ CONTAINS
       ENDIF   
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf
+        DO j = max(jts,jbe-spec_zone+1), jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF(periodic_x)i_inner = i
@@ -2546,10 +2546,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               IF(u(i,k,j) .lt. 0.)THEN
@@ -2564,10 +2564,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               j_inner = rp_max(j,jbs+spec_zone)
               j_inner = rp_min(j_inner,jbe-spec_zone)
               IF(u(i+1,k,j) .gt. 0.)THEN
@@ -2611,12 +2611,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF (periodic_x) b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs),rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs),min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF (periodic_x) i_inner = i
@@ -2631,12 +2631,12 @@ CONTAINS
       ENDIF
       IF (jbe - jtf .lt. spec_zone) THEN
 ! Y-end boundary
-        DO j = rp_max(jts,jbe-spec_zone+1),jtf
+        DO j = max(jts,jbe-spec_zone+1),jtf
           b_dist = jbe - j
           b_limit = b_dist
           IF (periodic_x) b_limit = 0
           DO k = kts,ktf
-            DO i = rp_max(its,b_limit+ibs),rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs),min(itf,ibe-b_limit)
               i_inner = rp_max(i,ibs+spec_zone)
               i_inner = rp_min(i_inner,ibe-spec_zone)
               IF (periodic_x) i_inner = i
@@ -2653,10 +2653,10 @@ CONTAINS
       IF (.NOT.periodic_x) THEN
         IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-          DO i = its, rp_min(itf,ibs+spec_zone-1)
+          DO i = its, min(itf,ibs+spec_zone-1)
             b_dist = i - ibs
             DO k = kts, ktf
-              DO j = rp_max(jts,b_dist+jbs+1),rp_min(jtf,jbe-b_dist-1)
+              DO j = max(jts,b_dist+jbs+1),min(jtf,jbe-b_dist-1)
                 j_inner = rp_max(j,jbs+spec_zone)
                 j_inner = rp_min(j_inner,jbe-spec_zone)
                 IF (u(i,k,j) .lt. 0.) THEN
@@ -2670,10 +2670,10 @@ CONTAINS
         ENDIF
         IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-          DO i = rp_max(its,ibe-spec_zone+1),itf
+          DO i = max(its,ibe-spec_zone+1),itf
             b_dist = ibe - i
             DO k = kts, ktf
-              DO j = rp_max(jts,b_dist+jbs+1),rp_min(jtf,jbe-b_dist-1)
+              DO j = max(jts,b_dist+jbs+1),min(jtf,jbe-b_dist-1)
                 j_inner = rp_max(j,jbs+spec_zone)
                 j_inner = rp_min(j_inner,jbe-spec_zone)
                 IF (u(i+1,k,j) .gt. 0.) THEN
@@ -2722,33 +2722,33 @@ CONTAINS
     !  X start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
@@ -2758,45 +2758,45 @@ CONTAINS
     !  X end boundary
 
     IF      ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
@@ -2807,33 +2807,33 @@ CONTAINS
     !  Y start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
@@ -2843,45 +2843,45 @@ CONTAINS
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
@@ -2933,33 +2933,33 @@ CONTAINS
     !  X start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
@@ -2969,45 +2969,45 @@ CONTAINS
     !  X end boundary
 
     IF      ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy_xe(j,k,ii) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
@@ -3018,33 +3018,33 @@ CONTAINS
     !  Y start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
@@ -3054,45 +3054,45 @@ CONTAINS
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy_ye(i,k,jj) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
        END DO
@@ -3133,33 +3133,33 @@ CONTAINS
     !  X start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = data3d(i,k,j)
        END DO
        END DO
@@ -3169,45 +3169,45 @@ CONTAINS
     !  X end boundary
 
     IF      ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy(j,k,ii,P_XEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = data3d(i,k,j)
        END DO
@@ -3218,33 +3218,33 @@ CONTAINS
     !  Y start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy(i,k,j,P_YSB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = data3d(i,k,j)
        END DO
        END DO
@@ -3254,45 +3254,45 @@ CONTAINS
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy(i,k,jj,P_YEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = data3d(i,k,j)
        END DO
@@ -3332,36 +3332,36 @@ CONTAINS
     !  X start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,i,P_XSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,i,P_XSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,i,P_XSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy(j,k,i,P_XSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,i,P_XSB) = 0. ! zeroout
        END DO
@@ -3372,9 +3372,9 @@ CONTAINS
     !  X end boundary
 
     IF      ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy(j,k,ii,P_XEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,ii,P_XEB) = 0. ! zeroout
@@ -3382,9 +3382,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,ii,P_XEB) = 0. ! zeroout
@@ -3392,9 +3392,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,ii,P_XEB) = 0. ! zeroout
@@ -3402,9 +3402,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,ii,P_XEB) = 0. ! zeroout
@@ -3412,9 +3412,9 @@ CONTAINS
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy(j,k,ii,P_XEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(j,k,ii,P_XEB) = 0. ! zeroout
@@ -3426,36 +3426,36 @@ CONTAINS
     !  Y start boundary
 
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,j,P_YSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,j,P_YSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy(i,k,j,P_YSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,j,P_YSB) = 0. ! zeroout
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy(i,k,j,P_YSB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,j,P_YSB) = 0. ! zeroout
        END DO
@@ -3466,9 +3466,9 @@ CONTAINS
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy(i,k,jj,P_YEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,jj,P_YEB) = 0. ! zeroout
@@ -3476,9 +3476,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,jj,P_YEB) = 0. ! zeroout
@@ -3486,9 +3486,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,jj,P_YEB) = 0. ! zeroout
@@ -3496,9 +3496,9 @@ CONTAINS
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,jj,P_YEB) = 0. ! zeroout
@@ -3506,9 +3506,9 @@ CONTAINS
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy(i,k,jj,P_YEB) = ( data3dnew(i,k,j) - data3dold(i,k,j) ) / time_diff
 !         space_bdy(i,k,jj,P_YEB) = 0. ! zeroout
@@ -3552,32 +3552,32 @@ CONTAINS
 
     IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,j,k)
        END DO
        END DO
@@ -3588,8 +3588,8 @@ CONTAINS
 
     IF      ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy_xe(j,k,ii) = data3d(i,j,k)
        END DO
@@ -3597,8 +3597,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,j,k)
        END DO
@@ -3606,8 +3606,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,j,k)
        END DO
@@ -3615,8 +3615,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,j,k)
        END DO
@@ -3624,8 +3624,8 @@ CONTAINS
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,j,k)
        END DO
@@ -3637,32 +3637,32 @@ CONTAINS
 
     IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy_ys(i,k,j) = data3d(i,j,k)
        END DO
        END DO
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,j,k)
        END DO
        END DO
@@ -3673,8 +3673,8 @@ CONTAINS
 
     IF      ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy_ye(i,k,jj) = data3d(i,j,k)
        END DO
@@ -3682,8 +3682,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,j,k)
        END DO
@@ -3691,8 +3691,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,j,k)
        END DO
@@ -3700,8 +3700,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,j,k)
        END DO
@@ -3709,8 +3709,8 @@ CONTAINS
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,j,k)
 !        if (K .eq. 54 .and. I .eq. 369) then
@@ -3759,32 +3759,32 @@ CONTAINS
 
     IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
@@ -3795,8 +3795,8 @@ CONTAINS
 
     IF      ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy_xe(j,k,ii) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3804,8 +3804,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3813,8 +3813,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3822,8 +3822,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3831,8 +3831,8 @@ CONTAINS
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3844,32 +3844,32 @@ CONTAINS
 
     IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
        END DO
@@ -3880,8 +3880,8 @@ CONTAINS
 
     IF      ( char_stagger .EQ. 'V' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy_ye(i,k,jj) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3889,8 +3889,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
        DO k = kds , kde - 1
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3898,8 +3898,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
        DO k = kds , kde
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3907,8 +3907,8 @@ CONTAINS
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO k = kds , kde
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
        END DO
@@ -3916,8 +3916,8 @@ CONTAINS
        END DO
     ELSE
        DO k = kds , kde - 1
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = ( data3dnew(i,j,k) - data3dold(i,j,k) ) / time_diff
 !        if (K .eq. 54 .and. I .eq. 369) then
@@ -3990,12 +3990,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)*mu(i,j)
               else 
@@ -4007,12 +4007,12 @@ CONTAINS
       ENDIF 
       IF (jbe - jtf .lt. spec_zone) THEN 
 ! Y-end boundary 
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf 
+        DO j = max(jts,jbe-spec_zone+1), jtf 
           b_dist = jbe - j 
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf 
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)*mu(i,j)
               else 
@@ -4026,10 +4026,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)*mu(i,j)
               else 
@@ -4042,10 +4042,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)*mu(i,j)
               else 
@@ -4118,12 +4118,12 @@ CONTAINS
 
       IF (jts - jbs .lt. spec_zone) THEN
 ! Y-start boundary
-        DO j = jts, rp_min(jtf,jbs+spec_zone-1)
+        DO j = jts, min(jtf,jbs+spec_zone-1)
           b_dist = j - jbs
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)/mu(i,j)
               else 
@@ -4135,12 +4135,12 @@ CONTAINS
       ENDIF 
       IF (jbe - jtf .lt. spec_zone) THEN 
 ! Y-end boundary 
-        DO j = rp_max(jts,jbe-spec_zone+1), jtf 
+        DO j = max(jts,jbe-spec_zone+1), jtf 
           b_dist = jbe - j 
           b_limit = b_dist
           IF(periodic_x)b_limit = 0
           DO k = kts, ktf 
-            DO i = rp_max(its,b_limit+ibs), rp_min(itf,ibe-b_limit)
+            DO i = max(its,b_limit+ibs), min(itf,ibe-b_limit)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)/mu(i,j)
               else 
@@ -4154,10 +4154,10 @@ CONTAINS
     IF(.NOT.periodic_x)THEN
       IF (its - ibs .lt. spec_zone) THEN
 ! X-start boundary
-        DO i = its, rp_min(itf,ibs+spec_zone-1)
+        DO i = its, min(itf,ibs+spec_zone-1)
           b_dist = i - ibs
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)/mu(i,j)
               else 
@@ -4170,10 +4170,10 @@ CONTAINS
 
       IF (ibe - itf .lt. spec_zone) THEN
 ! X-end boundary
-        DO i = rp_max(its,ibe-spec_zone+1), itf
+        DO i = max(its,ibe-spec_zone+1), itf
           b_dist = ibe - i
           DO k = kts, ktf
-            DO j = rp_max(jts,b_dist+jbs+1), rp_min(jtf,jbe-b_dist-1)
+            DO j = max(jts,b_dist+jbs+1), min(jtf,jbe-b_dist-1)
               if (variable == 't' .or. variable == 'h') then 
                  field(i,k,j) = field(i,k,j)/mu(i,j)
               else 
@@ -4298,7 +4298,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     IF ( char_stagger .EQ. 'W' ) THEN
        DO j = jms, jme
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           data3d(i,k,j) = space_bdy_xs(j,k,i)
           space_bdy_xs(j,k,i) = 0.0
        END DO
@@ -4307,7 +4307,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO j = jms, jme
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           data3d(i,k,j) = space_bdy_xs(j,k,i)
           space_bdy_xs(j,k,i) = 0.0
        END DO
@@ -4316,7 +4316,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO j = jms, jme
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           data3d(i,k,j) = space_bdy_xs(j,k,i)
           space_bdy_xs(j,k,i) = 0.0
        END DO
@@ -4325,7 +4325,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE
        DO j = jms, jme
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           data3d(i,k,j) = space_bdy_xs(j,k,i)
           space_bdy_xs(j,k,i) = 0.0
        END DO
@@ -4338,7 +4338,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     IF      ( char_stagger .EQ. 'U' ) THEN
        DO j = jms, jme
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           data3d(i,k,j) = space_bdy_xe(j,k,ii)
           space_bdy_xe(j,k,ii) = 0.0
@@ -4348,7 +4348,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
        DO j = jms, jme
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           data3d(i,k,j) = space_bdy_xe(j,k,ii)
           space_bdy_xe(j,k,ii) = 0.0
@@ -4358,7 +4358,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
        DO j = jms, jme
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           data3d(i,k,j) = space_bdy_xe(j,k,ii)
           space_bdy_xe(j,k,ii) = 0.0
@@ -4368,7 +4368,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
        DO j = jms, jme
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           data3d(i,k,j) = space_bdy_xe(j,k,ii)
           space_bdy_xe(j,k,ii) = 0.0
@@ -4378,7 +4378,7 @@ IF (dir == 0 ) THEN  ! ----Pack
     ELSE
        DO j = jms, jme
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           data3d(i,k,j) = space_bdy_xe(j,k,ii)
           space_bdy_xe(j,k,ii) = 0.0
@@ -4391,7 +4391,7 @@ ELSE    !    Y
     !  Y start boundary
     
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
        DO i = ims, ime
           data3d(i,k,j) = space_bdy_ys(i,k,j)
@@ -4400,7 +4400,7 @@ ELSE    !    Y
        END DO
        END DO 
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
        DO i = ims, ime
           data3d(i,k,j) = space_bdy_ys(i,k,j)
@@ -4409,7 +4409,7 @@ ELSE    !    Y
        END DO
        END DO 
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
        DO i = ims, ime
           data3d(i,k,j) = space_bdy_ys(i,k,j)
@@ -4418,7 +4418,7 @@ ELSE    !    Y
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
        DO i = ims, ime
           data3d(i,k,j) = space_bdy_ys(i,k,j)
@@ -4431,7 +4431,7 @@ ELSE    !    Y
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
        DO i = ims, ime
           jj = jde - j + 1
@@ -4441,7 +4441,7 @@ ELSE    !    Y
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
        DO i = ims, ime
           jj = jde - j
@@ -4451,7 +4451,7 @@ ELSE    !    Y
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
        DO i = ims, ime
           jj = jde - j
@@ -4461,7 +4461,7 @@ ELSE    !    Y
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
        DO i = ims, ime
           jj = jde - j
@@ -4471,7 +4471,7 @@ ELSE    !    Y
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
        DO i = ims, ime
           jj = jde - j
@@ -4491,33 +4491,33 @@ IF ( dir == 1 ) THEN  ! ---- Unpack
     !  X start boundary
       
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ids + spec_bdy_width - 1,ite)
+       DO i = MAX(ids,its) , MIN(ids + spec_bdy_width - 1,ite)
           space_bdy_xs(j,k,i) = data3d(i,k,j)
        END DO
        END DO
@@ -4527,45 +4527,45 @@ IF ( dir == 1 ) THEN  ! ---- Unpack
     !  X end boundary
 
     IF      ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide,ite) , rp_max(ide - spec_bdy_width + 1,its) , -1
+       DO i = MIN(ide,ite) , MAX(ide - spec_bdy_width + 1,its) , -1
           ii = ide - i + 1
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde,jte)
+       DO j = MAX(jds,jts) , MIN(jde,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jde-1,jte)
+       DO j = MAX(jds,jts) , MIN(jde-1,jte)
        DO k = kds , kde - 1
-       DO i = rp_min(ide - 1,ite) , rp_max(ide - spec_bdy_width,its) , -1
+       DO i = MIN(ide - 1,ite) , MAX(ide - spec_bdy_width,its) , -1
           ii = ide - i
           space_bdy_xe(j,k,ii) = data3d(i,k,j)
        END DO
@@ -4577,33 +4577,33 @@ ELSE   !  Y
     !  Y start boundary
     
     IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO 
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO 
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_max(jds,jts) , rp_min(jds + spec_bdy_width - 1,jte)
+       DO j = MAX(jds,jts) , MIN(jds + spec_bdy_width - 1,jte)
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           space_bdy_ys(i,k,j) = data3d(i,k,j)
        END DO
        END DO
@@ -4613,45 +4613,45 @@ ELSE   !  Y
     !  Y end boundary
 
     IF      ( char_stagger .EQ. 'V' ) THEN
-       DO j = rp_min(jde,jte) , rp_max(jde - spec_bdy_width + 1,jts) , -1
+       DO j = MIN(jde,jte) , MAX(jde - spec_bdy_width + 1,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j + 1
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'U' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide,ite)
+       DO i = MAX(ids,its) , MIN(ide,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'W' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE IF ( char_stagger .EQ. 'M' ) THEN
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO
        END DO
        END DO
     ELSE
-       DO j = rp_min(jde-1,jte) , rp_max(jde - spec_bdy_width,jts) , -1
+       DO j = MIN(jde-1,jte) , MAX(jde - spec_bdy_width,jts) , -1
        DO k = kds , kde - 1
-       DO i = rp_max(ids,its) , rp_min(ide-1,ite)
+       DO i = MAX(ids,its) , MIN(ide-1,ite)
           jj = jde - j
           space_bdy_ye(i,k,jj) = data3d(i,k,j)
        END DO

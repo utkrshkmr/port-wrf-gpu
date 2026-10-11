@@ -248,8 +248,8 @@
    IF ( ( first_trip_for_this_domain ) .AND. ( grid%id .EQ. 1 ) .AND. &
         ( .NOT. config_flags%polar ) ) THEN
       max_mf = grid%msft(its,jts)
-      DO j=jts,rp_min(jde-1,jte)
-         DO i=its,rp_min(ide-1,ite)
+      DO j=jts,MIN(jde-1,jte)
+         DO i=its,MIN(ide-1,ite)
             max_mf = rp_max ( max_mf , grid%msft(i,j) )
          END DO
       END DO
@@ -299,8 +299,8 @@
 
     if(config_flags%cycling) then
 ! Clear the buckets for diagnostics at initial time
-       DO j = jts,rp_min(jte,jde-1)
-       DO i = its, rp_min(ite,ide-1)
+       DO j = jts,min(jte,jde-1)
+       DO i = its, min(ite,ide-1)
             grid%prec_acc_nc(i,j) = 0.
             grid%snow_acc_nc(i,j)  = 0.
             grid%sfcrunoff  (i,j) = 0.
@@ -589,17 +589,17 @@
          IF ( grid%use_theta_m .NE. 0 ) THEN
             CALL wrf_error_fatal ( '---- Error : Cannot use moist theta option with old data' )
          END IF
-         DO j = jts, rp_min(jte,jde-1)
+         DO j = jts, MIN(jte,jde-1)
             DO k = 1, kte-1
-               DO i = its, rp_min(ite,ide-1)
+               DO i = its, MIN(ite,ide-1)
                   grid%t_2(i,k,j) = grid%th_phy_m_t0(i,k,j)
                END DO
             END DO
          END DO
       END IF
 
-      DO j = jts, rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+      DO j = jts, MIN(jte,jde-1)
+         DO i = its, MIN(ite,ide-1)
             !  Base state pressure is a function of eta level and terrain, only, plus
             !  the hand full of constants: p00 (sea level pressure, Pa), t00 (sea level
             !  temperature, K), A (temperature difference, from 1000 mb to 300 mb, K),
@@ -643,24 +643,24 @@
      IF ( first_trip_for_this_domain ) THEN
 ! data that is expected to be zero must be explicitly initialized as such
 !    grid%h_diabatic = 0.
-       DO j = jts,rp_min(jte,jde-1)
+       DO j = jts,min(jte,jde-1)
        DO k = kts,kte-1
-       DO i = its, rp_min(ite,ide-1)
+       DO i = its, min(ite,ide-1)
            IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
              grid%t_1(i,k,j)=grid%t_2(i,k,j)
            ENDIF
        ENDDO
        ENDDO
        ENDDO
-       DO j = jts,rp_min(jte,jde-1)
+       DO j = jts,min(jte,jde-1)
        DO k = kts,kte
-       DO i = its, rp_min(ite,ide-1)
+       DO i = its, min(ite,ide-1)
           grid%ph_1(i,k,j)=grid%ph_2(i,k,j)
        ENDDO
        ENDDO
        ENDDO
-       DO j = jts,rp_min(jte,jde-1)
-       DO i = its, rp_min(ite,ide-1)
+       DO j = jts,min(jte,jde-1)
+       DO i = its, min(ite,ide-1)
            IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
              grid%MU_1(i,j)=grid%MU_2(i,j)
            ENDIF
@@ -670,9 +670,9 @@
 !  reconstitute base-state fields
     IF(config_flags%max_dom .EQ. 1)THEN
 ! with single domain, grid%t_init from wrfinput is OK to use
-     DO j = jts,rp_min(jte,jde-1)
+     DO j = jts,min(jte,jde-1)
      DO k = kts,kte-1
-     DO i = its, rp_min(ite,ide-1)
+     DO i = its, min(ite,ide-1)
        IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
          grid%pb(i,k,j) = grid%c3h(k  )*grid%MUB(i,j) + grid%c4h(k  ) + grid%p_top
          grid%alb(i,k,j) = (r_d/p1000mb)*(grid%t_init(i,k,j)+t0)*rp_pow((grid%pb(i,k,j)/p1000mb), cvpm)
@@ -682,9 +682,9 @@
      ENDDO
     ELSE ! there is more than 1 domain
      IF ( .NOT. grid%this_is_an_ideal_run ) THEN ! this is a real run
-        DO j = jts,rp_min(jte,jde-1)
+        DO j = jts,min(jte,jde-1)
         DO k = kts,kte-1
-        DO i = its, rp_min(ite,ide-1)
+        DO i = its, min(ite,ide-1)
           IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
             grid%pb(i,k,j) = grid%c3h(k  )*grid%MUB(i,j) + grid%c4h(k  ) + grid%p_top
             temp = rp_max ( tiso, t00 + A*rp_log(grid%pb(i,k,j)/p00) )
@@ -702,8 +702,8 @@
         !  Integrate base geopotential, starting at terrain elevation.  This assures that
         !  the base state is in exact hydrostatic balance with respect to the model equations.
         !  This field is on full levels.
-       DO j = jts,rp_min(jte,jde-1)
-       DO i = its, rp_min(ite,ide-1)               
+       DO j = jts,min(jte,jde-1)
+       DO i = its, min(ite,ide-1)               
         grid%phb(i,1,j) = grid%ht(i,j) * g
         IF ( config_flags%hypsometric_opt .EQ. 1 ) THEN
            DO kk  = 2,kte
@@ -723,9 +723,9 @@
        END IF
      ELSE
         IF ( config_flags%ideal_init_method .EQ. 1 ) THEN
-           DO j = jts,rp_min(jte,jde-1)
+           DO j = jts,min(jte,jde-1)
            DO k = kts,kte-1
-           DO i = its, rp_min(ite,ide-1)
+           DO i = its, min(ite,ide-1)
              IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
                grid%pb(i,k,j) = grid%c3h(k  )*grid%MUB(i,j) + grid%c4h(k  ) + grid%p_top
                grid%alb(i,k,j) = -grid%rdnw(k)*(grid%phb(i,k+1,j)-grid%phb(i,k,j))/(grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))
@@ -735,9 +735,9 @@
            ENDDO
            ENDDO
         ELSE IF ( config_flags%ideal_init_method .EQ. 2 ) THEN
-           DO j = jts,rp_min(jte,jde-1)
+           DO j = jts,min(jte,jde-1)
            DO k = kts,kte-1
-           DO i = its, rp_min(ite,ide-1)
+           DO i = its, min(ite,ide-1)
              IF ( grid%imask_nostag(i,j) .EQ. 1 ) THEN
                grid%pb(i,k,j) = grid%c3h(k  )*grid%MUB(i,j) + grid%c4h(k  ) + grid%p_top
                grid%alb(i,k,j) = (r_d/p1000mb)*(grid%t_init(i,k,j)+t0)*rp_pow((grid%pb(i,k,j)/p1000mb), cvpm)
@@ -748,8 +748,8 @@
            !  Integrate base geopotential, starting at terrain elevation.  This assures that
            !  the base state is in exact hydrostatic balance with respect to the model equations.
            !  This field is on full levels.
-           DO j = jts,rp_min(jte,jde-1)
-           DO i = its, rp_min(ite,ide-1)
+           DO j = jts,min(jte,jde-1)
+           DO i = its, min(ite,ide-1)
             grid%phb(i,1,j) = grid%ht(i,j) * g
             DO kk  = 2,kte
               k = kk - 1
@@ -767,9 +767,9 @@
   ! cause them troubles.
   IF ( ( grid%dfi_opt .EQ. DFI_NODFI ) .and. ( config_flags%cycling ) ) THEN
        call rebalance_driver_cycl (grid )
-       DO j = jts,rp_min(jte,jde-1)
+       DO j = jts,min(jte,jde-1)
        DO k = kts,kte
-       DO i = its, rp_min(ite,ide-1)
+       DO i = its, min(ite,ide-1)
           grid%ph_1(i,k,j)=grid%ph_2(i,k,j)
        ENDDO
        ENDDO
@@ -783,9 +783,9 @@
      ! Rebalance recomputes 1/rho, p, ph_2, ph0, p_hyd
      IF ( config_flags%rebalance .EQ. 1 ) THEN
        call rebalance_driver_cycl (grid )
-       DO j = jts,rp_min(jte,jde-1)
+       DO j = jts,min(jte,jde-1)
        DO k = kts,kte
-       DO i = its, rp_min(ite,ide-1)
+       DO i = its, min(ite,ide-1)
           grid%ph_1(i,k,j)=grid%ph_2(i,k,j)
        ENDDO
        ENDDO
@@ -793,18 +793,18 @@
      END IF
      ! Use equations from calc_p_rho_phi to derive p and al from ph: linear in log p
     IF ( config_flags%hypsometric_opt .EQ. 1 ) THEN
-       DO j=jts,rp_min(jte,jde-1)
+       DO j=jts,min(jte,jde-1)
        DO k=kts,kte-1
-       DO i=its,rp_min(ite,ide-1)
+       DO i=its,min(ite,ide-1)
           grid%al(i,k,j)=-1./((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mu_1(i,j)))*(grid%alb(i,k,j)*(grid%c1h(k)*grid%mu_1(i,j))  &
                      +grid%rdnw(k)*(grid%ph_1(i,k+1,j)-grid%ph_1(i,k,j)))
        ENDDO
        ENDDO
        ENDDO
     ELSE IF ( config_flags%hypsometric_opt .EQ. 2 ) THEN
-       DO j=jts,rp_min(jte,jde-1)
+       DO j=jts,min(jte,jde-1)
        DO k=kts,kte-1
-       DO i=its,rp_min(ite,ide-1)
+       DO i=its,min(ite,ide-1)
           pfu = grid%c3f(k+1)*(grid%MUB(i,j)+grid%MU_1(i,j)) + grid%c4f(k+1) + grid%p_top
           pfd = grid%c3f(k  )*(grid%MUB(i,j)+grid%MU_1(i,j)) + grid%c4f(k  ) + grid%p_top
           phm = grid%c3h(k  )*(grid%MUB(i,j)+grid%MU_1(i,j)) + grid%c4h(k  ) + grid%p_top
@@ -814,9 +814,9 @@
        ENDDO
        ENDDO
     END IF ! which hypsometric option
-    DO j=jts,rp_min(jte,jde-1)
+    DO j=jts,min(jte,jde-1)
     DO k=kts,kte-1
-    DO i=its,rp_min(ite,ide-1)
+    DO i=its,min(ite,ide-1)
 #if ( WRFPLUS == 1 )
        IF ( .NOT. config_flags%var4d_run ) THEN
           IF ( config_flags%use_theta_m == 0 ) THEN
@@ -845,8 +845,8 @@
     ENDDO
   ENDIF ! Various rebalancing options
     IF ( .NOT. grid%this_is_an_ideal_run ) THEN
-       DO j=jts,rp_min(jte,jde-1)
-          DO i=its,rp_min(ite,ide-1)
+       DO j=jts,min(jte,jde-1)
+          DO i=its,min(ite,ide-1)
              p_surf = p00 * rp_exp ( -t00/a + rp_pow(( (t00/a)**2 - 2.*g*grid%ht(i,j)/a/r_d ), 0.5) )
              grid%p_hyd_w(i,1,j) = grid%p(i,1,j) + grid%c3f(1)*(p_surf - grid%p_top) + grid%c4f(1) + grid%p_top
              DO k=kts+1,kte
@@ -855,8 +855,8 @@
           ENDDO
        ENDDO
     ELSE
-       DO j=jts,rp_min(jte,jde-1)
-          DO i=its,rp_min(ite,ide-1)
+       DO j=jts,min(jte,jde-1)
+          DO i=its,min(ite,ide-1)
              p_surf = grid%MUB(i,j)+grid%p_top
              grid%p_hyd_w(i,1,j) = grid%p(i,1,j) + grid%c3f(1)*(p_surf - grid%p_top) + grid%c4f(1) + grid%p_top
              DO k=kts+1,kte
@@ -868,9 +868,9 @@
 
    ENDIF ! first trip for this domain
 
-   DO j=jts,rp_min(jte,jde-1)
+   DO j=jts,min(jte,jde-1)
       DO k = kts,kte
-         DO i = its, rp_min(ite,ide-1)
+         DO i = its, min(ite,ide-1)
             z_at_q(i,k,j)=(grid%ph_2(i,k,j)+grid%phb(i,k,j))/g
          ENDDO
       ENDDO
@@ -878,14 +878,14 @@
 
    IF ( grid%press_adj .and. ( grid%id .NE. 1 ) .AND. .NOT. ( config_flags%restart ) .AND. &
        ( ( config_flags%input_from_hires ) .OR. ( config_flags%input_from_file ) ) ) THEN
-      DO j = jts, rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+      DO j = jts, MIN(jte,jde-1)
+         DO i = its, MIN(ite,ide-1)
             grid%MU_2(i,j) = grid%MU_2(i,j) + grid%al(i,1,j) / ( grid%alt(i,1,j) * grid%alb(i,1,j) ) * &
                                     g * ( grid%ht(i,j) - grid%ht_fine(i,j) )
          END DO
        END DO
-       DO j = jts,rp_min(jte,jde-1)
-       DO i = its, rp_min(ite,ide-1)
+       DO j = jts,min(jte,jde-1)
+       DO i = its, min(ite,ide-1)
           grid%MU_1(i,j)=grid%MU_2(i,j)
        ENDDO
        ENDDO
@@ -1484,8 +1484,8 @@ endif
 
       w_max = grid%w_2(its,1,jts)
       w_min = grid%w_2(its,1,jts)
-      DO j = jts, rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+      DO j = jts, MIN(jte,jde-1)
+         DO i = its, MIN(ite,ide-1)
          w_max = rp_max ( w_max , grid%w_2(i,1,j) )
          w_min = rp_min ( w_min , grid%w_2(i,1,j) )
          END DO
@@ -1537,8 +1537,8 @@ endif
 ! set up slope-radiation constant arrays based on topography
 ! paj: also computes laplacian for topo_wind
 !
-       DO j = jts,rp_min(jte,jde-1)
-       DO i = its, rp_min(ite,ide-1)
+       DO j = jts,min(jte,jde-1)
+       DO i = its, min(ite,ide-1)
           if (config_flags%periodic_x ) then
             im1 = i-1
             ip1 = i+1
@@ -1583,8 +1583,8 @@ endif
        grid%ctopo2=1.
 !
        if (config_flags%topo_wind.eq.1) then
-         DO j = jts,rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+         DO j = jts,min(jte,jde-1)
+         DO i = its, min(ite,ide-1)
             if(grid%xland(i,j).lt.1.5)grid%ctopo(i,j)=sqrt(grid%var_sso(i,j))
             if (grid%ctopo(i,j).le.2.718) then
             grid%ctopo(i,j)=1.
@@ -1612,8 +1612,8 @@ endif
          ENDDO
 !       if topo_wind==2 (D.Ovens, C.Mass)
        else if (config_flags%topo_wind.eq.2) then
-         DO j = jts,rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+         DO j = jts,min(jte,jde-1)
+         DO i = its, min(ite,ide-1)
            if (grid%xland(i,j).lt.1.5) then
               vfac = rp_min(1.575,(grid%var2d(i,j)*0.4/200.+1.175))
               vfac = vfac * vfac
@@ -1766,9 +1766,9 @@ endif
       ccn_max_val = wrf_dm_max_real ( ccn_max_val )
 #endif
       IF ( ccn_max_val < 1.0 ) THEN ! initialization of ccn not already done
-         DO j=jts,rp_min(jte,jde-1)
+         DO j=jts,MIN(jte,jde-1)
             DO k=kts,kte
-               DO i=its,rp_min(ite,ide-1)
+               DO i=its,MIN(ite,ide-1)
                   scalar(i,k,j,p_qnn) = grid%ccn_conc
                END DO
             END DO
@@ -1804,12 +1804,12 @@ endif
 !
 !   we do this here, so we only have one chem_init routine for either core....
 !
-         do j=jts,rp_min(jte,jde-1)
-            do i=its,rp_min(ite,ide-1)
+         do j=jts,min(jte,jde-1)
+            do i=its,min(ite,ide-1)
                do k=kts,kte
                  z_at_w(i,k,j)=(grid%ph_2(i,k,j)+grid%phb(i,k,j))/g
                enddo
-               do k=kts,rp_min(kte,kde-1)
+               do k=kts,min(kte,kde-1)
                  tempfac=(grid%t_1(i,k,j) + t0)*rp_pow(((grid%p(i,k,j) + grid%pb(i,k,j))/p1000mb), rcp)
                  convfac(i,k,j) = (grid%p(i,k,j)+grid%pb(i,k,j))/rgasuniv/tempfac
                enddo
@@ -1895,9 +1895,9 @@ endif
                 its,ite, jts,jte, kts,kte-1                                 )
 
         case default
-           do j=jts,rp_min(jte,jde-1)
-              do k=kts,rp_min(kte,kde-1)
-                 do i=its,rp_min(ite,ide-1)
+           do j=jts,min(jte,jde-1)
+              do k=kts,min(kte,kde-1)
+                 do i=its,min(ite,ide-1)
                     grid%pm2_5_dry(i,k,j)    = 0.
                     grid%pm2_5_water(i,k,j)  = 0.
                     grid%pm2_5_dry_ec(i,k,j) = 0.
@@ -2101,9 +2101,9 @@ DEALLOCATE(z_at_q)
 
    IF ( config_flags%diag_nwp2 == DO_TRAD_FIELDS ) THEN
       CALL wrf_debug ( 100 , '--> CALL DIAGNOSTICS PACKAGE: TRAD_FIELDS' )
-      DO j = jts, rp_min(jte,jde-1)
+      DO j = jts, MIN(jte,jde-1)
          DO k = 1, kte-1
-            DO i = its, rp_min(ite,ide-1)
+            DO i = its, MIN(ite,ide-1)
                dz8w(i,k,j) = (grid%phb(i,k+1,j)+grid%ph_2(i,k+1,j))/g - (grid%phb(i,k,j)+grid%ph_2(i,k,j))/g
                grid%rho(i,k,j) = 1./( grid%al(i,k,j)+grid%alb(i,k,j) ) 
             END DO
@@ -2365,8 +2365,8 @@ endif
 
       print *,'n_moist,PARAM_FIRST_SCALAR',n_moist,PARAM_FIRST_SCALAR
 
-       DO j = jts, rp_min(jte,jde-1)
-         DO i = its, rp_min(ite,ide-1)
+       DO j = jts, MIN(jte,jde-1)
+         DO i = its, MIN(ite,ide-1)
 
         IF (n_moist >= PARAM_FIRST_SCALAR ) THEN
        

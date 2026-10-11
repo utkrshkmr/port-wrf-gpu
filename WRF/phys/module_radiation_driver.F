@@ -4510,8 +4510,8 @@ CONTAINS
 ! Initialize shading height 
 
    IF ( nested ) THEN  ! Do not overwrite input from parent domain
-     do j=rp_max(jts,jds+2),rp_min(jte,jde-3)
-     do i=rp_max(its,ids+2),rp_min(ite,ide-3)
+     do j=max(jts,jds+2),min(jte,jde-3)
+     do i=max(its,ids+2),min(ite,ide-3)
        ht_shad(i,j) = ht_loc(i,j)-0.001
      ENDDO
      ENDDO

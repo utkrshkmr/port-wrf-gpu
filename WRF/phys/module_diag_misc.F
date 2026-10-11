@@ -498,8 +498,8 @@ CONTAINS
    dpsdt_sum = 0.
    dmudt_sum = 0.
 
-   DO j = jps, rp_min(jpe,jde-1)
-     DO i = ips, rp_min(ipe,ide-1)
+   DO j = jps, min(jpe,jde-1)
+     DO i = ips, min(ipe,ide-1)
        dpsdt_sum = dpsdt_sum + abs(dpsdt(i,j))
        dmudt_sum = dmudt_sum + abs(dmudt(i,j))
      ENDDO
@@ -524,8 +524,8 @@ CONTAINS
    raincmax = 0.
    rainncmax = 0.
 
-   DO j = jps, rp_min(jpe,jde-1)
-     DO i = ips, rp_min(ipe,ide-1)
+   DO j = jps, min(jpe,jde-1)
+     DO i = ips, min(ipe,ide-1)
        drcdt_sum = drcdt_sum + abs(raincv(i,j))
        drndt_sum = drndt_sum + abs(rainncv(i,j))
        dardt_sum = dardt_sum + abs(raincv(i,j)) + abs(rainncv(i,j))

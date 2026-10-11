@@ -805,7 +805,7 @@ BENCH_START(update_phy_ten_tim)
            if (grid%dfi_stage == DFI_FWD ) &
                  CALL wrf_debug ( 200 , ' Zero out cu_physics' )
            DO j = j_start, j_end
-           DO k = k_start, rp_min( k_end,kde-1 ) - 1
+           DO k = k_start, min( k_end,kde-1 ) - 1
            DO i = i_start, i_end
              if (grid%dfi_stage ==DFI_FWD  &
              .and. grid%dfi_tten_rad(i,k,j) >= 1.0e-7 .and.  &

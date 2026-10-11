@@ -5,7 +5,6 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 #include "dummy_new_args.inc"
 !
                  )
-   USE module_repro_math
 
 
 !  #undef DM_PARALLEL
@@ -117,18 +116,18 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 
 !     write(6,*) ' coupling: setting mu arrays '
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        mutf_2(i,k,j) = (grid%c1f(k)*grid%Mub(i,j)+grid%c2f(k)) + (grid%c1f(k)*grid%Mu_2(i,j))
        muwt_2(i,k,j) = ((grid%c1f(k)*grid%Mub(i,j)+grid%c2f(k)) + (grid%c1f(k)*grid%Mu_2(i,j)))/grid%msfty(i,j) ! w coupled with y
      ENDDO
      ENDDO
      ENDDO
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        muth_2(i,k,j) = (grid%c1h(k)*grid%mub(i,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j))
      ENDDO
      ENDDO
@@ -138,9 +137,9 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 
 !     write(6,*) ' coupling: setting muv and muv arrays '
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        muut_2(i,k,j) = 0.5*((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i-1,j)))/grid%msfuy(i,j) ! u coupled with y
        muvt_2(i,k,j) = 0.5*((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i,j-1)))/grid%msfvx(i,j) ! v coupled with x
      ENDDO
@@ -152,14 +151,14 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
        IF ( jpe .eq. jde ) THEN
          j = jde
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            muvt_2(i,k,j) = ((grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j-1)))/grid%msfvx(i,j) ! v coupled with x
          ENDDO
          ENDDO
        ENDIF
        IF ( ipe .eq. ide .AND. .NOT. config_flags%periodic_x ) THEN
          i = ide
-         DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+         DO j = max(jds,jps),min(jde-1,jpe)
          DO k = kps,kpe-1
            muut_2(i,k,j) = ((grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i-1,j)))/grid%msfuy(i,j) ! u coupled with y
          ENDDO
@@ -171,14 +170,14 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
        IF ( jpe .eq. jde ) THEN
          j = jde
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            muvt_2(i,k,j) = 0.5*((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i,j-1)))/grid%msfvx(i,j) ! v coupled with x
          ENDDO
          ENDDO
        ENDIF
        IF ( ipe .eq. ide ) THEN
          i = ide       
-         DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+         DO j = max(jds,jps),min(jde-1,jpe)
          DO k = kps,kpe-1
            muut_2(i,k,j) = 0.5*((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i-1,j)))/grid%msfuy(i,j) ! u coupled with y
          ENDDO
@@ -191,18 +190,18 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
    
 !     write(6,*) ' uncoupling: setting mu arrays '
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        mutf_2(i,k,j) = 1./((grid%c1f(k)*grid%Mub(i,j)+grid%c2f(k)) + (grid%c1f(k)*grid%Mu_2(i,j)))
        muwt_2(i,k,j) = grid%msfty(i,j)/((grid%c1f(k)*grid%Mub(i,j)+grid%c2f(k)) + (grid%c1f(k)*grid%Mu_2(i,j))) ! w coupled with y
      ENDDO
      ENDDO
      ENDDO
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        muth_2(i,k,j) = 1./((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)))
      ENDDO
      ENDDO
@@ -210,17 +209,17 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 
 !     write(6,*) ' uncoupling: setting muv arrays '
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        muut_2(i,k,j) = 2.*grid%msfuy(i,j)/((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i-1,j))) ! u coupled with y
      ENDDO
      ENDDO
      ENDDO
 
-     DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+     DO j = max(jds,jps),min(jde-1,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        muvt_2(i,k,j) = 2.*grid%msfvx(i,j)/((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i,j-1))) ! v coupled with x
      ENDDO
      ENDDO
@@ -231,14 +230,14 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
        IF ( jpe .eq. jde ) THEN
          j = jde
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            muvt_2(i,k,j) = grid%msfvx(i,j)/((grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j-1))) ! v coupled with x
          ENDDO
          ENDDO
        ENDIF
        IF ( ipe .eq. ide .AND. .NOT. config_flags%periodic_x ) THEN
          i = ide
-         DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+         DO j = max(jds,jps),min(jde-1,jpe)
          DO k = kps,kpe-1
            muut_2(i,k,j) = grid%msfuy(i,j)/((grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i-1,j))) ! u coupled with y
          ENDDO
@@ -250,14 +249,14 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
        IF ( jpe .eq. jde ) THEN
          j = jde
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            muvt_2(i,k,j) = 2.*grid%msfvx(i,j)/((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i,j-1)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i,j-1))) ! v coupled with x
          ENDDO
          ENDDO
        ENDIF
        IF ( ipe .eq. ide ) THEN
          i = ide       
-         DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+         DO j = max(jds,jps),min(jde-1,jpe)
          DO k = kps,kpe-1
            muut_2(i,k,j) = 2.*grid%msfuy(i,j)/((grid%c1h(k)*grid%mub(i,j)+grid%c2h(k))+(grid%c1h(k)*grid%mub(i-1,j)+grid%c2h(k)) + (grid%c1h(k)*grid%mu_2(i,j)) + (grid%c1h(k)*grid%mu_2(i-1,j))) ! u coupled with y
          ENDDO
@@ -272,17 +271,17 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 
    !$OMP PARALLEL DO   &
    !$OMP PRIVATE ( i,j,k,im )
-   DO j = rp_max(jds,jps),rp_min(jde-1,jpe)
+   DO j = max(jds,jps),min(jde-1,jpe)
 
      DO k = kps,kpe
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        grid%ph_2(i,k,j) = grid%ph_2(i,k,j)*mutf_2(i,k,j)
        grid%w_2(i,k,j)  =  grid%w_2(i,k,j)*muwt_2(i,k,j)
      ENDDO
      ENDDO
 
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        grid%t_2(i,k,j)  =  grid%t_2(i,k,j)*muth_2(i,k,j)
      ENDDO
      ENDDO
@@ -290,7 +289,7 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
      IF (num_3d_m >= PARAM_FIRST_SCALAR )  THEN
        DO im = PARAM_FIRST_SCALAR, num_3d_m
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            moist(i,k,j,im)  =  moist(i,k,j,im)*muth_2(i,k,j)
          ENDDO
          ENDDO
@@ -300,7 +299,7 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
      IF (num_3d_c >= PARAM_FIRST_SCALAR )  THEN
        DO im = PARAM_FIRST_SCALAR, num_3d_c
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            chem(i,k,j,im)  =  chem(i,k,j,im)*muth_2(i,k,j)
          ENDDO
          ENDDO
@@ -310,7 +309,7 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
      IF (num_3d_s >= PARAM_FIRST_SCALAR )  THEN
        DO im = PARAM_FIRST_SCALAR, num_3d_s
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            scalar(i,k,j,im)  =  scalar(i,k,j,im)*muth_2(i,k,j)
          ENDDO
          ENDDO
@@ -320,7 +319,7 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
      IF (num_tracer >= PARAM_FIRST_SCALAR )  THEN
        DO im = PARAM_FIRST_SCALAR, num_tracer
          DO k = kps,kpe-1
-         DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+         DO i = max(ids,ips),min(ide-1,ipe)
            tracer(i,k,j,im)  =  tracer(i,k,j,im)*muth_2(i,k,j)
          ENDDO
          ENDDO
@@ -330,7 +329,7 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 !  do u and v
 
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide,ipe)
+     DO i = max(ids,ips),min(ide,ipe)
        grid%u_2(i,k,j)  =  grid%u_2(i,k,j)*muut_2(i,k,j)
      ENDDO
      ENDDO
@@ -340,9 +339,9 @@ SUBROUTINE couple_or_uncouple_em ( grid , config_flags , couple &
 
    !$OMP PARALLEL DO   &
    !$OMP PRIVATE ( i,j,k )
-   DO j = rp_max(jds,jps),rp_min(jde,jpe)
+   DO j = max(jds,jps),min(jde,jpe)
      DO k = kps,kpe-1
-     DO i = rp_max(ids,ips),rp_min(ide-1,ipe)
+     DO i = max(ids,ips),min(ide-1,ipe)
        grid%v_2(i,k,j)  =  grid%v_2(i,k,j)*muvt_2(i,k,j)
      ENDDO
      ENDDO

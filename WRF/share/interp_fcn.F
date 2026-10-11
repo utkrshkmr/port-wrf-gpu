@@ -148,7 +148,6 @@ END MODULE module_interp_info
                               xstag, ystag,                         &  ! staggering of field
                               ipos, jpos,                           &  ! Position of lower left of nest in CD
                               nri, nrj)                                ! Nest ratio, i- and j-directions
-   USE module_repro_math
 
      IMPLICIT NONE
 
@@ -203,7 +202,7 @@ END MODULE module_interp_info
 
      !  Loop over each j-index on this tile for the nested domain.
 
-     j_loop : DO nj = njts, rp_min(njde-jstag,njte)
+     j_loop : DO nj = njts, MIN(njde-jstag,njte)
 
         !  This is the lower-left j-index of the CG.
 
@@ -248,7 +247,7 @@ END MODULE module_interp_info
 
           !  Loop over each i-index on this tile for the nested domain.
 
-           i_loop : DO ni = nits, rp_min(nide-istag,nite)
+           i_loop : DO ni = nits, MIN(nide-istag,nite)
 
               IF ( imask ( ni, nj ) .EQ. 1 ) THEN
  
@@ -367,8 +366,8 @@ END MODULE module_interp_info
      probably_by_pole = .FALSE.
      max_lat = -90
      min_lat = +90
-     DO nj = njts, rp_min(njde-jstag,njte)
-        DO ni = nits, rp_min(nide-istag,nite)
+     DO nj = njts, MIN(njde-jstag,njte)
+        DO ni = nits, MIN(nide-istag,nite)
            max_lat = rp_max ( nlat_in(ni,nj) , max_lat )       
            min_lat = rp_min ( nlat_in(ni,nj) , min_lat )       
         END DO
@@ -387,9 +386,9 @@ END MODULE module_interp_info
      probably_by_dateline = .FALSE.
      max_lon = -180
      min_lon = +180
-     DO nj = njts, rp_min(njde-jstag,njte)
+     DO nj = njts, MIN(njde-jstag,njte)
         cj = compute_CGLL ( nj , jpos , nrj , jstag )
-        DO ni = nits, rp_min(nide-istag,nite)
+        DO ni = nits, MIN(nide-istag,nite)
            ci = compute_CGLL ( ni , ipos , nri , istag )
            max_lon = rp_max ( cfld_inp(ci,1,cj) , max_lon )       
            min_lon = rp_min ( cfld_inp(ci,1,cj) , min_lon )       
@@ -402,8 +401,8 @@ END MODULE module_interp_info
 
      !  Load "continuous" longitude across the date line
 
-     DO cj = rp_min(cjts-1,cjms), rp_max(cjte+1,cjme)
-       DO ci = rp_min(cits-1,cims), rp_max(cite+1,cime)
+     DO cj = MIN(cjts-1,cjms), MAX(cjte+1,cjme)
+       DO ci = MIN(cits-1,cims), MAX(cite+1,cime)
          IF ( ( cfld_inp(ci,ckts,cj) .LT. 0 ) .AND. ( probably_by_dateline ) ) THEN
            cfld(ci,ckts,cj) = 360 + cfld_inp(ci,ckts,cj)
          ELSE
@@ -414,7 +413,7 @@ END MODULE module_interp_info
 
      !  Loop over each j-index on this tile for the nested domain.
 
-     j_loop : DO nj = njts, rp_min(njde-jstag,njte)
+     j_loop : DO nj = njts, MIN(njde-jstag,njte)
 
         !  This is the lower-left j-index of the CG.
 
@@ -459,7 +458,7 @@ END MODULE module_interp_info
 
           !  Loop over each i-index on this tile for the nested domain.
 
-           i_loop : DO ni = nits, rp_min(nide-istag,nite)
+           i_loop : DO ni = nits, MIN(nide-istag,nite)
 
               IF ( imask ( ni, nj ) .EQ. 1 ) THEN
  
@@ -491,8 +490,8 @@ END MODULE module_interp_info
 
      !  Put nested longitude back into the -180 to 180 range.
 
-     DO nj = njts, rp_min(njde-jstag,njte)
-        DO ni = nits, rp_min(nide-istag,nite)
+     DO nj = njts, MIN(njde-jstag,njte)
+        DO ni = nits, MIN(nide-istag,nite)
            IF ( nfld(ni,nkts,nj) .GT. 180 ) THEN
               nfld(ni,nkts,nj) = -360 + nfld(ni,nkts,nj)
            END IF
@@ -519,7 +518,6 @@ END MODULE module_interp_info
                                 xstag, ystag,                         &  ! staggering of field
                                 ipos, jpos,                           &  ! Position of lower left of nest in CD
                                 nri, nrj)                                ! Nest ratio, i- and j-directions
-   USE module_repro_math
 
      IMPLICIT NONE
 
@@ -587,7 +585,7 @@ END MODULE module_interp_info
 
      !  Loop over each j-index on this tile for the nested domain.
 
-     j_loop : DO nj = njts, rp_min(njde-jstag,njte)
+     j_loop : DO nj = njts, MIN(njde-jstag,njte)
 
         !  This is the lower-left j-index of the CG.
 
@@ -643,7 +641,7 @@ END MODULE module_interp_info
 
           !  Loop over each i-index on this tile for the nested domain.
 
-           i_loop : DO ni = nits, rp_min(nide-istag,nite)
+           i_loop : DO ni = nits, MIN(nide-istag,nite)
  
               !  The coarse grid location that is to the lower left of the FG point.
 
@@ -1182,8 +1180,8 @@ END MODULE module_interp_info
      !  grid.  We do the traditional MAX(dom end -1,tile end), since we know a priori that the
      !  pressure is a mass point field (because the topo elevation is a mass point field).
 
-     DO j = njts , rp_min(njde-1,njte)
-        DO i = nits , rp_min(nide-1,nite)
+     DO j = njts , MIN(njde-1,njte)
+        DO i = nits , MIN(nide-1,nite)
            p_surf = p00 * rp_exp ( -t00/a + rp_pow(( (t00/a)**2 - 2.*g*nht(i,j)/a/r_d ), 0.5) )
            DO k = nkts , nkte
               npb(i,k,j) = zn(k)*(p_surf - p_top) + p_top  
@@ -1193,7 +1191,7 @@ END MODULE module_interp_info
 
      !  Loop over each j-index on this tile for the nested domain.
 
-     j_loop : DO nj = njts, rp_min(njde-jstag,njte)
+     j_loop : DO nj = njts, MIN(njde-jstag,njte)
 
         !  This is the lower-left j-index of the CG.
 
@@ -1251,7 +1249,7 @@ END MODULE module_interp_info
 
           !  Loop over each i-index on this tile for the nested domain.
 
-           i_loop : DO ni = nits, rp_min(nide-istag,nite)
+           i_loop : DO ni = nits, MIN(nide-istag,nite)
  
               !  The coarse grid location that is to the lower left of the FG point.
 
@@ -1471,11 +1469,11 @@ END MODULE module_interp_info
      IF( rp_mod(nrj,2) .NE. 0) THEN  ! odd refinement ratio
 
         IF      ( ( .NOT. xstag ) .AND. ( .NOT. ystag ) ) THEN
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + nrj/2 + 1
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + nri/2 + 1
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = 1 , nri * nrj
@@ -1525,11 +1523,11 @@ END MODULE module_interp_info
            ENDDO
 
         ELSE IF ( (       xstag ) .AND. ( .NOT. ystag ) ) THEN
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + nrj/2 + 1
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + 1
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = (nri+1)/2 , (nri+1)/2 + nri*(nri-1) , nri
@@ -1547,11 +1545,11 @@ END MODULE module_interp_info
            ENDDO
 
         ELSE IF ( ( .NOT. xstag ) .AND. (       ystag ) ) THEN
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + 1
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + nri/2 + 1
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = ( nrj*nrj +1 )/2 - nrj/2 , ( nrj*nrj +1 )/2 - nrj/2 + nrj-1
@@ -1648,11 +1646,11 @@ END MODULE module_interp_info
            !                   /                                \    is just
            !                  /                                  \   a sentence to not end a line
            !                 /                                    \   with a stupid backslash
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + jstag
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + istag
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = 1 , nri * nrj
@@ -1700,11 +1698,11 @@ END MODULE module_interp_info
 ! ipoints=     0       1       0 
 !
 
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + 1
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + 1
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = 1 , nri*nrj , nri
@@ -1723,11 +1721,11 @@ END MODULE module_interp_info
         !  V 
 
         ELSE IF ( ( .NOT. xstag ) .AND. (       ystag ) ) THEN
-           DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+           DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
               nj = (cj-jpos)*nrj + 1
               DO ck = ckts, ckte
                  nk = ck
-                 DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+                 DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                     ni = (ci-ipos)*nri + 1
                     cfld( ci, ck, cj ) = 0.
                     DO ijpoints = 1 , nri
@@ -1801,11 +1799,11 @@ END MODULE module_interp_info
 
      IF( rp_mod(nrj,2) .NE. 0) THEN  ! odd refinement ratio
 
-        DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+        DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
            nj = (cj-jpos)*nrj + jstag + 1
            DO ck = ckts, ckte
               nk = ck
-              DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+              DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                  ni = (ci-ipos)*nri + istag + 1
                  cfld( ci, ck, cj ) =  nfld( ni  , nk , nj  )
               ENDDO
@@ -1813,11 +1811,11 @@ END MODULE module_interp_info
         ENDDO
 
      ELSE  ! even refinement ratio, pick nearest neighbor on SW corner
-        DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+        DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
            nj = (cj-jpos)*nrj + 1
            DO ck = ckts, ckte
               nk = ck
-              DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+              DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                  ni = (ci-ipos)*nri + 1
                  ipoints = nri/2 -1
                  jpoints = nrj/2 -1
@@ -1884,11 +1882,11 @@ END MODULE module_interp_info
 
      IF( rp_mod(nrj,2) .NE. 0) THEN  ! odd refinement ratio
 
-        DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+        DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
            nj = (cj-jpos)*nrj + jstag + 1
            DO ck = ckts, ckte
               nk = ck
-              DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+              DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                  ni = (ci-ipos)*nri + istag + 1
                  cfld( ci, ck, cj ) =  nfld( ni  , nk , nj  )
               ENDDO
@@ -1896,11 +1894,11 @@ END MODULE module_interp_info
         ENDDO
 
      ELSE  ! even refinement ratio
-        DO cj = rp_max(jpos+spec_zone,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
+        DO cj = MAX(jpos+spec_zone,cjts),MIN(jpos+(njde-njds)/nrj-jstag-spec_zone,cjte)
            nj = (cj-jpos)*nrj + 1
            DO ck = ckts, ckte
               nk = ck
-              DO ci = rp_max(ipos+spec_zone,cits),rp_min(ipos+(nide-nids)/nri-istag-spec_zone,cite)
+              DO ci = MAX(ipos+spec_zone,cits),MIN(ipos+(nide-nids)/nri-istag-spec_zone,cite)
                  ni = (ci-ipos)*nri + 1
                  ipoints = nri/2 -1
                  jpoints = nrj/2 -1
@@ -2573,12 +2571,12 @@ END MODULE module_interp_info
           n2ci(rp_max(nits,nide-sz-ioff)), n2ci(rp_min(nite,nide-1+ioff)), n2cj(njts)-1, n2cj(njte)+1, nrj*nri, xstag, ystag )
                ENDIF
 
-        DO nj1 = rp_max(njds,njts-1), rp_min(njde+joff,njte+joff+1) 
+        DO nj1 = MAX(njds,njts-1), MIN(njde+joff,njte+joff+1) 
            cj = jpos + (nj1-1) / nrj     ! j coord of CD point 
            jp = rp_mod ( nj1-1 , nrj )  ! coord of ND w/i CD point
            nk = k
            ck = nk
-           DO ni1 = rp_max(nids,nits-1), rp_min(nide+ioff,nite+ioff+1)
+           DO ni1 = MAX(nids,nits-1), MIN(nide+ioff,nite+ioff+1)
                ci = ipos + (ni1-1) / nri      ! j coord of CD point 
                ip = rp_mod ( ni1-1 , nri )  ! coord of ND w/i CD point
 
@@ -2759,9 +2757,9 @@ END MODULE module_interp_info
    !$OMP PARALLEL DO   &
    !$OMP PRIVATE ( ni,nj,nk )
      
-     DO nj = rp_max ( njts-nrj, njds ) , rp_min ( njte+nrj, njde-jstag )
+     DO nj = MAX ( njts-nrj, njds ) , MIN ( njte+nrj, njde-jstag )
         DO nk = nkts, nkte
-           DO ni = rp_max( nits-nri, nids ) , rp_min ( nite+nri, nide-istag )
+           DO ni = MAX( nits-nri, nids ) , MIN ( nite+nri, nide-istag )
 
               !  WEST boundary
 
@@ -3703,7 +3701,7 @@ END MODULE module_interp_info
 
          !  Loop over each i,k,j in the nested domain.
 
-         DO nj = njts, rp_min(njde-1,njte)
+         DO nj = njts, MIN(njde-1,njte)
             IF ( rp_mod ( nrj , 2 ) .EQ. 0 ) THEN
                cj = ( nj + (nrj/2)-1 ) / nrj + jpos -1 ! first coarse position equal to or below nest point
             ELSE
@@ -3711,7 +3709,7 @@ END MODULE module_interp_info
             END IF
             DO nk = nkts, nkte
                ck = nk
-               DO ni = nits, rp_min(nide-1,nite)
+               DO ni = nits, MIN(nide-1,nite)
                   IF ( rp_mod ( nri , 2 ) .EQ. 0 ) THEN
                      ci = ( ni + (nri/2)-1 ) / nri + ipos -1 ! first coarse position equal to or to the left of nest point
                   ELSE
@@ -3894,7 +3892,6 @@ END MODULE module_interp_info
                       nri, nrj,                             &  
                       ipos, jpos                            &  ! Position of lower left of nest in 
                       )
-   USE module_repro_math
    
       USE module_configure
       IMPLICIT NONE
@@ -3929,24 +3926,24 @@ END MODULE module_interp_info
    
             !  Initialize dummy cfldnew
 
-            DO i = rp_max(ipos,cits-3) , rp_min(ipos+(nide-nids)/nri,cite+3)
-               DO j = rp_max(jpos,cjts-3) , rp_min(jpos+(njde-njds)/nrj,cjte+3)
+            DO i = MAX(ipos,cits-3) , MIN(ipos+(nide-nids)/nri,cite+3)
+               DO j = MAX(jpos,cjts-3) , MIN(jpos+(njde-njds)/nrj,cjte+3)
                   cfldnew(i,j) = cfld(i,k,j) 
                END DO
             END DO
 
             !  1-2-1 smoothing in the j direction first, 
    
-            DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
-            DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+            DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
+            DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
                   cfldnew(i,j) = 0.25 * ( cfld(i,k,j+1) + 2.*cfld(i,k,j) + cfld(i,k,j-1) )
                END DO
             END DO
 
             !  then 1-2-1 smoothing in the i direction last
        
-            DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
-            DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
+            DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+            DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
                   cfld(i,k,j) =  0.25 * ( cfldnew(i+1,j) + 2.*cfldnew(i,j) + cfldnew(i-1,j) )
                END DO
             END DO
@@ -4007,26 +4004,26 @@ END MODULE module_interp_info
     
          DO k = ckts , ckte
    
-            DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
-               DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+            DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
+               DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
                   cfldnew(i,j) = cfld(i,k,j) + xnu(n) * ((cfld(i,k,j+1) + cfld(i,k,j-1)) * 0.5-cfld(i,k,j))
                END DO
             END DO
        
-            DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
-               DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+            DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
+               DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
                   cfld(i,k,j) = cfldnew(i,j)
                END DO
             END DO
        
-            DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
-               DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
+            DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+               DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
                   cfldnew(i,j) = cfld(i,k,j) + xnu(n) * ((cfld(i+1,k,j) + cfld(i-1,k,j)) * 0.5-cfld(i,k,j))
                END DO
             END DO
        
-            DO j = rp_max(jpos+2,cjts-2) , rp_min(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
-               DO i = rp_max(ipos+2,cits-2) , rp_min(ipos+(nide-nids)/nri-2-istag,cite+2)
+            DO j = MAX(jpos+2,cjts-2) , MIN(jpos+(njde-njds)/nrj-2-jstag,cjte+2)
+               DO i = MAX(ipos+2,cits-2) , MIN(ipos+(nide-nids)/nri-2-istag,cite+2)
                   cfld(i,k,j) = cfldnew(i,j)
                END DO
             END DO
@@ -4053,7 +4050,6 @@ END MODULE module_interp_info
                            xstag, ystag,                         &  ! staggering of field
                            ipos, jpos,                           &  ! Position of lower left of nest in CD
                            nri, nrj                             )   ! nest ratios
-   USE module_repro_math
      USE module_configure
      USE module_wrf_error
      IMPLICIT NONE
@@ -4084,11 +4080,11 @@ END MODULE module_interp_info
      IF ( xstag ) istag = 0
      IF ( ystag ) jstag = 0
 
-     DO cj = rp_max(jpos+1,cjts),rp_min(jpos+(njde-njds)/nrj-jstag-1,cjte)
+     DO cj = MAX(jpos+1,cjts),MIN(jpos+(njde-njds)/nrj-jstag-1,cjte)
         nj = (cj-jpos)*nrj + jstag + 1
         DO ck = ckts, ckte
            nk = ck
-           DO ci = rp_max(ipos+1,cits),rp_min(ipos+(nide-nids)/nri-istag-1,cite)
+           DO ci = MAX(ipos+1,cits),MIN(ipos+(nide-nids)/nri-istag-1,cite)
               ni = (ci-ipos)*nri + istag + 1
               cfld( ci, ck, cj ) =  9021000.  !magic number: Beverly Hills * 100.
            ENDDO
@@ -4607,8 +4603,8 @@ END MODULE module_interp_info
      probably_by_pole = .FALSE.
      max_lat = -90
      min_lat = +90
-     DO nj = njts, rp_min(njde-jstag,njte)
-        DO ni = nits, rp_min(nide-istag,nite)
+     DO nj = njts, MIN(njde-jstag,njte)
+        DO ni = nits, MIN(nide-istag,nite)
            max_lat = rp_max ( nlat_in(ni,nj) , max_lat )       
            min_lat = rp_min ( nlat_in(ni,nj) , min_lat )       
         END DO
@@ -4627,9 +4623,9 @@ END MODULE module_interp_info
      probably_by_dateline = .FALSE.
      max_lon = -180
      min_lon = +180
-     DO nj = njts, rp_min(njde-jstag,njte)
+     DO nj = njts, MIN(njde-jstag,njte)
         cj = compute_CGLL ( nj , jpos , nrj , jstag )
-        DO ni = nits, rp_min(nide-istag,nite)
+        DO ni = nits, MIN(nide-istag,nite)
            ci = compute_CGLL ( ni , ipos , nri , istag )
            max_lon = rp_max ( cfld_inp(ci,1,cj) , max_lon )       
            min_lon = rp_min ( cfld_inp(ci,1,cj) , min_lon )       
@@ -4642,8 +4638,8 @@ END MODULE module_interp_info
 
      !  Load "continuous" longitude across the date line
 
-     DO cj = rp_min(cjts-1,cjms), rp_max(cjte+1,cjme)
-       DO ci = rp_min(cits-1,cims), rp_max(cite+1,cime)
+     DO cj = MIN(cjts-1,cjms), MAX(cjte+1,cjme)
+       DO ci = MIN(cits-1,cims), MAX(cite+1,cime)
          IF ( ( cfld_inp(ci,ckts,cj) .LT. 0 ) .AND. ( probably_by_dateline ) ) THEN
            cfld(ci,ckts,cj) = 360 + cfld_inp(ci,ckts,cj)
          ELSE
@@ -4654,7 +4650,7 @@ END MODULE module_interp_info
 
      !  Loop over each j-index on this tile for the nested domain.
 
-     j_loop : DO nj = njts, rp_min(njde-jstag,njte)
+     j_loop : DO nj = njts, MIN(njde-jstag,njte)
 
         !  This is the lower-left j-index of the CG.
 
@@ -4710,7 +4706,7 @@ END MODULE module_interp_info
 
           !  Loop over each i-index on this tile for the nested domain.
 
-           i_loop : DO ni = nits, rp_min(nide-istag,nite)
+           i_loop : DO ni = nits, MIN(nide-istag,nite)
  
               !  The coarse grid location that is to the lower left of the FG point.
 
@@ -4840,8 +4836,8 @@ END MODULE module_interp_info
 
      !  Put nested longitude back into the -180 to 180 range.
 
-     DO nj = njts, rp_min(njde-jstag,njte)
-        DO ni = nits, rp_min(nide-istag,nite)
+     DO nj = njts, MIN(njde-jstag,njte)
+        DO ni = nits, MIN(nide-istag,nite)
            IF ( nfld(ni,nkts,nj) .GT. 180 ) THEN
               nfld(ni,nkts,nj) = -360 + nfld(ni,nkts,nj)
            END IF

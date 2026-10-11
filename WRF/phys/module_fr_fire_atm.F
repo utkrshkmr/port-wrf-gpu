@@ -176,7 +176,7 @@ SUBROUTINE fire_tendency( &
 !!   character(len=128)::msg
 
         do j=jts,jte
-            do k=kts,rp_min(kte+1,kde)
+            do k=kts,min(kte+1,kde)
                do i=its,ite
                    rthfrten(i,k,j)=0.
                    rqvfrten(i,k,j)=0.

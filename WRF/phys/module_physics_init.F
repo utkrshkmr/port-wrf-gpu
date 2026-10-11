@@ -5647,15 +5647,15 @@ subroutine interp_vec_cu(locvec,locwant,periodic,loc1,loc2,wght1,wght2)
      integer :: i, j
 
 #if 0
-     do j = jts, rp_min(jde-1,jte)
-        do i = its, rp_min(ide-1,ite)
+     do j = jts, min(jde-1,jte)
+        do i = its, min(ide-1,ite)
            area2d(i,j) = dx/msftx(i,j) * dy/msfty(i,j)
            dx2d  (i,j) = sqrt ( area2d(i,j) )
         end do
      end do
 #else
-     do j = jts, rp_min(jde-1,jte)
-        do i = its, rp_min(ide-1,ite)
+     do j = jts, min(jde-1,jte)
+        do i = its, min(ide-1,ite)
            area2d(i,j) = dx * dy
            dx2d  (i,j) = dx
         end do
