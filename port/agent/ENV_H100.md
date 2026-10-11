@@ -74,11 +74,12 @@ Notes:
 |---|---|
 | Repository checkout | `/home/csgrad/utkarshk/port-wrf-gpu` |
 | Profile | `a100-40x2` (machine id `3817a30133b2`, `port/machines/3817a30133b2.json`) |
-| `$WORK` (for now) | `/home/csgrad/utkarshk/wrf_gpu_work`: `/home` has under 10 GB free, far below the 300 GB `$WORK` needs (BLOCKERS.md S0-04) |
-| Container runtime | none usable without root (no Apptainer/Podman; Docker socket not permitted): `CONTAINER=none` until NVHPC is installed (BLOCKERS.md S0-04) |
-| Python on the host | `/home/csgrad/utkarshk/miniconda3/bin/python3` (3.12; numpy yes, netCDF4 not yet) |
+| `$WORK` | `/home/csgrad/utkarshk/port-wrf-gpu/work` (git-ignored; 171 GB free on `/home` on 2026-10-10, below the 300 GB of §1: watch it) |
+| Toolchain | NVHPC SDK 26.5 installed natively at `/home/csgrad/utkarshk/port-wrf-gpu/Linux_x86_64/26.5` (git-ignored): `CONTAINER=none`, `NVHPC_ROOT` set; no container runtime is usable without root. 26.5 replaces the 25.1 image pin on this machine (port/ENVIRONMENT.md) |
+| CPU ranks | `CPU_RANKS=56` (physical cores) |
+| Python on the host | `$WORK/deps/pyenv` (numpy, netCDF4, mpmath; `setup_toolchain.sh python`) |
 
-`port/h100/env.local.sh` on that machine sets `WORK` and `CONTAINER` as above.
+`port/h100/env.local.sh` on that machine sets `WORK`, `CONTAINER=none`, `NVHPC_ROOT` and `CPU_RANKS` as above.
 
 ## 3. Inputs
 

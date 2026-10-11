@@ -54,3 +54,22 @@ Paste `port/tests/omp_features/probes_<host>_<date>.md` for the A100 and the H10
 The Phase 0 code was developed in a container without NVHPC or a GPU (the NVIDIA download site is not reachable
 from it). Host-side checks there used gfortran 13 (Ubuntu 24.04), netCDF-Fortran 4.5.4, Python 3 with numpy,
 netCDF4 and mpmath. See `RESULTS.md`, "Local results".
+
+## GPU-M: the A100 workstation (profile `a100-40x2`, machine `3817a30133b2`; S0-04)
+
+Checkout `/home/csgrad/utkarshk/port-wrf-gpu`, `$WORK` = `/home/csgrad/utkarshk/port-wrf-gpu/work` (git-ignored).
+Settings: `port/h100/env.local.sh` (not in git); ENV_H100.md §2a.
+
+| Item | Value |
+|---|---|
+| Toolchain | **NVHPC SDK 26.5 installed natively** in `<checkout>/Linux_x86_64/26.5` (`CONTAINER=none`, `NVHPC_ROOT`); no container runtime usable without root. Deviation from the pinned image `nvhpc:25.1-devel-cuda12.6` (ENV_H100.md §1): 26.5 is the pin on this machine, every F-*/T-* result below is for 26.5 |
+| `nvfortran --version` | `nvfortran 26.5-0 64-bit target on x86-64 Linux -tp icelake-server` |
+| CUDA (SDK) | 13.2 (`nvcc` V13.2.78) |
+| MPI | HPC-X 2.50 / Open MPI 5.0.10rc2 of the SDK (the system Open MPI 4.1.2 in /usr/bin is not used: `x` puts the SDK first) (`comm_libs/mpi` → `hpcx`); `mpif90` wraps nvfortran |
+| Driver | 595.91.07 (CUDA 13.2) |
+| GPUs | 2 × NVIDIA A100-PCIE-40GB, cc 8.0, 108 SMs, 40960 MiB, ECC on, MIG off, max SM clock 1410 MHz, memory clock 1215 MHz, VBIOS 92.00.25.00.08; GPU0–GPU1 link `SYS` (PCIe across sockets, no NVLink) |
+| Host | 2 × Intel Xeon Gold 6330 (28 cores each, 56 physical, 112 logical), 503 GB RAM; RAPL not readable by the user |
+| Profilers | nsys 2026.2.1, ncu, compute-sanitizer (from the SDK) |
+| `nvidia-smi -q` | `$WORK/logs/nvidia-smi-q.txt` |
+| netCDF/HDF5 (nvfortran) | building (`setup_toolchain.sh deps`, HDF5 1.14.4-3, netCDF-C 4.9.2, netCDF-Fortran 4.6.1) |
+

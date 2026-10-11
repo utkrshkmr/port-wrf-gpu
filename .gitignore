@@ -51,3 +51,9 @@ port/tests/*/build.log
 
 # site settings of the H100 scripts (copied from port/h100/env.sh)
 port/h100/env.local.sh
+
+# A100 workstation: the NVHPC SDK installed inside the checkout, its installer, and $WORK
+/Linux_x86_64/
+/modulefiles/
+/nvhpc_*_Linux_x86_64_cuda_*
+/work/

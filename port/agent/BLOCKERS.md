@@ -15,7 +15,7 @@ Format:
 - What is needed: ...
 ```
 
-## B1 2026-10-10 Storage for $WORK on the A100 workstation   [open]
+## B1 2026-10-10 Storage for $WORK on the A100 workstation   [resolved 2026-10-10: the owner freed space (171 GB free on /home); $WORK = <checkout>/work]
 - Task / kernel: S0-04 onwards (toolchain, builds, cases, references); S0-00 itself needs only a few MB.
 - What happens (command and output): `df -h /home` -> `/dev/md0 7.3T 6.9T 7.8G 100% /home`; `/` has 85 GB free but
   no user directory; `/data` is root-owned. ENV_H100.md §1 asks for >= 300 GB for `$WORK` (image ~10 GB, NVHPC
@@ -24,7 +24,7 @@ Format:
 - What is needed: the owner names a directory with >= 300 GB free (or frees space on `/home`); then set `WORK` in
   `port/h100/env.local.sh` and ENV_H100.md §2a.
 
-## B2 2026-10-10 No usable container runtime or NVHPC on the A100 workstation   [open]
+## B2 2026-10-10 No usable container runtime or NVHPC on the A100 workstation   [resolved 2026-10-10: the owner installed NVHPC SDK 26.5 natively in <checkout>/Linux_x86_64/26.5; CONTAINER=none]
 - Task / kernel: S0-04.1 (NVHPC), and so S0-05 ... S0-13 (everything that compiles with nvfortran).
 - What happens (command and output): `which apptainer singularity podman` -> nothing; `docker info` -> "permission
   denied while trying to connect to the Docker daemon socket" (user not in the docker group); no

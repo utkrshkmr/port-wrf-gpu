@@ -1,0 +1,46 @@
+module k
+contains
+  attributes(global) subroutine axpy(n, a, x, y)
+    integer, value :: n
+    real, value :: a
+    real :: x(n), y(n)
+    integer :: i
+    i = (blockIdx%x-1)*blockDim%x + threadIdx%x
+    if (i <= n) y(i) = a*x(i) + y(i)
+  end subroutine
+end module
+program devq
+  use cudafor
+  use k
+  implicit none
+  type(cudaDeviceProp) :: p
+  integer :: nd, d, ist, v, l2
+  integer, parameter :: n = 4096
+  real, device :: xd(n), yd(n)
+  real :: y(n)
+  ist = cudaGetDeviceCount(nd)
+  ist = cudaDriverGetVersion(v)
+  print '(a,i0,a,i0)', 'devices ', nd, '  driver ', v
+  ist = cudaGetDevice(d)
+  ist = cudaGetDeviceProperties(p, d)
+  print '(a,a)', 'name            ', trim(p%name)
+  print '(a,i0,a,i0)', 'cc              ', p%major, '.', p%minor
+  print '(a,i0)', 'SMs             ', p%multiProcessorCount
+  print '(a,i0)', 'max threads/SM  ', p%maxThreadsPerMultiProcessor
+  print '(a,i0)', 'global mem MiB  ', int(p%totalGlobalMem/1048576_8)
+  print '(a,i0)', 'L2 KiB          ', p%l2CacheSize/1024
+  print '(a,i0)', 'shared/SM KiB   ', int(p%sharedMemPerMultiprocessor/1024)
+  print '(a,i0)', 'regs/SM         ', p%regsPerMultiprocessor
+  print '(a,i0)', 'mem bus bits    ', p%memoryBusWidth
+  print '(a,i0)', 'ECC             ', p%ECCEnabled
+  print '(a,i0,a,i0)', 'pci bus/dev     ', p%pciBusID, '/', p%pciDeviceID
+  xd = 1.0; yd = 2.0
+  call axpy<<<(n+127)/128,128>>>(n, 3.0, xd, yd)
+  ist = cudaDeviceSynchronize()
+  y = yd
+  if (all(y == 5.0)) then
+    print '(a)', 'CUDA Fortran kernel PASS'
+  else
+    print '(a)', 'CUDA Fortran kernel FAIL'
+  end if
+end program
