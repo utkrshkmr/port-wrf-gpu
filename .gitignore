@@ -57,3 +57,10 @@ port/h100/env.local.sh
 /modulefiles/
 /nvhpc_*_Linux_x86_64_cuda_*
 /work/
+
+# outputs of the OpenACC probes (port/tests/acc_features/run.sh)
+port/tests/acc_features/f_*
+!port/tests/acc_features/f_*.F90
+port/tests/acc_features/build_*.log
+port/tests/acc_features/probes_*.md
+port/tests/acc_features/*.mod

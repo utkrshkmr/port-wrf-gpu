@@ -73,3 +73,30 @@ Settings: `port/h100/env.local.sh` (not in git); ENV_H100.md §2a.
 | `nvidia-smi -q` | `$WORK/logs/nvidia-smi-q.txt` |
 | netCDF/HDF5 (nvfortran) | building (`setup_toolchain.sh deps`, HDF5 1.14.4-3, netCDF-C 4.9.2, netCDF-Fortran 4.6.1) |
 
+### OpenACC feature probes (S0-05, `port/tests/acc_features/run.sh`), nvfortran 26.5, 2026-10-10
+
+Every probe built with the GPU-REPRO device flags and ran on **GPU 0 and GPU 1** (A100-PCIE-40GB) with the same
+result; each device probe launched its kernel (checked with `NV_ACC_NOTIFY=1`), F-IF none (host), as intended.
+
+| Probe | A100 (nvfortran 26.5) | Decides | gfortran 11.4 `-fopenacc` (host; compile check) |
+|---|---|---|---|
+| F-IF | PASS: `if(.false.)` runs on the host with host data | T-AB method (kernel_off) usable | PASS |
+| F-ROUTINE | PASS: routine seq reads module PARAMETER and `declare create` data, bitwise | B4 form; tables | **build fails**: "‘ptab’ requires a ‘declare’ directive for use in a ‘routine’" |
+| F-DECLARE | PASS: allocatable `declare create` + `update device` | P1.4 tables | PASS |
+| F-PRESENT | PASS: remapped pool pointer present through an explicit-shape dummy | P1.6/P1.7 | PASS |
+| F-STMTFN | PASS, bitwise | statement functions allowed in device code | PASS |
+| F-INTPROC | PASS, bitwise | internal procedures allowed | PASS |
+| F-OPT | PASS | OPTIONAL allowed | PASS |
+| F-CHAR | PASS | CHARACTER arguments allowed | PASS |
+| F-RED | PASS: INTEGER(8) `+`, `ieor`; REAL `max` equal to the host | tracer, NaN counts | PASS |
+| F-NAN | PASS: `x /= x` finds NaNs under `-Kieee` | NaN checks | PASS |
+| F-STACK | PASS: `NV_ACC_CUDA_STACKSIZE=65536` read back by `cudaDeviceGetLimit` | CP-5 | (device only) |
+| F-ATTACH | PASS: derived type + attached pointer component | I-12 (`fp`) | PASS |
+| F-HOSTDATA | PASS: `host_data use_device` into a CUDA Fortran kernel | escape hatch | (device only) |
+| F-CACHE, F-ASYNC | PASS, bit-neutral | Stage 6 | PASS |
+| F-AUTO, F-PRIVARR | PASS, bitwise | CP-3 | **ICE** in gfortran 11.4 (`expand_oacc_for`); CLOUD has gfortran 13: recheck there |
+
+No fallback is needed on nvfortran 26.5. For the gfortran views (CLOUD, `gnu-gpu`): a module PARAMETER array read
+in an `acc routine` needs `!$acc declare copyin(...)` or a local copy (run 1 used local PARAMETER tables, P1-B4, which
+avoids it); F-AUTO/F-PRIVARR must be rechecked with gfortran 13. Reviewer: carry these into CODING_STANDARD.md.
+
