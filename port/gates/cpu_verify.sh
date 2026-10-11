@@ -67,9 +67,23 @@ fi
 bt=$("$H100/build.sh" gnu-ref --worktree --fire-ideal | tail -1); [ -x "$bt/main/wrf.exe" ] || bt=
 bg=$("$H100/build.sh" gnu-gpu --worktree --fire-ideal | tail -1); [ -x "$bg/main/wrf.exe" ] || bg=
 bb=$("$H100/build.sh" gnu-ref --commit "$base" --fire-ideal | tail -1); [ -x "$bb/main/wrf.exe" ] || bb=
-result build:gnu-ref "$([ -n "$bt" ] && echo PASS || echo FAIL)" "${bt:-see $WORK/builds/gnu-ref/worktree/compile.log}"
-result build:gnu-gpu "$([ -n "$bg" ] && echo PASS || echo FAIL)" "${bg:-see $WORK/builds/gnu-gpu/worktree/compile.log}"
-result build:gnu-ref-base "$([ -n "$bb" ] && echo PASS || echo FAIL)" "${bb:-base build failed}"
+# first_errors <compile.log>: the first compile errors as "file:line: message" (gfortran and nvfortran forms)
+first_errors() {
+  [ -f "$1" ] || { echo "no $1"; return; }
+  awk '
+    /^[^ ]+\.(f90|F90|F|f|c):[0-9]+(:[0-9]+)?:$/ { loc = $0; sub(/:[0-9]+:$/, "", loc); next }
+    /^Error: / && loc != "" { print loc ": " substr($0, 8); loc = ""; n++ }
+    /NVFORTRAN-[SF]-/ { m = $0; f = m; sub(/.*\(/, "", f); sub(/\).*/, "", f); gsub(/ /, "", f); sub(/^NVFORTRAN-[SF]-[0-9]+-/, "", m); sub(/ \(.*/, "", m); print f ": " m; n++ }
+    n >= 3 { exit }' "$1" | tr '\n' ';' | sed 's/;$//'
+  echo
+}
+build_result() {   # build_result <name> <build dir or empty> <expected compile.log>
+  if [ -n "$2" ]; then result "$1" PASS "$2"
+  else result "$1" FAIL "$(first_errors "$3" | cut -c1-300) (log: $3)"; fi
+}
+build_result build:gnu-ref "$bt" "$WORK/builds/gnu-ref/worktree/compile.log"
+build_result build:gnu-gpu "$bg" "$WORK/builds/gnu-gpu/worktree/compile.log"
+build_result build:gnu-ref-base "$bb" "$WORK/builds/gnu-ref/$(git rev-parse --short=12 "$base")/compile.log"
 
 cmp_runs() {   # cmp_runs <name> <run a> <run b>
   if [ -z "$2" ] || [ -z "$3" ] || ! run_ok "$2" || ! run_ok "$3"; then result "$1" FAIL "a run failed ($2 / $3)"; return; fi
@@ -80,8 +94,21 @@ cmp_runs() {   # cmp_runs <name> <run a> <run b>
 }
 rt=; rg=; rg4=; rb=
 [ -n "$bt" ] && rt=$(window "$bt" S-3M)
-[ -n "$bg" ] && rg=$(window "$bg" S-3M)
-[ -n "$bg" ] && rg4=$(window "$bg" S-3M OMP_NUM_THREADS=4)
+# gnu-gpu: a route that stops on an option it does not port ("<routine>: ... not ported to the GPU") is
+# reported on its own and turned off (WRF_GPU_OFF), so the other routes are still compared (S0-01.3)
+off=
+if [ -n "$bg" ]; then
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    rg=$(window "$bg" S-3M ${off:+WRF_GPU_OFF=$off})
+    [ -n "$rg" ] && run_ok "$rg" && break
+    msg=$(grep -h -m1 "not ported to the GPU" "$rg"/rsl.error.0000 2>/dev/null)
+    r=$(echo "$msg" | grep -oE "[A-Za-z_][A-Za-z_0-9]*: [^:]*not ported to the GPU" | head -1 | cut -d: -f1)
+    [ -n "$r" ] || break
+    result "gpu-view:$r" FAIL "unported option on S-3M: ${msg#*ERROR*: }; rerun with WRF_GPU_OFF=${off:+$off,}$r"
+    off=${off:+$off,}$r
+  done
+  rg4=$(window "$bg" S-3M OMP_NUM_THREADS=4 ${off:+WRF_GPU_OFF=$off})
+fi
 [ -n "$bb" ] && rb=$(window "$bb" S-3M)
 cmp_runs cpu-view "$rb" "$rt"
 cmp_runs gpu-view "$rt" "$rg"
