@@ -130,6 +130,7 @@ a772082de33580f3a5ae5f29541b85af  ../sym_audit.sh
 37060b5efe81ffb4698dac7ab2b4b9f5  ../tests/acc_features/Makefile
 ba5e50dc79ff3dc2c963e3c24903c063  ../tests/acc_features/f_attach.F90
 3b9f6fada2a4695baa1de6aab4b0e774  ../tests/acc_features/f_auto.F90
+719fd6e8e01f38634f7726df861dfd71  ../tests/acc_features/f_bound.F90
 e5c58dd4ddaa4ec5c066ffad9e6e8084  ../tests/acc_features/f_cache_async.F90
 6c6380ae62fdb7cc65c9f162f9e95a5c  ../tests/acc_features/f_char.F90
 8ceff1b9f20b57d8eb38cf277cac3d2d  ../tests/acc_features/f_declare.F90
