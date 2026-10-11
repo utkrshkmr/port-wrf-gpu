@@ -21,6 +21,7 @@
 ! Usage: t_tmpl_c [nrep]; ALLOW_HOST=1 for host-only.
 
 MODULE tc_mod
+   USE module_repro_math
    IMPLICIT NONE
    INTEGER, PARAMETER :: WRF_KMAX = 64
 CONTAINS
@@ -78,9 +79,9 @@ SUBROUTINE calc_ww_cp ( u, v, mup, mub, c1h, c2h, ww,    &
 !
 !</DESCRIPTION>
 
-    jtf=MIN(jte,jde-1)
-    ktf=MIN(kte,kde-1)  
-    itf=MIN(ite,ide-1)
+    jtf=rp_min(jte,jde-1)
+    ktf=rp_min(kte,kde-1)  
+    itf=rp_min(ite,ide-1)
 
 !  mu coupled with the appropriate map factor
 
@@ -202,9 +203,9 @@ SUBROUTINE calc_ww_cp_gpu ( u, v, mup, mub, c1h, c2h, ww,    &
    REAL :: dmdts                       ! was dmdt(its:ite)
    REAL :: divv_col(WRF_KMAX)          ! was divv(its:ite, kts:kte)
 
-    jtf=MIN(jte,jde-1)
-    ktf=MIN(kte,kde-1)
-    itf=MIN(ite,ide-1)
+    jtf=rp_min(jte,jde-1)
+    ktf=rp_min(kte,kde-1)
+    itf=rp_min(ite,ide-1)
 
    ! K-PREP-5a (1)
 !$acc parallel loop gang vector collapse(2) if(dev) default(none) present(muu, mup, mub) &

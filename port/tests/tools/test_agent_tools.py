@@ -81,9 +81,9 @@ else:
              "!$acc update self(a, alpha, gamma, mut, c1h, c2h, c1f, c2f, &\n"
              "!$acc&   c3h, c4h, c3f, c4f, cqw, rdn, rdnw, c2a)\n        END IF\n"
              "        gpu_world_host = .NOT. gpu_world_host\n      END IF\n#endif\n")
-    s = s.replace("      i_start = its\n      i_end   = min(ite,ide-1)\n      j_start = jts\n      j_end   = min(jte,jde-1)\n"
-                  "      k_start = kts\n", entry + "      i_start = its\n      i_end   = min(ite,ide-1)\n"
-                  "      j_start = jts\n      j_end   = min(jte,jde-1)\n      k_start = kts\n", 1)
+    s = s.replace("      i_start = its\n      i_end   = rp_min(ite,ide-1)\n      j_start = jts\n      j_end   = rp_min(jte,jde-1)\n"
+                  "      k_start = kts\n", entry + "      i_start = its\n      i_end   = rp_min(ite,ide-1)\n"
+                  "      j_start = jts\n      j_end   = rp_min(jte,jde-1)\n      k_start = kts\n", 1)
     s = s.replace("      IF(top_lid)lid_flag=0\n     outer_j_loop:", "      IF(top_lid)lid_flag=0\n" + GPU +
                   "     outer_j_loop:", 1)
     tmp = tempfile.mkdtemp()
@@ -231,8 +231,8 @@ check(rc == 0, "check_verbatim: the copies in port/tests are verbatim", out)
 tmp = tempfile.mkdtemp()
 t = open(os.path.join(PORT, "tests", "pdlim", "t_pdlim.F90")).read()
 tampered = os.path.join(tmp, "t.F90")
-open(tampered, "w").write(t.replace("scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))",
-                                    "scale = max(0.,ph_low(i,k,j)*(1./(flux_out(i,k,j)+eps)))", 1))
+open(tampered, "w").write(t.replace("scale = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))",
+                                    "scale = rp_max(0.,ph_low(i,k,j)*(1./(flux_out(i,k,j)+eps)))", 1))
 rc, out = run(os.path.join(TOOLS, "check_verbatim.py"), tampered)
 check(rc == 1 and "not a verbatim copy" in out, "check_verbatim: an edited copy fails", out)
 
@@ -554,6 +554,8 @@ src_rs = ("MODULE m\nCONTAINS\n   SUBROUTINE s(x, y, n)\n      REAL :: x, y, z\n
           "      z = MAX(x, 0.) + AMIN1(x, y, 1.) + dmax1(x, y)\n"
           "      z = x**2 + x**3 + x**(-1.0) + x**p2 + x**pm1 + x**i3 + x**n + x**2.0 + x**4\n"
           "      i = max(n, 1)\n"
+          "      DO i = MAX(1, n), min(n, 9)\n      END DO\n"
+          "      lbl: do i = 1, max(n, 2)\n      end do lbl\n"
           "      z = a%max + maxval(y)\n"
           "   END SUBROUTINE s\nEND MODULE m\n")
 open(os.path.join(rs, "t.F"), "w").write(src_rs)
@@ -561,9 +563,10 @@ rc, out = run(os.path.join(PORT, "rp_subst.py"), os.path.join(rs, "t.F"))
 got = open(os.path.join(rs, "t.F")).read()
 want_rs = ["rp_max(x, 0.)", "rp_min(x, y, 1.)", "rp_max(x, y)", "x**2 +", "rp_pow(x, 3)", "rp_pow(x, (-1))",
            "x**p2", "rp_pow(x, pm1)", "rp_pow(x, i3)", "rp_pow(x, n)", "+ x**2 +", "rp_pow(x, 4)",
-           "i = rp_max(n, 1)", "a%max", "maxval(y)", "USE module_repro_math"]
+           "i = rp_max(n, 1)", "a%max", "maxval(y)", "USE module_repro_math",
+           "DO i = MAX(1, n), min(n, 9)", "lbl: do i = 1, max(n, 2)"]
 miss = [w for w in want_rs if w not in got]
-check(rc == 0 and not miss, "rp_subst: MAX/MIN -> rp_max/rp_min; powers other than 0, 1, 2 -> rp_pow",
+check(rc == 0 and not miss, "rp_subst: MAX/MIN -> rp_max/rp_min except in DO bounds; powers other than 0, 1, 2 -> rp_pow",
       f"missing {miss}\n{got}\n{out}")
 rc, out = run(os.path.join(PORT, "rp_subst.py"), os.path.join(rs, "t.F"))
 check(open(os.path.join(rs, "t.F")).read() == got, "rp_subst: a second run changes nothing", out)

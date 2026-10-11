@@ -37,7 +37,7 @@ Format:
   possible if user namespaces are enabled); or (c) install the NVHPC SDK 25.1 tarball natively without root into
   `$WORK` (`CONTAINER=none`, `NVHPC_ROOT=...`; ~12 GB, needs B1 first). Driver 595 supports CUDA 12.6 images.
 
-## B3 2026-10-10 T-MINMAX and T-IPOW fail on the A100s with nvfortran 26.5   [open]
+## B3 2026-10-10 T-MINMAX and T-IPOW fail on the A100s with nvfortran 26.5   [resolved 2026-10-11: the plan's remedy (owner's choice): rp_max/rp_min and integer powers as products, shared refactor 75c28b7 + 1f1f452, base moved (REFACTORS.md); NVHPC 25.1 behaves the same]
 - Task / kernel: S0-06.2, S0-06.5 (gate S0-06, G0); affects every kernel with MIN/MAX of possibly signed zeros and
   every integer power.
 - What happens (command and output): `port/tests/repro_math/run_tests.sh` on GPU 0 and GPU 1 (identical):
@@ -54,7 +54,7 @@ Format:
   differently, then decide; (c) both. Until then S0-06 and the machine-change protocol (step b) stay FAIL, and
   GPU gates refuse to run on this machine (`machine.sh check`).
 
-## B4 2026-10-11 nvfortran 26.5 cannot build WRF at the CPU-REF flags   [open]
+## B4 2026-10-11 nvfortran 26.5 cannot build WRF at the CPU-REF flags   [resolved 2026-10-11: NVHPC 25.1 (the plan's pin) installed in <checkout>/Linux_x86_64/25.1 builds CPU-REF completely; env.local.sh uses it; 26.5 stays installed, unused]
 - Task / kernel: S0-07.1 (CPU-REF build), and every NVHPC build.
 - What happens (command and output): `build.sh cpu-ref --worktree` -> `nvfortran-Fatal-.../tools/fort2 TERMINATED
   by signal 11` on 12 files at `-O2` (module_dm, module_bittrace, module_cpl, module_optional_input, mediation_integrate,

@@ -38,6 +38,7 @@
 ! run on the GPU; with gfortran (COMPILER=gnu) on the host.
 
 MODULE pdlim_mod
+   USE module_repro_math
    IMPLICIT NONE
 CONTAINS
 
@@ -74,12 +75,12 @@ CONTAINS
    DO i=i_start, i_end
 
      flux_out(i,k,j) = dt*( (msftx(i,j)*msfty(i,j))*( &
-                                rdx*(  max(0.,fqx (i+1,k,j))      &
-                                      -min(0.,fqx (i  ,k,j)) )    &
-                               +rdy*(  max(0.,fqy (i,k,j+1))      &
-                                      -min(0.,fqy (i,k,j  )) ) )  &
-                +msfty(i,j)*rdzw(k)*(  min(0.,fqz (i,k+1,j))      &
-                                      -max(0.,fqz (i,k  ,j)) )   )
+                                rdx*(  rp_max(0.,fqx (i+1,k,j))      &
+                                      -rp_min(0.,fqx (i  ,k,j)) )    &
+                               +rdy*(  rp_max(0.,fqy (i,k,j+1))      &
+                                      -rp_min(0.,fqy (i,k,j  )) ) )  &
+                +msfty(i,j)*rdzw(k)*(  rp_min(0.,fqz (i,k+1,j))      &
+                                      -rp_max(0.,fqz (i,k  ,j)) )   )
 
    ENDDO
    ENDDO
@@ -89,7 +90,7 @@ CONTAINS
    DO k=kts, ktf
    DO i=i_start, i_end
      IF( flux_out(i,k,j) .gt. ph_low(i,k,j) ) THEN
-       scale = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
+       scale = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
        IF( fqx (i+1,k,j) .gt. 0.) fqx(i+1,k,j) = scale*fqx(i+1,k,j)
        IF( fqx (i  ,k,j) .lt. 0.) fqx(i  ,k,j) = scale*fqx(i  ,k,j)
        IF( fqy (i,k,j+1) .gt. 0.) fqy(i,k,j+1) = scale*fqy(i,k,j+1)
@@ -147,12 +148,12 @@ CONTAINS
       DO k = kts, ktf
       DO i = i_start, i_end
         flux_out(i,k,j) = dt*( (msftx(i,j)*msfty(i,j))*( &
-                                   rdx*(  max(0.,fqx (i+1,k,j))      &
-                                         -min(0.,fqx (i  ,k,j)) )    &
-                                  +rdy*(  max(0.,fqy (i,k,j+1))      &
-                                         -min(0.,fqy (i,k,j  )) ) )  &
-                   +msfty(i,j)*rdzw(k)*(  min(0.,fqz (i,k+1,j))      &
-                                         -max(0.,fqz (i,k  ,j)) )   )
+                                   rdx*(  rp_max(0.,fqx (i+1,k,j))      &
+                                         -rp_min(0.,fqx (i  ,k,j)) )    &
+                                  +rdy*(  rp_max(0.,fqy (i,k,j+1))      &
+                                         -rp_min(0.,fqy (i,k,j  )) ) )  &
+                   +msfty(i,j)*rdzw(k)*(  rp_min(0.,fqz (i,k+1,j))      &
+                                         -rp_max(0.,fqz (i,k  ,j)) )   )
       ENDDO
       ENDDO
       ENDDO
@@ -165,7 +166,7 @@ CONTAINS
       DO i = i_start, i_end
         lim(i,k,j) = flux_out(i,k,j) .gt. ph_low(i,k,j)
         IF (lim(i,k,j)) THEN
-          scl(i,k,j) = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
+          scl(i,k,j) = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))
         ELSE
           scl(i,k,j) = 0.
         END IF
@@ -236,6 +237,7 @@ END MODULE pdlim_mod
 
 
 PROGRAM t_pdlim
+   USE module_repro_math
    USE pdlim_mod
    USE, INTRINSIC :: ieee_arithmetic
    USE openacc
@@ -281,7 +283,7 @@ PROGRAM t_pdlim
       CALL rnd3(fqx, 2.0); CALL rnd3(fqy, 2.0); CALL rnd3(fqz, 2.0)
       CALL rnd3(fqxl, 0.1); CALL rnd3(fqyl, 0.1); CALL rnd3(fqzl, 0.1)
       CALL rnd3(field_old, 1.0)
-      field_old = ABS(field_old)*MOD(icase, 3)          ! some cases with zero mass: many limited cells
+      field_old = ABS(field_old)*rp_mod(icase, 3)          ! some cases with zero mass: many limited cells
       CALL RANDOM_NUMBER(mub); CALL RANDOM_NUMBER(mu_old); CALL RANDOM_NUMBER(msftx); CALL RANDOM_NUMBER(msfty)
       mub = 900. + 100.*mub; mu_old = 50.*mu_old; msftx = 0.9 + 0.2*msftx; msfty = 0.9 + 0.2*msfty
       CALL RANDOM_NUMBER(c1); CALL RANDOM_NUMBER(c2); CALL RANDOM_NUMBER(rdzw)
@@ -291,7 +293,7 @@ PROGRAM t_pdlim
       dt = 1./3.
       eps = 1.e-20
       ! special values in some fluxes: zeros, -0.0, NaN
-      IF (MOD(icase, 4) == 0) THEN
+      IF (rp_mod(icase, 4) == 0) THEN
          fqx(5, 3, 4) = 0.; fqy(6, 4, 5) = -0.; fqz(7, 5, 6) = 0.
          fqx(8, 2, 3) = IEEE_VALUE(1.0, IEEE_QUIET_NAN)
       END IF

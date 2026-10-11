@@ -20,13 +20,18 @@ endif
 
 all: t_pdlim
 
-t_pdlim: t_pdlim.F90
-	$(FC) $(FFLAGS) -o $@ $<
+# module_repro_math (rp_max/rp_min of the copied WRF code: BLOCKERS B3), preprocessed with REPRO_MATH
+module_repro_math.f90: ../../../WRF/frame/module_repro_math.F
+	cpp -P -traditional-cpp -DREPRO_MATH $< > $@
+module_repro_math.o: module_repro_math.f90
+	$(FC) $(FFLAGS) -c $<
+t_pdlim: t_pdlim.F90 module_repro_math.o
+	$(FC) $(FFLAGS) -o $@ $< module_repro_math.o
 
 run: t_pdlim
 	./t_pdlim 200
 
 clean:
-	rm -f *.o *.mod t_pdlim
+	rm -f *.o *.mod t_pdlim module_repro_math.f90
 
 .PHONY: all run clean

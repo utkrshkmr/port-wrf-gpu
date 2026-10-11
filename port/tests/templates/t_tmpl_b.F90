@@ -35,6 +35,7 @@
 #endif
 
 MODULE tb_mod
+   USE module_repro_math
    IMPLICIT NONE
    TYPE grid_config_rec_type
       LOGICAL :: periodic_x = .false., periodic_y = .false.
@@ -83,7 +84,7 @@ SUBROUTINE advect_u_yflux_orig(u, rv, msfux, tendency, rdy, time_step, config_fl
 
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
 ! BEGIN VERBATIM WRF/dyn_em/module_advect_em.F
    degrade_xs = .true.
@@ -108,13 +109,13 @@ SUBROUTINE advect_u_yflux_orig(u, rv, msfux, tendency, rdy, time_step, config_fl
 
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
 
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
 
 !  higher order flux has a 5 or 7 point stencil, so compute
 !  bounds so we can switch to second order flux close to the boundary
@@ -123,16 +124,16 @@ SUBROUTINE advect_u_yflux_orig(u, rv, msfux, tendency, rdy, time_step, config_fl
       j_end_f   = j_end+1
 
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
 
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
-      IF(config_flags%polar) j_end = MIN(jte,jde-1)
+      IF(config_flags%polar) j_end = rp_min(jte,jde-1)
 
 !  compute fluxes, 5th or 6th order
 
@@ -278,7 +279,7 @@ SUBROUTINE advect_u_yflux_gpu(u, rv, msfux, tendency, fqy3, rdy, time_step, conf
 
    specified = .false.
    if(config_flags%specified .or. config_flags%nested) specified = .true.
-   ktf=MIN(kte,kde-1)
+   ktf=rp_min(kte,kde-1)
 
    ! host scalars: unchanged setup code of the source
    degrade_xs = .true.
@@ -291,20 +292,20 @@ SUBROUTINE advect_u_yflux_gpu(u, rv, msfux, tendency, fqy3, rdy, time_step, conf
    IF( config_flags%periodic_y   .or. config_flags%symmetric_ye .or. (jte < jde-4) ) degrade_ye = .false.
       i_start = its
       i_end   = ite
-      IF ( config_flags%open_xs .or. specified ) i_start = MAX(ids+1,its)
-      IF ( config_flags%open_xe .or. specified ) i_end   = MIN(ide-1,ite)
+      IF ( config_flags%open_xs .or. specified ) i_start = rp_max(ids+1,its)
+      IF ( config_flags%open_xe .or. specified ) i_end   = rp_min(ide-1,ite)
       IF ( config_flags%periodic_x ) i_start = its
       IF ( config_flags%periodic_x ) i_end = ite
       j_start = jts
-      j_end   = MIN(jte,jde-1)
+      j_end   = rp_min(jte,jde-1)
       j_start_f = j_start
       j_end_f   = j_end+1
       IF(degrade_ys) then
-        j_start = MAX(jts,jds+1)
+        j_start = rp_max(jts,jds+1)
         j_start_f = jds+3
       ENDIF
       IF(degrade_ye) then
-        j_end = MIN(jte,jde-2)
+        j_end = rp_min(jte,jde-2)
         j_end_f = jde-3
       ENDIF
 
@@ -391,6 +392,7 @@ END MODULE tb_mod
 
 
 PROGRAM t_tmpl_b
+   USE module_repro_math
    USE tb_mod
    USE openacc
    IMPLICIT NONE
@@ -431,13 +433,13 @@ PROGRAM t_tmpl_b
    DO irep = 1, nrep
       CALL RANDOM_NUMBER(u); u = 20.*(u - 0.5)
       CALL RANDOM_NUMBER(rv); rv = 2000.*(rv - 0.5)
-      IF (MOD(irep, 2) == 0) THEN
+      IF (rp_mod(irep, 2) == 0) THEN
          rv(3:6, 2:5, 7:9) = 0.; rv(8, 3, 12) = -0.      ! zero and -0.0 velocities (sign(1.,ua))
       END IF
       CALL RANDOM_NUMBER(t0)
       CALL RANDOM_NUMBER(msfux); msfux = 0.95 + 0.1*msfux
       rdy = 1./100.
-      time_step = MERGE(1, -1, MOD(irep, 3) /= 0)      ! sign(1,time_step)
+      time_step = MERGE(1, -1, rp_mod(irep, 3) /= 0)      ! sign(1,time_step)
       DO it = 1, 5
          ta = t0; tb = t0; tc = t0
          CALL advect_u_yflux_orig(u, rv, msfux, ta, rdy, time_step, cf, ids, ide, jds, jde, kds, kde, &

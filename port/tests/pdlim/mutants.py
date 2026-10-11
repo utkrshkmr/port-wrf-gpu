@@ -14,8 +14,8 @@ MUT = {
                             "        IF (fqz(i,k,j) .gt. 0.) THEN\n          IF (k-1 >= kts)"),
     "y outflow face range too short": ("      DO j = j_start, j_end+1\n", "      DO j = j_start, j_end\n"),
     "sentinel instead of flag": ("            IF (lim(i-1,k,j)) fqx(i,k,j)", "            IF (scl(i-1,k,j) > 0.) fqx(i,k,j)"),
-    "limiter scale reassociated": ("          scl(i,k,j) = max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))",
-                                   "          scl(i,k,j) = max(0.,ph_low(i,k,j)*(1./(flux_out(i,k,j)+eps)))"),
+    "limiter scale reassociated": ("          scl(i,k,j) = rp_max(0.,ph_low(i,k,j)/(flux_out(i,k,j)+eps))",
+                                   "          scl(i,k,j) = rp_max(0.,ph_low(i,k,j)*(1./(flux_out(i,k,j)+eps)))"),
 }
 here = os.path.dirname(os.path.abspath(__file__))
 sys.exit(mutants_lib.run(os.path.join(here, "t_pdlim.F90"), MUT, "SUBROUTINE pdlim_split", args=("100",)))

@@ -64,3 +64,6 @@ port/tests/acc_features/f_*
 port/tests/acc_features/build_*.log
 port/tests/acc_features/probes_*.md
 port/tests/acc_features/*.mod
+
+# the Eaton dataset copied from CCR (147 GB; inputs, the NCAR run, outputs): never in git
+/EATON/

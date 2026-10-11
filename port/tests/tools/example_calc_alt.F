@@ -44,9 +44,9 @@ SUBROUTINE calc_alt ( alt, al, alb,                  &
         gpu_world_host = .NOT. gpu_world_host
       END IF
 #endif
-      itf=MIN(ite,ide-1)
-      jtf=MIN(jte,jde-1)
-      ktf=MIN(kte,kde-1)
+      itf=rp_min(ite,ide-1)
+      jtf=rp_min(jte,jde-1)
+      ktf=rp_min(kte,kde-1)
 
 ! K-PREP-7 (plan.md 7.1): Template A, directive in front of the unchanged loop
 !$acc parallel loop gang vector collapse(3) if(gpu_on(R_CALC_ALT)) default(none) present(alt, al, alb) &

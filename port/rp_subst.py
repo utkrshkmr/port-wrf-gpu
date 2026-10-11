@@ -9,8 +9,12 @@ For each free-form Fortran file given:
   MAX MIN AMAX1 AMIN1 DMAX1 DMIN1                             ->  rp_max(...), rp_min(...)
   a**b unless b is 0, 1 or 2 (see below)                      ->  rp_pow(a, b)
 
-MAX and MIN: NVHPC 26.5 returns different signed zeros for MAX/MIN on the host
-and on the device (T-MINMAX, BLOCKERS B3); rp_max/rp_min define the result.
+MAX and MIN: NVHPC 25.1 and 26.5 return different signed zeros for MAX/MIN on the
+host and on the device (T-MINMAX, BLOCKERS B3); rp_max/rp_min define the result.
+In the bounds of a DO statement they stay intrinsics: loop bounds are INTEGER
+(exact, the same bits everywhere), and NVHPC 25.1/26.5 silently run no
+iteration when a collapsed OpenACC loop has a procedure call in an inner bound
+(probe F-BOUND, port/tests/acc_features/f_bound.F90).
 Integer powers: NVHPC 26.5 calls a host library for x**n but multiplies on the
 device (T-IPOW, BLOCKERS B3); rp_pow with an INTEGER exponent multiplies
 explicitly.  Only x**0, x**1 and x**2 (x*x on both) stay powers.
@@ -350,7 +354,11 @@ def rewrite_powers(code, report, params=None):
     return code
 
 
-def rewrite_calls(code, report):
+DO_STMT = re.compile(r"^\s*(\d+\s+)?(\w+\s*:\s*)?do\s+\w+\s*=", re.I)
+MINMAX = {"max", "amax1", "dmax1", "min", "amin1", "dmin1"}
+
+
+def rewrite_calls(code, report, in_do=False):
     toks = tokenize(code)
     out = code
     # right to left so offsets stay valid
@@ -361,6 +369,8 @@ def rewrite_calls(code, report):
         if i > 0 and toks[i - 1].text == "%":
             continue
         low = t.text.lower()
+        if in_do and low in MINMAX:
+            continue                       # DO bounds keep MAX/MIN (see the docstring)
         if low in FUNC_MAP:
             out = out[:t.start] + FUNC_MAP[low] + out[t.end:]
             report("call", f"{t.text} -> {FUNC_MAP[low]}")
@@ -483,7 +493,7 @@ def process_file(path, check_only, log):
                     log(f"{path}:{_i + 1}: {kind_}: {msg}")
                     log(f"    {lines[_i].strip()}")
             c2 = rewrite_powers(code, rep, params)
-            c2 = rewrite_calls(c2, rep)
+            c2 = rewrite_calls(c2, rep, in_do=bool(DO_STMT.match(text)))
             if c2 != code:
                 new_lines[i] = c2 + comment
                 log(f"{path}:{i + 1}:")

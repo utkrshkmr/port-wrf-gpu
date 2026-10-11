@@ -20,6 +20,7 @@
 ! Usage: t_tmpl_g [nrep]; ALLOW_HOST=1 for host-only.
 
 MODULE tg_mod
+   USE module_repro_math
    IMPLICIT NONE
    INTEGER, PARAMETER :: bdyzone = 4          ! module_bc.F:33
    TYPE grid_config_rec_type
@@ -90,7 +91,7 @@ CONTAINS
 
       istag = -1
       jstag = -1
-      k_end = max(1,min(kde-1,kte))
+      k_end = rp_max(1,rp_min(kde-1,kte))
 
 
       IF ((variable == 'u') .or. (variable == 'x')) istag = 0
@@ -101,15 +102,15 @@ CONTAINS
       ENDIF
       IF ((variable == 'e') ) then
          istag = 0
-         k_end = min(kde,kte)
+         k_end = rp_min(kde,kte)
       ENDIF
 
       IF ((variable == 'f') ) then
          jstag = 0
-         k_end = min(kde,kte)
+         k_end = rp_min(kde,kte)
       ENDIF
 
-      IF ( variable == 'w')  k_end = min(kde,kte)
+      IF ( variable == 'w')  k_end = rp_min(kde,kte)
 
 !      k_end = kte
 
@@ -316,8 +317,8 @@ CONTAINS
 !  start and end index for inner tiles, and then modify if the tile is on the
 !  edge of the domain.
 
-      i_start = MAX(ids, its-1)
-      i_end = MIN(ite+1, ide+istag)
+      i_start = rp_max(ids, its-1)
+      i_end = rp_min(ite+1, ide+istag)
       IF ( its .eq. ids) THEN
         i_start = ims
       END IF
@@ -557,7 +558,7 @@ CONTAINS
 
       istag = -1
       jstag = -1
-      k_end = max(1,min(kde-1,kte))
+      k_end = rp_max(1,rp_min(kde-1,kte))
 
 
       IF ((variable == 'u') .or. (variable == 'x')) istag = 0
@@ -568,15 +569,15 @@ CONTAINS
       ENDIF
       IF ((variable == 'e') ) then
          istag = 0
-         k_end = min(kde,kte)
+         k_end = rp_min(kde,kte)
       ENDIF
 
       IF ((variable == 'f') ) then
          jstag = 0
-         k_end = min(kde,kte)
+         k_end = rp_min(kde,kte)
       ENDIF
 
-      IF ( variable == 'w')  k_end = min(kde,kte)
+      IF ( variable == 'w')  k_end = rp_min(kde,kte)
 
 !      k_end = kte
 
@@ -789,8 +790,8 @@ CONTAINS
 !  start and end index for inner tiles, and then modify if the tile is on the
 !  edge of the domain.
 
-      i_start = MAX(ids, its-1)
-      i_end = MIN(ite+1, ide+istag)
+      i_start = rp_max(ids, its-1)
+      i_end = rp_min(ite+1, ide+istag)
       IF ( its .eq. ids) THEN
         i_start = ims
       END IF
@@ -978,6 +979,7 @@ END MODULE tg_mod
 
 
 PROGRAM t_tmpl_g
+   USE module_repro_math
    USE tg_mod
    USE openacc
    IMPLICIT NONE
@@ -1014,7 +1016,7 @@ PROGRAM t_tmpl_g
    ncopied = 0
    DO irep = 1, nrep
       CALL RANDOM_NUMBER(d0)
-      cf%specified = MOD(irep, 2) == 1
+      cf%specified = rp_mod(irep, 2) == 1
       cf%nested = .NOT. cf%specified
       DO iv = 1, LEN(vars)
       DO it = 1, 4

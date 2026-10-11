@@ -21,14 +21,19 @@ TMPL_B_FLAGS ?=
 INC = -I../../../WRF/inc
 PROGS = t_tmpl_b t_tmpl_c t_tmpl_g t_tmpl_cp
 all: $(PROGS)
-t_tmpl_b: t_tmpl_b.F90
-	$(FC) $(FFLAGS) $(TMPL_B_FLAGS) -o $@ $<
-t_tmpl_cp: t_tmpl_cp.F90 ../../../WRF/inc/gpu_col.h
-	$(FC) $(FFLAGS) $(TMPL_B_FLAGS) $(INC) -o $@ $<
-t_%: t_%.F90
-	$(FC) $(FFLAGS) -o $@ $<
+# module_repro_math (rp_max/rp_min of the copied WRF code: BLOCKERS B3), preprocessed with REPRO_MATH
+module_repro_math.f90: ../../../WRF/frame/module_repro_math.F
+	cpp -P -traditional-cpp -DREPRO_MATH $< > $@
+module_repro_math.o: module_repro_math.f90
+	$(FC) $(FFLAGS) -c $<
+t_tmpl_b: t_tmpl_b.F90 module_repro_math.o
+	$(FC) $(FFLAGS) $(TMPL_B_FLAGS) -o $@ $< module_repro_math.o
+t_tmpl_cp: t_tmpl_cp.F90 ../../../WRF/inc/gpu_col.h module_repro_math.o
+	$(FC) $(FFLAGS) $(TMPL_B_FLAGS) $(INC) -o $@ $< module_repro_math.o
+t_%: t_%.F90 module_repro_math.o
+	$(FC) $(FFLAGS) -o $@ $< module_repro_math.o
 run: $(PROGS)
 	./t_tmpl_b 20 && ./t_tmpl_c 20 && ./t_tmpl_g 5 && ./t_tmpl_cp 20
 clean:
-	rm -f *.o *.mod $(PROGS)
+	rm -f *.o *.mod $(PROGS) module_repro_math.f90
 .PHONY: all run clean

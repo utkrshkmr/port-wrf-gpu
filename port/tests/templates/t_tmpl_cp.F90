@@ -53,6 +53,7 @@ CONTAINS
 END MODULE tcp_const
 
 MODULE tcp_mod
+   USE module_repro_math
    USE tcp_const
    IMPLICIT NONE
 CONTAINS
@@ -84,7 +85,7 @@ CONTAINS
          do i = its, ite
             es = 611.2 + 0.5*(t(i, k) - 200.)*(t(i, k) - 200.)
             qs(i, k) = 0.622*es/(p(i, k) - es)
-            work(i, k) = max(q(i, k) - qs(i, k), 0.)/(1. + xl*xl*qs(i, k)/(cpmcal(q(i, k))*rv*t(i, k)*t(i, k)))
+            work(i, k) = rp_max(q(i, k) - qs(i, k), 0.)/(1. + xl*xl*qs(i, k)/(cpmcal(q(i, k))*rv*t(i, k)*t(i, k)))
             q(i, k) = q(i, k) - work(i, k)
             qr(i, k) = qr(i, k) + work(i, k)
             cpm = cpmcal(rh(i, k))
@@ -94,11 +95,11 @@ CONTAINS
       ! sedimentation: downward recurrence
       do i = its, ite
          falk(i, kte) = pvtr*qr(i, kte)*sqrt(qr(i, kte))
-         qr(i, kte) = max(qr(i, kte) - dtcld*falk(i, kte)/delz(i, kte), 0.)
+         qr(i, kte) = rp_max(qr(i, kte) - dtcld*falk(i, kte)/delz(i, kte), 0.)
       end do
       do k = kte - 1, kts, -1
          do i = its, ite
-            qr(i, k) = max(qr(i, k) + dtcld*(falk(i, k + 1) - pvtr*qr(i, k)*sqrt(qr(i, k)))/delz(i, k), 0.)
+            qr(i, k) = rp_max(qr(i, k) + dtcld*(falk(i, k + 1) - pvtr*qr(i, k)*sqrt(qr(i, k)))/delz(i, k), 0.)
             falk(i, k) = pvtr*qr(i, k)*sqrt(qr(i, k))
          end do
       end do
@@ -205,7 +206,7 @@ CONTAINS
          do i = its, ite
             es = 611.2 + 0.5*(t(i, k) - 200.)*(t(i, k) - 200.)
             qs(i, k) = 0.622*es/(p(i, k) - es)
-            work(i, k) = max(q(i, k) - qs(i, k), 0.)/(1. + xl*xl*qs(i, k)/(cpmcal(q(i, k))*rv*t(i, k)*t(i, k)))
+            work(i, k) = rp_max(q(i, k) - qs(i, k), 0.)/(1. + xl*xl*qs(i, k)/(cpmcal(q(i, k))*rv*t(i, k)*t(i, k)))
             q(i, k) = q(i, k) - work(i, k)
             qr(i, k) = qr(i, k) + work(i, k)
             cpm = cpmcal(rh(i, k))
@@ -214,11 +215,11 @@ CONTAINS
       end do
       do i = its, ite
          falk(i, kte) = pvtr*qr(i, kte)*sqrt(qr(i, kte))
-         qr(i, kte) = max(qr(i, kte) - dtcld*falk(i, kte)/delz(i, kte), 0.)
+         qr(i, kte) = rp_max(qr(i, kte) - dtcld*falk(i, kte)/delz(i, kte), 0.)
       end do
       do k = kte - 1, kts, -1
          do i = its, ite
-            qr(i, k) = max(qr(i, k) + dtcld*(falk(i, k + 1) - pvtr*qr(i, k)*sqrt(qr(i, k)))/delz(i, k), 0.)
+            qr(i, k) = rp_max(qr(i, k) + dtcld*(falk(i, k + 1) - pvtr*qr(i, k)*sqrt(qr(i, k)))/delz(i, k), 0.)
             falk(i, k) = pvtr*qr(i, k)*sqrt(qr(i, k))
          end do
       end do
