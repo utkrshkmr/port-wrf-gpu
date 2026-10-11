@@ -36,3 +36,21 @@ Format:
   `nvcr.io/nvidia/nvhpc:25.1-devel-cuda12.6-ubuntu22.04`); or (b) install Apptainer (unprivileged install is
   possible if user namespaces are enabled); or (c) install the NVHPC SDK 25.1 tarball natively without root into
   `$WORK` (`CONTAINER=none`, `NVHPC_ROOT=...`; ~12 GB, needs B1 first). Driver 595 supports CUDA 12.6 images.
+
+## B3 2026-10-10 T-MINMAX and T-IPOW fail on the A100s with nvfortran 26.5   [open]
+- Task / kernel: S0-06.2, S0-06.5 (gate S0-06, G0); affects every kernel with MIN/MAX of possibly signed zeros and
+  every integer power.
+- What happens (command and output): `port/tests/repro_math/run_tests.sh` on GPU 0 and GPU 1 (identical):
+  `FAIL T-SIGNZERO/T-MINMAX/T-SUBNORM specials REAL(4) 3 of 6912 differ` (MIN/MAX of +0/−0 return different zeros
+  on host and device) and `FAIL T-IPOW ... 3984817592 of 6576668672 differ`. Diagnosis in RESULTS.md: the host
+  calls LIBNVCPUMATH power routines (`__py_powi1_4`, `__pmth_i_dpowi`, ...), the device multiplies. T-FMA, T-IEEE,
+  T-RM-EXH/POW/D and run_ref_tests.sh pass.
+- What was tried: reproduced on both GPUs and in a 30-line program (`$WORK/s0-06/ipow/ip.F90`); `nm` shows the
+  host library calls. Not tried: NVHPC 25.1 (the plan's pinned version; 26.5 is installed), host flags that
+  inline integer powers.
+- What is needed (owner decides): (a) apply the plan's remedies: `rp_min`/`rp_max`(/`rp_sign`) with IEEE
+  branches and integer powers as explicit products, in the locked `module_repro_math.F` and substituted in the
+  in-scope files (a shared refactor certified in S0-12); or (b) first check whether NVHPC 25.1 (the pin) behaves
+  differently, then decide; (c) both. Until then S0-06 and the machine-change protocol (step b) stay FAIL, and
+  GPU gates refuse to run on this machine (`machine.sh check`).
+

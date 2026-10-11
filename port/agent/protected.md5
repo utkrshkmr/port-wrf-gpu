@@ -91,7 +91,7 @@ af106aee44c7ccab2c94a59afe20d098  ../ccr/t_shared.sh
 986dcc94f908687ec77107531ad8a3a3  ../compare_fields.py
 902309f8222df2a445ca93a7fc41ceac  ../compare_fire.py
 ec8717bb61a95dc98446b9f753292119  ../config_envelope.txt
-0cf3eaca5450086d64fcfb6fc89d6a97  ../gates/cpu_verify.sh
+93e6571af5aa447b3955f658f4e4e4cb  ../gates/cpu_verify.sh
 a8b088cb51a6065cecc71de210f4e255  ../gates/g1.sh
 2804855931b5f29c25cc916297663107  ../gates/g2.sh
 59f34428c4802aa2eb30b753c70b1d4f  ../gates/g3.sh

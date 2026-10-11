@@ -193,3 +193,41 @@ the boundary arrays exactly; the pool and work arrays are smaller. The total sta
     rejects `-finit-*` for their automatic arrays, so this one file (not used by the case) is compiled without the
     `-finit-*` flags (`port/ccr/t_uninit.sh`). T-UNINIT builds are serial (`GNU (gfortran/gcc)` serial option),
     because the image's MPI is built for nvfortran.
+
+## Stage 0 on the A100 workstation (machine `3817a30133b2`, profile `a100-40x2`)
+
+Toolchain: nvfortran 26.5-0 native (ENVIRONMENT.md "GPU-M"), driver 595.91.07, branch `agent/s0-00`.
+
+### S0-04 gate: PASS (2026-10-10)
+`port/h100/gpu_hello.sh`: an OpenACC kernel and a CUDA Fortran kernel run on GPU 0 and GPU 1
+(`ACC_DEVICE_TYPE=nvidia`); every flag of the three GPU-port stanzas compiles without warnings.
+
+### S0-05 OpenACC probes: all PASS on GPU 0 and GPU 1 (2026-10-10)
+`port/tests/acc_features/run.sh`; table in ENVIRONMENT.md.
+
+### S0-06 arithmetic tests (2026-10-10): FAIL on T-MINMAX and T-IPOW, identically on GPU 0 and GPU 1
+
+`port/tests/repro_math/run_tests.sh` (full sizes: 2^30 random values, T-RM-EXH all 2^32 patterns), logs
+`$WORK/s0-06/gpu{0,1}/run.log`; both GPUs give the same 103 result lines (58 PASS, 45 FAIL).
+`port/tests/run_ref_tests.sh nvhpc` on each GPU: PASS (T-PDLIM, T-KISS, T-OZN, templates B/C/G/CP, T-CALLCHECK,
+mutants, check_verbatim).
+
+| Test | GPU 0 | GPU 1 | Note |
+|---|---|---|---|
+| T-FMA (tie case + 10^6 cases, REAL(4) and REAL(8)) | PASS | PASS | unfused on host and device |
+| T-IEEE random (+ − × ÷ sqrt, SIGN, MAX, MIN, ABS, REAL8→4; 2^30 / 2^28 values) | PASS | PASS | |
+| **T-SIGNZERO/T-MINMAX/T-SUBNORM specials REAL(4)** | **FAIL** 3 of 6912 | **FAIL** 3 of 6912 | for equal zeros the host returns the first operand (`MIN(+0,−0)` = +0, `MAX(−0,+0)` = −0), the device orders −0 < +0 (`MIN` = −0, `MAX` = +0); `MAX(b,a)` the same |
+| T-RM-EXH (exp … tanh, all 2^32 REAL(4) patterns) | PASS | PASS | |
+| T-RM-POW (atan2, pow, mod, WRF exponents) | PASS | PASS | |
+| T-RM-D (REAL(8), 2^30 values) | PASS | PASS | |
+| **T-IPOW** | **FAIL** 3 984 817 592 of 6 576 668 672 | **FAIL** (same) | literal `x**3`, `x**4`, `x**8`, `x**(-1.0)` and `rp_pow(x,n)` for n = −8 … 32 (except 0, 1) differ |
+| run_ref_tests.sh nvhpc | PASS | PASS | |
+
+**T-IPOW diagnosis** (`$WORK/s0-06/ipow/ip.F90`): nvfortran 26.5 compiles host integer powers to calls of its CPU
+math library (`__py_powi1_4`, `__py_powi1_8`, `__pmth_i_dpowi`, `__gd_pow_4_p`, `__gs_pow_8_p` from
+LIBNVCPUMATH), which return the correctly rounded power; device code multiplies (`x**3` = `(x*x)*x`). Example
+x = Z'3F164CC2': host `x**3` = Z'3E4F3B3D' (correctly rounded), device Z'3E4F3B3E' = `(x*x)*x`. The same host
+library symbols would also fail T-SYM (S0-07.2). Prescribed remedies (plan.md P0.5/P0.6): `rp_min`/`rp_max`
+(and `rp_sign` if needed) with explicit IEEE branches substituted in the in-scope files; integer powers rewritten as
+products (including the integer-exponent specifics of `rp_pow`). BLOCKERS.md B3.
+

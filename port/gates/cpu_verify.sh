@@ -29,7 +29,7 @@
 # nvfortran restrictions, device stack size; and code paths the smoke case
 # does not run (nest, boundary file, restart start, d02 LES options).
 set -uo pipefail
-source "$(dirname "$0")/lib.sh"
+GATE_NO_MACHINE=1 source "$(dirname "$0")/lib.sh"   # gfortran only: no device protocol needed
 base=; skip_scope=0; harness=0
 while [ $# -gt 0 ]; do
   case $1 in
