@@ -370,6 +370,29 @@ check(rc == 0 and rc2 == 0 and rc3 == 0 and "module_new.o: \\\n\tmodule_b.o" in 
       open(os.path.join(cr, "WRF/frame/Makefile")).read(), "add_to_build: registers the file; check_deps then passes",
       out + out2 + out3 + dep)
 
+# ---- check_deps: objects in a subdirectory are named as phys/Makefile and depend.common write them
+#      (S0-01.2: physics_mmm/mp_wsm6.o, not mp_wsm6.o)
+pr = tempfile.mkdtemp()
+for sub in ("WRF/frame", "WRF/phys/physics_mmm", "WRF/main", "port/tools", "port/agent"):
+    os.makedirs(os.path.join(pr, sub))
+shutil.copy(os.path.join(TOOLS, "check_deps.py"), os.path.join(pr, "port", "tools", "check_deps.py"))
+open(os.path.join(pr, "WRF/frame/Makefile"), "w").write("MODULES = module_r.o\n")
+open(os.path.join(pr, "WRF/phys/Makefile"), "w").write("MODULES = physics_mmm/mp_x.o\n")
+open(os.path.join(pr, "WRF/frame/module_r.F"), "w").write("MODULE module_r\nEND MODULE module_r\n")
+open(os.path.join(pr, "WRF/phys/physics_mmm/mp_x.F90"), "w").write("module mp_x\nend module mp_x\n")
+open(os.path.join(pr, "WRF/main/depend.common"), "w").write("physics_mmm/mp_x.o: \\\n\t../frame/module_r.o\n")
+subprocess.run(["git", "init", "-q", pr]); subprocess.run(["git", "-C", pr, "add", "-A"])
+subprocess.run(["git", "-C", pr, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base"])
+sha = subprocess.run(["git", "-C", pr, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+open(os.path.join(pr, "port/agent/cpu_view_base"), "w").write(sha + "  # base\n")
+open(os.path.join(pr, "WRF/phys/physics_mmm/mp_x.F90"), "w").write("module mp_x\n use module_r\nend module mp_x\n")
+rc, out = run(os.path.join(pr, "port/tools/check_deps.py"))
+check(rc == 0, "check_deps: physics_mmm/<x>.o entry of depend.common is found (no false D1)", out)
+open(os.path.join(pr, "WRF/main/depend.common"), "w").write("physics_mmm/mp_x.o: \\\n\tccpp_kind_types.o\n")
+rc, out = run(os.path.join(pr, "port/tools/check_deps.py"))
+check(rc == 1 and "'../frame/module_r.o' is not a dependency of 'physics_mmm/mp_x.o'" in out,
+      "check_deps: a missing dependency of a physics_mmm object is still reported", out)
+
 # ---- harness_diff: identical, a 1-ulp difference, NaN in both (big-endian records as WRF builds write them)
 def hrec(name, vals):
     body = struct.pack(f">{len(vals)}f", *vals)

@@ -213,13 +213,13 @@ bc4cae48494ee30cb133affd905f0161  ../tests/templates/mutants_cp.py
 4b766de04a05ddb72a53c296450cc224  ../tests/templates/t_tmpl_g.F90
 1ddbf346c4f48b9bded77a5e5e330980  ../tests/tools/calc_coef_w_gpu.inc
 57c53117fd459c10fbc38429004426fe  ../tests/tools/example_calc_alt.F
-629b7b07a4401971d58910c7fde857ce  ../tests/tools/test_agent_tools.py
+0e73825a24282cd7056c0a6e43dffdb7  ../tests/tools/test_agent_tools.py
 a693cf5df9e33639c140417b107e05f6  ../tests/tools/test_tools.py
 f74a2e8b178936a582e062fab146b40c  ../tools/add_to_build.py
 4b2a32abd4917041230ed5bf316a8f7d  ../tools/arith_guard.py
 a2b79765aaec167187f0dababd4aa6de  ../tools/check_area_scope.py
 e6b1c2332ac62ad8e7b700e3d1f90c8d  ../tools/check_build_flags.py
-46cee6da952682c9c7b8038b599eb4b7  ../tools/check_deps.py
+86f233d356fa9d9fed306145ce48144f  ../tools/check_deps.py
 1a9853e35cf8f81fcfaaebac3e44233c  ../tools/check_generated.py
 8640fbd0f2a475d47f0504dfecf579a5  ../tools/check_tool_fixes.py
 0f651e9abcf84c5672b6ca5441c9077e  ../tools/check_verbatim.py

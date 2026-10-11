@@ -93,10 +93,16 @@ def depend_entries():
     return ent
 
 
+def obj_name(rel):
+    """Object of a source file as its directory's Makefile and depend.common write it: relative to the
+    top directory whose Makefile builds it (phys/physics_mmm/mp_wsm6.F90 -> physics_mmm/mp_wsm6.o)."""
+    return re.sub(r"\.(F|F90|f90)$", ".o", rel.split("/", 1)[1])
+
+
 def dep_name(of_dir, mod_file):
-    d, f = os.path.split(mod_file)
-    o = re.sub(r"\.(F|F90|f90)$", ".o", f)
-    return o if d == of_dir else f"../{d}/{o}"
+    """A dependency of an object built in top directory of_dir on the object of mod_file."""
+    o = obj_name(mod_file)
+    return o if topdir(mod_file) == of_dir else f"../{topdir(mod_file)}/{o}"
 
 
 def topdir(rel):
@@ -121,8 +127,7 @@ def main():
     errs = []
     for rel in files:
         d = os.path.dirname(rel)
-        name = re.sub(r"\.(F|F90)$", "", os.path.basename(rel))
-        obj = name + ".o"
+        obj = obj_name(rel)
         text = open(os.path.join(WRF, rel), errors="replace").read()
         old = subprocess.run(["git", "-C", REPO, "show", f"{base}:WRF/{rel}"], capture_output=True, text=True)
         is_new = old.returncode != 0
@@ -138,16 +143,16 @@ def main():
                 errs.append(f"D2 {rel}: USE {m} ({p}) - {topdir(p)}/ is compiled after {topdir(rel)}/; "
                             f"call an external subroutine instead")
                 continue
-            want = dep_name(d, p)
+            want = dep_name(topdir(rel), p)
             if obj not in deps:
                 errs.append(f"D1 {rel}: USE {m}, but main/depend.common has no entry '{obj}:' "
                             f"(add '{obj}: \\' with '{want}'; or port/tools/add_to_build.py)")
             elif want not in deps[obj]:
                 errs.append(f"D1 {rel}: USE {m}, but '{want}' is not a dependency of '{obj}' in main/depend.common")
         if is_new:
-            mk = open(os.path.join(WRF, d, "Makefile"), errors="replace").read()
-            if not re.search(r"(?<![\w.])" + re.escape(obj) + r"(?![\w.])", mk):
-                errs.append(f"D3 {rel}: new file not in {d}/Makefile ('{obj}' in the MODULES list)")
+            mk = open(os.path.join(WRF, topdir(rel), "Makefile"), errors="replace").read()
+            if not re.search(r"(?<![\w./])" + re.escape(obj) + r"(?![\w.])", mk):
+                errs.append(f"D3 {rel}: new file not in {topdir(rel)}/Makefile ('{obj}' in the MODULES list)")
             cm = os.path.join(WRF, d, "CMakeLists.txt")
             if os.path.exists(cm) and not re.search(r"(?<![\w.])" + re.escape(os.path.basename(rel)) + r"\b",
                                                     open(cm, errors="replace").read()):
