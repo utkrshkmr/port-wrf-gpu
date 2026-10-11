@@ -33,10 +33,11 @@ A plan only: nothing here is built yet. The profiler grows in layers, each built
 ## 2. Hardware (to be measured, not assumed)
 
 Datasheet values below are a starting point only. PR-H1 … PR-H4 measure the real ceilings on the owner's machines,
-and the models use the measured numbers. The owner's machine has two A100 40 GB ([ADR-006](decisions/ADR-006-machines.md));
-the H100 columns are kept for the optional case that one becomes available. The host of the workstation (2× Xeon Gold
-6330, 56 cores, 8 DDR4 channels per socket; datasheet about 400 GB/s in total) is measured the same way (PR-C1), since
-the CPU side of every CPU/GPU comparison runs there (§9).
+and the models use the measured numbers. The GPU machine varies between sessions (one A100 80 GB, two A100 40 GB,
+or one or more H100s; [ADR-006 rev 2](decisions/ADR-006-machines.md)): PR-H1 … PR-H4 and PR-C1 run once per profile,
+and every measurement carries its profile. The host of each machine is measured the same way (PR-C1; for example the
+2× Xeon Gold 6330 of the A100 40 GB workstation, 56 cores, datasheet about 400 GB/s), since the CPU side of every
+CPU/GPU comparison runs on the host of the same machine (§9).
 
 | | A100 40 GB (PCIe / SXM) | A100 80 GB SXM | H100 PCIe 80 GB | H100 SXM 80 GB |
 |---|---|---|---|---|
@@ -62,22 +63,22 @@ What this means for the port:
   The larger H100 register and L1 budget changes the best batch shape.
 - **The fire grid of the full case** is about 43 MB per field: just over the A100 L2 and just under the H100 L2. The
   dev case's 724² grid (2 MB per field) fits easily, and the acceptance case's (about 1600², 10 MB) too, so their
-  fire-kernel measurements must not be extrapolated to the full case without a full-case check (on both A100s, once
-  S8-04 exists).
+  fire-kernel measurements must not be extrapolated to the full case without a full-case check (on a profile that runs
+  the full case).
 
 ## 3. Layers
 
 | Layer | What it gives | Built in phase | Machine |
 |---|---|---|---|
-| **L0 static** | per kernel, from the compiler: parallelization schedule and implicit data movement (`-Minfo=accel`); registers, spills, stack frame, shared memory (`-gpu=ptxinfo`); mapped to kernel IDs through the `! K-...` comment above each directive | S1-01.5 | WS-A100 (compile); parse anywhere |
-| **L1 runtime hooks** | NVTX ranges: one per route call site, per `solve_em` section (the `BENCH_*` timers), per domain and RK stage; `WRF_GPU_TIMING` and memory logs; launch counter per step | S1-11 | WS-A100 |
-| **L1b OpenACC profiling library** | a small C library on the OpenACC Profiling Interface (`acc_prof_register`, loaded with `ACC_PROFLIB`): per compute region, the source file and line, launches, gang/vector sizes and device time, plus every data event. This is the port's own lightweight profiler, cheap enough for every regression run. | S2-01 (first kernels) | CLOUD (write) → WS-A100 |
-| **L2 system profile** | scripted `nsys` captures of a window: kernel table (count, total, mean, min, max), memcpy table (T-NSYS), launch gaps per stream, API overhead, NVTX range summary | S1-12 (copies), S2-23 (kernels) | WS-A100 (H100 optional) |
-| **L3 kernel metrics** | `ncu` on a sampled set of kernels, with fixed section sets and the metrics in §3.1 | S2-23.4 | WS-A100 (H100 optional) |
+| **L0 static** | per kernel, from the compiler: parallelization schedule and implicit data movement (`-Minfo=accel`); registers, spills, stack frame, shared memory (`-gpu=ptxinfo`); mapped to kernel IDs through the `! K-...` comment above each directive | S1-01.5 | GPU-M (compile); parse anywhere |
+| **L1 runtime hooks** | NVTX ranges: one per route call site, per `solve_em` section (the `BENCH_*` timers), per domain and RK stage; `WRF_GPU_TIMING` and memory logs; launch counter per step | S1-11 | GPU-M |
+| **L1b OpenACC profiling library** | a small C library on the OpenACC Profiling Interface (`acc_prof_register`, loaded with `ACC_PROFLIB`): per compute region, the source file and line, launches, gang/vector sizes and device time, plus every data event. This is the port's own lightweight profiler, cheap enough for every regression run. | S2-01 (first kernels) | CLOUD (write) → GPU-M |
+| **L2 system profile** | scripted `nsys` captures of a window: kernel table (count, total, mean, min, max), memcpy table (T-NSYS), launch gaps per stream, API overhead, NVTX range summary | S1-12 (copies), S2-23 (kernels) | GPU-M (H100 optional) |
+| **L3 kernel metrics** | `ncu` on a sampled set of kernels, with fixed section sets and the metrics in §3.1 | S2-23.4 | GPU-M (H100 optional) |
 | **L4 models** | measured roofline per kernel; bandwidth floor per step; launch-overhead, transfer and memory models; predicted vs measured | S2-23 (first), S6-01 (complete) | anywhere (inputs from L0–L3) |
-| **L5 kernel database** | one row per kernel × GPU × case × window × commit (schema §3.2); diff between commits; report generator (Markdown for `perf/reports`, CSV for the book's pgfplots figures) | S2-01 (schema), grows every phase | CLOUD (tools), WS-A100 (data) |
-| **L6 analyzers** | the opportunity finders of §5: fusion, caching and reuse, tiling, warp-level, launches and gaps, transfers | S6-02 (complete); A1 and A5 from S2-23 | CLOUD (tools), WS-A100 |
-| **H hardware** | measured ceilings of each GPU: bandwidth, L2 effects, launch latency, reductions, host links | S0-04.5 (query), S6-01 (micro-benchmarks) | WS-A100 (H100 optional) |
+| **L5 kernel database** | one row per kernel × GPU × case × window × commit (schema §3.2); diff between commits; report generator (Markdown for `perf/reports`, CSV for the book's pgfplots figures) | S2-01 (schema), grows every phase | CLOUD (tools), GPU-M (data) |
+| **L6 analyzers** | the opportunity finders of §5: fusion, caching and reuse, tiling, warp-level, launches and gaps, transfers | S6-02 (complete); A1 and A5 from S2-23 | CLOUD (tools), GPU-M |
+| **H hardware** | measured ceilings of each GPU: bandwidth, L2 effects, launch latency, reductions, host links | S0-04.5 (query), S6-01 (micro-benchmarks) | GPU-M (H100 optional) |
 
 ### 3.1 Kernel metrics (L3)
 
@@ -144,22 +145,22 @@ Size S ≤ ¼ day, M ≤ ½ day. "Built in" refers to the phase of [plan-4.6](pl
 
 | Task | What | Machine | Size | Built in | Done when |
 |---|---|---|---|---|---|
-| PR-H1 | Device query of every GPU (SMs, clocks, L2, memory, persisting-L2 limit, ECC) | WS-A100 (H100 optional) | S | S0-04.5 | ENVIRONMENT.md table |
-| PR-H2 | Bandwidth micro-benchmarks in OpenACC and CUDA Fortran: copy, scale, add, triad; strided; working-set sweep across L2 | WS-A100 (H100 optional) | M | S6-01 | measured ceilings in `perf/db/hw.csv` |
-| PR-H3 | Launch latency (empty kernel, OpenACC and CUDA Fortran, sync and async), reduction throughput, host-link bandwidth (pinned/pageable) | WS-A100 (H100 optional) | M | S6-01 | `perf/db/hw.csv` |
+| PR-H1 | Device query of every GPU (SMs, clocks, L2, memory, persisting-L2 limit, ECC) | GPU-M (H100 optional) | S | S0-04.5 | ENVIRONMENT.md table |
+| PR-H2 | Bandwidth micro-benchmarks in OpenACC and CUDA Fortran: copy, scale, add, triad; strided; working-set sweep across L2 | GPU-M (H100 optional) | M | S6-01 | measured ceilings in `perf/db/hw.csv` |
+| PR-H3 | Launch latency (empty kernel, OpenACC and CUDA Fortran, sync and async), reduction throughput, host-link bandwidth (pinned/pageable) | GPU-M (H100 optional) | M | S6-01 | `perf/db/hw.csv` |
 | PR-H4 | Roofline ceilings (FP32, FP64, DRAM, L2) from H2/H3 | anywhere | S | S6-01 | ceilings file |
 | PR-L0.1 | `minfo_parse.py`: `-Minfo=accel` → per kernel schedule, `seq` loops, implicit copies | CLOUD | M | S1-01.5 | parses a full build log |
 | PR-L0.2 | `ptxinfo_parse.py`: registers, spills, stack, shared memory per kernel | CLOUD | S | S1-01.5 | CSV |
 | PR-L0.3 | Kernel-ID map: compiler kernel name (`<routine>_<line>_gpu`) ↔ `! K-...` comment ↔ `kernels.csv` | CLOUD | S | S1-01.5 | every kernel mapped |
 | PR-L1.1 | NVTX design: names, nesting, colors per category; payload with domain and RK stage | CLOUD | S | S1-11 | spec in this file's appendix |
 | PR-L1.2 | Per-route NVTX ranges generated with the islands (no hand edits) | CLOUD | S | S1-11 | ranges in nsys |
-| PR-L1.3 | Overhead check: NVTX and timing on/off, W-20 time difference < 1 % | WS-A100 | S | S1-11 | measured |
-| PR-L1.4 | Launch counter per d02 step (from L1b) | WS-A100 | S | S2-15 | number in PERF.md |
-| PR-L1b.1 | `acc_prof` library: kernel-launch and data events with file:line, device time via CUDA events, CSV at exit | CLOUD → WS-A100 | M | S2-01 | CSV for W-20 |
+| PR-L1.3 | Overhead check: NVTX and timing on/off, W-20 time difference < 1 % | GPU-M | S | S1-11 | measured |
+| PR-L1.4 | Launch counter per d02 step (from L1b) | GPU-M | S | S2-15 | number in PERF.md |
+| PR-L1b.1 | `acc_prof` library: kernel-launch and data events with file:line, device time via CUDA events, CSV at exit | CLOUD → GPU-M | M | S2-01 | CSV for W-20 |
 | PR-L1b.2 | Aggregation per kernel ID and per step; integration into `window.sh` (`WRF_ACC_PROF=1`) | CLOUD | S | S2-01 | one command |
-| PR-L2.1 | `nsys_capture.sh <build> <window>`: capture with NVTX, CUDA, OpenACC traces; export SQLite | WS-A100 | S | S2-23 | report file |
+| PR-L2.1 | `nsys_capture.sh <build> <window>`: capture with NVTX, CUDA, OpenACC traces; export SQLite | GPU-M | S | S2-23 | report file |
 | PR-L2.2 | `nsys_kernels.py`: kernel table, gaps, API overhead, NVTX summary from SQLite | CLOUD | M | S2-23 | CSV + Markdown |
-| PR-L3.1 | `ncu_sample.sh`: the sampling rule of §3.1, section sets, metric list | WS-A100 | M | S2-23.4 | one report per window |
+| PR-L3.1 | `ncu_sample.sh`: the sampling rule of §3.1, section sets, metric list | GPU-M | M | S2-23.4 | one report per window |
 | PR-L3.2 | `ncu_parse.py` → kernel DB columns | CLOUD | S | S2-23.4 | CSV |
 | PR-L4.1 | Roofline per kernel (measured ceilings, AI from L3) and plot data | CLOUD | M | S2-23.4 | CSV + figure data |
 | PR-L4.2 | Bandwidth floor per step and efficiency (time / floor) | CLOUD | S | S2-23.4 | number per window |
@@ -169,33 +170,34 @@ Size S ≤ ¼ day, M ≤ ½ day. "Built in" refers to the phase of [plan-4.6](pl
 | PR-L5.1 | DB schema, CSV writer, validation | CLOUD | S | S2-01 | schema checked in |
 | PR-L5.2 | `perfdiff.py`: commit vs commit, regressions > 5 % flagged | CLOUD | S | S2-23 | report |
 | PR-L5.3 | Report generator (Markdown) and book export (pgfplots CSV) | CLOUD | M | S2-23 | report and figure from the same data |
-| PR-L5.4 | Regression hook: L1b numbers of the nightly regression (S7-02) into the DB | WS-A100 | S | S7-02 | nightly rows |
+| PR-L5.4 | Regression hook: L1b numbers of the nightly regression (S7-02) into the DB | GPU-M | S | S7-02 | nightly rows |
 | PR-A1 | Fusion finder (§5 A1) | CLOUD | M ×2 | S2-23 (first), S6-02 | ranked chains for the acoustic loop |
 | PR-A2 | Reuse and caching report | CLOUD | M | S6-02 | candidate list |
 | PR-A3 | Tiling candidates | CLOUD | M | S6-02 | per-kernel estimate |
 | PR-A4 | Warp-level diagnosis | CLOUD | M | S3-25 (first), S6-02 | diagnosis per kernel |
 | PR-A5 | Launch and gap report | CLOUD | S | S2-23 | report |
 | PR-A6 | Transfer report (T-NSYS extended) | CLOUD | S | S1-12 | report |
-| PR-R1 | Dynamics profile on A100 | WS-A100 | M | S2-23.4 | `perf/reports/S2-dynamics-a100.md` |
-| PR-R2 | Physics profile on A100 | WS-A100 | M | S3-25.5 | report |
-| PR-R3 | Fire profile on A100 | WS-A100 | M | S4-13.3 | report |
-| PR-R4 | Baseline acceptance case and dev case on A100 (H100 optional) | WS-A100 | M | S6-01 | report |
-| PR-R5 | Final tuned report, both A100s (H100 optional) | WS-A100 | M | S6-16 | PERF.md |
-| PR-V1 | Repeatability: 5 runs, coefficient of variation < 2 % per range | WS-A100 | S | S2-23 | measured |
+| PR-R1 | Dynamics profile on A100 | GPU-M | M | S2-23.4 | `perf/reports/S2-dynamics-a100.md` |
+| PR-R2 | Physics profile on A100 | GPU-M | M | S3-25.5 | report |
+| PR-R3 | Fire profile on A100 | GPU-M | M | S4-13.3 | report |
+| PR-R4 | Baseline acceptance case and dev case on A100 (H100 optional) | GPU-M | M | S6-01 | report |
+| PR-R5 | Final tuned report, per profile available | GPU-M | M | S6-16 | PERF.md |
+| PR-V1 | Repeatability: 5 runs, coefficient of variation < 2 % per range | GPU-M | S | S2-23 | measured |
 | PR-V2 | Model sanity: L3 DRAM bytes vs the static traffic model per kernel (P-03) within 20 % | CLOUD | S | S6-01 | table |
-| PR-C1 | Host ceilings: STREAM-style copy/scale/add/triad on the 2× Xeon Gold 6330 (OpenMP, 1 … 56 threads, `numactl` bound per socket and across both), plus one MPI rank per core; working-set sweep across the host caches | WS-A100 host | S | S0-04 | `perf/db/hw.csv` host rows; measured host bandwidth replaces the ~400 GB/s datasheet estimate |
-| PR-C2 | CPU profile on the workstation: `port/h100/prof_cpu.sh` (replaces the CCR runner) runs a build on the host with `-DBENCH`, per `solve_em` section; dev case at 1, 14, 28, 56 ranks (strong scaling per section); acceptance case at the best rank count; bandwidth-bound check per section (bytes from the traffic model / host bandwidth vs measured time) | WS-A100 host | M | S0-08 (dev), S0-10 (acceptance) | `perf/reports/cpu-profile-<case>.md`, CSV |
-| PR-C2b | CPU-PROD build mode (`build.sh cpu-prod`): the stock nvfortran stanza with production flags (FMA, vendor math, vectorized reductions, no `REPRO_MATH`), timing only, never compared bitwise; profiled like PR-C2 | WS-A100 host | S | S0-08 | timing rows; the cost of reproducibility on the CPU |
-| PR-C3 | Same-case CPU/GPU comparison: `perf/tools/cpu_gpu_compare.py` joins the CPU section times (PR-C2) with the GPU NVTX ranges (L1/L2) of the same case, window and commit; per range: CPU-REF time (best rank count), CPU-PROD time, GPU time, speedup, GPU bound class, and the speedup predicted by the measured bandwidth ratio (PR-C1, PR-H2); whole step and per simulated hour | CLOUD (tool) → WS-A100 | M | S2-23 (dynamics), S5-07 (dev, all on device), S6-01 (acceptance baseline), S6-16 (final) | `perf/reports/cpu-vs-gpu-<case>-<sha>.md` + book CSV (chapter 37) |
-| PR-C4 | Energy to solution: `perf/tools/energy_sample.sh` samples GPU power (`nvidia-smi --query-gpu=power.draw`, 100 ms) and host package and DRAM energy (RAPL counters in `/sys/class/powercap`, if readable without root; otherwise recorded as unavailable and a TDP bound reported, labeled as such) during both runs; the energy of a GPU run includes the host; backlog card P-15 | WS-A100 | S | S5-07 (first), S6-01, S6-16 | joules per simulated hour for CPU-REF, CPU-PROD and GPU-REPRO |
+| PR-C1 | Host ceilings: STREAM-style copy/scale/add/triad on the host of each profile (OpenMP, 1 … n threads, `numactl` bound per socket and across both), plus one MPI rank per core; working-set sweep across the host caches | GPU-M host | S | S0-04 | `perf/db/hw.csv` host rows; measured host bandwidth replaces the ~400 GB/s datasheet estimate |
+| PR-C2 | CPU profile on the workstation: `port/h100/prof_cpu.sh` (replaces the CCR runner) runs a build on the host with `-DBENCH`, per `solve_em` section; dev case at 1, n/4, n/2, n ranks of the detected host (strong scaling per section); acceptance case at the best rank count; bandwidth-bound check per section (bytes from the traffic model / host bandwidth vs measured time) | GPU-M host | M | S0-08 (dev), S0-10 (acceptance) | `perf/reports/cpu-profile-<case>.md`, CSV |
+| PR-C2b | CPU-PROD build mode (`build.sh cpu-prod`): the stock nvfortran stanza with production flags (FMA, vendor math, vectorized reductions, no `REPRO_MATH`), timing only, never compared bitwise; profiled like PR-C2 | GPU-M host | S | S0-08 | timing rows; the cost of reproducibility on the CPU |
+| PR-C3 | Same-case CPU/GPU comparison: `perf/tools/cpu_gpu_compare.py` joins the CPU section times (PR-C2) with the GPU NVTX ranges (L1/L2) of the same case, window and commit; per range: CPU-REF time (best rank count), CPU-PROD time, GPU time, speedup, GPU bound class, and the speedup predicted by the measured bandwidth ratio (PR-C1, PR-H2); whole step and per simulated hour | CLOUD (tool) → GPU-M | M | S2-23 (dynamics), S5-07 (dev, all on device), S6-01 (acceptance baseline), S6-16 (final) | `perf/reports/cpu-vs-gpu-<case>-<sha>.md` + book CSV (chapter 37) |
+| PR-C4 | Energy to solution: `perf/tools/energy_sample.sh` samples GPU power (`nvidia-smi --query-gpu=power.draw`, 100 ms) and host package and DRAM energy (RAPL counters in `/sys/class/powercap`, if readable without root; otherwise recorded as unavailable and a TDP bound reported, labeled as such) during both runs; the energy of a GPU run includes the host; backlog card P-15 | GPU-M | S | S5-07 (first), S6-01, S6-16 | joules per simulated hour for CPU-REF, CPU-PROD and GPU-REPRO |
 
 ## 9. Measuring the GPU against the CPU
 
 The question "is the GPU faster, and why" (§1 item 5) is answered on one machine, the workstation, with these rules:
 
+0. **Same machine.** CPU and GPU sides of a comparison run on the same machine; the report names its profile.
 1. **Same case, window and commit.** CPU and GPU runs of a comparison start from the same restart and run the same
    simulated time; the commit and build modes are recorded in the report.
-2. **The CPU at its best.** CPU-REF is measured at 1, 14, 28 and 56 ranks and the fastest is used. CPU-PROD (production
+2. **The CPU at its best.** CPU-REF is measured at 1, n/4, n/2 and n ranks of the detected host and the fastest is used. CPU-PROD (production
    flags, PR-C2b) is reported beside it, so the GPU is never compared only with a CPU slowed down by the reproducible
    flags. GPU-REPRO is reported, and GPU-FAST once it exists (ADR-003).
 3. **Explained, not only measured.** Each part of the step gets the speedup the bandwidth ratio predicts (measured host

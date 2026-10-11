@@ -112,7 +112,18 @@ The dev references (H0.7) take a few hours once.
 Build times: a clean NVHPC build of WRF takes 30–90 min (`BUILD_JOBS`); an incremental `--worktree` build after
 editing one file takes a few minutes (the file, its dependents, the link).
 
-## 5a. Machines with A100 40 GB GPUs
+## 5a. Machine profiles (detect first)
+
+The GPU machine varies between sessions (plan.md §18, ADR-006 rev 2). Run `bash port/h100/machine.sh detect` at
+the start of every session (phase S0-00 writes it): it records the GPUs and the host in `$WORK/machine.json`, derives
+what this machine can run (`port/machines/capabilities.md`), and asks for the machine-change protocol
+(`port/gates/t_machine.sh`) when the machine is not the one recorded last. Until S0-00 exists, record the output of
+`nvidia-smi -L`, `nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv` and `lscpu` in the workbook.
+
+- **A100 80 GB or H100 (80 GB):** the full case fits one GPU (about 57 GB, gate 68 GB); everything below also runs.
+- **Two A100 40 GB:** as follows.
+
+### Machines with A100 40 GB GPUs
 
 The full case needs about 58–62 GB of device memory (plan.md §3), so it does **not** fit one 40 GB GPU. The dev
 case (`eaton_small`: d01 450×450×60, d02 181×181×60) fits. Estimate, to be checked with

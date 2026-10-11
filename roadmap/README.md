@@ -26,7 +26,7 @@ instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/READM
 
 | Plan | What |
 |---|---|
-| [plan-4.6/](plan-4.6/README.md) | The 4.6.0 port in 9 stages and 140 small phases: tasks per routine, machines per task (cloud, A100 workstation, 80 GB GPU, CCR), gates and tests per phase; Stage 8 extends it to the rest of WRF 4.6.0 |
+| [plan-4.6/](plan-4.6/README.md) | The 4.6.0 port in 9 stages and 141 small phases: tasks per routine, machines per task (cloud, A100 workstation, 80 GB GPU, CCR), gates and tests per phase; Stage 8 extends it to the rest of WRF 4.6.0 |
 | [plan-profiler.md](plan-profiler.md) | The profiler, built layer by layer with the port: NVTX, an OpenACC profiling library, nsys/ncu, kernel database, models, and analyzers for fusion, caching, tiling, warp-level work and launches on A100 and H100 |
 | [plan-book.md](plan-book.md) | The textbook: 8 parts, 40 chapters on the WRF ecosystem, its algorithms, WRF-Fire, the port, and GPU optimization concepts with this port's measured examples |
 
@@ -54,7 +54,7 @@ instructions are [AGENTS.md](../AGENTS.md) and [port/agent/](../port/agent/READM
 | [003](decisions/ADR-003-repro-and-fast-modes.md) | REPRO (bit-for-bit, the default) and FAST (statistically validated) build modes from one source. | decided |
 | 004 | License of the port's own files (card R-01). | open (owner) |
 | 005 | Multi-GPU halo design (card M-03). | open |
-| [006](decisions/ADR-006-machines.md) | Development and verification only on the cloud environment and the A100 workstation; CPU-REF on its host cores; acceptance case `eaton_mid` on one A100 40 GB; the full case via multi-GPU; CCR supplies data only; H100 optional. | decided |
+| [006](decisions/ADR-006-machines.md) | Revision 2: no CCR; the GPU machine varies (1x A100 80 GB, 2x A100 40 GB, 1+ H100), so every session detects it and derives what is valid; CPU-REF on the same machine's host cores; `eaton_mid` acceptance on every profile, the full case where it fits; machine-change protocol (T-XM, T-XG). | decided |
 
 ## Milestones
 

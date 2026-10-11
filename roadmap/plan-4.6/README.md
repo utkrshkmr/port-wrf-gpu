@@ -1,7 +1,7 @@
 # The WRF 4.6.0 GPU port, phase by phase
 
 This is the working plan of Stage 1 of the [roadmap](../README.md): WRF 4.6.0 + WRF-Fire on NVIDIA A100 and H100
-GPUs, bit for bit equal to the CPU reference. It replaces the phase cards' order of work with **9 stages and 140 small
+GPUs, bit for bit equal to the CPU reference. It replaces the phase cards' order of work with **9 stages and 141 small
 phases**. Each phase:
 - is contained: it names the routines and files it changes, and nothing else changes;
 - states the machine of every task;
@@ -23,7 +23,7 @@ run 1 (2026-10-07) already wrote it. That code is unverified.
 
 | File | Stage | Phases |
 |---|---|---|
-| [stage-0-ground-truth.md](stage-0-ground-truth.md) | 0 Ground truth: land run 1, toolchain, probes, references, shared refactors, sample gating cases | S0-01 … S0-13 |
+| [stage-0-ground-truth.md](stage-0-ground-truth.md) | 0 Ground truth: machine detection, land run 1, toolchain, probes, references, shared refactors, sample gating cases | S0-00 … S0-13 |
 | [stage-1-infrastructure.md](stage-1-infrastructure.md) | 1 GPU infrastructure, all compute still on the host | S1-01 … S1-12 |
 | [stage-2-dynamics.md](stage-2-dynamics.md) | 2 The dynamical core | S2-01 … S2-23 |
 | [stage-3-physics.md](stage-3-physics.md) | 3 The physics of the case | S3-01 … S3-25 |
@@ -40,7 +40,7 @@ run 1 (2026-10-07) already wrote it. That code is unverified.
    bit on one GPU. This is the contract of v0.1 (milestone M3).
 2. **Stage 8: the rest of WRF 4.6.0**, one option family per phase, each with its own small case contract and
    reference. The order follows what wildfire studies use most:
-   - multi-GPU, which also brings the full case to two A100 40 GB;
+   - multi-GPU, which also brings the full case to machines whose GPUs are too small for it alone;
    - restart starts and two-way nesting;
    - Thompson and Morrison microphysics, MYNN, RRTMG SW, Noah-MP, cumulus;
    - the other fire options.
@@ -58,7 +58,7 @@ What stays on the CPU in every stage:
 | ID | Machine | Has | Runs | Cannot |
 |---|---|---|---|---|
 | **CLOUD** | the cloud coding environment (claude.ai/code) | Linux, 4 cores, gfortran 13 (`-fopenacc` runs OpenACC regions on the host), Python 3, git, GitHub; no NVHPC, no GPU, no TeX, no case data | writing code; `static.sh`; gfortran builds of both views (`gnu-ref`, `gnu-gpu`); the smoke case S-3M; `harness.sh` on random inputs; the reference unit tests; review; planning; book text | nvfortran, any device run, real data |
-| **WS-A100** | the owner's workstation | 2× A100 40 GB (cc80), Xeon Gold 6330 (2×28 = 56 cores), NVHPC (container or module), the dev case `eaton_small` and the acceptance case `eaton_mid` | **everything that runs**: NVHPC builds (CPU-REF and GPU-REPRO); **all CPU-REF reference runs on the host cores** (dev and acceptance case, windows, T-DET, T-DEC with 1/28/56 ranks, T-RST, T-DRIFT); WPS and `real.exe` for the cases; device unit tests and probes; harness on the device; T-AB and T-TRACE; fire windows; the 17 h acceptance run (G5) on one GPU; nsys and ncu on A100; two independent runs at once (one per GPU); later the full case on both GPUs (S8-01 … S8-05) | the full Eaton case on one GPU (about 57 GB, plan.md §3) |
+| **GPU-M** | the GPU machine at hand; its profile varies between sessions ([ADR-006 rev 2](../decisions/ADR-006-machines.md)): `a100-40x2` (2× A100 40 GB), `a100-80x1` (1× A100 80 GB), `h100-80xN` (1 or more H100 80 GB), each with its own host CPUs | NVHPC (container), the cases that fit its GPUs (`port/h100/machine.sh detect`) | **everything that runs**: NVHPC builds; **all CPU-REF reference runs on its own host cores**; WPS and `real.exe`; device tests and probes; harness on the device; T-AB, T-TRACE, fire windows; the acceptance runs (G5); nsys and ncu; parallel runs when it has several GPUs; multi-GPU when it has two or more | what its profile cannot hold (`port/machines/capabilities.md`) |
 | **CI** | GitHub Actions of the repository | TeX Live | the book PDF ([plan-book.md](../plan-book.md)) | GPUs, case data |
 
 **Machine policy ([ADR-006](../decisions/ADR-006-machines.md), 2026-10-08).** Nothing is developed or tested on
@@ -68,22 +68,40 @@ GPU-REPRO on its A100s: same source, same compiler, same container, same machine
 is named (Stage 6, the profiler, the book); no gate depends on it. Older text that names "CCR" or "GPU80" as a
 machine of a task is superseded by this policy; `port/ccr/` is kept for reference only.
 
+**Detect the machine first (S0-00).** Every session, build and gate on GPU-M starts with `port/h100/machine.sh
+detect`. It records the GPUs (model, count, memory, compute capability), the host (CPU model, sockets, cores) and the
+driver in `$WORK/machine.json`, and derives what this machine can run. When the machine differs from the last one,
+the machine-change protocol (`t_machine.sh`) runs before anything else: device arithmetic tests for a new GPU model,
+T-XM for a new host (the archived CPU-REF references must be reproduced bit for bit there, or they are regenerated on
+this host), and T-XG (the same commit's GPU traces must equal those of the other GPU models). Results always carry
+the machine id and profile.
+
 **Cases.** `eaton_small` (d02 181×181×60) is the development case for every window. `eaton_mid` is the acceptance
-case: the same dates, physics, fire options and ignition as the full case, d01 unchanged, and the largest d02 that
-fits one A100 40 GB with at least 15 % headroom by `gpu_mem_estimate.py` (expected about 400×400×60, fire grid about
-1600², about 30 GB; S0-09.5 decides). The full case (d02 811×811) needs both A100s and comes with multi-GPU
-(S8-01 … S8-05), the first work after G5. G-MEM limits: dev case ≤ 25 GB at G1; acceptance case ≤ 34 GB at G3 and G5.
+case every profile can run: the same dates, physics, fire options and ignition as the full case, d01 unchanged, and
+the largest d02 that fits one 40 GB GPU within its memory gate (expected about 400×400×60, fire grid about 1600²,
+about 30 GB; S0-09.5 decides). The full case (d02 811×811, about 57 GB) runs on one GPU on the 80 GB profiles and is
+then part of G5 there; on `a100-40x2` it comes with multi-GPU (S8-01 … S8-05), the first work after G5.
+
+**Profile-neutral wording in the stage files.**
+- **G-MEM limits** are 85 % of one GPU's memory: 34 GB on 40 GB GPUs, 68 GB on 80 GB GPUs. A stated "≤ 34 GB" means
+  "≤ the profile's limit"; the dev case must stay within 25 GB on every profile.
+- **"GPU 0 and GPU 1", "both GPUs", "both A100s"** mean: on two GPUs when the profile has two or more; on a one-GPU
+  profile, the same GPU twice (determinism), and the cross-GPU check T-XG against the other profiles' archived traces.
+- **"56 host cores", "1, 14, 28, 56 ranks"** mean the detected host: n cores, and 1, n/4, n/2, n ranks.
+- **H100-only steps** (TMA, clusters, H100 tuning) run when the profile has cc 9.0 and are skipped otherwise.
+- **Multi-GPU steps** need a profile with two or more GPUs and wait for one otherwise.
 
 Backlog needs ([TASK_PROTOCOL.md](../TASK_PROTOCOL.md) §2):
 - CLOUD = `cpu` (+ `net`);
-- WS-A100 = `gpu-nv`, `data` (the `ccr` need is no longer used).
+- GPU-M = `gpu-nv`, `data` (the `ccr` need is no longer used).
 
 Run times to expect are in [ENV_H100.md](../../port/agent/ENV_H100.md) §5. While a routine is still on the host,
-a W-20 window takes 10–20 min, and much less once it is ported. A100 40 GB specifics are in §5a.
+a W-20 window takes 10–20 min, and much less once it is ported. Machine specifics are in §5a and in
+`port/machines/capabilities.md`.
 
 ## The routine ladder (applies to every routine of Stages 1–5)
 
-A routine is ported in eight rungs. Rungs 1–3 run on CLOUD, 4–8 on WS-A100. A phase lists its routines; each routine
+A routine is ported in eight rungs. Rungs 1–3 run on CLOUD, 4–8 on GPU-M. A phase lists its routines; each routine
 gets **two tasks**: `.c` (rungs 1–3) and `.g` (rungs 4–8). A routine longer than about 300 CPU lines gets one more
 `.c` task per 300 lines, so no task is longer than half a day.
 
@@ -92,11 +110,11 @@ gets **two tasks**: `.c` (rungs 1–3) and `.g` (rungs 4–8). A routine longer 
 | L1 write | GPU view under `#ifdef WRF_GPU`: kernels by template, island, call check, route | CLOUD | `python3 port/tools/ref.py <kernel>`; CODING_STANDARD.md | `bash port/gates/static.sh` PASS (arith_guard, kernel_lint, scope) |
 | L2 CPU compile | both gfortran views compile the file | CLOUD | `compile_one.sh gnu-gpu <file>`, `compile_one.sh gnu-ref <file>` | no errors; `default(none)` complete |
 | L3 CPU equality | GPU view = CPU view on the host | CLOUD | `harness.sh <file> <routine> --builds <gnu-ref>,<gnu-gpu>`; the T0 cases through `cpu_verify.sh` (S0-13) | identical bits |
-| L4 device compile | nvfortran GPU-REPRO compile | WS-A100 | `compile_one.sh gpu-repro <file> --minfo` | every kernel generates GPU code; no implicit data movement; inner loops `seq`; registers and spills recorded (profiler layer L0) |
-| L5 device harness | host, device and CPU view on random inputs | WS-A100 | `harness.sh <file> <routine>` | three-way identical |
-| L6 T-AB | device vs host execution of the routine on real data | WS-A100 | `t_tiers.sh T0 T1` first (seconds to minutes), then `bash port/gates/t_ab.sh <route> W-20` | identical traces |
-| L7 T-TRACE | GPU-REPRO vs CPU-REF | WS-A100 | `bash port/gates/t_trace.sh W-20` | bitwise |
-| L8 record | the routine's kernels in the kernel database | WS-A100 | [plan-profiler.md](../plan-profiler.md) PR-L2/L3 | rows present |
+| L4 device compile | nvfortran GPU-REPRO compile | GPU-M | `compile_one.sh gpu-repro <file> --minfo` | every kernel generates GPU code; no implicit data movement; inner loops `seq`; registers and spills recorded (profiler layer L0) |
+| L5 device harness | host, device and CPU view on random inputs | GPU-M | `harness.sh <file> <routine>` | three-way identical |
+| L6 T-AB | device vs host execution of the routine on real data | GPU-M | `t_tiers.sh T0 T1` first (seconds to minutes), then `bash port/gates/t_ab.sh <route> W-20` | identical traces |
+| L7 T-TRACE | GPU-REPRO vs CPU-REF | GPU-M | `bash port/gates/t_trace.sh W-20` | bitwise |
+| L8 record | the routine's kernels in the kernel database | GPU-M | [plan-profiler.md](../plan-profiler.md) PR-L2/L3 | rows present |
 
 A routine is **done** at L7, plus L8 once that profiler layer exists (from S2-01). Its `kernels.csv` row is then set
 with the commit and the passing tests: `workbook.py set <kernel> done --commit <sha> --tests "..."`.
@@ -109,8 +127,8 @@ rungs 2–3. Run-1 code is marked "run 1" in the phase tables.
 
 | Gate | Where | Contains |
 |---|---|---|
-| **Phase gate** `G-<phase>` | WS-A100 (+ CLOUD) | every routine of the phase at L7, on GPU 0 and on GPU 1; the sample gating cases `t_tiers.sh T0 T1` bitwise (S0-13); `T-REG-20` (W-20, everything ported so far) bitwise; `static.sh` and `cpu_verify.sh` PASS; workbook and `kernels.csv` current |
-| **Sub-gate** (plan.md G2.A … G3.E, G4) | WS-A100 | the phase gates of its phases, plus `T-TRACE-100` (W-100) or the window plan.md names (W-RAD, W-TKE, W-IGN, W-FIRE) |
+| **Phase gate** `G-<phase>` | GPU-M (+ CLOUD) | the machine detected and its change protocol passed; every routine of the phase at L7, on GPU 0 and on GPU 1 (one-GPU profiles: twice); the sample gating cases `t_tiers.sh T0 T1` bitwise (S0-13); `T-REG-20` (W-20, everything ported so far) bitwise; `static.sh` and `cpu_verify.sh` PASS; workbook and `kernels.csv` current |
+| **Sub-gate** (plan.md G2.A … G3.E, G4) | GPU-M | the phase gates of its phases, plus `T-TRACE-100` (W-100) or the window plan.md names (W-RAD, W-TKE, W-IGN, W-FIRE) |
 | **Stage gate** G0 … G6 | as listed per stage | plan.md §14 |
 
 A failing gate never moves forward:
@@ -134,113 +152,114 @@ A failing gate never moves forward:
 | Phase | Title | Main machine | Depends |
 |---|---|---|---|
 | **Stage 0** | **Ground truth** | | |
+| S0-00 | Detect the machine; profiles, capabilities and the machine-change protocol | CLOUD → GPU-M | — |
 | S0-01 | Make the CPU check trustworthy (clean builds, dependency checker) | CLOUD | — |
 | S0-02 | Land the code of run 1 (review, merge, scope requests) | CLOUD | S0-01 |
 | S0-03 | Work arrays and the step bracket first (P1-WORK, gpu_work_ensure) | CLOUD | S0-02 |
-| S0-04 | Toolchain on WS-A100 | WS-A100 | — |
-| S0-05 | OpenACC feature probes (acc_features) | CLOUD → WS-A100 | S0-04 |
-| S0-06 | Arithmetic and unit tests on the A100 | WS-A100 | S0-04 |
-| S0-07 | CPU-REF build and symbol audit (T-SYM) | WS-A100 | S0-04 |
-| S0-08 | CPU-REF reproducibility on the host cores (T-DET, T-DEC, T-RST) | WS-A100 | S0-07 |
-| S0-09 | Dev case eaton_small, acceptance case eaton_mid, and their references | WS-A100 | S0-07 |
-| S0-10 | Long references: eaton_mid 17 h; E0 against the original CCR run | WS-A100 | S0-08, S0-09 |
-| S0-11 | T-UNINIT, once | WS-A100 | S0-09 |
-| S0-12 | Certify the shared refactors of run 1 (one family per task) | WS-A100 | S0-03, S0-09 |
-| S0-13 | Sample gating cases: tiers T0 (ideal, seconds) and T1 (the owner's small fire inputs, minutes), generated; `t_tiers.sh`; precision report | CLOUD → WS-A100 | S0-07 |
+| S0-04 | Toolchain on GPU-M | GPU-M | — |
+| S0-05 | OpenACC feature probes (acc_features) | CLOUD → GPU-M | S0-04 |
+| S0-06 | Arithmetic and unit tests on the A100 | GPU-M | S0-04 |
+| S0-07 | CPU-REF build and symbol audit (T-SYM) | GPU-M | S0-04 |
+| S0-08 | CPU-REF reproducibility on the host cores (T-DET, T-DEC, T-RST) | GPU-M | S0-07 |
+| S0-09 | Dev case eaton_small, acceptance case eaton_mid, and their references | GPU-M | S0-07 |
+| S0-10 | Long references: eaton_mid 17 h; E0 against the original CCR run | GPU-M | S0-08, S0-09 |
+| S0-11 | T-UNINIT, once | GPU-M | S0-09 |
+| S0-12 | Certify the shared refactors of run 1 (one family per task) | GPU-M | S0-03, S0-09 |
+| S0-13 | Sample gating cases: tiers T0 (ideal, seconds) and T1 (the owner's small fire inputs, minutes), generated; `t_tiers.sh`; precision report | CLOUD → GPU-M | S0-07 |
 | **Stage 1** | **GPU infrastructure** | | |
-| S1-01 | First GPU-REPRO build, every route off | WS-A100 | G0 |
-| S1-02 | State on the device (gen_allocs) and T-MAP | CLOUD → WS-A100 | S1-01 |
-| S1-03 | Generated update lists and T-UPD | CLOUD → WS-A100 | S1-02 |
-| S1-04 | Work arrays on the device and T-WORK | CLOUD → WS-A100 | S1-02 |
-| S1-05 | Scratch pool and T-POOL | CLOUD → WS-A100 | S1-02 |
-| S1-06 | Module tables and T-TAB | CLOUD → WS-A100 | S1-02 |
-| S1-07 | Sync points S1–S5 and the solve_em bracket | CLOUD → WS-A100 | S1-03 |
-| S1-08 | Nest-forcing bridge S6 (Phase 1–4 form) | CLOUD → WS-A100 | S1-07 |
-| S1-09 | Startup gate gpu_check_config and T-GATE | CLOUD → WS-A100 | S1-01 |
-| S1-10 | Self tests and the dispatcher (WRF_GPU_SELFTEST) | CLOUD → WS-A100 | S1-04 … S1-06 |
-| S1-11 | Profiler layer 1: NVTX, timing and memory logs | CLOUD → WS-A100 | S1-01 |
-| S1-12 | G1 windows; G-MEM-1 (dev case) | WS-A100 | all of Stage 1 |
+| S1-01 | First GPU-REPRO build, every route off | GPU-M | G0 |
+| S1-02 | State on the device (gen_allocs) and T-MAP | CLOUD → GPU-M | S1-01 |
+| S1-03 | Generated update lists and T-UPD | CLOUD → GPU-M | S1-02 |
+| S1-04 | Work arrays on the device and T-WORK | CLOUD → GPU-M | S1-02 |
+| S1-05 | Scratch pool and T-POOL | CLOUD → GPU-M | S1-02 |
+| S1-06 | Module tables and T-TAB | CLOUD → GPU-M | S1-02 |
+| S1-07 | Sync points S1–S5 and the solve_em bracket | CLOUD → GPU-M | S1-03 |
+| S1-08 | Nest-forcing bridge S6 (Phase 1–4 form) | CLOUD → GPU-M | S1-07 |
+| S1-09 | Startup gate gpu_check_config and T-GATE | CLOUD → GPU-M | S1-01 |
+| S1-10 | Self tests and the dispatcher (WRF_GPU_SELFTEST) | CLOUD → GPU-M | S1-04 … S1-06 |
+| S1-11 | Profiler layer 1: NVTX, timing and memory logs | CLOUD → GPU-M | S1-01 |
+| S1-12 | G1 windows; G-MEM-1 (dev case) | GPU-M | all of Stage 1 |
 | **Stage 2** | **Dynamics** | | |
-| S2-01 | Physical boundary conditions | WS-A100 | G1 |
-| S2-02 | RK preparation, pointwise | WS-A100 | G1 |
-| S2-03 | RK preparation, columns (G2.A) | WS-A100 | S2-01, S2-02 |
-| S2-04 | Tendency zeroing, WW_SPLIT, rhs_ph | WS-A100 | G1 |
-| S2-05 | advect_u (run 1) | WS-A100 | G1 |
-| S2-06 | advect_v (run 1) | WS-A100 | G1 |
-| S2-07 | advect_w (run 1) | WS-A100 | G1 |
-| S2-08 | advect_scalar (run 1) | WS-A100 | G1 |
-| S2-09 | Pressure gradient, buoyancy, w damping | WS-A100 | G1 |
-| S2-10 | Coriolis and curvature (G2.B) | WS-A100 | S2-04 … S2-09 |
-| S2-11 | Tendency combination and lateral boundaries (G2.C) | WS-A100 | G1 |
-| S2-12 | Acoustic loop: prep, finish, p/rho, coefficients, sums | WS-A100 | G1 |
-| S2-13 | advance_uv, advance_mu_t | WS-A100 | G1 |
-| S2-14 | advance_w | WS-A100 | G1 |
-| S2-15 | Acoustic boundary updates (G2.D) | WS-A100 | S2-12 … S2-14 |
-| S2-16 | advect_scalar_pd (run 1) | WS-A100 | G1 |
-| S2-17 | Scalar updates and flow-dependent boundaries (G2.E) | WS-A100 | S2-16 |
-| S2-18 | End of step (G2.F) | WS-A100 | G1 |
-| S2-19 | Diffusion metrics and deformation (run 1) | WS-A100 | G1 |
-| S2-20 | N2, eddy viscosities, TKE (run 1, partial) | WS-A100 | G1 |
-| S2-21 | Vertical diffusion and the stress tensor (run 1, partial) | WS-A100 | G1 |
-| S2-22 | Horizontal diffusion (G2.G) | WS-A100 | S2-19 … S2-21 |
-| S2-23 | Stage closure: T-NSYS, T-DRIFT, dynamics profile (G2) | WS-A100 | all of Stage 2 |
+| S2-01 | Physical boundary conditions | GPU-M | G1 |
+| S2-02 | RK preparation, pointwise | GPU-M | G1 |
+| S2-03 | RK preparation, columns (G2.A) | GPU-M | S2-01, S2-02 |
+| S2-04 | Tendency zeroing, WW_SPLIT, rhs_ph | GPU-M | G1 |
+| S2-05 | advect_u (run 1) | GPU-M | G1 |
+| S2-06 | advect_v (run 1) | GPU-M | G1 |
+| S2-07 | advect_w (run 1) | GPU-M | G1 |
+| S2-08 | advect_scalar (run 1) | GPU-M | G1 |
+| S2-09 | Pressure gradient, buoyancy, w damping | GPU-M | G1 |
+| S2-10 | Coriolis and curvature (G2.B) | GPU-M | S2-04 … S2-09 |
+| S2-11 | Tendency combination and lateral boundaries (G2.C) | GPU-M | G1 |
+| S2-12 | Acoustic loop: prep, finish, p/rho, coefficients, sums | GPU-M | G1 |
+| S2-13 | advance_uv, advance_mu_t | GPU-M | G1 |
+| S2-14 | advance_w | GPU-M | G1 |
+| S2-15 | Acoustic boundary updates (G2.D) | GPU-M | S2-12 … S2-14 |
+| S2-16 | advect_scalar_pd (run 1) | GPU-M | G1 |
+| S2-17 | Scalar updates and flow-dependent boundaries (G2.E) | GPU-M | S2-16 |
+| S2-18 | End of step (G2.F) | GPU-M | G1 |
+| S2-19 | Diffusion metrics and deformation (run 1) | GPU-M | G1 |
+| S2-20 | N2, eddy viscosities, TKE (run 1, partial) | GPU-M | G1 |
+| S2-21 | Vertical diffusion and the stress tensor (run 1, partial) | GPU-M | G1 |
+| S2-22 | Horizontal diffusion (G2.G) | GPU-M | S2-19 … S2-21 |
+| S2-23 | Stage closure: T-NSYS, T-DRIFT, dynamics profile (G2) | GPU-M | all of Stage 2 |
 | **Stage 3** | **Physics** | | |
-| S3-01 | Physics glue of the big-step utilities | WS-A100 | G2 |
-| S3-02 | Physics tendencies (G3.A) | WS-A100 | S3-01 |
-| S3-03 | Column test harness framework | CLOUD → WS-A100 | G2 |
-| S3-04 | WSM6 device tree (run 1, partial) | CLOUD → WS-A100 | S3-03 |
-| S3-05 | WSM6 kernel and microphysics driver (G3.B) | WS-A100 | S3-04 |
-| S3-06 | Surface layer sfclayrev and T-ZOLRI | CLOUD → WS-A100 | S3-03 |
-| S3-07 | Noah: certified refactors and tables (run 1) | WS-A100 | S3-03 |
-| S3-08 | Noah leaves I: soil heat and snow | CLOUD → WS-A100 | S3-07 |
-| S3-09 | Noah leaves II: water and evaporation | CLOUD → WS-A100 | S3-07 |
-| S3-10 | Noah composites up to SFLX | CLOUD → WS-A100 | S3-08, S3-09 |
-| S3-11 | Noah kernel, glacial, T-NOAH-PT | WS-A100 | S3-10 |
-| S3-12 | Sea ice and surface diagnostics | CLOUD → WS-A100 | S3-03 |
-| S3-13 | surface_driver kernels (run 1) (G3.C) | WS-A100 | S3-06, S3-11, S3-12 |
-| S3-14 | YSU device tree | CLOUD → WS-A100 | S3-03 |
-| S3-15 | PBL driver and YSU kernel (G3.D) | WS-A100 | S3-14 |
-| S3-16 | Radiation driver: every-step kernels (run 1) | WS-A100 | G2 |
-| S3-17 | Radiation driver: radiation-step kernels (run 1) | WS-A100 | S3-16 |
-| S3-18 | Ozone interpolation and T-OZN | WS-A100 | S3-16 |
-| S3-19 | Dudhia shortwave | CLOUD → WS-A100 | S3-03 |
-| S3-20 | RRTMG tables (run 1, partial) | WS-A100 | S3-03 |
-| S3-21 | RRTMG column setup routines | CLOUD → WS-A100 | S3-20 |
-| S3-22 | RRTMG taumol (taugb1–16) | CLOUD → WS-A100 | S3-20 |
-| S3-23 | RRTMG radiative transfer and McICA (T-KISS) | CLOUD → WS-A100 | S3-20 |
-| S3-24 | RRTMG batching and kernel; T-RRTMG-COL (G3.E) | WS-A100 | S3-17 … S3-23 |
-| S3-25 | Stage closure: T-TRACE-RAD, T-NSYS, T-DRIFT, G-MEM-2 (acceptance case) (G3) | WS-A100 | all of Stage 3 |
+| S3-01 | Physics glue of the big-step utilities | GPU-M | G2 |
+| S3-02 | Physics tendencies (G3.A) | GPU-M | S3-01 |
+| S3-03 | Column test harness framework | CLOUD → GPU-M | G2 |
+| S3-04 | WSM6 device tree (run 1, partial) | CLOUD → GPU-M | S3-03 |
+| S3-05 | WSM6 kernel and microphysics driver (G3.B) | GPU-M | S3-04 |
+| S3-06 | Surface layer sfclayrev and T-ZOLRI | CLOUD → GPU-M | S3-03 |
+| S3-07 | Noah: certified refactors and tables (run 1) | GPU-M | S3-03 |
+| S3-08 | Noah leaves I: soil heat and snow | CLOUD → GPU-M | S3-07 |
+| S3-09 | Noah leaves II: water and evaporation | CLOUD → GPU-M | S3-07 |
+| S3-10 | Noah composites up to SFLX | CLOUD → GPU-M | S3-08, S3-09 |
+| S3-11 | Noah kernel, glacial, T-NOAH-PT | GPU-M | S3-10 |
+| S3-12 | Sea ice and surface diagnostics | CLOUD → GPU-M | S3-03 |
+| S3-13 | surface_driver kernels (run 1) (G3.C) | GPU-M | S3-06, S3-11, S3-12 |
+| S3-14 | YSU device tree | CLOUD → GPU-M | S3-03 |
+| S3-15 | PBL driver and YSU kernel (G3.D) | GPU-M | S3-14 |
+| S3-16 | Radiation driver: every-step kernels (run 1) | GPU-M | G2 |
+| S3-17 | Radiation driver: radiation-step kernels (run 1) | GPU-M | S3-16 |
+| S3-18 | Ozone interpolation and T-OZN | GPU-M | S3-16 |
+| S3-19 | Dudhia shortwave | CLOUD → GPU-M | S3-03 |
+| S3-20 | RRTMG tables (run 1, partial) | GPU-M | S3-03 |
+| S3-21 | RRTMG column setup routines | CLOUD → GPU-M | S3-20 |
+| S3-22 | RRTMG taumol (taugb1–16) | CLOUD → GPU-M | S3-20 |
+| S3-23 | RRTMG radiative transfer and McICA (T-KISS) | CLOUD → GPU-M | S3-20 |
+| S3-24 | RRTMG batching and kernel; T-RRTMG-COL (G3.E) | GPU-M | S3-17 … S3-23 |
+| S3-25 | Stage closure: T-TRACE-RAD, T-NSYS, T-DRIFT, G-MEM-2 (acceptance case) (G3) | GPU-M | all of Stage 3 |
 | **Stage 4** | **Fire** | | |
-| S4-01 | Fire data on the device: flags, constants, fp, ghosts (run 1) | WS-A100 | G3 |
-| S4-02 | Fire statistics: integer NaN counts (run 1) | WS-A100 | S4-01 |
-| S4-03 | Atmosphere-to-fire interpolation | CLOUD → WS-A100 | S4-01 |
-| S4-04 | Level-set tendency and rate of spread (run 1) | WS-A100 | S4-01 |
-| S4-05 | Level-set time stepping, ignition time, flame length (run 1) | WS-A100 | S4-04 |
-| S4-06 | Reinitialization (run 1) | WS-A100 | S4-04 |
-| S4-07 | Ignition | CLOUD → WS-A100 | S4-01 |
-| S4-08 | Fuel consumption | CLOUD → WS-A100 | S4-01 |
-| S4-09 | Heat fluxes and sums over fire cells | CLOUD → WS-A100 | S4-08 |
-| S4-10 | fire_model and the fire drivers (run 1, partial) | WS-A100 | S4-03 … S4-09 |
-| S4-11 | Fire tendency into the atmosphere | CLOUD → WS-A100 | S4-01 |
-| S4-12 | Fire windows: T-FIRE-IGN, T-FIRE-WIN | WS-A100 | S4-10, S4-11 |
-| S4-13 | Stage closure (G4) | WS-A100 | S4-12 |
+| S4-01 | Fire data on the device: flags, constants, fp, ghosts (run 1) | GPU-M | G3 |
+| S4-02 | Fire statistics: integer NaN counts (run 1) | GPU-M | S4-01 |
+| S4-03 | Atmosphere-to-fire interpolation | CLOUD → GPU-M | S4-01 |
+| S4-04 | Level-set tendency and rate of spread (run 1) | GPU-M | S4-01 |
+| S4-05 | Level-set time stepping, ignition time, flame length (run 1) | GPU-M | S4-04 |
+| S4-06 | Reinitialization (run 1) | GPU-M | S4-04 |
+| S4-07 | Ignition | CLOUD → GPU-M | S4-01 |
+| S4-08 | Fuel consumption | CLOUD → GPU-M | S4-01 |
+| S4-09 | Heat fluxes and sums over fire cells | CLOUD → GPU-M | S4-08 |
+| S4-10 | fire_model and the fire drivers (run 1, partial) | GPU-M | S4-03 … S4-09 |
+| S4-11 | Fire tendency into the atmosphere | CLOUD → GPU-M | S4-01 |
+| S4-12 | Fire windows: T-FIRE-IGN, T-FIRE-WIN | GPU-M | S4-10, S4-11 |
+| S4-13 | Stage closure (G4) | GPU-M | S4-12 |
 | **Stage 5** | **Forcing and acceptance** | | |
-| S5-01 | couple_or_uncouple_em on the device | CLOUD → WS-A100 | G4 |
-| S5-02 | Generated forcing lists (gen_gpu.c) (run 1, partial) | CLOUD → WS-A100 | G4 |
-| S5-03 | med_force_domain rewired; T-FORCE, T-SLAB, T-O3 | WS-A100 | S5-01, S5-02 |
-| S5-04 | Device bit tracer | CLOUD → WS-A100 | G4 |
-| S5-05 | Remove the solve_em bracket; T-NSYS-CLEAN | WS-A100 | S5-03 |
-| S5-06 | Output and input sync: T-OUT, T-BDY | WS-A100 | S5-05 |
-| S5-07 | One-hour dev windows (W-1H) on both A100s | WS-A100 | S5-06 |
-| S5-08 | Acceptance case: memory and first hour | WS-A100 | S5-07 |
-| S5-09 | 17 h acceptance on eaton_mid; T-DRIFT-FULL; the same run on GPU 1 | WS-A100 | S5-08, S0-10 |
-| S5-10 | Stage closure (G5, v0.1 candidate) | WS-A100 | S5-09 |
+| S5-01 | couple_or_uncouple_em on the device | CLOUD → GPU-M | G4 |
+| S5-02 | Generated forcing lists (gen_gpu.c) (run 1, partial) | CLOUD → GPU-M | G4 |
+| S5-03 | med_force_domain rewired; T-FORCE, T-SLAB, T-O3 | GPU-M | S5-01, S5-02 |
+| S5-04 | Device bit tracer | CLOUD → GPU-M | G4 |
+| S5-05 | Remove the solve_em bracket; T-NSYS-CLEAN | GPU-M | S5-03 |
+| S5-06 | Output and input sync: T-OUT, T-BDY | GPU-M | S5-05 |
+| S5-07 | One-hour dev windows (W-1H) on both GPUs (or twice) | GPU-M | S5-06 |
+| S5-08 | Acceptance case: memory and first hour | GPU-M | S5-07 |
+| S5-09 | 17 h acceptance on eaton_mid, and on the full case where it fits one GPU; T-DRIFT-FULL; the same run on a second GPU or twice | GPU-M | S5-08, S0-10 |
+| S5-10 | Stage closure (G5, v0.1 candidate) | GPU-M | S5-09 |
 | **Stage 6** | **Performance (bit-neutral)** | | |
-| S6-01 … S6-16 | profiles, then one optimization family per phase | WS-A100 (H100 optional) | G5 (profiler layers earlier) |
+| S6-01 … S6-16 | profiles, then one optimization family per phase | GPU-M (H100 optional) | G5 (profiler layers earlier) |
 | **Stage 7** | **Other fires and release** | | |
-| S7-01 … S7-08 | onboarding, a second fire, regression in CI, release v0.1 | CLOUD, WS-A100 | G5 |
+| S7-01 … S7-08 | onboarding, a second fire, regression in CI, release v0.1 | CLOUD, GPU-M | G5 |
 | **Stage 8** | **The rest of WRF 4.6.0** | | |
-| S8-01 … S8-20 | multi-GPU and the full Eaton case on the 2× A100 40 GB (first after G5), restarts, two-way nesting, more physics and fire options | CLOUD, WS-A100 | G5 |
+| S8-01 … S8-20 | multi-GPU and the full Eaton case on profiles with two or more GPUs (first after G5), restarts, two-way nesting, more physics and fire options | CLOUD, GPU-M | G5 |
 
 ## What run 1 left (input to Stage 0)
 

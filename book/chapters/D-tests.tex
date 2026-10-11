@@ -44,7 +44,7 @@ W-FORCE & 20 d01 steps from 02:20: the nest forcing \\
 W-TKE & 1008 d02 steps from 02:20: TKE and the subgrid stresses \\
 W-IGN & 02:00 to 02:35: the whole ignition period (8280--9080~s) and the first minutes of spread \\
 W-FIRE & 02:20 to 03:00: free spread, with history frames at 02:30, 02:45 and 03:00 \\
-W-1H & one hour of the dev case on both A100s (phase S5-07) \\
+W-1H & one hour of the dev case on two GPUs, or twice on one (phase S5-07) \\
 S-3M & a 3-minute smoke case built from WRF's \code{em_fire} test with the case's physics; needs no case data \\
 \bottomrule
 \end{tabular}
@@ -79,7 +79,6 @@ T-UNINIT & a build initializing every local to signaling NaN against one initial
 T-DET & the same binary twice, 1 hour of the dev case, on the workstation's host cores & bitwise \\
 T-DEC-A, T-DEC-B & 1 rank against 56; 14, 28 and 56 ranks, on the host cores & bitwise \\
 T-RST & a continuous run against a restarted one & bitwise or documented \\
-T-XM & dropped: there is one machine, so there is no cross-machine run to compare & --- \\
 T-KISS & the random number streams of McICA, host against device & bitwise \\
 \midrule
 \multicolumn{3}{l}{\textbf{Infrastructure (P1)}} \\
@@ -115,9 +114,12 @@ T-SLAB & host data outside the copied slab and strips filled with signaling NaNs
 T-O3 & the nest's ozone field after every forcing & equal \\
 T-NSYS-CLEAN & only forcing, I/O and reduction results are copied & as specified \\
 T-OUT, T-BDY & history and restart files; a window across a boundary-data read & bitwise \\
-G5 & the 17 hours of \code{eaton_mid} on one A100 40~GB against CPU-REF on the same workstation: all history and
-  restart files, all fire arrays, the traces of every step; GPU 0 equal to GPU 1; T-DRIFT-FULL & bitwise \\
-G-MEM & the peak device memory & dev case $\le$ 25~GB at G1; acceptance case $\le$ 34~GB at G3 and G5 \\
+G5 & the 17 hours of \code{eaton_mid} on one GPU against CPU-REF on the same machine (and the full case on 80~GB
+  GPUs): all history and restart files, all fire arrays, the traces of every step; a second GPU or a second run
+  equal; T-DRIFT-FULL & bitwise \\
+G-MEM & the peak device memory & dev case $\le$ 25~GB; other cases $\le$ 85\,\% of one GPU (34~GB on 40~GB, 68~GB on 80~GB) \\
+T-XM & a new host reproduces the archived CPU-REF references on the tiers and W-20 (else they are regenerated there) & bitwise \\
+T-XG & the same commit on another GPU model reproduces the archived GPU traces & bitwise \\
 T-CASE-1H & a new fire case: one hour around its ignition & bitwise \\
 \midrule
 \multicolumn{3}{l}{\textbf{Several GPUs (Stage 8)}} \\

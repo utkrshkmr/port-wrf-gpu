@@ -20,9 +20,9 @@ G0 & reproducible arithmetic and math library; reproducible CPU reference; refer
 G1 & infrastructure: state, pool, work arrays, tables on the device; GPU build with all compute on the host bitwise
   & \tbr \\
 G2 & dynamics on the device, bitwise on the dev-case windows & \tbr \\
-G3 & physics on the device; radiation window bitwise; acceptance case within 34~GB & \tbr \\
+G3 & physics on the device; radiation window bitwise; acceptance case within the machine's memory gate & \tbr \\
 G4 & fire on the device; ignition and spread windows bitwise; 0 differing burned cells & \tbr \\
-G5 & 17-hour run of \code{eaton_mid} bitwise on one A100 40~GB against CPU-REF on the same workstation; both A100s equal & \tbr \\
+G5 & 17-hour run of \code{eaton_mid} bitwise on one GPU against CPU-REF on the same machine, on every machine profile available; the full case too on 80~GB GPUs; the same GPU bits on A100 and H100 & \tbr \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -64,11 +64,11 @@ T-TRACE, T-TRACE-RAD, T-FIRE-IGN and T-FIRE-WIN: \tbr.
 Run & Wall time per simulated hour & Speedup vs CPU-REF & Speedup vs original run \\
 \midrule
 original CCR run, full case (statistical comparison only) & \tbr & --- & 1 \\
-CPU-REF on the workstation's 56 cores, \code{eaton_mid} & \tbr & 1 & --- \\
+CPU-REF on the host cores, \code{eaton_mid}, per machine & \tbr & 1 & --- \\
 GPU-REPRO, one A100 40 GB, \code{eaton_mid} & \tbr & \tbr & --- \\
-CPU-REF on the workstation's 56 cores, full case & \tbr & 1 & \tbr \\
+GPU-REPRO, one A100 80 GB, \code{eaton_mid} and full case & \tbr & \tbr & \tbr \\
+GPU-REPRO, one H100, \code{eaton_mid} and full case & \tbr & \tbr & \tbr \\
 GPU-REPRO, 2 $\times$ A100 40 GB, full case (\cref{ch:mgpu}) & \tbr & \tbr & \tbr \\
-GPU-REPRO, H100, if one becomes available & \tbr & \tbr & \tbr \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -79,7 +79,7 @@ GPU-REPRO, H100, if one becomes available & \tbr & \tbr & \tbr \\
 \small
 \begin{tabular}{lcccc}
 \toprule
-Part of the step & CPU-REF (56 cores) & A100 & H100 (optional) & H100/A100 \\
+Part of the step & CPU-REF (host cores) & A100 & H100 & H100/A100 \\
 \midrule
 RK dynamics (tendencies) & \tbr & \tbr & \tbr & \tbr \\
 acoustic loop & \tbr & \tbr & \tbr & \tbr \\

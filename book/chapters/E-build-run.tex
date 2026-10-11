@@ -20,6 +20,12 @@ tests (templates, mutants, the limiter, the ozone interpolation, KISS).
 
 \section{Setting up the GPU machine}
 
+The GPU machine varies between sessions, so the first command of every session is
+\begin{lstlisting}[language={}]
+bash port/h100/machine.sh detect      # GPUs, host, capabilities -> $WORK/machine.json
+bash port/gates/t_machine.sh          # only when the machine changed: device tests, T-XM, T-XG
+\end{lstlisting}
+
 Everything runs in NVIDIA's HPC SDK container, without root:
 \begin{lstlisting}[language={}]
 cp port/h100/env.sh port/h100/env.local.sh        # set WORK, CASE_INPUTS, CONTAINER, IMAGE, CPU_RANKS, GPU_ID

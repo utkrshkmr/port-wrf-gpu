@@ -335,11 +335,11 @@ Rung & What & Machine & Passes when \\
 L1 & write the GPU view & CLOUD & \code{static.sh} passes \\
 L2 & compile both gfortran views & CLOUD & no errors \\
 L3 & GPU view equals CPU view on the host & CLOUD & identical bits \\
-L4 & compile with \code{nvfortran} & WS-A100 & kernels offloaded, no implicit copies \\
-L5 & harness: host, device, CPU view & WS-A100 & three-way identical \\
-L6 & T-AB on a dev-case window & WS-A100 & identical traces \\
-L7 & T-TRACE against CPU-REF & WS-A100 & bitwise \\
-L8 & record in the kernel database & WS-A100 & rows present \\
+L4 & compile with \code{nvfortran} & GPU-M & kernels offloaded, no implicit copies \\
+L5 & harness: host, device, CPU view & GPU-M & three-way identical \\
+L6 & T-AB on a dev-case window & GPU-M & identical traces \\
+L7 & T-TRACE against CPU-REF & GPU-M & bitwise \\
+L8 & record in the kernel database & GPU-M & rows present \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -347,15 +347,21 @@ The first three rungs need no GPU and run in a cloud environment; the others nee
 is done at rung L7. The machines are named by what they can do:
 \begin{itemize}
   \item \textbf{CLOUD}, a cloud coding environment with gfortran and no GPU;
-  \item \textbf{WS-A100}, a workstation with two A100 40~GB and 56 host cores: every device test, and every
-    CPU-REF reference run on its host cores, so that CPU and GPU results are compared on one machine with one
-    compiler;
+  \item \textbf{GPU-M}, the GPU machine at hand: every device test, and every CPU-REF reference run on its own
+    host cores, so that CPU and GPU results are compared on one machine with one compiler;
   \item \textbf{CI}, GitHub Actions, which builds this book.
 \end{itemize}
+The GPU machine is not always the same: one A100 80~GB, two A100 40~GB, or one or more H100s. Every session therefore
+starts by detecting it, and derives what is valid there: the memory gate (85\,\% of one GPU), which cases fit one GPU,
+whether two runs can go in parallel, whether multi-GPU and H100-only steps apply, and the rank counts of the CPU
+reference. When the machine changes, a \emph{machine-change protocol} runs before anything else: the device arithmetic
+tests for a new GPU model; T-XM for a new host, which must reproduce the archived CPU references bit for bit or have
+them regenerated there; and T-XG, which requires the same commit to give the same GPU bits on every GPU model. Every
+result records the machine it came from.
+
 Nothing is developed or tested on the cluster where the case was first run; it supplies the input files, and its
-original run is compared with CPU-REF statistically, never bit for bit. The full case does not fit one 40~GB GPU, so
-the acceptance run uses the case \code{eaton_mid} (\cref{ch:case}) and the full case follows on both GPUs
-(\cref{ch:mgpu}).
+original run is compared with CPU-REF statistically, never bit for bit. The acceptance case that every machine can run
+is \code{eaton_mid} (\cref{ch:case}); the full case is added where it fits (\cref{ch:mgpu}).
 
 \section{Organization}
 

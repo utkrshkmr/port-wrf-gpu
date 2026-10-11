@@ -157,7 +157,9 @@ reasons for each, is in \code{plan.md} section~2. \Cref{app:namelist} reproduces
 
 \paragraph{Memory.} The full case needs about 58--62~GB of device memory: the state of both domains, a scratch pool,
 work arrays, the radiation batch, and the local memory of the column physics (\code{plan.md} section~3). It fits an
-80~GB GPU, not one of the project's 40~GB A100s. The acceptance run of the port therefore uses \code{eaton_mid}, a
-case with the same options and ignition and the largest nest that fits one 40~GB GPU with 15\,\% headroom (about
-$400 \times 400 \times 60$, by the memory estimator); the full case follows on both A100s together
-(\cref{ch:mgpu}). A smaller case still, \code{eaton_small} ($181 \times 181$ nest), serves development.
+80~GB GPU (an A100 80~GB or an H100), not a 40~GB A100. The project's GPU machine varies between one A100 80~GB, two
+A100 40~GB and one or more H100s, so the port also defines \code{eaton_mid}: a case with the same options and
+ignition and the largest nest that fits one 40~GB GPU within its memory gate (about $400 \times 400 \times 60$, by
+the memory estimator). Every machine can run it, so it is the acceptance case everywhere; machines with 80~GB GPUs
+run the full case too, and two 40~GB GPUs run it together (\cref{ch:mgpu}). A smaller case still,
+\code{eaton_small} ($181 \times 181$ nest), serves development.

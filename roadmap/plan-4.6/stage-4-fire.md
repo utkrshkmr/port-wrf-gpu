@@ -7,7 +7,7 @@ INTERFACES.md I-12 (fire data on the device).
 Fire kernels work on the 724² fire grid of the dev case (3284² in the full case). The ghost rows and columns 0 and
 `n+1` must hold the values CPU-REF has: T-FIRE-GHOST.
 
-Task naming as in Stage 2: `.Nc` = L1–L3 on CLOUD, `.Ng` = L4–L8 on WS-A100. Every fire T-AB uses W-IGN or W-FIRE,
+Task naming as in Stage 2: `.Nc` = L1–L3 on CLOUD, `.Ng` = L4–L8 on GPU-M. Every fire T-AB uses W-IGN or W-FIRE,
 because W-20 starts after ignition but contains no ignition.
 
 ---
@@ -19,10 +19,10 @@ Work package P4-MODEL (tasks 1–6 of its card) · Depends G3
 | Task | What | Machine | Size |
 |---|---|---|---|
 | S4-01.1 | Review the `set_flags` hoist (`fire_ifun_start.eq.1`); scope request S0-02.3 applied | CLOUD | S |
-| S4-01.2 | Flags and constants of `module_fr_fire_util` and `module_fr_fire_phys`: `!$acc declare create` + `update device` once per domain after init | CLOUD → WS-A100 | S |
-| S4-01.3 | `fp` (domain fire pointers): `enter data copyin` + `attach` of the pointer components (probe F-ATTACH); `fp%fuel_time` not attached (never associated) | CLOUD → WS-A100 | M |
-| S4-01.4 | T-FIRE-GHOST: ghosts of `lfn`, `tign_g` on the device equal the host after init (0 and 725 on the dev case) | WS-A100 | S |
-| S4-01.5 | Fire work arrays (`lfn_out`, `tend`, `ua`, `va`, …) present (T-WORK covers them) | WS-A100 | S |
+| S4-01.2 | Flags and constants of `module_fr_fire_util` and `module_fr_fire_phys`: `!$acc declare create` + `update device` once per domain after init | CLOUD → GPU-M | S |
+| S4-01.3 | `fp` (domain fire pointers): `enter data copyin` + `attach` of the pointer components (probe F-ATTACH); `fp%fuel_time` not attached (never associated) | CLOUD → GPU-M | M |
+| S4-01.4 | T-FIRE-GHOST: ghosts of `lfn`, `tign_g` on the device equal the host after init (0 and 725 on the dev case) | GPU-M | S |
+| S4-01.5 | Fire work arrays (`lfn_out`, `tend`, `ua`, `va`, …) present (T-WORK covers them) | GPU-M | S |
 
 ## S4-02 · Fire statistics: integer NaN counts (run 1)
 
@@ -123,18 +123,18 @@ Work package P4-ATM · Depends S4-01
 
 | Task | What | Machine | Size | Done when |
 |---|---|---|---|---|
-| S4-12.1 | `T-AB` of every fire route on W-IGN | WS-A100 | M | identical |
-| S4-12.2 | T-FIRE-IGN: 02:00 → 02:35 (6,300 d02 steps), level 1 with all fire arrays, level 2 for 100 steps after 8280 s | WS-A100 | M | bitwise |
-| S4-12.3 | T-FIRE-WIN: 02:20 → 03:00 (W-FIRE) on GPU 0, and the same on GPU 1 | WS-A100 | M | bitwise |
-| S4-12.4 | `compare_fire.py` at 02:30, 02:45, 03:00 | WS-A100 | S | 0 differing cells |
+| S4-12.1 | `T-AB` of every fire route on W-IGN | GPU-M | M | identical |
+| S4-12.2 | T-FIRE-IGN: 02:00 → 02:35 (6,300 d02 steps), level 1 with all fire arrays, level 2 for 100 steps after 8280 s | GPU-M | M | bitwise |
+| S4-12.3 | T-FIRE-WIN: 02:20 → 03:00 (W-FIRE) on GPU 0, and the same on a second GPU (or again on the same one) | GPU-M | M | bitwise |
+| S4-12.4 | `compare_fire.py` at 02:30, 02:45, 03:00 | GPU-M | S | 0 differing cells |
 
 ## S4-13 · Stage closure (G4)
 
 | Task | What | Machine | Size |
 |---|---|---|---|
-| S4-13.1 | The bracket is empty: no island left inside `solve_em` (`t_nsys.sh` W-20) | WS-A100 | S |
-| S4-13.2 | T-DRIFT (host cores) | WS-A100 | S |
-| S4-13.3 | Fire profile on A100: WENO divergence, fire-grid bandwidth, launches per fire call | WS-A100 | M |
+| S4-13.1 | The bracket is empty: no island left inside `solve_em` (`t_nsys.sh` W-20) | GPU-M | S |
+| S4-13.2 | T-DRIFT (host cores) | GPU-M | S |
+| S4-13.3 | Fire profile on A100: WENO divergence, fire-grid bandwidth, launches per fire call | GPU-M | M |
 | S4-13.4 | Book: fire chapter "port" section; first fire animation from the trace of S4-12 | CLOUD | M |
 
 **Stage gate G4:** `bash port/gates/g4.sh` PASS, plus S4-13.

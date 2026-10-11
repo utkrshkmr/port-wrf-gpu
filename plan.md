@@ -1727,7 +1727,18 @@ These refine the plan above; `port/RESULTS.md` ("Deviations from plan.md in Phas
 9. **Development machine without root:** the toolchain runs in the NVHPC container image (Apptainer, rootless
    Podman or Docker); dependencies are built inside it into a user directory (`port/agent/ENV_H100.md`).
 
-## 18. Amendment (2026-10-08): machines and the acceptance case
+## 18. Amendment (2026-10-08, revised 2026-10-11): machines and the acceptance case
+
+**Revision 2026-10-11** ([ADR-006 rev 2](roadmap/decisions/ADR-006-machines.md)): the GPU machine varies between
+sessions (one A100 80 GB, two A100 40 GB, or one or more H100s). Every session first detects the machine
+(`port/h100/machine.sh detect`, plan-4.6 phase S0-00) and derives what is valid there; where items 1–8 below name
+"the workstation", "two A100 40 GB", "56 cores" or "34 GB", read: the machine at hand, its GPUs, its n host cores,
+and 85 % of one GPU's memory. `eaton_mid` is the acceptance case on every profile; on profiles whose GPUs hold the
+full case (80 GB) the full 17 h Eaton run is part of G5 too. When the machine changes, the machine-change protocol
+runs first: device arithmetic tests for a new GPU model, T-XM for a new host (archived CPU-REF references reproduced
+bit for bit there, or regenerated on it), and T-XG (the same commit gives the same GPU bits across GPU models).
+Every result records the machine id and profile.
+
 
 Decided by the project owner ([roadmap/decisions/ADR-006-machines.md](roadmap/decisions/ADR-006-machines.md)); it
 supersedes every machine assignment above (CCR, "GPU node", A100 80 GB, H100).

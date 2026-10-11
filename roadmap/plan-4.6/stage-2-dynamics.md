@@ -8,7 +8,7 @@ Spec: plan.md §7 (kernel tables 7.1–7.7), PHASE2.md, KERNEL_REFS.md (`python3
 **Task naming.** Each routine has two tasks ([README.md](README.md), the ladder):
 - `.Nc` covers rungs L1–L3 on CLOUD. For run-1 code, rung L1 is a review against `ref.py`, the template and the
   verbatim rule.
-- `.Ng` covers rungs L4–L8 on WS-A100.
+- `.Ng` covers rungs L4–L8 on GPU-M.
 
 Every phase ends with its phase gate: all routines at L7 on GPU 0 and GPU 1, `T-REG-20`, `static.sh`, `cpu_verify.sh`.
 
@@ -20,8 +20,8 @@ Work package P2-A2 · plan.md §7.1 · Depends G1
 
 | Task | Routine | Kernels | Machine | Size |
 |---|---|---|---|---|
-| S2-01.1c / .1g | `set_physical_bc3d` | K-BC-3D-x, K-BC-3D-y (Template G, x before y) | CLOUD / WS-A100 | M / S |
-| S2-01.2c / .2g | `set_physical_bc2d` | K-BC-2D-x, K-BC-2D-y | CLOUD / WS-A100 | S / S |
+| S2-01.1c / .1g | `set_physical_bc3d` | K-BC-3D-x, K-BC-3D-y (Template G, x before y) | CLOUD / GPU-M | M / S |
+| S2-01.2c / .2g | `set_physical_bc2d` | K-BC-2D-x, K-BC-2D-y | CLOUD / GPU-M | S / S |
 | S2-01.3 | `rk_phys_bc_dry_1`, `set_phys_bc_dry_2` call sites: islands collapse once all their callees are ported | — | CLOUD | S |
 
 Notes: the open, periodic and symmetric branches are reached by S-3M (open). Port the open branch, or keep a stop
@@ -48,7 +48,7 @@ Work package P2-A1 · Depends S2-01, S2-02
 |---|---|---|---|
 | S2-03.1c / .1g | `calc_ww_cp` | K-PREP-5a, K-PREP-5b (Template C; range guard `its..ite` vs `its..itf`) | M / S |
 | S2-03.2c / .2g | `calc_cq` | K-PREP-6 (species sum in order) | S / S |
-| S2-03.3 | **G2.A**: `T-TRACE-100` (W-100) with every route of S2-01 … S2-03 on | — | WS-A100, S |
+| S2-03.3 | **G2.A**: `T-TRACE-100` (W-100) with every route of S2-01 … S2-03 on | — | GPU-M, S |
 
 ## S2-04 · Tendency zeroing, WW_SPLIT, rhs_ph
 
@@ -69,7 +69,7 @@ Work package P2-B1 · plan.md §7.2 · Depends G1
 |---|---|---|---|
 | S2-05.1c / .1g | `advect_u`: review run-1 code; flux functions as module routines (F-STMTFN result of S0-05.5 decides whether they stay) | K-ADVU-Y1, -Y2, -X, -Z | M / M |
 | S2-05.2 | Open-boundary branches (from S0-02.5) reach S-3M | — | CLOUD, S |
-| S2-05.3 | T-TMPL-B on the device with the real flux expressions | — | WS-A100, S |
+| S2-05.3 | T-TMPL-B on the device with the real flux expressions | — | GPU-M, S |
 
 ## S2-06 · advect_v (run 1)
 
@@ -114,8 +114,8 @@ Work package P2-B6 · Depends S2-04 … S2-09
 |---|---|---|---|
 | S2-10.1c / .1g | `coriolis` | K-COR-U, -V, -W | S / S |
 | S2-10.2c / .2g | `curvature` | K-CURV-1…6 in order | M / S |
-| S2-10.3 | `rk_tendency`: unused IEVA automatics removed (shared refactor; certify like S0-12) | — | CLOUD + WS-A100, S |
-| S2-10.4 | **G2.B**: `T-TRACE-100` with every route of S2-04 … S2-10 on | — | WS-A100, S |
+| S2-10.3 | `rk_tendency`: unused IEVA automatics removed (shared refactor; certify like S0-12) | — | CLOUD + GPU-M, S |
+| S2-10.4 | **G2.B**: `T-TRACE-100` with every route of S2-04 … S2-10 on | — | GPU-M, S |
 
 ## S2-11 · Tendency combination and lateral boundaries (sub-gate G2.C)
 
@@ -129,7 +129,7 @@ Work package P2-C · plan.md §7.3 · Depends G1
 | S2-11.4c / .4g | `rk_addtend_dry` | K-ADT-U/V/W/PH/T/MU | S / S |
 | S2-11.5c / .5g | `spec_bdytend` | K-SPT-YS/YE/XS/XE | S / S |
 | S2-11.6c / .6g | `spec_bdy_scalar` | K-SPS | S / S |
-| S2-11.7 | **G2.C**: `T-TRACE-100` | — | WS-A100, S |
+| S2-11.7 | **G2.C**: `T-TRACE-100` | — | GPU-M, S |
 
 ## S2-12 · Acoustic loop: prep, finish, p/rho, coefficients, sums
 
@@ -171,7 +171,7 @@ Work package P2-D3 · Depends S2-12 … S2-14
 | S2-15.1c / .1g | `spec_bdyupdate` (u, v, t, mu_2, muts, w) | K-SBU-YS/YE/XS/XE | S / S |
 | S2-15.2c / .2g | `spec_bdyupdate_ph` (`mu_old` private scalar) | K-SBUPH-* | S / S |
 | S2-15.3c / .3g | `zero_grad_bdy` (d01 `w`) | K-ZGB-* | S / S |
-| S2-15.4 | **G2.D**: `T-TRACE-100`; launch count per d02 step recorded (plan-profiler PR-L1.4) | — | WS-A100, S |
+| S2-15.4 | **G2.D**: `T-TRACE-100`; launch count per d02 step recorded (plan-profiler PR-L1.4) | — | GPU-M, S |
 
 ## S2-16 · advect_scalar_pd (run 1)
 
@@ -194,7 +194,7 @@ Work package P2-E2 · Depends S2-16
 | S2-17.2c / .2g | `rk_update_scalar` | K-UPD-1…3 | S / S |
 | S2-17.3c / .3g | `flow_dep_bdy` | K-FDB-YS/YE/XS/XE | S / S |
 | S2-17.4c / .4g | `bound_tke` | K-BTKE | S / S |
-| S2-17.5 | **G2.E**: `T-TRACE-100` (contains RK stage 3 of both domains) | — | WS-A100, S |
+| S2-17.5 | **G2.E**: `T-TRACE-100` (contains RK stage 3 of both domains) | — | GPU-M, S |
 
 ## S2-18 · End of step (sub-gate G2.F)
 
@@ -206,7 +206,7 @@ Work package P2-F · plan.md §7.6 · Depends G1
 | S2-18.2c / .2g | `spec_bdy_final` | K-SBF-* | S / S |
 | S2-18.3c / .3g | `set_w_surface` | K-SWS | S / S |
 | S2-18.4c / .4g | `update_phys_fields` (no `grid%` in the kernel) | K-UPF | S / S |
-| S2-18.5 | **G2.F**: `T-TRACE-100` | — | WS-A100, S |
+| S2-18.5 | **G2.F**: `T-TRACE-100` | — | GPU-M, S |
 
 ## S2-19 · Diffusion metrics and deformation (run 1)
 
@@ -256,17 +256,17 @@ Work package P2-G3 · Depends S2-19 … S2-21
 | S2-22.1c / .1g | `horizontal_diffusion_2` (caller) | — | S / S |
 | S2-22.2c / .2g | `horizontal_diffusion_u_2`, `_v_2`, `_w_2` | K-HDU-1…3, K-HDV-1…3, K-HDW-1…3 | M / S |
 | S2-22.3c / .3g | `horizontal_diffusion_s` | K-HDS-1…11 | M / S |
-| S2-22.4 | **G2.G**: `T-TRACE-100` and `T-TRACE-TKE` (W-TKE, 1,000 d02 steps incl. `nba_mij`) | — | WS-A100, M |
+| S2-22.4 | **G2.G**: `T-TRACE-100` and `T-TRACE-TKE` (W-TKE, 1,000 d02 steps incl. `nba_mij`) | — | GPU-M, M |
 
 ## S2-23 · Stage closure (G2)
 
 | Task | What | Machine | Size | Done when |
 |---|---|---|---|---|
-| S2-23.1 | All Stage 2 routes on: W-20 and W-100 on GPU 0 and GPU 1 | WS-A100 | S | bitwise |
-| S2-23.2 | T-NSYS on W-20: only physics/fire bracket copies and sync points remain | WS-A100 | S | `t_nsys.sh` PASS |
-| S2-23.3 | T-DRIFT: CPU-REF at this commit vs the dev reference, 1 h, on the host cores | WS-A100 | S | bitwise |
-| S2-23.4 | First dynamics profile on A100: kernel table, launches per step, bandwidth per kernel (plan-profiler PR-R1) | WS-A100 | M | `perf/reports/S2-dynamics-a100.md` |
+| S2-23.1 | All Stage 2 routes on: W-20 and W-100 on GPU 0 and GPU 1 | GPU-M | S | bitwise |
+| S2-23.2 | T-NSYS on W-20: only physics/fire bracket copies and sync points remain | GPU-M | S | `t_nsys.sh` PASS |
+| S2-23.3 | T-DRIFT: CPU-REF at this commit vs the dev reference, 1 h, on the host cores | GPU-M | S | bitwise |
+| S2-23.4 | First dynamics profile on A100: kernel table, launches per step, bandwidth per kernel (plan-profiler PR-R1) | GPU-M | M | `perf/reports/S2-dynamics-a100.md` |
 | S2-23.5 | Book: dynamics chapters get their "port" sections ([plan-book.md](../plan-book.md)) | CLOUD | M | CI builds the PDF |
-| S2-23.6 | First CPU/GPU comparison of the dynamics: the same W-100 on the host (CPU-REF at the best rank count, CPU-PROD) and on one A100, per dynamics range (`cpu_gpu_compare.py`, plan-profiler PR-C3); measured vs bandwidth-predicted speedup | WS-A100 | M | `perf/reports/cpu-vs-gpu-eaton_small-<sha>.md` |
+| S2-23.6 | First CPU/GPU comparison of the dynamics: the same W-100 on the host (CPU-REF at the best rank count, CPU-PROD) and on one A100, per dynamics range (`cpu_gpu_compare.py`, plan-profiler PR-C3); measured vs bandwidth-predicted speedup | GPU-M | M | `perf/reports/cpu-vs-gpu-eaton_small-<sha>.md` |
 
 **Stage gate G2:** `bash port/gates/g2.sh` PASS, plus S2-23.

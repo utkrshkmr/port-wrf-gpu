@@ -1,7 +1,7 @@
 \chapter{Several GPUs}\label{ch:mgpu}
 
-The port runs one domain on one GPU. Two reasons call for more: the full case does not fit a 40~GB GPU, which is what
-the project's workstation has (two A100 40~GB), and larger fires need larger domains. WRF already runs on many CPUs
+The port runs one domain on one GPU. Two reasons call for more: the full case does not fit a 40~GB GPU, which is what one of
+the project's machines has (two A100 40~GB), and larger fires need larger domains. WRF already runs on many CPUs
 by splitting each domain into patches, one per MPI rank, and exchanging halos (\cref{ch:cpupar}). The multi-GPU port
 keeps that design and moves the exchanges onto the GPUs. It is Stage~8 of the plan (phases S8-01 to S8-05).
 
