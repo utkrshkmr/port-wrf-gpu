@@ -20,6 +20,8 @@ This tool parses that directory, derives the capabilities from the numbers
   machine.py show [machine.json]                  print the profile of a record
   machine.py get KEY [machine.json]               one value (dotted key) for shell scripts
   machine.py diff OLD.json NEW.json               what changed: same | gpu | host | gpu+host
+  machine.py fits NAMELIST [machine.json] [--rrtmg-batch N]
+                                                  exit 0 if the case fits one GPU's G-MEM gate here, 1 if not
   machine.py capabilities [--samples DIR] [--out capabilities.md]
                                                   the capabilities table of the recorded profiles
 
@@ -429,6 +431,7 @@ def main(argv):
     p = sub.add_parser("show"); p.add_argument("json", nargs="?", default=os.path.join(os.environ.get("WORK", "."), "machine.json"))
     p = sub.add_parser("get"); p.add_argument("key"); p.add_argument("json", nargs="?", default=os.path.join(os.environ.get("WORK", "."), "machine.json"))
     p = sub.add_parser("diff"); p.add_argument("old"); p.add_argument("new")
+    p = sub.add_parser("fits"); p.add_argument("namelist"); p.add_argument("json", nargs="?", default=os.path.join(os.environ.get("WORK", "."), "machine.json")); p.add_argument("--rrtmg-batch", type=int, default=int(os.environ.get("WRF_RRTMG_BATCH", "4096")))
     p = sub.add_parser("capabilities"); p.add_argument("--samples", default=os.path.join(REPO, "port", "machines", "samples")); p.add_argument("--out")
     a = ap.parse_args(argv)
     if a.cmd == "detect":
@@ -452,6 +455,14 @@ def main(argv):
     if a.cmd == "diff":
         print(diff(json.load(open(a.old)), json.load(open(a.new))))
         return 0
+    if a.cmd == "fits":
+        rec = json.load(open(a.json))
+        c = rec["capabilities"]
+        gb = estimate_gb(open(a.namelist).read(), c["gpu_memory_gb"], c["resident_threads"], a.rrtmg_batch)
+        ok = gb <= c["gmem_limit_gb"]
+        print(f"{a.namelist}: estimate {gb:.2f} GB (RRTMG {a.rrtmg_batch}) vs G-MEM {c['gmem_limit_gb']} GB "
+              f"of {rec['profile']}: {'fits' if ok else 'does NOT fit one GPU'}")
+        return 0 if ok else 1
     if a.cmd == "capabilities":
         md = capabilities_md(a.samples)
         if a.out:

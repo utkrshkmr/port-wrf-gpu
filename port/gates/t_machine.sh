@@ -22,7 +22,7 @@
 # after those phases runs them (machine.sh check asks for it when the record has
 # pending items and the toolchain has appeared).
 set -uo pipefail
-source "$(dirname "$0")/lib.sh"
+GATE_NO_MACHINE=1 source "$(dirname "$0")/lib.sh"
 M=$H100/machine.sh
 MJSON=$WORK/machine.json
 MDIR=$WORK/machine
@@ -59,9 +59,21 @@ if [ -f "$devok" ]; then step T-MACHINE-b PASS "device tests already passed for 
 elif [ -z "$fc" ]; then step T-MACHINE-b PASS "pending S0-05/S0-06: no compiler to build the device tests yet"; pending+=(S0-05 S0-06)
 else
   ok=1; detail=""
+  # T-FMA, T-IEEE, T-IPOW, T-RM-* (quick sizes) on every GPU of the machine; T-FMA first
+  rm_dir=$PORT_REPO/port/tests/repro_math
+  if (cd "$rm_dir" && x make -s > "$GATE_DIR/machine_repro_math_build.log" 2>&1); then
+    for g in $(seq 0 $(( $(mpy get capabilities.parallel_gpu_runs "$MJSON") - 1 ))); do
+      gd=$GATE_DIR/repro_math_gpu$g; mkdir -p "$gd"
+      cp "$rm_dir"/t_fma "$rm_dir"/t_ieee "$rm_dir"/t_ipow "$rm_dir"/t_rm_exh "$rm_dir"/t_rm_pow "$rm_dir"/t_rm_d \
+         "$rm_dir"/fma_cases.bin "$rm_dir"/run_tests.sh "$gd"/
+      if (cd "$gd" && CUDA_VISIBLE_DEVICES=$g ACC_DEVICE_TYPE=nvidia OMP_NUM_THREADS=$(( $(nproc) / 4 )) \
+            x bash ./run_tests.sh quick > run.log 2>&1); then detail="$detail repro_math GPU $g PASS;"
+      else ok=0; detail="$detail repro_math GPU $g FAIL ($gd/run.log);"; fi
+    done
+  else ok=0; detail="repro_math build FAIL;"; fi
   if [ -x "$PORT_REPO/port/tests/run_ref_tests.sh" ] || [ -f "$PORT_REPO/port/tests/run_ref_tests.sh" ]; then
-    TC="bash $H100/x.sh" bash "$PORT_REPO/port/tests/run_ref_tests.sh" nvhpc > "$GATE_DIR/machine_ref_tests.log" 2>&1 || ok=0
-    detail="ref tests $([ $ok = 1 ] && echo PASS || echo FAIL)"
+    rr=PASS; TC="bash $H100/x.sh" bash "$PORT_REPO/port/tests/run_ref_tests.sh" nvhpc > "$GATE_DIR/machine_ref_tests.log" 2>&1 || { ok=0; rr=FAIL; }
+    detail="$detail ref tests $rr"
   fi
   if [ -f "$PORT_REPO/port/tests/acc_features/run.sh" ]; then
     bash "$PORT_REPO/port/tests/acc_features/run.sh" > "$GATE_DIR/machine_acc_features.log" 2>&1 || ok=0

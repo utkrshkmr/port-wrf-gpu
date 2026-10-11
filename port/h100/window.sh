@@ -113,9 +113,22 @@ fi
 export WRF_BITTRACE=$trace
 for e in "${envs[@]:-}"; do [ -n "$e" ] && export "$e"; done
 if [ $gpu = 1 ]; then
+  # the detected machine decides (S0-00.3): the case must fit one GPU's G-MEM gate,
+  # and GPU_ID=auto takes the first GPU without a running compute process
+  if [ -f "$WORK/machine.json" ]; then
+    python3 "$HERE_H100/machine.py" fits namelist.input >&2 \
+      || die "$W: the case does not fit one GPU of this machine ($(machine_line)); see port/machines/capabilities.md"
+  else note "machine not detected (bash port/h100/machine.sh detect): no memory check"; fi
+  if [ "$GPU_ID" = auto ]; then
+    busy=$(nvidia-smi --query-compute-apps=gpu_uuid --format=csv,noheader 2>/dev/null | sort -u)
+    GPU_ID=$(nvidia-smi --query-gpu=index,uuid --format=csv,noheader | while IFS=', ' read -r i u; do
+      echo "$busy" | grep -q "$u" || { echo "$i"; break; }; done)
+    [ -n "$GPU_ID" ] || die "GPU_ID=auto: every GPU is busy"
+    note "$W: GPU_ID=auto -> GPU $GPU_ID"
+  fi
   export CUDA_VISIBLE_DEVICES=$GPU_ID ACC_DEVICE_TYPE=nvidia
 fi
-{ echo "$settings"; echo "host $(hostname) start $(date -u +%FT%TZ)"; env | grep -E '^(WRF_|OMP_|CUDA_VISIBLE|NV_)' | sort; } > window.info
+{ echo "$settings"; echo "host $(hostname) start $(date -u +%FT%TZ)"; echo "machine $(machine_line) gpu ${GPU_ID:-}"; env | grep -E '^(WRF_|OMP_|CUDA_VISIBLE|NV_)' | sort; } > window.info
 mpiflags=${MPIRUN_FLAGS:-}
 lim=${RUN_TIMEOUT:-$(( 20 * dur > 3600 ? 20 * dur : 3600 ))}
 tmo=(timeout --kill-after=60 "$lim")

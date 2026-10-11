@@ -23,7 +23,7 @@
 #   wp           work packages of the code-only run: nothing owned twice, every route and open kernel
 #                row assigned, ownership.json and the generated includes up to date (gen_wp.py --check)
 set -uo pipefail
-source "$(dirname "$0")/lib.sh"
+GATE_NO_MACHINE=1 source "$(dirname "$0")/lib.sh"
 base=$(cpu_view_base)
 cd "$PORT_REPO"
 if [ $# -gt 0 ]; then files=("$@"); else

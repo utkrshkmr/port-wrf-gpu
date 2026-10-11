@@ -4,7 +4,6 @@ if [ -f "$HERE_H100/env.local.sh" ]; then source "$HERE_H100/env.local.sh"; else
 PORT_TOOLS=$PORT_REPO/port
 TABLES="LANDUSE.TBL VEGPARM.TBL SOILPARM.TBL GENPARM.TBL RRTMG_LW_DATA ozone.formatted ozone_lat.formatted ozone_plev.formatted"
 DEV_CASE=$WORK/cases/eaton_small
-DEV_REF=$WORK/reference/eaton_small
 export LC_ALL=C OMP_NUM_THREADS=1 WRFIO_NCD_LARGE_FILE_SUPPORT=1
 # the port's Python tools run on the host; use the user environment if there is one
 [ -x "${PYENV:-/nonexistent}/bin/python3" ] && export PATH=$PYENV/bin:$PATH
@@ -15,6 +14,12 @@ machine_get() { python3 "$HERE_H100/machine.py" get "$1" "$WORK/machine.json" 2>
 machine_line() { local id; id=$(machine_get machine_id) && echo "$id $(machine_get profile)" || echo "undetected"; }
 [ -n "${BUILD_JOBS:-}" ] || BUILD_JOBS=$(machine_get capabilities.build_jobs || echo 16)
 export BUILD_JOBS
+# Reference archives are keyed by host (S0-00.6): CPU-REF references of a case in
+# $WORK/reference/<case>/<host key>/, GPU traces in $WORK/reference/gpu/<commit>/<gpu model>/.
+# An archive of another host is used only after T-XM (port/gates/t_machine.sh) proved it here.
+REF_HOST_KEY=$(machine_get host.key || echo unkeyed)
+DEV_REF=${DEV_REF:-$WORK/reference/eaton_small/$REF_HOST_KEY}
+gpu_trace_dir() { echo "$WORK/reference/gpu/${1:?commit}/$(machine_get gpu_key || echo unknown-gpu)"; }
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 note() { echo "--- $*" >&2; }

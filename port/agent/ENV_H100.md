@@ -100,8 +100,13 @@ $WORK/deps/pyenv                          Python for the tools (host), if the sy
 $WORK/builds/<mode>/<sha12>               clean builds of commits      (build.sh <mode> --commit REV)
 $WORK/builds/<mode>/worktree              incremental working-tree builds (build.sh <mode> --worktree)
 $WORK/cases/eaton_small                   the dev case (dev_case.sh make)
-$WORK/reference/eaton_small/run0220       CPU-REF 00:00 -> 02:20, restarts at 02:00 and 02:20
-$WORK/reference/eaton_small/win1h         CPU-REF 02:00 -> 03:00 (T-DRIFT reference)
+$WORK/machine.json                        the detected machine (machine.sh detect); $WORK/machine/ raw outputs,
+                                          protocol.json (t_machine.sh), devtests/<gpu model>-<driver>.ok
+$WORK/reference/eaton_small/<host key>/run0220   CPU-REF 00:00 -> 02:20, restarts at 02:00 and 02:20
+$WORK/reference/eaton_small/<host key>/win1h     CPU-REF 02:00 -> 03:00 (T-DRIFT reference)
+$WORK/reference/<case>/<host key>/        every CPU-REF reference, keyed by the host it was made on (S0-00.6;
+                                          host key = machine.sh get host.key; $DEV_REF in common.sh)
+$WORK/reference/gpu/<commit>/<gpu model>/ archived GPU-REPRO traces for T-XG (gpu_trace_dir in common.sh)
 $WORK/runs/<mode>-<md5>/<window>[-<env>]  window runs (window.sh), reused while the binary is the same
 $WORK/gates/<sha12>[-dirty]/              gate logs and results.txt
 ```

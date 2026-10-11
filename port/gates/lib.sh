@@ -9,9 +9,16 @@ head_id() {
 GATE_DIR=${GATE_DIR:-$WORK/gates/$(head_id)}
 mkdir -p "$GATE_DIR"
 GATE_FAIL=0
-# result <name> <PASS|FAIL|SKIP> <detail>
+# The machine (S0-00.5): on a GPU machine every gate needs the machine detected
+# and its change protocol passed (port/h100/machine.sh check).  static.sh and
+# t_machine.sh set GATE_NO_MACHINE=1 (static runs anywhere; t_machine is the protocol).
+GATE_MACHINE=$(machine_line)
+if [ -z "${GATE_NO_MACHINE:-}" ] && command -v nvidia-smi >/dev/null && nvidia-smi -L >/dev/null 2>&1; then
+  bash "$H100/machine.sh" check || { echo "== $(basename "$0" .sh): REFUSED: this GPU machine has no passed machine-change protocol" >&2; exit 2; }
+fi
+# result <name> <PASS|FAIL|SKIP> <detail>   (every line carries the machine id and profile)
 result() {
-  printf '%-5s %-28s %s\n' "$2" "$1" "$3" | tee -a "$GATE_DIR/results.txt"
+  printf '%-5s %-28s %s  [%s]\n' "$2" "$1" "$3" "$GATE_MACHINE" | tee -a "$GATE_DIR/results.txt"
   [ "$2" = FAIL ] && GATE_FAIL=1
   return 0
 }
