@@ -25,7 +25,7 @@ never from the profile name, so a machine that is not listed gets its column fro
 | BUILD_JOBS | host cores, at most RAM/4 GB | 56 | 32 | 112 |
 
 Notes:
-- Memory estimates: `port/gpu_mem_estimate.py` with resident threads = SMs × 2048 of the GPU model. `eaton_small` is the full case with d02 181×181 until S0-09.1 writes `cases/eaton_small/`; it must also stay within 25 GB on every profile.
+- Memory estimates: `port/gpu_mem_estimate.py` with resident threads = SMs × 2048 of the GPU model. `eaton_small` from `cases/eaton_small/namelist.input`; it must also stay within 25 GB on every profile.
 - `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits the gate of one 40 GB GPU. Estimated d02: 550×550. S0-09.5 decides and writes `cases/eaton_mid/`.
 - A GPU below compute capability 8.0 stops every script (sample `v100-16x1`).
 

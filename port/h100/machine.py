@@ -411,8 +411,10 @@ def capabilities_md(samples):
         "",
         "Notes:",
         f"- Memory estimates: `port/gpu_mem_estimate.py` with resident threads = SMs × 2048 of the GPU model. "
-        f"`eaton_small` is the full case with d02 {DEV_D02}×{DEV_D02} until S0-09.1 writes `cases/eaton_small/`; "
-        f"it must also stay within {DEV_GMEM_GB} GB on every profile.",
+        + ("`eaton_small` from `cases/eaton_small/namelist.input`; "
+           if os.path.exists(os.path.join(REPO, "cases", "eaton_small", "namelist.input")) else
+           f"`eaton_small` is the full case with d02 {DEV_D02}×{DEV_D02} until S0-09.1 writes `cases/eaton_small/`; ")
+        + f"it must also stay within {DEV_GMEM_GB} GB on every profile.",
         f"- `eaton_mid` is sized by the same tool: the largest d02 (n = 9k + 1) of the full case whose estimate fits "
         f"the gate of one 40 GB GPU. Estimated d02: {', '.join(f'{m}×{m}' for m in sorted(mids)) or 'from its namelist'}."
         " S0-09.5 decides and writes `cases/eaton_mid/`.",
