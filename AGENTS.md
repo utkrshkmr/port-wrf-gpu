@@ -97,6 +97,12 @@ section a task needs.
    - At about 60% of your context, and after every task, checkpoint: `static.sh`, commit (WIP is fine), a
      "Current state" with an exact next step, push. Then continue in a fresh session (WORKFLOW.md §11).
 
+12. **Keep the fix ledger.** Every fix that changes, or could change, what the code computes, how it is built or how a
+   test judges it (a compiler workaround, a rewrite of arithmetic, a flag, a test change) gets an entry in
+   [port/agent/FIX_LEDGER.md](port/agent/FIX_LEDGER.md): what failed, the root cause, the exact change (commits,
+   diff or reproducing command), the effect on numbers, the evidence, and what to check if numbers do not match.
+   Commit the entry with the fix.
+
 ## The shortest possible summary of the loop
 
 ```sh

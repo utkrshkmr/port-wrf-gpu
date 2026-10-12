@@ -121,6 +121,14 @@ if [ ! -f configure.wrf ]; then
   fi
 fi
 
+# NVHPC 25.9, 26.1, 26.5: fort2 crashes (signal 11) on frame/module_bittrace.f90 at -O2, and every file that
+# USEs its half-written module then crashes too (22 files; BLOCKERS B4, port/agent/FIX_LEDGER.md F-08).  The
+# bit-tracer does integer hashing only (exact at any level), so it alone is compiled at -O1, in every nvfortran
+# build alike.  Idempotent: also applied to existing build trees.
+if [[ $mode != gnu* ]] && ! grep -q '^module_bittrace.o : FCOPTIM' configure.wrf; then
+  printf 'module_bittrace.o : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' >> configure.wrf
+fi
+
 rm -f main/wrf.exe
 stamp=$(date +%s)
 note "compiling $mode in $out (log: compile.log)"
