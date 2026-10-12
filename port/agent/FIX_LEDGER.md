@@ -142,7 +142,7 @@ branch `agent/s0-00`.
   `port/gates/t_machine.sh` (device-test key `<gpu>-<driver>-nvfortran<version>`).
 - **Effect on numbers:** none; references and device tests are now tied to the compiler that made them.
 
-## F-08 2026-10-11 fort2 crash at -O2 on module_bittrace.f90 (NVHPC 25.9, 26.1, 26.5) → that file at -O1   [testing]
+## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 11 files; module_bittrace at -O1   [decision open]
 
 - **What failed:** the CPU-REF build with 26.5, 25.9 and 26.1: `fort2 TERMINATED by signal 11` on 22 files.
 - **Root cause (found 2026-10-11):** only the first crash is real: `frame/module_bittrace.f90` (the port's
@@ -162,5 +162,30 @@ branch `agent/s0-00`.
 - **Effect on numbers:** none on the model: module_bittrace computes only integer hashes of fields (exact at any
   optimization level) and is compiled the same way in CPU-REF and GPU builds. The trace hashes it writes must be
   identical with and without the override (to be checked once a build exists).
-- **Evidence:** pending: clean CPU-REF build with 26.1 and the override (`$WORK/logs/build_nv261.result`).
-- **If numbers do not match:** check the `module_bittrace.o : FCOPTIM` line in both builds' `configure.wrf`.
+- **Evidence:** with the override, `module_bittrace.o` compiles with 26.1, but the clean build still has 20
+  crashes and an incremental resume 21: module_bittrace was not the only real crash.
+- **Classification (2026-10-11, NVHPC 26.1, `$WORK/logs/classify_crashes.sh` → `classify_crashes.txt`):** every
+  file that crashed in the build, recompiled alone with its exact logged command after the build, at -O2 and -O1:
+
+  | File | Alone at -O2 | Alone at -O1 | In wrf.exe model arithmetic? |
+  |---|---|---|---|
+  | frame/module_bittrace.f90 | crash | ok | no (integer trace hashes) |
+  | frame/module_dm.f90 | crash | ok | no (MPI halo/communication layer; moves data) |
+  | frame/module_cpl.f90 | crash | ok | no (coupler stubs) |
+  | share/mediation_integrate.f90 | crash | ok | no (I/O and driver mediation) |
+  | share/module_optional_input.f90 | crash | ok | no (input) |
+  | share/wrf_timeseries.f90 | crash | ok | no (time-series diagnostics output) |
+  | main/module_wrf_top.f90 | crash | ok | no (top-level driver) |
+  | dyn_em/nest_init_utils.f90 | crash | ok | **yes** (nest initialization; in rp_subst_files.txt) |
+  | dyn_em/module_initialize_real.f90 | crash | ok | no (real.exe only) |
+  | main/real_em.f90 | crash | ok | no (real.exe only) |
+  | main/tc_em.f90 | crash | ok | no (tc.exe only) |
+  | share/module_trajectory.f90, share/start_domain.f90, phys/module_fr_fire_model.f90, dyn_em/adapt_timestep_em.f90 | ok | ok | crashed only during the build (side effects of the parallel build) |
+
+  Not the cause: the MPI headers (module_cpl crashes with 26.1 against HPC-X 2.20's mpif.h of 25.1 too), make
+  parallelism (crashes are reproducible alone), `-Mrecursive`/`-Mvect=noassoc`/`-Kieee`/`-tp=haswell`.
+- **Open decision (owner):** NVHPC 25.1 (builds everything at -O2; device miscompile of T-RM-POW's dispatcher, F-05)
+  or 26.1 with these 11 files at -O1. -O1 vs -O2 under `-Kieee -Mnofma -Mvect=noassoc` should give the same IEEE
+  results but is not guaranteed; for nest_init_utils it must be shown bitwise (CPU-REF with and without the file at
+  -O1, same compiler, on a case that initializes the nest).
+- **If numbers do not match:** check the per-file `FCOPTIM` lines in both builds' `configure.wrf`.
