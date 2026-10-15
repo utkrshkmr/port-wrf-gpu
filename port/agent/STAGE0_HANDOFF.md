@@ -124,6 +124,9 @@ The 11 files are listed in FIX_LEDGER F-08. Only `dyn_em/nest_init_utils.F` cont
 
 ### Step 1a — implement a per-file `-O1` list in build.sh
 
+**Done** (commit e8ce9a0, 2026-10-15; `test_agent_tools.py` PASS incl. 4 `--apply-o1` self-tests, re-checked by
+the owner's session). Next: step 1b.
+
 Today `port/h100/build.sh` appends one hard-coded line for `module_bittrace.o`. Replace it by a list:
 
 - New file `port/h100/o1_files.txt` (infrastructure): one object name per line with a comment why, e.g.

@@ -13,6 +13,9 @@
 **Stage 0 is in progress on the A100 workstation: read [port/agent/STAGE0_HANDOFF.md](port/agent/STAGE0_HANDOFF.md)
 first.** It gives the status of every Stage 0 task, the environment, the hazards of the machine, and the exact next
 steps (first: the compiler decision of FIX_LEDGER F-08).
+Agents in Antigravity or Gemini CLI: workspace rules in `.agent/rules/wrf-gpu-port.md` (same text: `GEMINI.md`),
+commands in `.agent/workflows/` (`/s0-run`, `/s0-resume`, `/s0-task`, `/s0-compiler`, `/s0-checkpoint`), owner's IDE
+settings in `.agent/SETUP.md`. There the agent runs commands and edits files on its own; only `git` waits for the owner.
 
 **Where the work lives.** On the owner's A100 workstation (profile `a100-40x2`: 2 × A100 40 GB, 2 × 28-core Xeon
 Gold 6330) this repository is checked out at **`/home/csgrad/utkarshk/port-wrf-gpu`** (Stage 0 started there,

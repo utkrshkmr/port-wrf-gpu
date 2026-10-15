@@ -271,4 +271,14 @@ How to update, after every task (and at the end of every work session, even if t
 - `test_agent_tools.py` self-test added (11 lines appended, idempotence, `O1_LIST=none`, custom list and `.o` cleanup: PASS);
   `protected.md5` updated for test_agent_tools.py.
 
-
+### 2026-10-15 S0 Agent setup for Antigravity / Gemini CLI; step 1a checked
+- `.agent/rules/wrf-gpu-port.md` and `GEMINI.md`: rule 9 (each `git` command on its own line starting with `git`,
+  so the IDE deny list routes it to the owner; no force-push/reset/clean/rebase) and rule 10 (autonomy: run commands
+  and edit files without asking or waiting for plan approval; only git commands and the owner decisions of rule 8
+  wait). Commits 960c23b, 818fc65, 0b1bca4.
+- `.agent/workflows/`: `/s0-run` new (task after task until an owner decision, a blocker or G0); `/s0-task`,
+  `/s0-resume`, `/s0-compiler` no longer wait for approval; git steps unchained.
+- `.agent/SETUP.md`: owner's IDE settings (Turbo execution, deny list `git`, review policy always proceed,
+  gitignored and non-workspace file access on). AGENTS.md points to `.agent/` (owner-directed; protected.md5).
+- Step 1a (e8ce9a0, by the Antigravity agent) re-checked: `test_agent_tools.py` RESULT: PASS; `--apply-o1` on a
+  scratch configure.wrf gives 11 lines, `O1_LIST=none` gives 0. STAGE0_HANDOFF §3 marks 1a done.
