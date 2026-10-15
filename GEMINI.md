@@ -24,3 +24,8 @@ You are the coding agent of this repository. Everything you need is in the repos
    attempts, write `port/agent/BLOCKERS.md` and move to the next independent task. Never loosen a comparison.
 8. **Ask the owner** only for the decisions the handoff marks as the owner's (compiler pin if step 1b fails, run
    lengths of S0-10, small fire inputs for T1). Everything else is decided by the documents.
+9. **Git commands go to the owner for approval.** The IDE auto-runs every command except those starting with
+   `git`. So run each git command as its own command line that starts with `git`: never chained (`&&`, `;`, `|`),
+   never after `cd`, never inside a script or `bash -c`. Use `git -C <dir>` instead of `cd`. Never `push --force`,
+   `reset --hard`, `clean`, `checkout -- .`, `rebase`, or branch deletion. Read-only git calls inside the repo's
+   own scripts (`git rev-parse`, `git diff`, `git merge-base`) are fine.

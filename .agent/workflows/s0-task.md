@@ -16,7 +16,7 @@ Task: the one named by the user, or the "Next step" of `port/agent/WORKBOOK.md`.
    step" exact) and a log entry `### YYYY-MM-DD <task id> <title>`.
 6. If a locked file was changed (owner-directed): regenerate `port/agent/protected.md5` with
    `python3 -c "import sys; sys.path.insert(0,'port/tools'); import protect as p; l,i=p.files(); p.write(p.OUT,l)"`.
-7. `bash port/gates/static.sh` → must end with `== static: PASS`. Then `git add -A`, commit with a message that
-   names the task id and the tests that passed, and `git push origin agent/s0-00`. Confirm `git status -sb` shows
+7. `bash port/gates/static.sh` → must end with `== static: PASS`. Then, as separate commands (rule 9),
+   `git add -A`, `git commit -m "<task id>: <tests that passed>"`, `git push origin agent/s0-00`. Confirm `git status -sb` shows
    the branch in sync with origin.
 8. Write a walkthrough: what changed, the test lines, what the next task is.
