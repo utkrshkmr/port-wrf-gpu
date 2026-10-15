@@ -1,7 +1,8 @@
 ---
 description: The compiler decision (STAGE0_HANDOFF.md section 3, FIX_LEDGER F-08): steps 1a, 1b, 1c
 ---
-Follow `port/agent/STAGE0_HANDOFF.md` §3 literally, one step per plan/approval cycle:
+Follow `port/agent/STAGE0_HANDOFF.md` §3 literally, one step per commit, without waiting for approval between
+steps (rule 10). Step 1a is done (commit e8ce9a0); start at the first step not recorded as done in WORKBOOK.md:
 1. **1a** – the per-file `-O1` list (`port/h100/o1_files.txt`, `build.sh`, `check_build_flags.py` if needed, the
    self-test, TOOL_FIXES row, FIX_LEDGER F-08 "exact change"). Test: `python3 port/tests/tools/test_agent_tools.py`
    and `bash port/gates/static.sh`. Commit, push.
