@@ -15,20 +15,22 @@ How to update, after every task (and at the end of every work session, even if t
 ## Current state
 
 - Run mode: Stage 0 of roadmap/plan-4.6 on the A100 workstation (checkout /home/csgrad/utkarshk/port-wrf-gpu,
-  branch agent/s0-00). The code-only run 1 branches (agent/wp/*) wait for S0-01/S0-02.
-- Phase: S0-00 (detect the machine; roadmap/plan-4.6/stage-0-ground-truth.md)
-- Current task: S0-00.3 (window.sh and gates read the profile), then S0-00.5, S0-00.6
-- Last commit: see `git log agent/s0-00`
-- Last gate passed: t_machine (first machine: records only; S0-04/05/06 pending)
-- Builds: none yet (no NVHPC, BLOCKERS B2)
-- Dev references: not made yet ($WORK/reference/eaton_small)
-- Blockers: B1 storage for $WORK (/home 100 % full); B2 no container runtime / NVHPC without root
-- Case data: Eaton inputs not on the machine yet
-- Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07, CUDA 13.2;
-  2 x 28-core Xeon Gold 6330, 503 GB; G-MEM 34 GB; eaton_small 24.2 GB, eaton_mid ~550x550 33.9 GB with RRTMG 2048,
-  full case needs multi-GPU)
-- Next step: owner resolves B1 and B2; meanwhile S0-00.3/.5/.6 (window.sh GPU choice and fit check, gate machine
-  check, archive layout) and S0-01 (CLOUD tasks run here with gfortran)
+  branch agent/s0-00). **Status of every task and the next steps: port/agent/STAGE0_HANDOFF.md.**
+- Phase: S0 (several phases open; see the handoff §2)
+- Current task: compiler decision (STAGE0_HANDOFF.md §3, FIX_LEDGER F-08): per-file -O1 list in build.sh, then the
+  bitwise check of nest_init_utils at -O1 with NVHPC 25.1, then pin 26.1 if identical
+- Last commit: see `git log origin/agent/s0-00`
+- Last gate passed: static.sh; S0-04 gate (gpu_hello); S0-05 probes; t_machine last FAILED (B3, fixed; rerun after
+  the pin)
+- Builds: CPU-REF 25.1 of the base commit `$WORK/builds/cpu-ref/1da67693e368` (RAM disk; wrf.exe md5
+  278297669019e185c0e6eb8902a8eb69); gnu-ref in `$WORK/builds-home/gnu-ref/worktree`
+- Dev references: not made yet (they wait for the compiler pin and a persistent disk)
+- Blockers: B1–B4 resolved; open owner decisions: the compiler (F-08), a persistent disk for references while /home
+  is degraded
+- Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid made
+- Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07; 2 x 28-core Xeon
+  Gold 6330, 503 GB; G-MEM 34 GB); /home RAID10 degraded, builds on the RAM disk /dev/shm/utkarshk-wrf
+- Next step: STAGE0_HANDOFF.md §3 step 1a (o1_files.txt and build.sh)
 
 ## Task checklist
 
@@ -252,4 +254,12 @@ How to update, after every task (and at the end of every work session, even if t
 - Owner-directed edits of locked files: AGENTS.md and ENV_H100.md name the checkout path; t_machine.sh new;
   protected.md5 regenerated for them.
 - Blockers B1 (storage), B2 (container/NVHPC).
+
+### 2026-10-15 S0 Handoff for the agent that completes Stage 0
+- port/agent/STAGE0_HANDOFF.md: environment (env.local.sh content), machine hazards (degraded /home, RAM-disk builds,
+  crash cascades), status of every S0 task with evidence, the compiler decision procedure (F-08 step 1a-1c), and the
+  ordered instructions with tests and done-criteria for the rest of Stage 0. AGENTS.md points to it.
+- Done since the last entry: B3 fix and base move (1f1f452), F-BOUND probe, NVHPC 25.1/25.9/26.1/26.5 sweep, the
+  11-file fort2 crash classification (FIX_LEDGER F-08), cases eaton_small and eaton_mid, the fix ledger, CPU-REF
+  25.1 build of the base commit.
 

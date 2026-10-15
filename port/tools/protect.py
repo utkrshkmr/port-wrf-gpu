@@ -34,7 +34,7 @@ INCLUDE = ["port/tests/*", "port/tools/*", "port/gates/*", "port/h100/*", "port/
            "AREAS.md", "areas.json", "book/AGENTS.md", "roadmap/AGENTS.md", "perf/AGENTS.md", "docs/AGENTS.md",
            "roadmap/TASK_PROTOCOL.md", "roadmap/tools/backlog.py"]
 EXCLUDE = ["port/h100/env.sh", "port/agent/WORKBOOK.md", "port/agent/BLOCKERS.md", "port/agent/REFACTORS.md",
-           "port/agent/FIX_LEDGER.md",
+           "port/agent/FIX_LEDGER.md", "port/agent/STAGE0_HANDOFF.md",
            "port/agent/KERNEL_REFS.md", "port/agent/ROUTES.md", "port/agent/TOOL_FIXES.md",
            # code-only parallel run: each work package writes its own status file
            "port/agent/wp/status/*",

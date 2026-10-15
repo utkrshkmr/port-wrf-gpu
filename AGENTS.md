@@ -10,6 +10,10 @@
 >
 > Whatever your area, change only its paths: `python3 port/tools/check_area_scope.py <area> --worktree`.
 
+**Stage 0 is in progress on the A100 workstation: read [port/agent/STAGE0_HANDOFF.md](port/agent/STAGE0_HANDOFF.md)
+first.** It gives the status of every Stage 0 task, the environment, the hazards of the machine, and the exact next
+steps (first: the compiler decision of FIX_LEDGER F-08).
+
 **Where the work lives.** On the owner's A100 workstation (profile `a100-40x2`: 2 × A100 40 GB, 2 × 28-core Xeon
 Gold 6330) this repository is checked out at **`/home/csgrad/utkarshk/port-wrf-gpu`** (Stage 0 started there,
 2026-10-10, branch `agent/s0-00`). Work there; its machine settings are in `port/h100/env.local.sh` (not in git) and

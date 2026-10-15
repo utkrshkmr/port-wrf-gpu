@@ -231,3 +231,15 @@ library symbols would also fail T-SYM (S0-07.2). Prescribed remedies (plan.md P0
 (and `rp_sign` if needed) with explicit IEEE branches substituted in the in-scope files; integer powers rewritten as
 products (including the integer-exponent specifics of `rp_pow`). BLOCKERS.md B3.
 
+### Compiler sweep (2026-10-11 … 10-15; FIX_LEDGER F-05, F-08)
+
+| NVHPC | CPU-REF build of WRF at -O2 | T-RM-POW (device) | T-IPOW, T-IEEE with rp_* | probes |
+|---|---|---|---|---|
+| 25.1 | builds; wrf.exe md5 `278297669019e185c0e6eb8902a8eb69` (base commit `1da6769`, `$WORK/builds/cpu-ref/1da67693e368`); T-SYM PASS (worktree build) | **crash** (CUDA_ERROR_ILLEGAL_ADDRESS via `eval4`) | PASS | PASS (F-BOUND known) |
+| 25.9 | fort2 crashes (22 in the build) | **crash** | PASS | PASS (F-BOUND known) |
+| 26.1 | fort2 crashes: 11 files crash alone at -O2, all compile at -O1 (classification in FIX_LEDGER F-08) | PASS | PASS | PASS (F-BOUND known) |
+| 26.5 | fort2 crashes (22 in the build) | PASS | PASS (T-IPOW of the old forms failed: B3) | PASS |
+
+All four reject `isnan` and call a host library for `x**n`; all show the signed-zero MIN/MAX difference (B3).
+Decision pending: STAGE0_HANDOFF.md §3 (bitwise check of nest_init_utils at -O1, then pin 26.1).
+

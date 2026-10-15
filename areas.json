@@ -47,7 +47,7 @@
       "entry": "AGENTS.md",
       "branch": "agent/phase-<N>",
       "who": "the port agent (AGENTS.md)",
-      "owns": ["WRF/*", "port/agent/WORKBOOK.md", "port/agent/BLOCKERS.md", "port/agent/TOOL_FIXES.md", "port/agent/FIX_LEDGER.md",
+      "owns": ["WRF/*", "port/agent/WORKBOOK.md", "port/agent/BLOCKERS.md", "port/agent/TOOL_FIXES.md", "port/agent/FIX_LEDGER.md", "port/agent/STAGE0_HANDOFF.md",
                "port/agent/REFACTORS.md", "port/agent/cpu_view_base", "port/agent/kernels.csv",
                "port/agent/KERNEL_REFS.md", "port/agent/ROUTES.md", "port/agent/infra.md5",
                "port/agent/wp/status/*", "port/agent/arith_exceptions.txt", "port/agent/arith_exceptions.d/*",
