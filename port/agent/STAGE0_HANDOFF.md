@@ -60,9 +60,10 @@ To use another NVHPC version for one command, override the three variables, e.g.
      is lost on a reboot**: builds and `deps-25.9`, `deps-26.1` must then be rebuilt (`build.sh`,
      `setup_toolchain.sh deps`; 5–10 min on the RAM disk, an hour or more on `/home`). Old on-disk builds are in
      `$WORK/builds-home`.
-   - Long reference runs (S0-08 … S0-10) write large outputs; they must go to a persistent disk. Ask the owner
-     whether the array has been repaired before starting them; if not, ask where to put `$WORK/reference` and
-     `$WORK/runs`. Never keep a reference only on the RAM disk.
+   - **Owner's decision (2026-10-15): references and runs go to `/home` anyway** (`$WORK/reference`, `$WORK/runs`;
+     nowhere else is available), accepting the risk of the degraded array. Commit the md5 list of every archived
+     reference to git (small), so a lost archive is at least known exactly. If `/home` is lost, use the segmented
+     procedure of §6 instead of regenerating full archives. Never keep a reference only on the RAM disk.
 2. **`make -j` crash cascades:** when one file crashes the compiler, files that USE its half-written module crash
    too. Always find the *first* crash in `compile.log` (`grep -B4 "signal 11" compile.log`) before concluding.
 3. Kill jobs by PID (`kill <pid>`), never with `pkill -f <pattern>`: the pattern matches your own shell.
@@ -190,7 +191,7 @@ Decision:
 ### Step 1c — pin 26.1 (only if step 1b passed)
 
 1. `env.local.sh`: `NVHPC_ROOT=$_repo/Linux_x86_64/26.1`, `DEPS=$WORK/deps-26.1`. Make `deps-26.1` persistent:
-   copy `/dev/shm/utkarshk-wrf/deps-26.1` to a persistent disk (ask the owner which, while `/home` is degraded),
+   copy `/dev/shm/utkarshk-wrf/deps-26.1` to `$WORK/deps-26.1` on `/home` (replace the symlink by the copy),
    point the symlink there, and build `deps-gnu` with 26.1 (`setup_toolchain.sh deps-gnu`).
 2. Full clean CPU-REF build of HEAD with 26.1 and `o1_files.txt`: zero `signal 11`, zero `NVFORTRAN-S`; wrf.exe md5 to
    RESULTS (S0-07.1); T-SYM PASS (`x bash port/sym_audit.sh <build>`, S0-07.2).
@@ -246,7 +247,7 @@ for gfortran; never a procedure call in a collapsed loop bound (F-BOUND); `NV_AC
 **S0-07.3/.4** WPS (ask whether needed) and T-BUILD-REF: compile the port's own files (`port/agent/` lists them:
 `module_gpu_*`, `module_bittrace`, `module_repro_math`, ...) with the CPU-REF flags without `-w`; no warnings.
 
-**S0-09.2 … .4 dev references** (needs a persistent disk, see hazards):
+**S0-09.2 … .4 dev references** (on `/home`, owner's decision; see hazards):
 `bash port/h100/dev_case.sh reference <pinned CPU-REF build of the base commit>` under nohup (hours; writes
 `$DEV_REF/run0220` and `win1h`), then S0-09.3 (17 h dev run) and S0-09.4 (`manifest.py check`; every window of
 `windows.txt` once with CPU-REF). Done when `dev_case.sh status` shows both references OK and every window has a run.
@@ -270,7 +271,40 @@ every T0/T1 case bitwise CPU-REF vs GPU-REPRO with every route off, on both GPUs
 
 ---
 
-## 5. Where to look
+## 5. Scope reminder (owner, 2026-10-15)
+
+The port is **`wrf.exe` only**. WPS and `real.exe` stay precompiled CPU programs that produce the input files
+([ADR-007](../../roadmap/decisions/ADR-007-wps-real-port.md), deferred). Do not start work on them.
+
+## 6. Fallback if `/home` is lost: segmented comparison on the RAM disk
+
+The RAM disk (`/dev/shm`, 252 GB, volatile) cannot hold a 17 h reference archive, but a bitwise comparison does
+not need the whole archive at once. What the gates compare is (a) the bit-trace files (`bittrace.d0X.txt`:
+small text, one hash line per field and step) and (b) the history and restart fields of a window. Both can be
+produced and compared segment by segment, keeping only what the next segment needs.
+
+Procedure (implement as `port/h100/segment_compare.sh` when first needed; infrastructure, tool fix logged):
+
+1. `export WORK_RUNS=/dev/shm/utkarshk-wrf/runs` and make `window.sh`/`dev_case.sh` put run directories under it
+   (a `RUNS_DIR` variable in `common.sh`, default `$WORK/runs`); keep `$WORK` itself on a persistent disk for the
+   small files (gate results, md5 lists, traces).
+2. Segment the run into chained restart windows of at most the model time whose outputs fit the RAM disk with
+   room for both builds (for `eaton_small` an hour per segment is a few GB per build; for `eaton_mid` size it from
+   one history file). Segment k starts from the restart files written at the end of segment k−1.
+3. For each segment, in order: run CPU-REF (host, `$CPU_RANKS` ranks) and GPU-REPRO (one GPU) from the same restart
+   files; `compare.sh` the two run directories (traces, every history and restart field); append the result line and
+   the md5 list of both runs' outputs to a persistent log (`$WORK/gates/.../results.txt`, `$WORK/reference/<case>/
+   <host key>/segments.md5`); copy both builds' bit-trace files to `$WORK/reference/...` (small); then delete every
+   output of segment k−1 and keep only segment k's final restart pair (CPU-REF's; after a bitwise PASS the GPU's are
+   identical).
+4. A segment that is not bitwise stops the chain: keep its two run directories for DEBUGGING.md, do not go on.
+5. The archived "reference" is then the persistent small set: md5 lists, bit-trace files, results, plus the last
+   restart pair. A full-field archive can be rebuilt later by rerunning CPU-REF from any kept restart.
+
+Also run the CPU-REF reproducibility tests of S0-08 this way when needed (T-DET: the same segment twice; T-DEC:
+the same segment with different rank counts).
+
+## 7. Where to look
 
 | Question | File |
 |---|---|

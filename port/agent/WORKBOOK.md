@@ -24,9 +24,8 @@ How to update, after every task (and at the end of every work session, even if t
   the pin)
 - Builds: CPU-REF 25.1 of the base commit `$WORK/builds/cpu-ref/1da67693e368` (RAM disk; wrf.exe md5
   278297669019e185c0e6eb8902a8eb69); gnu-ref in `$WORK/builds-home/gnu-ref/worktree`
-- Dev references: not made yet (they wait for the compiler pin and a persistent disk)
-- Blockers: B1–B4 resolved; open owner decisions: the compiler (F-08), a persistent disk for references while /home
-  is degraded
+- Dev references: not made yet (they wait for the compiler pin); they go to /home (owner's decision 2026-10-15, degraded array accepted; fallback: STAGE0_HANDOFF.md §6)
+- Blockers: B1–B4 resolved; open owner decision: the compiler (F-08). Scope: wrf.exe only (ADR-007 deferred)
 - Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid made
 - Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07; 2 x 28-core Xeon
   Gold 6330, 503 GB; G-MEM 34 GB); /home RAID10 degraded, builds on the RAM disk /dev/shm/utkarshk-wrf

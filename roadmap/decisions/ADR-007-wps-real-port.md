@@ -1,7 +1,11 @@
 # ADR-007: Port WPS and real.exe too; the files between the programs are the contract
 
-- Status: **proposed** (2026-10-15, written at the owner's request; the owner decides). Amends the scope of
-  [plan-4.6/README.md](../plan-4.6/README.md) ("What stays on the CPU in every stage: WPS, `real.exe`, `ideal.exe`").
+- Status: **deferred** (owner, 2026-10-15): the port stays `wrf.exe` only; WPS and `real.exe` are small and fast and
+  are not started now. The design below (file boundaries as the contract, the order of the tracks, the data
+  needed) is kept for when they are taken up. The compatibility invariant of point 2 holds today without any
+  work: `wrf.exe`-GPU reads the standard files that a CPU WPS and CPU `real.exe` write, and every gate compares
+  it with `wrf.exe`-CPU on exactly such files. The scope sentence of [plan-4.6/README.md](../plan-4.6/README.md)
+  ("What stays on the CPU in every stage: WPS, `real.exe`, `ideal.exe`") stands.
 
 ## Context
 
