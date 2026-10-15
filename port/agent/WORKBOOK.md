@@ -29,7 +29,7 @@ How to update, after every task (and at the end of every work session, even if t
 - Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid made
 - Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07; 2 x 28-core Xeon
   Gold 6330, 503 GB; G-MEM 34 GB); /home RAID10 degraded, builds on the RAM disk /dev/shm/utkarshk-wrf
-- Next step: STAGE0_HANDOFF.md §3 step 1a (o1_files.txt and build.sh)
+- Next step: STAGE0_HANDOFF.md §3 step 1b (bitwise check of nest_init_utils at -O1 with NVHPC 25.1)
 
 ## Task checklist
 
@@ -261,4 +261,14 @@ How to update, after every task (and at the end of every work session, even if t
 - Done since the last entry: B3 fix and base move (1f1f452), F-BOUND probe, NVHPC 25.1/25.9/26.1/26.5 sweep, the
   11-file fort2 crash classification (FIX_LEDGER F-08), cases eaton_small and eaton_mid, the fix ledger, CPU-REF
   25.1 build of the base commit.
+
+### 2026-10-15 S0 Compiler decision step 1a: per-file -O1 list (o1_files.txt, build.sh)
+- `port/h100/o1_files.txt` created with the 11 objects (fort2 crash at -O2 with 25.9/26.1/26.5; FIX_LEDGER F-08).
+- `port/h100/build.sh`: configurable list via `$O1_LIST` (default `o1_files.txt`, `none` = off), appends target-specific
+  `FCOPTIM` rules to `configure.wrf`, cleans stale `.o` on list changes, records `o1 files:` in `BUILD_INFO`, supports
+  `--apply-o1` helper.
+- `TOOL_FIXES.md` updated; `FIX_LEDGER.md` F-08 updated with exact change.
+- `test_agent_tools.py` self-test added (11 lines appended, idempotence, `O1_LIST=none`, custom list and `.o` cleanup: PASS);
+  `protected.md5` updated for test_agent_tools.py.
+
 

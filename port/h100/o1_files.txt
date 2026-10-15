@@ -1,0 +1,13 @@
+# Files compiled at -O1 instead of -O2 in every nvfortran build (FIX_LEDGER F-08): nvfortran 25.9/26.1/26.5
+# fort2 crashes on them at -O2. Same list in CPU-REF and GPU builds.
+module_bittrace.o
+module_dm.o
+module_cpl.o
+mediation_integrate.o
+module_optional_input.o
+wrf_timeseries.o
+module_wrf_top.o
+nest_init_utils.o
+module_initialize_real.o
+real_em.o
+tc_em.o

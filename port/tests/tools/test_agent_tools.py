@@ -571,5 +571,42 @@ check(rc == 0 and not miss, "rp_subst: MAX/MIN -> rp_max/rp_min except in DO bou
 rc, out = run(os.path.join(PORT, "rp_subst.py"), os.path.join(rs, "t.F"))
 check(open(os.path.join(rs, "t.F")).read() == got, "rp_subst: a second run changes nothing", out)
 
+# ---- build.sh -O1 list handling (o1_files.txt, idempotence, O1_LIST=none, .o deletion)
+bsh = os.path.join(PORT, "h100", "build.sh")
+o1_dir = tempfile.mkdtemp()
+fake_cfg = os.path.join(o1_dir, "configure.wrf")
+open(fake_cfg, "w").write("# fake configure.wrf\nFCOPTIM = -O2 -Kieee\n")
+# 1. default o1_files.txt: 11 lines appended
+r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], capture_output=True, text=True)
+cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+check(r.returncode == 0 and len(cfg_lines) == 11 and any("module_bittrace.o : FCOPTIM :=" in l for l in cfg_lines),
+      "build.sh --apply-o1: default list appends 11 target-specific FCOPTIM lines", r.stdout + r.stderr)
+# 2. idempotence: running again leaves exactly 11 lines
+r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], capture_output=True, text=True)
+cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+check(r.returncode == 0 and len(cfg_lines) == 11,
+      "build.sh --apply-o1: second run is idempotent (11 lines)", r.stdout + r.stderr)
+# 3. O1_LIST=none: removes target-specific lines
+env_none = dict(os.environ, O1_LIST="none")
+r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], env=env_none, capture_output=True, text=True)
+cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+check(r.returncode == 0 and len(cfg_lines) == 0,
+      "build.sh --apply-o1: O1_LIST=none leaves 0 target-specific lines", r.stdout + r.stderr)
+# 4. custom list and .o file cleanup
+custom_list = os.path.join(o1_dir, "custom_o1.txt")
+open(custom_list, "w").write("# custom\nnest_init_utils.o\n")
+fake_obj = os.path.join(o1_dir, "nest_init_utils.o")
+fake_keep = os.path.join(o1_dir, "solve_em.o")
+open(fake_obj, "w").write("fake object")
+open(fake_keep, "w").write("fake object")
+env_custom = dict(os.environ, O1_LIST=custom_list)
+r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], env=env_custom, capture_output=True, text=True)
+cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+check(r.returncode == 0 and len(cfg_lines) == 1 and "nest_init_utils.o" in cfg_lines[0]
+      and not os.path.exists(fake_obj) and os.path.exists(fake_keep),
+      "build.sh --apply-o1: custom list appends 1 line and removes changed .o", r.stdout + r.stderr)
+shutil.rmtree(o1_dir)
+
 print("RESULT:", "PASS" if bad == 0 else f"FAIL ({bad})")
 sys.exit(1 if bad else 0)
+

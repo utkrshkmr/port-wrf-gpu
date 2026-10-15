@@ -154,11 +154,14 @@ branch `agent/s0-00`.
   the OPEN or the WRITE, avoids the crash in the reduced module, but in the full module other combinations still
   crash, also with `!DIR$ NOINLINE` on all five helpers and with `upcase` as a subroutine. Reduction files:
   `/dev/shm/utkarshk-wrf/red2/` (RAM disk, lost on reboot).
-- **Exact change:** `port/h100/build.sh` appends to `configure.wrf` of every nvfortran build (not gnu):
+- **Exact change:** `port/h100/o1_files.txt` lists the 11 files compiled at -O1 instead of -O2 in every nvfortran
+  build (not gnu). `port/h100/build.sh` reads `$O1_LIST` (default `port/h100/o1_files.txt`; `O1_LIST=none` turns it
+  off) and appends for each object:
   ```
-  module_bittrace.o : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))
+  <obj> : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))
   ```
-  (idempotent; also applied to existing build trees). All other files keep `-O2`.
+  (idempotent; deletes `.o` of affected files if the list changes in an existing tree; `BUILD_INFO` records `o1 files:`).
+  All other files keep `-O2`.
 - **Effect on numbers:** none on the model: module_bittrace computes only integer hashes of fields (exact at any
   optimization level) and is compiled the same way in CPU-REF and GPU builds. The trace hashes it writes must be
   identical with and without the override (to be checked once a build exists).

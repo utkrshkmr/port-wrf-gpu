@@ -31,6 +31,70 @@
 # (GPU builds: -Minfo=mp lines show which loops were offloaded).
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
+
+apply_o1_list() {
+  local cfg=${1:?}
+  local bmode=${2:-cpu-ref}
+  local list_file=${O1_LIST:-$HERE_H100/o1_files.txt}
+  local target_dir
+  target_dir=$(dirname "$cfg")
+
+  local old_objs=()
+  if [ -f "$cfg" ]; then
+    mapfile -t old_objs < <(sed -n -E 's/^([a-zA-Z0-9_.]+) *: *FCOPTIM *:=.*/\1/p' "$cfg" | sort -u)
+    sed -i -E '/^[a-zA-Z0-9_.]+[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:=/d' "$cfg"
+  fi
+
+  local new_objs=()
+  local md5="none"
+  local count=0
+
+  if [[ $bmode != gnu* ]] && [ "$list_file" != "none" ]; then
+    [ -f "$list_file" ] || die "O1_LIST file not found: $list_file"
+    md5=$(md5sum < "$list_file" | cut -d' ' -f1)
+    mapfile -t new_objs < <(grep -v '^[[:space:]]*#' "$list_file" | grep -v '^[[:space:]]*$' | awk '{print $1}' | sort -u)
+    count=${#new_objs[@]}
+
+    for obj in "${new_objs[@]}"; do
+      printf '%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' "$obj" >> "$cfg"
+    done
+  fi
+
+  local old_str="${old_objs[*]:-}"
+  local new_str="${new_objs[*]:-}"
+  if [ "$old_str" != "$new_str" ]; then
+    local changed_objs=()
+    for obj in "${old_objs[@]}"; do
+      if [[ ! " ${new_objs[*]:-} " =~ [[:space:]]"$obj"[[:space:]] ]]; then
+        changed_objs+=("$obj")
+      fi
+    done
+    for obj in "${new_objs[@]}"; do
+      if [[ ! " ${old_objs[*]:-} " =~ [[:space:]]"$obj"[[:space:]] ]]; then
+        changed_objs+=("$obj")
+      fi
+    done
+    for obj in "${changed_objs[@]}"; do
+      find "$target_dir" -name "$obj" -delete 2>/dev/null || true
+    done
+  fi
+
+  O1_INFO="$md5 ($count files)"
+}
+
+if [ "${1:-}" = "--apply-o1" ]; then
+  shift
+  cfg=${1:?usage: build.sh --apply-o1 <configure.wrf> [mode]}
+  bmode=${2:-cpu-ref}
+  apply_o1_list "$cfg" "$bmode"
+  echo "o1 files: $O1_INFO"
+  exit 0
+fi
+
+if [ -n "${O1_LIST:-}" ] && [ "$O1_LIST" != none ]; then
+  O1_LIST=$(realpath "$O1_LIST" 2>/dev/null || readlink -f "$O1_LIST" || echo "$O1_LIST")
+fi
+
 mode=${1:?usage: build.sh <cpu-ref|gpu-repro|gpu-debug|gnu>[-fine] [--commit REV|--worktree] [--clean] [--fire-ideal] [--fine] [--uninit nan|zero] [--tag T]}
 shift
 src=commit; rev=HEAD; clean=0; fire=0; tag=; fine=0; uninit=
@@ -121,13 +185,10 @@ if [ ! -f configure.wrf ]; then
   fi
 fi
 
-# NVHPC 25.9, 26.1, 26.5: fort2 crashes (signal 11) on frame/module_bittrace.f90 at -O2, and every file that
-# USEs its half-written module then crashes too (22 files; BLOCKERS B4, port/agent/FIX_LEDGER.md F-08).  The
-# bit-tracer does integer hashing only (exact at any level), so it alone is compiled at -O1, in every nvfortran
-# build alike.  Idempotent: also applied to existing build trees.
-if [[ $mode != gnu* ]] && ! grep -q '^module_bittrace.o : FCOPTIM' configure.wrf; then
-  printf 'module_bittrace.o : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' >> configure.wrf
-fi
+# NVHPC 25.9, 26.1, 26.5: fort2 crashes (signal 11) on 11 files at -O2 (FIX_LEDGER F-08).
+# Compiled at -O1 instead, in every nvfortran build alike. List from $O1_LIST (default o1_files.txt;
+# O1_LIST=none turns it off). Idempotent; deletes .o of affected files if the list changes.
+apply_o1_list configure.wrf "$mode"
 
 rm -f main/wrf.exe
 stamp=$(date +%s)
@@ -153,7 +214,8 @@ fi
   echo "build jobs: $BUILD_JOBS"
   echo "compiler: $(x bash -c 'case '"$mode"' in gnu*) gfortran --version;; *) nvfortran --version;; esac' 2>/dev/null | grep -v '^$' | head -2 | tr '\n' ' ')"
   echo "wrf.exe md5: $(md5sum < main/wrf.exe | cut -d' ' -f1)"
-  [ -n "${IMAGE:-}" ] && echo "image: $IMAGE sha256 $(sha256sum < "$IMAGE" | cut -d' ' -f1)"
+  echo "o1 files: $O1_INFO"
+  [ "${CONTAINER:-none}" != none ] && [ -n "${IMAGE:-}" ] && [ -f "$IMAGE" ] && echo "image: $IMAGE sha256 $(sha256sum < "$IMAGE" | cut -d' ' -f1)"
 } > BUILD_INFO
 cat BUILD_INFO >&2
 # remember the exact compile commands of this build (for compile_one.sh and harness.sh)
