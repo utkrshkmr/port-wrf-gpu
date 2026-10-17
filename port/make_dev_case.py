@@ -44,7 +44,7 @@ def with_col(value, k, new):
     return ", ".join(parts)
 
 
-def cut(src, dst, i0, j0, n, sr_x, sr_y):
+def cut(src, dst, i0, j0, n, sr_x, sr_y, new_ips, new_jps):
     """Copy src to dst keeping west_east[i0:i0+n-1] etc."""
     ds = Dataset(src)
     fmt = ds.data_model
@@ -72,6 +72,8 @@ def cut(src, dst, i0, j0, n, sr_x, sr_y):
     atts = {k: ds.getncattr(k) for k in ds.ncattrs()}
     atts["WEST-EAST_GRID_DIMENSION"] = np.int32(n)
     atts["SOUTH-NORTH_GRID_DIMENSION"] = np.int32(n)
+    atts["I_PARENT_START"] = np.int32(new_ips)
+    atts["J_PARENT_START"] = np.int32(new_jps)
     for k in list(atts):
         if k.startswith("WEST-EAST_PATCH_END_UNSTAG") or k.startswith("SOUTH-NORTH_PATCH_END_UNSTAG"):
             atts[k] = np.int32(n - 1)
@@ -132,7 +134,7 @@ def main():
     print(f"new i_parent_start = {new_ips}, j_parent_start = {new_jps}")
 
     os.makedirs(args.out, exist_ok=True)
-    cut(src, os.path.join(args.out, "wrfinput_d02"), i0, j0, n, sr_x, sr_y)
+    cut(src, os.path.join(args.out, "wrfinput_d02"), i0, j0, n, sr_x, sr_y, new_ips, new_jps)
     text = set_values(text, [
         ("e_we", with_col(read_value(text, "e_we"), 1, n)),
         ("e_sn", with_col(read_value(text, "e_sn"), 1, n)),

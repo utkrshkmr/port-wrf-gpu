@@ -142,7 +142,7 @@ branch `agent/s0-00`.
   `port/gates/t_machine.sh` (device-test key `<gpu>-<driver>-nvfortran<version>`).
 - **Effect on numbers:** none; references and device tests are now tied to the compiler that made them.
 
-## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 11 files; module_bittrace at -O1   [decision open]
+## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 11 files at -O1   [resolved 2026-10-17: bit-identical verified; NVHPC 26.1 approved]
 
 - **What failed:** the CPU-REF build with 26.5, 25.9 and 26.1: `fort2 TERMINATED by signal 11` on 22 files.
 - **Root cause (found 2026-10-11):** only the first crash is real: `frame/module_bittrace.f90` (the port's
@@ -187,8 +187,26 @@ branch `agent/s0-00`.
 
   Not the cause: the MPI headers (module_cpl crashes with 26.1 against HPC-X 2.20's mpif.h of 25.1 too), make
   parallelism (crashes are reproducible alone), `-Mrecursive`/`-Mvect=noassoc`/`-Kieee`/`-tp=haswell`.
-- **Open decision (owner):** NVHPC 25.1 (builds everything at -O2; device miscompile of T-RM-POW's dispatcher, F-05)
-  or 26.1 with these 11 files at -O1. -O1 vs -O2 under `-Kieee -Mnofma -Mvect=noassoc` should give the same IEEE
-  results but is not guaranteed; for nest_init_utils it must be shown bitwise (CPU-REF with and without the file at
-  -O1, same compiler, on a case that initializes the nest).
+- **Decision (resolved 2026-10-17, Step 1b):** NVHPC 26.1 with the 11 files in `port/h100/o1_files.txt` at -O1.
+  Bitwise verification with NVHPC 25.1 comparing clean build 5c51e28ccc52-o2 (all -O2) against 5c51e28ccc52-o1nest (nest_init_utils.o at -O1):
+  1. Object disassembly diff across all 707 `.o` files: 705 files have 100% identical machine code; only dyn_em/nest_init_utils.o (explicit -O1 vs -O2) and share/set_timekeeping.o (length of __FILE__ tag: 15 vs 19 chars) differ.
+  2. End-to-end W-T0 run (9s model time, 27 nest steps) with hand-patched eaton_small (attributes 215/215): compare.sh confirmed RESULT: IDENTICAL / PASS across all 1,269 d01 records, 14,175 d02 nest records, and all 4 history/restart NetCDF output files.
+  3. Per-routine harness tests: copy_3d_field (PASS), blend_terrain (PASS), adjust_tempqv (PASS), compute_eta (PASS), compute_vcoord_1d_coeffs (PASS) bit-for-bit identical.
 - **If numbers do not match:** check the per-file `FCOPTIM` lines in both builds' `configure.wrf`.
+
+## F-09 2026-10-17 dev-case cut wrfinput_d02 I_PARENT_START and J_PARENT_START metadata fix
+
+- **What failed:** WRF startup with `work/cases/eaton_small` and `work/cases/eaton_mid` failed with fatal error:
+  `Nest start locations do not match: namelist.input vs gridded input file`.
+- **Root cause:** `port/make_dev_case.py` calculated `new_ips` and `new_jps` (215 for `eaton_small`, 196 for `eaton_mid`)
+  and updated `namelist.input`, but `cut()` copied global NetCDF attributes `I_PARENT_START` and `J_PARENT_START` directly
+  from full `wrfinput_d02` where both were 180.
+- **Exact change:** `port/make_dev_case.py`: `cut()` updated to take `new_ips, new_jps` and set `atts["I_PARENT_START"] = np.int32(new_ips)`
+  and `atts["J_PARENT_START"] = np.int32(new_jps)`. Regenerated `eaton_small` (`dev_case.sh make`) and `eaton_mid`
+  (`make_dev_case.py --n 523`). Updated `cases/eaton_small/manifest.md5` (wrfinput_d02 `f6e205a52aba9673981b6b31c1516034`)
+  and `cases/eaton_mid/manifest.md5` (wrfinput_d02 `ecdbd81a88c8adfcd2fbba13e2cda4b8`).
+- **Effect on numbers:** None. All variable arrays, coordinates and grid dimensions in `wrfinput_d02` are 100% bit-for-bit
+  identical (verified across every variable in both cases); only the two global scalar metadata attributes were modified.
+- **Evidence:** Variable-by-variable comparison of `wrfinput_d02` against the previous cut confirmed 0 variable differences
+  and exactly 2 attribute differences (`I_PARENT_START`, `J_PARENT_START`). WRF nest initialization in `W-T0` passes with `RESULT: IDENTICAL`.
+- **If numbers do not match:** check `ncdump -h wrfinput_d02 | grep PARENT_START` against `namelist.input`.

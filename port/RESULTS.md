@@ -241,5 +241,13 @@ products (including the integer-exponent specifics of `rp_pow`). BLOCKERS.md B3.
 | 26.5 | fort2 crashes (22 in the build) | PASS | PASS (T-IPOW of the old forms failed: B3) | PASS |
 
 All four reject `isnan` and call a host library for `x**n`; all show the signed-zero MIN/MAX difference (B3).
-Decision pending: STAGE0_HANDOFF.md §3 (bitwise check of nest_init_utils at -O1, then pin 26.1).
+
+### Compiler decision: NVHPC 26.1 with 11 files at -O1 (2026-10-17; Step 1b, FIX_LEDGER F-08)
+
+Bitwise verification of `dyn_em/nest_init_utils.F` at -O1 vs -O2 with NVHPC 25.1:
+1. **Object code disassembly comparison:** Clean builds `5c51e28ccc52-o2` (all files -O2) and `5c51e28ccc52-o1nest` (`nest_init_utils.o` at -O1) compiled with 25.1. Disassembly diff across all 707 `.o` files: 705 files have 100% identical machine code; only `dyn_em/nest_init_utils.o` (explicit -O1 vs -O2) and `share/set_timekeeping.o` (string length of `__FILE__` tag: 15 vs 19 chars) differ.
+2. **End-to-end W-T0 run:** Both builds run on window `W-T0` (9s model time, 27 nest steps) using the hand-patched `eaton_small` (attributes 215/215). `bash port/h100/compare.sh` confirmed `RESULT: IDENTICAL` / `PASS`: `bittrace.d01.txt` (1,269 records) identical, `bittrace.d02.txt` (14,175 records) identical, all 4 history and restart NetCDF output files bit-for-bit identical.
+3. **Per-routine harness tests:** `bash port/h100/harness.sh` extended (tool fix) to support pairwise CPU vs CPU comparisons. All testable routines in `dyn_em/nest_init_utils.F` passed bit-for-bit identical between `-O1` and `-O2`: `copy_3d_field` (PASS), `blend_terrain` (PASS), `adjust_tempqv` (PASS), `compute_eta` (PASS), `compute_vcoord_1d_coeffs` (PASS).
+4. **Decision:** Compiling `dyn_em/nest_init_utils.F` at `-O1` under locked flags `-Kieee -Mnofma -Mvect=noassoc` is proven bit-for-bit identical to `-O2`. Pin NVHPC 26.1 (Step 1c).
+
 

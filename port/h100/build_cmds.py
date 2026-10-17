@@ -49,6 +49,7 @@ def load(build):
 
 
 def update(build):
+    build = os.path.realpath(build)
     db = load(build)
     log = os.path.join(build, "compile.log")
     if not os.path.exists(log):
@@ -60,7 +61,7 @@ def update(build):
         line = line.rstrip("\n")
         m = ENTER.search(line)
         if m:
-            stack.append(m.group(1))
+            stack.append(os.path.realpath(m.group(1)))
             continue
         m = LEAVE.search(line)
         if m:
@@ -71,15 +72,16 @@ def update(build):
         rel = os.path.relpath(cwd, build)
         if rel.startswith(".."):
             continue
-        if LINK.match(line) and rel == "main":
-            db["link"] = {"cwd": rel, "cmd": line}
+        cmd = re.sub(r"^time\s+", "", line)
+        if LINK.match(cmd) and rel == "main":
+            db["link"] = {"cwd": rel, "cmd": cmd}
             continue
         for step, rx in STEP_RE.items():
-            m = rx.match(line)
+            m = rx.match(cmd)
             if m:
                 key = f"{rel}/{m.group(1)}"
                 ent = found.setdefault(key, {"dir": rel, "base": m.group(1)})
-                ent[step] = line
+                ent[step] = cmd
                 if step == "sed":
                     ent["ext"] = m.group(2)
     n = 0

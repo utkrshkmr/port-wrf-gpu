@@ -52,7 +52,8 @@ for b in ${builds//,/ }; do
   b=$(cd "$b" 2>/dev/null && pwd) || die "no build $b (build.sh <mode> --worktree first)"
   mode=$(build_mode "$b"); [ -n "$mode" ] || die "no BUILD_INFO in $b"
   case $mode in gpu-*|gnu-gpu) gmode=gpu ;; *) gmode=cpu ;; esac     # gnu-gpu: GPU view, target regions on the host
-  t=$root/$mode; rm -rf "${t:?}"; mkdir -p "$t/run"
+  b_name="${mode}_$(basename "$b")"
+  t=$root/$b_name; rm -rf "${t:?}"; mkdir -p "$t/run"
   [ -f "$b/compile_cmds.json" ] || python3 "$HERE_H100/build_cmds.py" update "$b" >/dev/null
   python3 "$HERE_H100/build_cmds.py" script "$b" "$rel" "$PORT_REPO/WRF/$rel" "$t" > "$t/compile.sh" || die "no compile commands"
   python3 "$HERE_H100/gen_harness.py" "$PORT_REPO/WRF/$rel" "$routine" --mode $gmode "${gen[@]}" \
@@ -65,6 +66,7 @@ for b in ${builds//,/ }; do
   (cd "$t" && x bash fc.sh) > "$t/fc.log" 2>&1 || { grep -i -m 20 -E "error|severe" "$t/fc.log" >&2; die "driver does not compile ($t/fc.log)"; }
   (cd "$b/main" && x bash "$t/link.sh") > "$t/link.log" 2>&1 || { tail -20 "$t/link.log" >&2; die "link failed ($t/link.log)"; }
   cp "$nml" "$t/run/namelist.input"
+  python3 "$PORT_TOOLS/nml.py" "$t/run/namelist.input" set --group=domains nproc_x=1 nproc_y=1
   runs=(cpu); [ $gmode = gpu ] && runs=(host dev); [ "$mode" = gnu ] && runs=(host dev)
   for r in "${runs[@]}"; do
     (
@@ -77,7 +79,7 @@ for b in ${builds//,/ }; do
       if [[ $mode == gnu* ]]; then x "${tmo[@]}" ../harness.exe; else x "${tmo[@]}" $MPIRUN -np 1 ../harness.exe; fi
       rc=$?; [ $rc = 124 ] || [ $rc = 137 ] && echo "TIMEOUT after ${HARNESS_TIMEOUT:-600} s (HARNESS_TIMEOUT)"
     ) > "$t/run_$r.log" 2>&1
-    if [ -f "$t/run/harness_out.bin" ]; then mv "$t/run/harness_out.bin" "$t/out_$r.bin"; out[$mode:$r]=$t/out_$r.bin
+    if [ -f "$t/run/harness_out.bin" ]; then mv "$t/run/harness_out.bin" "$t/out_$r.bin"; out[$b_name:$r]=$t/out_$r.bin
     else tail -15 "$t/run_$r.log" >&2; note "$mode $r run failed ($t/run_$r.log)"; fail=1; fi
     grep -h "harness default" "$t/run_$r.log" | sort -u | sed 's/^/    /' >&2 || true
   done
@@ -95,6 +97,19 @@ if [ -n "$cpu" ] && [ -n "$dev" ]; then
   if python3 "$PORT_TOOLS/tools/harness_diff.py" "${out[$cpu]}" "${out[$dev]}" --label "CPU view vs device" > "$root/diff_cpu_dev.txt"; then
     res PASS "CPU vs DEVICE: $routine"; grep -h "warning" "$root/diff_cpu_dev.txt" | sed 's/^ */      /' | head -5
   else res FAIL "CPU vs DEVICE: $routine ($root/diff_cpu_dev.txt)"; grep DIFFERENT "$root/diff_cpu_dev.txt" | head; fail=1; fi
+fi
+readarray -t cpus < <(printf '%s\n' "${!out[@]}" | grep ':cpu$' | sort)
+if [ ${#cpus[@]} -ge 2 ]; then
+  for (( i=0; i<${#cpus[@]}-1; i++ )); do
+    c1="${cpus[i]}"
+    c2="${cpus[i+1]}"
+    tag1="${c1%:cpu}"
+    tag2="${c2%:cpu}"
+    diff_file="$root/diff_${tag1}_vs_${tag2}.txt"
+    if python3 "$PORT_TOOLS/tools/harness_diff.py" "${out[$c1]}" "${out[$c2]}" --label "$tag1 vs $tag2" > "$diff_file"; then
+      res PASS "CPU vs CPU ($tag1 vs $tag2): $routine"; grep -h "warning" "$diff_file" | sed 's/^ */      /' | head -5
+    else res FAIL "CPU vs CPU ($tag1 vs $tag2): $routine ($diff_file)"; grep DIFFERENT "$diff_file" | head; fail=1; fi
+  done
 fi
 echo "harness $routine: $([ $fail = 0 ] && echo PASS || echo FAIL)  (files: $root)"
 exit $fail

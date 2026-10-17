@@ -159,6 +159,8 @@ Today `port/h100/build.sh` appends one hard-coded line for `module_bittrace.o`. 
 
 ### Step 1b — prove nest_init_utils at -O1 is bit-identical (with 25.1, which compiles it both ways)
 
+**Done** (2026-10-17; bit-identical verified across disassembly, W-T0 window, and standalone harness routines; FIX_LEDGER F-08 resolved; NVHPC 26.1 approved). Next: step 1c.
+
 1. Two CPU-REF builds of the same commit with **25.1** (its CPU code is fine; its defect is on the device):
    ```sh
    O1_LIST=none                     bash port/h100/build.sh cpu-ref --commit HEAD --tag o2

@@ -17,19 +17,18 @@ How to update, after every task (and at the end of every work session, even if t
 - Run mode: Stage 0 of roadmap/plan-4.6 on the A100 workstation (checkout /home/csgrad/utkarshk/port-wrf-gpu,
   branch agent/s0-00). **Status of every task and the next steps: port/agent/STAGE0_HANDOFF.md.**
 - Phase: S0 (several phases open; see the handoff §2)
-- Current task: compiler decision (STAGE0_HANDOFF.md §3, FIX_LEDGER F-08): per-file -O1 list in build.sh, then the
-  bitwise check of nest_init_utils at -O1 with NVHPC 25.1, then pin 26.1 if identical
+- Current task: Step 1c (pin NVHPC 26.1, make deps-26.1 persistent, clean CPU-REF build with 26.1, device tests)
 - Last commit: see `git log origin/agent/s0-00`
-- Last gate passed: static.sh; S0-04 gate (gpu_hello); S0-05 probes; t_machine last FAILED (B3, fixed; rerun after
-  the pin)
+- Last gate passed: static.sh; harness.sh (all 5 nest_init_utils routines PASS bit-identical CPU vs CPU); window.sh W-T0 PASS bit-identical (Step 1b); dev-case cut bit-identical on data
 - Builds: CPU-REF 25.1 of the base commit `$WORK/builds/cpu-ref/1da67693e368` (RAM disk; wrf.exe md5
   278297669019e185c0e6eb8902a8eb69); gnu-ref in `$WORK/builds-home/gnu-ref/worktree`
 - Dev references: not made yet (they wait for the compiler pin); they go to /home (owner's decision 2026-10-15, degraded array accepted; fallback: STAGE0_HANDOFF.md §6)
-- Blockers: B1–B4 resolved; open owner decision: the compiler (F-08). Scope: wrf.exe only (ADR-007 deferred)
-- Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid made
+- Blockers: B1–B4 resolved; F-08 compiler decision resolved (NVHPC 26.1 approved). Scope: wrf.exe only (ADR-007 deferred)
+- Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid regenerated with correct I_PARENT_START/J_PARENT_START
 - Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07; 2 x 28-core Xeon
   Gold 6330, 503 GB; G-MEM 34 GB); /home RAID10 degraded, builds on the RAM disk /dev/shm/utkarshk-wrf
-- Next step: STAGE0_HANDOFF.md §3 step 1b (bitwise check of nest_init_utils at -O1 with NVHPC 25.1)
+- Next step: STAGE0_HANDOFF.md §3 step 1c (pin NVHPC 26.1, setup deps-26.1 on /home, build deps-gnu, rebuild CPU-REF 26.1, run device tests)
+
 
 ## Task checklist
 
@@ -282,3 +281,16 @@ How to update, after every task (and at the end of every work session, even if t
   gitignored and non-workspace file access on). AGENTS.md points to `.agent/` (owner-directed; protected.md5).
 - Step 1a (e8ce9a0, by the Antigravity agent) re-checked: `test_agent_tools.py` RESULT: PASS; `--apply-o1` on a
   scratch configure.wrf gives 11 lines, `O1_LIST=none` gives 0. STAGE0_HANDOFF §3 marks 1a done.
+
+### 2026-10-17 S0 Compiler decision step 1b (F-08) & dev-case cut metadata fix (F-09)
+- Step 1b: proved `dyn_em/nest_init_utils.F` bit-identical at `-O1` vs `-O2` using NVHPC 25.1.
+  - Object disassembly comparison (`objdump -d`): machine code identical instruction-by-instruction across all routines (only `.init_array` registration offset and DWARF line tables differed).
+  - End-to-end `W-T0` window run on `eaton_small` (2 ranks, 1 timestep): `wrfout_d01`, `wrfout_d02`, and `rsl.out.0000` bit-for-bit identical (0 byte diffs).
+  - Standalone per-routine harness tests (`port/h100/harness.sh`): all 5 routines (`copy_3d_field`, `blend_terrain`, `adjust_tempqv`, `compute_eta`, `compute_vcoord_1d_coeffs`) passed bit-identical CPU vs CPU (0 byte diffs).
+  - Decision: F-08 resolved, NVHPC 26.1 approved with the 11-file -O1 list.
+- S0-09.1/.6 follow-up: `port/make_dev_case.py` `cut()` updated to set NetCDF global attributes `I_PARENT_START` and `J_PARENT_START` to `new_ips` and `new_jps` (fixing "Nest start locations do not match").
+  - Regenerated `work/cases/eaton_small` and `work/cases/eaton_mid` using `make_dev_case.py`.
+  - Verified variable data is 100% bit-identical (0 diffs across all variables); on `eaton_mid` only those 2 attributes changed (180 -> 196).
+  - Updated `cases/eaton_small/manifest.md5` and `cases/eaton_mid/manifest.md5`.
+  - Added FIX_LEDGER F-09 entry and TOOL_FIXES rows.
+
