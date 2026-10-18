@@ -33,49 +33,40 @@ set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
 apply_o1_list() {
+  # Two rules per object: "<obj> : ..." for objects made in their own directory and "%/<obj> : ..." for objects
+  # made under a path from another directory (main/Makefile builds ../main/module_wrf_top.o, real.exe builds
+  # ../dyn_em/module_initialize_real.o; a plain "<obj> :" rule does not match those targets: FIX_LEDGER F-08).
   local cfg=${1:?}
   local bmode=${2:-cpu-ref}
   local list_file=${O1_LIST:-$HERE_H100/o1_files.txt}
-  local target_dir
+  local target_dir rx='^(%/)?[a-zA-Z0-9_.]+[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:='
   target_dir=$(dirname "$cfg")
 
-  local old_objs=()
+  local old_lines= old_objs=()
   if [ -f "$cfg" ]; then
-    mapfile -t old_objs < <(sed -n -E 's/^([a-zA-Z0-9_.]+) *: *FCOPTIM *:=.*/\1/p' "$cfg" | sort -u)
-    sed -i -E '/^[a-zA-Z0-9_.]+[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:=/d' "$cfg"
+    old_lines=$(grep -E "$rx" "$cfg" | sort || true)
+    mapfile -t old_objs < <(sed -n -E 's#^(%/)?([a-zA-Z0-9_.]+)[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:=.*#\2#p' "$cfg" | sort -u)
+    sed -i -E "\\#$rx#d" "$cfg"
   fi
 
-  local new_objs=()
-  local md5="none"
-  local count=0
-
+  local new_objs=() md5="none" count=0
   if [[ $bmode != gnu* ]] && [ "$list_file" != "none" ]; then
     [ -f "$list_file" ] || die "O1_LIST file not found: $list_file"
     md5=$(md5sum < "$list_file" | cut -d' ' -f1)
     mapfile -t new_objs < <(grep -v '^[[:space:]]*#' "$list_file" | grep -v '^[[:space:]]*$' | awk '{print $1}' | sort -u)
     count=${#new_objs[@]}
-
     for obj in "${new_objs[@]}"; do
-      printf '%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' "$obj" >> "$cfg"
+      printf '%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n%%/%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' "$obj" "$obj" >> "$cfg"
     done
   fi
 
-  local old_str="${old_objs[*]:-}"
-  local new_str="${new_objs[*]:-}"
-  if [ "$old_str" != "$new_str" ]; then
-    local changed_objs=()
-    for obj in "${old_objs[@]}"; do
-      if [[ ! " ${new_objs[*]:-} " =~ [[:space:]]"$obj"[[:space:]] ]]; then
-        changed_objs+=("$obj")
-      fi
-    done
-    for obj in "${new_objs[@]}"; do
-      if [[ ! " ${old_objs[*]:-} " =~ [[:space:]]"$obj"[[:space:]] ]]; then
-        changed_objs+=("$obj")
-      fi
-    done
-    for obj in "${changed_objs[@]}"; do
-      find "$target_dir" -name "$obj" -delete 2>/dev/null || true
+  # Rules changed (objects added or removed, or the rule form changed): delete the objects of the old and the new
+  # list, so that make rebuilds each of them with the flags the new rules give.
+  local new_lines
+  new_lines=$(grep -E "$rx" "$cfg" | sort || true)
+  if [ "$old_lines" != "$new_lines" ]; then
+    for obj in "${old_objs[@]}" "${new_objs[@]}"; do
+      [ -n "$obj" ] && find "$target_dir" -name "$obj" -delete 2>/dev/null || true
     done
   fi
 
@@ -190,17 +181,20 @@ fi
 # O1_LIST=none turns it off). Idempotent; deletes .o of affected files if the list changes.
 apply_o1_list configure.wrf "$mode"
 
+# WRF's ./compile accepts J="-j N" only for N in 1..20 and otherwise falls back to -j 2 ("badly formed -j
+# option"), so every build ran at -j 2 until 2026-10-17. Parallelism only: the objects are the same (TOOL_FIXES).
+make_jobs=$(( BUILD_JOBS > 20 ? 20 : BUILD_JOBS ))
 rm -f main/wrf.exe
 stamp=$(date +%s)
 note "compiling $mode in $out (log: compile.log)"
-x bash -c "NETCDF=$NETCDF J='-j $BUILD_JOBS' ./compile em_real > compile.log 2>&1" || true
+x bash -c "NETCDF=$NETCDF J='-j $make_jobs' ./compile em_real > compile.log 2>&1" || true
 if [ ! -x main/wrf.exe ]; then
   grep -n -i -E "error|fatal" compile.log | grep -v -i "werror\|error_fatal\|errmsg\|Error.o\|_error" | head -40 >&2
   die "build failed, see $out/compile.log"
 fi
 if [ $fire = 1 ]; then
   cp main/wrf.exe main/wrf_real.exe
-  x bash -c "NETCDF=$NETCDF J='-j $BUILD_JOBS' ./compile em_fire > compile_fire.log 2>&1" || true
+  x bash -c "NETCDF=$NETCDF J='-j $make_jobs' ./compile em_fire > compile_fire.log 2>&1" || true
   [ -x main/ideal.exe ] || die "em_fire ideal.exe failed ($out/compile_fire.log)"
   mv main/ideal.exe main/ideal_fire.exe
   mv main/wrf_real.exe main/wrf.exe
@@ -211,7 +205,7 @@ fi
   echo "configure: option $(cat .configure_option) ($stanza, $kind)"
   echo "built: $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(hostname)"
   echo "machine: $(machine_line)"
-  echo "build jobs: $BUILD_JOBS"
+  echo "build jobs: $make_jobs (make -j; BUILD_JOBS $BUILD_JOBS, WRF compile allows at most 20)"
   echo "compiler: $(x bash -c 'case '"$mode"' in gnu*) gfortran --version;; *) nvfortran --version;; esac' 2>/dev/null | grep -v '^$' | head -2 | tr '\n' ' ')"
   echo "wrf.exe md5: $(md5sum < main/wrf.exe | cut -d' ' -f1)"
   echo "o1 files: $O1_INFO"

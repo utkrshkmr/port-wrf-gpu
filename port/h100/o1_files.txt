@@ -11,3 +11,6 @@ nest_init_utils.o
 module_initialize_real.o
 real_em.o
 tc_em.o
+# added 2026-10-17: share/dfi.F (digital filter init) crashes 26.1 fort2 at -O2 alone; missed by the 2026-10-11
+# classification (the crash line was attributed to the interleaved mediation_wrfmain compile). Not run when dfi_opt=0.
+dfi.o

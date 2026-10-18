@@ -142,7 +142,7 @@ branch `agent/s0-00`.
   `port/gates/t_machine.sh` (device-test key `<gpu>-<driver>-nvfortran<version>`).
 - **Effect on numbers:** none; references and device tests are now tied to the compiler that made them.
 
-## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 11 files at -O1   [resolved 2026-10-17: bit-identical verified; NVHPC 26.1 approved]
+## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 12 files at -O1   [resolved 2026-10-17: NVHPC 26.1 approved; list and rules corrected 2026-10-17, see "Corrections"]
 
 - **What failed:** the CPU-REF build with 26.5, 25.9 and 26.1: `fort2 TERMINATED by signal 11` on 22 files.
 - **Root cause (found 2026-10-11):** only the first crash is real: `frame/module_bittrace.f90` (the port's
@@ -192,6 +192,27 @@ branch `agent/s0-00`.
   1. Object disassembly diff across all 707 `.o` files: 705 files have 100% identical machine code; only dyn_em/nest_init_utils.o (explicit -O1 vs -O2) and share/set_timekeeping.o (length of __FILE__ tag: 15 vs 19 chars) differ.
   2. End-to-end W-T0 run (9s model time, 27 nest steps) with hand-patched eaton_small (attributes 215/215): compare.sh confirmed RESULT: IDENTICAL / PASS across all 1,269 d01 records, 14,175 d02 nest records, and all 4 history/restart NetCDF output files.
   3. Per-routine harness tests: copy_3d_field (PASS), blend_terrain (PASS), adjust_tempqv (PASS), compute_eta (PASS), compute_vcoord_1d_coeffs (PASS) bit-for-bit identical.
+- **Corrections (2026-10-17, owner's session), found by the first full 26.1 build with the list
+  (`$WORK/builds/cpu-ref/0a55046de6f0`, step 1c; `compile.log` lines 2840, 4944, 4982):**
+  1. **A 12th real crash, `share/dfi.F`** (digital filter initialization): alone, with its logged command, 26.1
+     crashes at -O2 and compiles at -O1. The 2026-10-11 classification missed it: `classify_crashes.sh` took the
+     file name from the 4 log lines before each `signal 11`, and with `make -j 2` those lines belonged to the
+     interleaved `mediation_wrfmain` compile (which compiles fine alone). Method from now on: a crashed file is one
+     whose `time mpif90 -o X.o` has no `X.o` after the build (missing-object check, `.agent/workflows/s0-audit.md` B5).
+     `dfi.o` added to `o1_files.txt`. DFI runs only with `dfi_opt > 0`; the Eaton cases leave it at 0.
+  2. **Rules that did not apply.** `main/Makefile` builds `../main/module_wrf_top.o` and real.exe builds
+     `../dyn_em/module_initialize_real.o`; a rule `module_wrf_top.o : FCOPTIM := ...` does not match a target
+     named with a path, so both were compiled at -O2 and crashed (in the 25.1 builds of step 1b this did not show:
+     25.1 compiles them at -O2, and only `nest_init_utils.o`, built without a path, was listed). `build.sh`
+     `apply_o1_list` now writes for each object `<obj> : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))` **and**
+     `%/<obj> : FCOPTIM := ...`, and deletes the listed objects whenever the rules change. Self-test 5 of
+     `test_agent_tools.py` runs make on a path-prefixed target. Check in any build: every listed object's
+     `time mpif90 -o ...<obj> -c -O1` line in `compile.log`.
+  3. **Effective level.** Every -O1 compile prints `nvfortran-Info-Switch -Mvect forces -O2` (the locked
+     `-Mvect=noassoc` asks for the vectorizer, which NVHPC runs at -O2). The result is still not -O2: the machine
+     code of `nest_init_utils.o` differs from its -O2 build and the 12 crashes disappear. The proof of step 1b is
+     for exactly this flag combination, which is what every build uses; this note only says "-O1" here means
+     "-O1 with -Mvect=noassoc".
 - **If numbers do not match:** check the per-file `FCOPTIM` lines in both builds' `configure.wrf`.
 
 ## F-09 2026-10-17 dev-case cut wrfinput_d02 I_PARENT_START and J_PARENT_START metadata fix
@@ -210,3 +231,19 @@ branch `agent/s0-00`.
 - **Evidence:** Variable-by-variable comparison of `wrfinput_d02` against the previous cut confirmed 0 variable differences
   and exactly 2 attribute differences (`I_PARENT_START`, `J_PARENT_START`). WRF nest initialization in `W-T0` passes with `RESULT: IDENTICAL`.
 - **If numbers do not match:** check `ncdump -h wrfinput_d02 | grep PARENT_START` against `namelist.input`.
+
+## F-10 2026-10-17 WRF builds ran at make -j 2: build.sh now passes -j 20
+
+- **What failed:** every WRF build since 2026-10-10 took about 40 min: `compile.log` line ~22 says
+  `badly formed -j option for parallel make: -j 56` / `setting parallel make -j 2`.
+- **Root cause:** WRF's `compile` (csh, `WRF/compile` lines 437–448) accepts `J="-j N"` only for 2 ≤ N ≤ 20 (or 1)
+  and otherwise falls back to `-j 2`; `build.sh` passed `-j $BUILD_JOBS` = 56 (the host's cores).
+- **Exact change:** `port/h100/build.sh`: `make_jobs=$(( BUILD_JOBS > 20 ? 20 : BUILD_JOBS ))`, `J='-j $make_jobs'`
+  for `./compile em_real` and `em_fire`; `BUILD_INFO` line `build jobs: <make -j> (make -j; BUILD_JOBS <n>, ...)`.
+- **Effect on numbers:** none expected: parallelism changes the order of compiles, not their commands. Risk: a
+  missing dependency in WRF's makefiles could let a file read a `.mod` before it is written (a crash or a
+  missing object, not a silent change); the missing-object check of every build catches that.
+- **Evidence:** the 26.1 CPU-REF builds of commit `0a55046` at `-j 2` (`$WORK/builds/cpu-ref/0a55046de6f0`, the
+  agent's step 1c build) and at `-j 20` (`$WORK/builds/cpu-ref/0a55046de6f0-j20`): see the result line below.
+- **If numbers do not match:** compare the two builds' objects with `objdump -d` (skip the 3 header lines, which
+  name the file); a difference in one object points at a make-order dependency of that file.
