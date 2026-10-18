@@ -14,3 +14,6 @@ tc_em.o
 # added 2026-10-17: share/dfi.F (digital filter init) crashes 26.1 fort2 at -O2 alone; missed by the 2026-10-11
 # classification (the crash line was attributed to the interleaved mediation_wrfmain compile). Not run when dfi_opt=0.
 dfi.o
+# added 2026-10-17: dyn_em/start_em.F (start_domain_em: model start-up arithmetic, run by every wrf.exe run)
+# crashes 26.1 fort2 at -O2 alone; found by the first clean build with the corrected rules (FIX_LEDGER F-08 correction 5).
+start_em.o

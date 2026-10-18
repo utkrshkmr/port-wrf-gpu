@@ -142,7 +142,7 @@ branch `agent/s0-00`.
   `port/gates/t_machine.sh` (device-test key `<gpu>-<driver>-nvfortran<version>`).
 - **Effect on numbers:** none; references and device tests are now tied to the compiler that made them.
 
-## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 12 files at -O1   [resolved 2026-10-17: NVHPC 26.1 approved; list and rules corrected 2026-10-17, see "Corrections"]
+## F-08 2026-10-11 fort2 crashes at -O2 (NVHPC 25.9, 26.1, 26.5): 13 files at -O1   [resolved 2026-10-17: NVHPC 26.1 approved; list and rules corrected 2026-10-17, see "Corrections"]
 
 - **What failed:** the CPU-REF build with 26.5, 25.9 and 26.1: `fort2 TERMINATED by signal 11` on 22 files.
 - **Root cause (found 2026-10-11):** only the first crash is real: `frame/module_bittrace.f90` (the port's
@@ -214,6 +214,11 @@ branch `agent/s0-00`.
      `%/<obj> : FCOPTIM := ...`, and deletes the listed objects whenever the rules change. Self-test 5 of
      `test_agent_tools.py` runs make on a path-prefixed target. Check in any build: every listed object's
      `time mpif90 -o ...<obj> -c -O1` line in `compile.log`.
+  3. **Effective level.** Every -O1 compile prints `nvfortran-Info-Switch -Mvect forces -O2` (the locked
+     `-Mvect=noassoc` asks for the vectorizer, which NVHPC runs at -O2). The result is still not -O2: the machine
+     code of `nest_init_utils.o` differs from its -O2 build and the crashes disappear. The proof of step 1b is
+     for exactly this flag combination, which is what every build uses; this note only says "-O1" here means
+     "-O1 with -Mvect=noassoc".
   4. **Rules leaked to prerequisites.** GNU make passes a target-specific value on to the prerequisites it builds
      for that target. In both 26.1 builds of `0a55046` four objects not in the list were compiled at -O1 because
      make built them first as prerequisites of a listed object: `module_bc_em.o` (dynamics boundary conditions:
@@ -223,11 +228,11 @@ branch `agent/s0-00`.
      affected: every older build, including the 25.1 builds of step 1b (`5c51e28ccc52-o2`, `-o1nest`): 0 objects
      outside the list at -O1 (`grep -oE '^time [^ ]+ -o [^ ]+ -c -O1 ' compile.log`). Self-test 5 checks a
      prerequisite keeps -O2. Check in any build: the objects at -O1 in `compile.log` are exactly the listed ones.
-  3. **Effective level.** Every -O1 compile prints `nvfortran-Info-Switch -Mvect forces -O2` (the locked
-     `-Mvect=noassoc` asks for the vectorizer, which NVHPC runs at -O2). The result is still not -O2: the machine
-     code of `nest_init_utils.o` differs from its -O2 build and the 12 crashes disappear. The proof of step 1b is
-     for exactly this flag combination, which is what every build uses; this note only says "-O1" here means
-     "-O1 with -Mvect=noassoc".
+  5. **A 13th real crash, `dyn_em/start_em.F`** (`start_domain_em`: the model's start-up arithmetic, run by every
+     wrf.exe run), found by the first clean 26.1 build with corrections 1–4 (`$WORK/builds/cpu-ref/0a55046de6f0-j20`,
+     `compile.log` line 4924; the only missing object): alone, 26.1 crashes at -O2 and compiles at -O1.
+     `start_em.o` added to `o1_files.txt` (13 files). Because it is model arithmetic, the step 1b proof is extended
+     to the whole list: see "Proof for the 13-file list" below.
 - **If numbers do not match:** check the per-file `FCOPTIM` lines in both builds' `configure.wrf`.
 
 ## F-09 2026-10-17 dev-case cut wrfinput_d02 I_PARENT_START and J_PARENT_START metadata fix

@@ -2,7 +2,7 @@
 description: Re-verify everything Stage 0 has recorded as done, with fresh runs, and correct any record that does not hold
 ---
 Purpose: Stage 0 is the ground truth of the whole port; a wrong record here poisons every later gate. This audit
-re-runs the checks behind every "done" item with the **pinned toolchain (NVHPC 26.1, 12 files at -O1)** and fixes
+re-runs the checks behind every "done" item with the **pinned toolchain (NVHPC 26.1, 13 files at -O1)** and fixes
 the records where they do not hold. Rules 9–11 apply (git waits for the owner; act without asking otherwise;
 evidence, not narration).
 
@@ -32,7 +32,7 @@ How to work:
 5. **Clean 26.1 CPU-REF build** (long, ~10 min at -j 20): `bash port/h100/build.sh cpu-ref --clean`. Pass criteria, all
    from files: `grep -c 'signal 11' compile.log` = 0; **every** `time mpif90 -o X.o` in `compile.log` has its `X.o` in
    the tree (missing-object check, script in FIX_LEDGER F-08); `main/wrf.exe` exists; `BUILD_INFO` says `o1 files: ...
-   (12 files)` and `build jobs: 20`. Record the wrf.exe md5 in RESULTS (S0-07.1).
+   (13 files)` and `build jobs: 20`. Record the wrf.exe md5 in RESULTS (S0-07.1).
 6. **Each listed file is a real crash** (minutes): for every object in `port/h100/o1_files.txt`, recompile its `.f90`
    alone in a scratch directory with its logged command at -O2 and at -O1 (output `.o` and `-module` into the scratch
    dir, `-I` the build's `main/` for modules): -O2 must crash, -O1 must compile. A file that does not crash at -O2

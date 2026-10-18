@@ -27,7 +27,7 @@ Rules that apply to everything below (AGENTS.md):
 | Machine | id `3817a30133b2`, profile `a100-40x2`: 2 × A100-PCIE-40GB (cc 8.0, link SYS), 2 × 28-core Xeon Gold 6330, 503 GB RAM, driver 595.91.07 |
 | `$WORK` | `<checkout>/work` (git-ignored) |
 | Eaton inputs | `<checkout>/EATON/input` (git-ignored; md5s match `cases/eaton_20250108/manifest.md5`); the whole CCR dataset incl. the NCAR run is in `<checkout>/EATON` (147 GB) |
-| Toolchain | NVHPC installed natively (no container runtime; `CONTAINER=none`): `<checkout>/Linux_x86_64/{25.1,25.9,26.1,26.5}`. **In use: 26.1** (pinned 2026-10-17, FIX_LEDGER F-08: 12 files at -O1 via `port/h100/o1_files.txt`) |
+| Toolchain | NVHPC installed natively (no container runtime; `CONTAINER=none`): `<checkout>/Linux_x86_64/{25.1,25.9,26.1,26.5}`. **In use: 26.1** (pinned 2026-10-17, FIX_LEDGER F-08: 13 files at -O1 via `port/h100/o1_files.txt`) |
 | netCDF | `$WORK/deps-26.1/netcdf` and `$WORK/deps-25.1/netcdf` (+ `netcdf-gnu`) on disk; `$WORK/deps-25.9` is a symlink into the RAM disk |
 | Python | `$WORK/deps/pyenv` (numpy, netCDF4, mpmath) |
 | GDB | `/usr/bin/gdb` |
@@ -39,7 +39,7 @@ Rules that apply to everything below (AGENTS.md):
 _repo=/home/csgrad/utkarshk/port-wrf-gpu
 export WORK=${WORK:-$_repo/work}
 export CONTAINER=${CONTAINER:-none}
-# Pinned NVHPC 26.1 (FIX_LEDGER F-05, F-08; 12 files at -O1). NVHPC_ROOT from the login profile (26.5) is ignored on purpose; to run
+# Pinned NVHPC 26.1 (FIX_LEDGER F-05, F-08; 13 files at -O1). NVHPC_ROOT from the login profile (26.5) is ignored on purpose; to run
 # with another installed version (e.g. re-checking the 25.1 builds of step 1b) set PORT_NVHPC_ROOT and PORT_DEPS.
 export NVHPC_ROOT=${PORT_NVHPC_ROOT:-$_repo/Linux_x86_64/26.1}
 export DEPS=${PORT_DEPS:-$WORK/deps-26.1}
@@ -207,7 +207,7 @@ listed), path-prefixed targets (`../main/module_wrf_top.o`) missed their rule, a
 prerequisites (`module_bc_em.o` and 3 more). That tree's `wrf.exe` was linked by hand outside build.sh (no
 `BUILD_INFO`) and is **not** a CPU-REF: rebuild with `bash port/h100/build.sh cpu-ref --clean` (now `make -j 20`,
 about 20 min, F-10) and check, from `compile.log`: no `signal 11`; every `time mpif90 -o X.o` has its `X.o`; the
-objects at `-O1` are exactly the 12 of `o1_files.txt`. Item 1 is done (env.local.sh pinned, `deps-26.1` on /home).
+objects at `-O1` are exactly the 13 of `o1_files.txt`. Item 1 is done (env.local.sh pinned, `deps-26.1` on /home).
 
 1. `env.local.sh`: `NVHPC_ROOT=$_repo/Linux_x86_64/26.1`, `DEPS=$WORK/deps-26.1`. Make `deps-26.1` persistent:
    copy `/dev/shm/utkarshk-wrf/deps-26.1` to `$WORK/deps-26.1` on `/home` (replace the symlink by the copy),

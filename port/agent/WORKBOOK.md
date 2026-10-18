@@ -301,7 +301,7 @@ How to update, after every task (and at the end of every work session, even if t
 - The first full 26.1 build with the list (`0a55046de6f0`) found: `dfi.o` a 12th real crash (missed on 2026-10-11 by
   attributing crashes from interleaved log lines); listed objects built with a path (`../main/module_wrf_top.o`,
   `../dyn_em/module_initialize_real.o`) did not get their rule; rules leaked -O1 to prerequisites (`module_bc_em.o`,
-  `module_comm_dm_4.o`, `module_cpl_oasis3.o`, `module_model_constants.o`). Fixed: `o1_files.txt` 12 files,
+  `module_comm_dm_4.o`, `module_cpl_oasis3.o`, `module_model_constants.o`). Fixed: `o1_files.txt` 12 files (13 with `start_em.o`, below),
   `apply_o1_list` writes `<obj> : private ...` and `%/<obj> : private ...`, deletes listed and previously -O1 objects
   when the rules change; self-tests extended (make-level check). Commits 275a882, 2074ef7. F-08 corrections 1–4.
 - `build.sh` passes `make -j min(BUILD_JOBS, 20)` (WRF's compile rejected -j 56 and used -j 2): F-10. Comparison
