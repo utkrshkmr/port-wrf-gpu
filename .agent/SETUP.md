@@ -15,7 +15,7 @@ Goal: the agent runs every command and changes every file on its own; only `git`
 | Model / mode | Planning mode | the plan is written as an artifact, then executed at once |
 
 Open the folder `/home/csgrad/utkarshk/port-wrf-gpu` on the workstation over Remote-SSH. Workspace rules:
-`.agent/rules/wrf-gpu-port.md` (loaded automatically). Commands: `/s0-run` (autonomous), `/s0-resume`, `/s0-task`,
+`.agent/rules/wrf-gpu-port.md` (loaded automatically). Commands: `/s0-run` (autonomous), `/s0-audit` (re-verify Stage 0), `/s0-resume`, `/s0-task`,
 `/s0-compiler`, `/s0-checkpoint`.
 
 Safety net on GitHub: branch protection for `agent/s0-00` (no force pushes, no deletion).

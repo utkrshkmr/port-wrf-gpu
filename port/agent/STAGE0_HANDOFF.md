@@ -27,8 +27,8 @@ Rules that apply to everything below (AGENTS.md):
 | Machine | id `3817a30133b2`, profile `a100-40x2`: 2 × A100-PCIE-40GB (cc 8.0, link SYS), 2 × 28-core Xeon Gold 6330, 503 GB RAM, driver 595.91.07 |
 | `$WORK` | `<checkout>/work` (git-ignored) |
 | Eaton inputs | `<checkout>/EATON/input` (git-ignored; md5s match `cases/eaton_20250108/manifest.md5`); the whole CCR dataset incl. the NCAR run is in `<checkout>/EATON` (147 GB) |
-| Toolchain | NVHPC installed natively (no container runtime; `CONTAINER=none`): `<checkout>/Linux_x86_64/{25.1,25.9,26.1,26.5}`. **In use: 25.1** until the decision of §3 |
-| netCDF | `$WORK/deps-25.1/netcdf` (+ `netcdf-gnu`) on disk; `$WORK/deps-25.9`, `$WORK/deps-26.1` are symlinks into the RAM disk |
+| Toolchain | NVHPC installed natively (no container runtime; `CONTAINER=none`): `<checkout>/Linux_x86_64/{25.1,25.9,26.1,26.5}`. **In use: 26.1** (pinned 2026-10-17, FIX_LEDGER F-08: 12 files at -O1 via `port/h100/o1_files.txt`) |
+| netCDF | `$WORK/deps-26.1/netcdf` and `$WORK/deps-25.1/netcdf` (+ `netcdf-gnu`) on disk; `$WORK/deps-25.9` is a symlink into the RAM disk |
 | Python | `$WORK/deps/pyenv` (numpy, netCDF4, mpmath) |
 | GDB | `/usr/bin/gdb` |
 
@@ -39,9 +39,10 @@ Rules that apply to everything below (AGENTS.md):
 _repo=/home/csgrad/utkarshk/port-wrf-gpu
 export WORK=${WORK:-$_repo/work}
 export CONTAINER=${CONTAINER:-none}
-# NVHPC 25.1, the plan's pin (26.5 crashes on WRF at -O2: BLOCKERS B4); 26.5 stays installed next to it
-export NVHPC_ROOT=${NVHPC_ROOT:-$_repo/Linux_x86_64/25.1}
-export DEPS=${DEPS:-$WORK/deps-25.1}
+# Pinned NVHPC 26.1 (FIX_LEDGER F-05, F-08; 12 files at -O1). NVHPC_ROOT from the login profile (26.5) is ignored on purpose; to run
+# with another installed version (e.g. re-checking the 25.1 builds of step 1b) set PORT_NVHPC_ROOT and PORT_DEPS.
+export NVHPC_ROOT=${PORT_NVHPC_ROOT:-$_repo/Linux_x86_64/26.1}
+export DEPS=${PORT_DEPS:-$WORK/deps-26.1}
 export PYENV=${PYENV:-$WORK/deps/pyenv}
 # Eaton inputs from CCR (md5s match cases/eaton_20250108/manifest.md5)
 export CASE_INPUTS=${CASE_INPUTS:-$_repo/EATON/input}
@@ -49,8 +50,9 @@ export CPU_RANKS=${CPU_RANKS:-56}   # physical cores (2 x 28); env.sh would take
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 ```
 
-To use another NVHPC version for one command, override the three variables, e.g. for 26.1:
-`NVHPC_ROOT=$PWD/Linux_x86_64/26.1 DEPS=$PWD/work/deps-26.1 NETCDF=$PWD/work/deps-26.1/netcdf bash port/h100/build.sh ...`
+To use another installed NVHPC version for one command (e.g. re-checking the 25.1 builds of step 1b), set the
+overrides; a `NVHPC_ROOT` exported by the login profile (26.5) is ignored on purpose:
+`PORT_NVHPC_ROOT=$PWD/Linux_x86_64/25.1 PORT_DEPS=$PWD/work/deps-25.1 bash port/h100/window.sh ...`
 
 ### Hazards of this machine (read before running anything long)
 
@@ -160,6 +162,10 @@ Today `port/h100/build.sh` appends one hard-coded line for `module_bittrace.o`. 
 ### Step 1b — prove nest_init_utils at -O1 is bit-identical (with 25.1, which compiles it both ways)
 
 **Done** (2026-10-17; bit-identical verified across disassembly, W-T0 window, and standalone harness routines; FIX_LEDGER F-08 resolved; NVHPC 26.1 approved). Next: step 1c.
+Evidence corrected and completed by the owner's session (2026-10-17, RESULTS "Compiler decision", F-08): the gdb
+coverage run now completed (W-T0 calls `init_domain_constants_em`, `blend_terrain`, `copy_3d_field`,
+`adjust_tempqv`; `dfi_accumulate` returns at once with `dfi_opt=0`); `adjust_tempqv` and `compute_eta` re-run in the
+harness with physical inputs (no NaN), IDENTICAL.
 
 1. Two CPU-REF builds of the same commit with **25.1** (its CPU code is fine; its defect is on the device):
    ```sh
@@ -194,6 +200,14 @@ Decision:
   shared refactor), (b) stay on 25.1 and test every kernel on the device for the 25.1 miscompile.
 
 ### Step 1c — pin 26.1 (only if step 1b passed)
+
+**Status 2026-10-17 (owner's session): restart item 2.** The first full 26.1 build (`0a55046de6f0`) exposed three
+defects, fixed in commits 275a882 and 2074ef7 (FIX_LEDGER F-08 "Corrections" 1–4): `dfi.o` is a 12th crash (now
+listed), path-prefixed targets (`../main/module_wrf_top.o`) missed their rule, and the rules leaked -O1 to
+prerequisites (`module_bc_em.o` and 3 more). That tree's `wrf.exe` was linked by hand outside build.sh (no
+`BUILD_INFO`) and is **not** a CPU-REF: rebuild with `bash port/h100/build.sh cpu-ref --clean` (now `make -j 20`,
+about 20 min, F-10) and check, from `compile.log`: no `signal 11`; every `time mpif90 -o X.o` has its `X.o`; the
+objects at `-O1` are exactly the 12 of `o1_files.txt`. Item 1 is done (env.local.sh pinned, `deps-26.1` on /home).
 
 1. `env.local.sh`: `NVHPC_ROOT=$_repo/Linux_x86_64/26.1`, `DEPS=$WORK/deps-26.1`. Make `deps-26.1` persistent:
    copy `/dev/shm/utkarshk-wrf/deps-26.1` to `$WORK/deps-26.1` on `/home` (replace the symlink by the copy),

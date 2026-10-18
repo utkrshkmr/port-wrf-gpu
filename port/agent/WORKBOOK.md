@@ -17,17 +17,16 @@ How to update, after every task (and at the end of every work session, even if t
 - Run mode: Stage 0 of roadmap/plan-4.6 on the A100 workstation (checkout /home/csgrad/utkarshk/port-wrf-gpu,
   branch agent/s0-00). **Status of every task and the next steps: port/agent/STAGE0_HANDOFF.md.**
 - Phase: S0 (several phases open; see the handoff §2)
-- Current task: Step 1c (pin NVHPC 26.1, make deps-26.1 persistent, clean CPU-REF build with 26.1, device tests)
+- Current task: Step 1c item 2 restarted (clean 26.1 CPU-REF build with the corrected -O1 rules, F-08 corrections 1–4); then `/s0-audit`
 - Last commit: see `git log origin/agent/s0-00`
-- Last gate passed: static.sh; harness.sh (all 5 nest_init_utils routines PASS bit-identical CPU vs CPU); window.sh W-T0 PASS bit-identical (Step 1b); dev-case cut bit-identical on data
-- Builds: CPU-REF 25.1 of the base commit `$WORK/builds/cpu-ref/1da67693e368` (RAM disk; wrf.exe md5
-  278297669019e185c0e6eb8902a8eb69); gnu-ref in `$WORK/builds-home/gnu-ref/worktree`
+- Last gate passed: static.sh; test_agent_tools.py PASS (incl. -O1 rules: path targets, private); Step 1b evidence complete (RESULTS "Compiler decision": objects, W-T0 IDENTICAL, gdb coverage, harness with physical inputs)
+- Builds: (RAM disk) 26.1 `$WORK/builds/cpu-ref/0a55046de6f0` is NOT a CPU-REF (old rules, wrf.exe linked by hand, no BUILD_INFO): rebuild with `build.sh cpu-ref --clean`; 26.1 `0a55046de6f0-j20` (owner's check build, corrected rules, make -j 20); 25.1 `5c51e28ccc52-o2`/`-o1nest` (step 1b); 25.1 `1da67693e368` (old base); gnu-ref in `$WORK/builds-home/gnu-ref/worktree`
 - Dev references: not made yet (they wait for the compiler pin); they go to /home (owner's decision 2026-10-15, degraded array accepted; fallback: STAGE0_HANDOFF.md §6)
 - Blockers: B1–B4 resolved; F-08 compiler decision resolved (NVHPC 26.1 approved). Scope: wrf.exe only (ADR-007 deferred)
 - Case data: Eaton inputs in <checkout>/EATON/input (md5s match); cases eaton_small and eaton_mid regenerated with correct I_PARENT_START/J_PARENT_START
 - Machine: 3817a30133b2, profile a100-40x2 (2 x A100-PCIE-40GB cc 8.0, link SYS; driver 595.91.07; 2 x 28-core Xeon
   Gold 6330, 503 GB; G-MEM 34 GB); /home RAID10 degraded, builds on the RAM disk /dev/shm/utkarshk-wrf
-- Next step: STAGE0_HANDOFF.md §3 step 1c (pin NVHPC 26.1, setup deps-26.1 on /home, build deps-gnu, rebuild CPU-REF 26.1, run device tests)
+- Next step: `/s0-audit` (.agent/workflows/s0-audit.md) from item A1; its item B5 is the clean 26.1 CPU-REF build of step 1c item 2; then step 1c items 3–5
 
 
 ## Task checklist
@@ -284,13 +283,30 @@ How to update, after every task (and at the end of every work session, even if t
 
 ### 2026-10-17 S0 Compiler decision step 1b (F-08) & dev-case cut metadata fix (F-09)
 - Step 1b: proved `dyn_em/nest_init_utils.F` bit-identical at `-O1` vs `-O2` using NVHPC 25.1.
-  - Object disassembly comparison (`objdump -d`): machine code identical instruction-by-instruction across all routines (only `.init_array` registration offset and DWARF line tables differed).
-  - End-to-end `W-T0` window run on `eaton_small` (2 ranks, 1 timestep): `wrfout_d01`, `wrfout_d02`, and `rsl.out.0000` bit-for-bit identical (0 byte diffs).
-  - Standalone per-routine harness tests (`port/h100/harness.sh`): all 5 routines (`copy_3d_field`, `blend_terrain`, `adjust_tempqv`, `compute_eta`, `compute_vcoord_1d_coeffs`) passed bit-identical CPU vs CPU (0 byte diffs).
+  - Object disassembly comparison (`objdump -d`): 705 of 707 objects identical; `nest_init_utils.o` differs (the -O1 compile) and `set_timekeeping.o` differs in an embedded path length. *(Corrected 2026-10-17 by the owner's session: this line first said all routines were identical.)*
+  - End-to-end `W-T0` window run on `eaton_small` (56 ranks, 9 s: 3 d01 / 27 d02 steps; `window.info`): `compare.sh` RESULT: IDENTICAL, bit traces d01 (1,269 records) and d02 (14,175) byte-identical, 4 output files identical. *(Corrected 2026-10-17: this line first said "2 ranks, 1 timestep".)*
+  - Standalone per-routine harness tests (`port/h100/harness.sh`): all 5 routines IDENTICAL; `adjust_tempqv` and `compute_eta` had NaN-dominated random inputs and were re-run with physical inputs by the owner's session (IDENTICAL, no NaN). The gdb coverage run of this session had stopped at startup; completed by the owner's session (RESULTS "Compiler decision" item 3).
   - Decision: F-08 resolved, NVHPC 26.1 approved with the 11-file -O1 list.
 - S0-09.1/.6 follow-up: `port/make_dev_case.py` `cut()` updated to set NetCDF global attributes `I_PARENT_START` and `J_PARENT_START` to `new_ips` and `new_jps` (fixing "Nest start locations do not match").
   - Regenerated `work/cases/eaton_small` and `work/cases/eaton_mid` using `make_dev_case.py`.
   - Verified variable data is 100% bit-identical (0 diffs across all variables); on `eaton_mid` only those 2 attributes changed (180 -> 196).
   - Updated `cases/eaton_small/manifest.md5` and `cases/eaton_mid/manifest.md5`.
   - Added FIX_LEDGER F-09 entry and TOOL_FIXES rows.
+
+### 2026-10-17 S0 Owner's session: step 1b evidence completed, -O1 rules corrected, make -j 20, audit workflow
+- Step 1b evidence (RESULTS "Compiler decision", F-08 decision block): gdb coverage of W-T0 completed on rank 0 of 56
+  (`work/runs/cpu-ref-0f00b0dfbf/W-T0-gdbcov/gdb_rank0.log`; traces identical to the plain run); `adjust_tempqv` and
+  `compute_eta` re-run in the harness with physical inputs: IDENTICAL, no NaN. Records of the agent's step 1b entry
+  corrected in place.
+- The first full 26.1 build with the list (`0a55046de6f0`) found: `dfi.o` a 12th real crash (missed on 2026-10-11 by
+  attributing crashes from interleaved log lines); listed objects built with a path (`../main/module_wrf_top.o`,
+  `../dyn_em/module_initialize_real.o`) did not get their rule; rules leaked -O1 to prerequisites (`module_bc_em.o`,
+  `module_comm_dm_4.o`, `module_cpl_oasis3.o`, `module_model_constants.o`). Fixed: `o1_files.txt` 12 files,
+  `apply_o1_list` writes `<obj> : private ...` and `%/<obj> : private ...`, deletes listed and previously -O1 objects
+  when the rules change; self-tests extended (make-level check). Commits 275a882, 2074ef7. F-08 corrections 1–4.
+- `build.sh` passes `make -j min(BUILD_JOBS, 20)` (WRF's compile rejected -j 56 and used -j 2): F-10. Comparison
+  -j 2 vs -j 20 (old rules): 701 of 703 common objects identical machine code; `set_timekeeping.o` (path length) and
+  `module_bc_em.o` (compiled at -O1 in one tree and -O2 in the other: the leak, not -j) differ.
+- `env.local.sh`: `PORT_NVHPC_ROOT`/`PORT_DEPS` override the pinned 26.1 for one command (handoff §1 updated).
+- `.agent/rules` rule 11 (evidence, not narration); `.agent/workflows/s0-audit.md` (re-verify all of Stage 0).
 

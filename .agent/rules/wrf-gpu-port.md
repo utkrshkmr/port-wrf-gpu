@@ -36,3 +36,12 @@ You are the coding agent of this repository. Everything you need is in the repos
    (b) the owner decisions of rule 8, for which you write `port/agent/BLOCKERS.md` and stop. When a task is done
    (committed and pushed), continue with the next task of `STAGE0_HANDOFF.md` without asking. Still never
    `pkill -f`, never `rm -rf` outside `$WORK` and `/dev/shm/utkarshk-wrf`, never touch `EATON/` or `Linux_x86_64/`.
+11. **Evidence, not narration.** Every result you record (RESULTS.md, WORKBOOK.md, FIX_LEDGER.md, commit messages)
+   names the exact command and the file where it can be re-checked (log, diff, run directory), and quotes the
+   decisive output line (`RESULT: IDENTICAL`, `== static: PASS`, the md5). Describe a run from its files
+   (`window.info`, `namelist.input`, `BUILD_INFO`), never from memory. A check that did not finish is recorded as
+   **not completed** with the reason, never as done. Read every warning in a test's output (NaN inputs, "forces -O2",
+   fallbacks such as "setting parallel make -j 2") and either resolve it or record it. In a parallel build, a crashed
+   file is the one whose `.o` is missing, not the file on the neighbouring log lines. Never edit case inputs by hand:
+   fix the generator and regenerate. When you find an earlier record wrong, correct it in place and say so in the
+   ledger entry it belongs to.

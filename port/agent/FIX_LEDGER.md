@@ -187,11 +187,17 @@ branch `agent/s0-00`.
 
   Not the cause: the MPI headers (module_cpl crashes with 26.1 against HPC-X 2.20's mpif.h of 25.1 too), make
   parallelism (crashes are reproducible alone), `-Mrecursive`/`-Mvect=noassoc`/`-Kieee`/`-tp=haswell`.
-- **Decision (resolved 2026-10-17, Step 1b):** NVHPC 26.1 with the 11 files in `port/h100/o1_files.txt` at -O1.
-  Bitwise verification with NVHPC 25.1 comparing clean build 5c51e28ccc52-o2 (all -O2) against 5c51e28ccc52-o1nest (nest_init_utils.o at -O1):
-  1. Object disassembly diff across all 707 `.o` files: 705 files have 100% identical machine code; only dyn_em/nest_init_utils.o (explicit -O1 vs -O2) and share/set_timekeeping.o (length of __FILE__ tag: 15 vs 19 chars) differ.
-  2. End-to-end W-T0 run (9s model time, 27 nest steps) with hand-patched eaton_small (attributes 215/215): compare.sh confirmed RESULT: IDENTICAL / PASS across all 1,269 d01 records, 14,175 d02 nest records, and all 4 history/restart NetCDF output files.
-  3. Per-routine harness tests: copy_3d_field (PASS), blend_terrain (PASS), adjust_tempqv (PASS), compute_eta (PASS), compute_vcoord_1d_coeffs (PASS) bit-for-bit identical.
+- **Decision (resolved 2026-10-17, Step 1b):** NVHPC 26.1 with the files in `port/h100/o1_files.txt` at -O1 (12 since
+  correction 1). Evidence in RESULTS "Compiler decision" (25.1 builds `5c51e28ccc52-o2` vs `-o1nest`): object code
+  identical except `nest_init_utils.o` and a path length in `set_timekeeping.o`; W-T0 (56 ranks, 27 d02 steps)
+  `RESULT: IDENTICAL` with byte-identical bit traces; gdb coverage: W-T0 runs `init_domain_constants_em`,
+  `blend_terrain`, `copy_3d_field`, `adjust_tempqv` of `nest_init_utils` (and `dfi_accumulate`, which returns at once
+  with `dfi_opt = 0`), which are all the routines of these files the Eaton cases run; harness IDENTICAL for
+  `copy_3d_field`, `blend_terrain`, `compute_vcoord_1d_coeffs`, and with physical inputs for `adjust_tempqv`,
+  `compute_eta`. **Record corrected 2026-10-17** (owner's session): the agent's first record called the gdb coverage
+  done although that run had stopped at startup (its script also disabled all breakpoints after the first hit),
+  recorded `adjust_tempqv`/`compute_eta` as PASS on inputs that made over half the outputs NaN, and described W-T0 as
+  "2 ranks, 1 timestep" in WORKBOOK.
 - **Corrections (2026-10-17, owner's session), found by the first full 26.1 build with the list
   (`$WORK/builds/cpu-ref/0a55046de6f0`, step 1c; `compile.log` lines 2840, 4944, 4982):**
   1. **A 12th real crash, `share/dfi.F`** (digital filter initialization): alone, with its logged command, 26.1
