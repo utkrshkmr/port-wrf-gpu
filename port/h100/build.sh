@@ -36,16 +36,18 @@ apply_o1_list() {
   # Two rules per object: "<obj> : ..." for objects made in their own directory and "%/<obj> : ..." for objects
   # made under a path from another directory (main/Makefile builds ../main/module_wrf_top.o, real.exe builds
   # ../dyn_em/module_initialize_real.o; a plain "<obj> :" rule does not match those targets: FIX_LEDGER F-08).
+  # "private": GNU make passes a target-specific value on to the prerequisites it builds for that target, so
+  # without it e.g. module_bc_em.o, built first as a prerequisite of nest_init_utils.o, got -O1 too (F-08).
   local cfg=${1:?}
   local bmode=${2:-cpu-ref}
   local list_file=${O1_LIST:-$HERE_H100/o1_files.txt}
-  local target_dir rx='^(%/)?[a-zA-Z0-9_.]+[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:='
+  local target_dir rx='^(%/)?[a-zA-Z0-9_.]+[[:space:]]*:[[:space:]]*(private[[:space:]]+)?FCOPTIM[[:space:]]*:='
   target_dir=$(dirname "$cfg")
 
   local old_lines= old_objs=()
   if [ -f "$cfg" ]; then
     old_lines=$(grep -E "$rx" "$cfg" | sort || true)
-    mapfile -t old_objs < <(sed -n -E 's#^(%/)?([a-zA-Z0-9_.]+)[[:space:]]*:[[:space:]]*FCOPTIM[[:space:]]*:=.*#\2#p' "$cfg" | sort -u)
+    mapfile -t old_objs < <(sed -n -E 's#^(%/)?([a-zA-Z0-9_.]+)[[:space:]]*:[[:space:]]*(private[[:space:]]+)?FCOPTIM[[:space:]]*:=.*#\2#p' "$cfg" | sort -u)
     sed -i -E "\\#$rx#d" "$cfg"
   fi
 
@@ -56,16 +58,18 @@ apply_o1_list() {
     mapfile -t new_objs < <(grep -v '^[[:space:]]*#' "$list_file" | grep -v '^[[:space:]]*$' | awk '{print $1}' | sort -u)
     count=${#new_objs[@]}
     for obj in "${new_objs[@]}"; do
-      printf '%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n%%/%s : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' "$obj" "$obj" >> "$cfg"
+      printf '%s : private FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n%%/%s : private FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))\n' "$obj" "$obj" >> "$cfg"
     done
   fi
 
   # Rules changed (objects added or removed, or the rule form changed): delete the objects of the old and the new
-  # list, so that make rebuilds each of them with the flags the new rules give.
-  local new_lines
+  # list, and every object the last build compiled at -O1 (compile.log), so that make rebuilds each of them with
+  # the flags the new rules give.
+  local new_lines leaked=()
   new_lines=$(grep -E "$rx" "$cfg" | sort || true)
   if [ "$old_lines" != "$new_lines" ]; then
-    for obj in "${old_objs[@]}" "${new_objs[@]}"; do
+    [ -f "$target_dir/compile.log" ] && mapfile -t leaked < <(grep -oE '^time [^ ]+ -o [^ ]+\.o -c -O1 ' "$target_dir/compile.log" | awk '{print $4}' | sed 's#.*/##' | sort -u)
+    for obj in "${old_objs[@]}" "${new_objs[@]}" "${leaked[@]}"; do
       [ -n "$obj" ] && find "$target_dir" -name "$obj" -delete 2>/dev/null || true
     done
   fi

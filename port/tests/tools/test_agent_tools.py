@@ -579,19 +579,19 @@ open(fake_cfg, "w").write("# fake configure.wrf\nFCOPTIM = -O2 -Kieee\n")
 # 1. default o1_files.txt: two rules per listed object ("<obj> :" and "%/<obj> :")
 n_o1 = sum(1 for l in open(os.path.join(os.path.dirname(bsh), "o1_files.txt")) if l.strip() and not l.lstrip().startswith("#"))
 r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], capture_output=True, text=True)
-cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
-check(r.returncode == 0 and len(cfg_lines) == 2 * n_o1 and "module_wrf_top.o : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))" in cfg_lines
-      and "%/module_wrf_top.o : FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))" in cfg_lines,
+cfg_lines = [l.strip() for l in open(fake_cfg) if "FCOPTIM :=" in l]
+check(r.returncode == 0 and len(cfg_lines) == 2 * n_o1 and "module_wrf_top.o : private FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))" in cfg_lines
+      and "%/module_wrf_top.o : private FCOPTIM := $(subst -O2,-O1,$(FCOPTIM))" in cfg_lines,
       f"build.sh --apply-o1: default list appends 2 x {n_o1} target-specific FCOPTIM rules", r.stdout + r.stderr)
 # 2. idempotence: running again leaves exactly 2 x n_o1 lines
 r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], capture_output=True, text=True)
-cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+cfg_lines = [l.strip() for l in open(fake_cfg) if "FCOPTIM :=" in l]
 check(r.returncode == 0 and len(cfg_lines) == 2 * n_o1,
       f"build.sh --apply-o1: second run is idempotent ({2 * n_o1} lines)", r.stdout + r.stderr)
 # 3. O1_LIST=none: removes target-specific lines
 env_none = dict(os.environ, O1_LIST="none")
 r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], env=env_none, capture_output=True, text=True)
-cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+cfg_lines = [l.strip() for l in open(fake_cfg) if "FCOPTIM :=" in l]
 check(r.returncode == 0 and len(cfg_lines) == 0,
       "build.sh --apply-o1: O1_LIST=none leaves 0 target-specific lines", r.stdout + r.stderr)
 # 4. custom list and .o file cleanup
@@ -603,22 +603,26 @@ open(fake_obj, "w").write("fake object")
 open(fake_keep, "w").write("fake object")
 env_custom = dict(os.environ, O1_LIST=custom_list)
 r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], env=env_custom, capture_output=True, text=True)
-cfg_lines = [l.strip() for l in open(fake_cfg) if ": FCOPTIM :=" in l]
+cfg_lines = [l.strip() for l in open(fake_cfg) if "FCOPTIM :=" in l]
 check(r.returncode == 0 and len(cfg_lines) == 2 and all("nest_init_utils.o" in l for l in cfg_lines)
       and not os.path.exists(fake_obj) and os.path.exists(fake_keep),
       "build.sh --apply-o1: custom list appends 2 rules and removes changed .o", r.stdout + r.stderr)
 # 5. make applies the rules to objects built under a path from another directory (main/Makefile builds
-#    ../main/module_wrf_top.o; a plain "<obj> :" rule missed it: FIX_LEDGER F-08, 2026-10-17)
+#    ../main/module_wrf_top.o; a plain "<obj> :" rule missed it), and not to the prerequisites make builds for a
+#    listed object (without "private", module_bc_em.o got -O1 as a prerequisite of nest_init_utils.o): F-08
 r = subprocess.run(["bash", bsh, "--apply-o1", fake_cfg, "cpu-ref"], capture_output=True, text=True)
 sub = os.path.join(o1_dir, "dyn_em"); os.makedirs(sub)
 open(os.path.join(sub, "Makefile"), "w").write(
-    "include ../configure.wrf\nall: ../main/module_wrf_top.o module_wrf_top.o solve_em.o\n"
-    "../main/module_wrf_top.o module_wrf_top.o solve_em.o:\n\t@echo \"$@ $(FCOPTIM)\"\n")
+    "include ../configure.wrf\nall: ../main/module_wrf_top.o nest_init_utils.o solve_em.o\n"
+    "nest_init_utils.o: ../dyn_em/module_bc_em.o\n"
+    "../main/module_wrf_top.o nest_init_utils.o ../dyn_em/module_bc_em.o solve_em.o:\n\t@echo \"$@ $(FCOPTIM)\"\n")
 r = subprocess.run(["make", "-s", "-C", sub], capture_output=True, text=True)
 got = dict(l.split(" ", 1) for l in r.stdout.strip().splitlines() if " " in l)
 check(r.returncode == 0 and got.get("../main/module_wrf_top.o", "").startswith("-O1")
-      and got.get("module_wrf_top.o", "").startswith("-O1") and got.get("solve_em.o", "").startswith("-O2"),
-      "build.sh --apply-o1: make gives -O1 to listed objects with and without a path, -O2 to others", r.stdout + r.stderr)
+      and got.get("nest_init_utils.o", "").startswith("-O1") and got.get("solve_em.o", "").startswith("-O2")
+      and got.get("../dyn_em/module_bc_em.o", "").startswith("-O2"),
+      "build.sh --apply-o1: make gives -O1 to listed objects with and without a path, -O2 to their prerequisites and others",
+      r.stdout + r.stderr)
 shutil.rmtree(o1_dir)
 
 print("RESULT:", "PASS" if bad == 0 else f"FAIL ({bad})")

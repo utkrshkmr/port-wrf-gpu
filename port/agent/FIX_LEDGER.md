@@ -208,6 +208,15 @@ branch `agent/s0-00`.
      `%/<obj> : FCOPTIM := ...`, and deletes the listed objects whenever the rules change. Self-test 5 of
      `test_agent_tools.py` runs make on a path-prefixed target. Check in any build: every listed object's
      `time mpif90 -o ...<obj> -c -O1` line in `compile.log`.
+  4. **Rules leaked to prerequisites.** GNU make passes a target-specific value on to the prerequisites it builds
+     for that target. In both 26.1 builds of `0a55046` four objects not in the list were compiled at -O1 because
+     make built them first as prerequisites of a listed object: `module_bc_em.o` (dynamics boundary conditions:
+     model arithmetic), `module_comm_dm_4.o`, `module_cpl_oasis3.o`, `module_model_constants.o`; which ones depends
+     on the build order, so on `-j`. The rules are now `<obj> : private FCOPTIM := ...` (and `%/<obj> : private ...`),
+     and when the rules change `apply_o1_list` also deletes every object the old `compile.log` shows at -O1. Not
+     affected: every older build, including the 25.1 builds of step 1b (`5c51e28ccc52-o2`, `-o1nest`): 0 objects
+     outside the list at -O1 (`grep -oE '^time [^ ]+ -o [^ ]+ -c -O1 ' compile.log`). Self-test 5 checks a
+     prerequisite keeps -O2. Check in any build: the objects at -O1 in `compile.log` are exactly the listed ones.
   3. **Effective level.** Every -O1 compile prints `nvfortran-Info-Switch -Mvect forces -O2` (the locked
      `-Mvect=noassoc` asks for the vectorizer, which NVHPC runs at -O2). The result is still not -O2: the machine
      code of `nest_init_utils.o` differs from its -O2 build and the 12 crashes disappear. The proof of step 1b is
